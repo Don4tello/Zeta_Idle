@@ -3,6 +3,7 @@ import '../models/equipment.dart';
 import '../models/gem.dart';
 import '../services/game_state.dart';
 import '../theme/app_theme.dart';
+import '../widgets/item_sprites.dart';
 
 class InventoryScreen extends StatefulWidget {
   const InventoryScreen({super.key, this.embedded = false});
@@ -381,11 +382,18 @@ class _DollSlot extends StatelessWidget {
       mainAxisAlignment: MainAxisAlignment.center,
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        // Slot icon + rarity badge in a row
+        // Sprite + rarity badge
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Text(slot.icon, style: const TextStyle(fontSize: 14)),
+            ItemSprite(
+              slot: slot,
+              rarity: item!.rarity,
+              size: 26,
+              setColor: item!.rarity == ItemRarity.set
+                  ? item!.rarityColor
+                  : null,
+            ),
             const Spacer(),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 1),
@@ -425,8 +433,10 @@ class _DollSlot extends StatelessWidget {
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        Text(slot.icon,
-            style: const TextStyle(fontSize: 22, color: Colors.white24)),
+        Opacity(
+          opacity: 0.22,
+          child: ItemSprite(slot: slot, rarity: null, size: 28),
+        ),
         const SizedBox(height: 4),
         Text(
           slot.label.toUpperCase(),
@@ -588,6 +598,20 @@ class _ItemTile extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
                 children: [
+                  // Sprite centred at top with rarity glow
+                  Center(
+                    child: Padding(
+                      padding: const EdgeInsets.only(bottom: 4),
+                      child: ItemSprite(
+                        slot: item!.slot,
+                        rarity: item!.rarity,
+                        size: 34,
+                        setColor: item!.rarity == ItemRarity.set
+                            ? item!.rarityColor
+                            : null,
+                      ),
+                    ),
+                  ),
                   Row(
                     children: [
                       Expanded(
