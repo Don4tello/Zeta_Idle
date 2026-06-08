@@ -1,0 +1,314 @@
+import 'package:flutter/material.dart';
+import '../models/ascension.dart';
+import '../services/game_state.dart';
+import '../theme/app_theme.dart';
+
+class AscensionScreen extends StatelessWidget {
+  const AscensionScreen({super.key});
+
+  static const _accentColor = Color(0xFFcc88ff);
+
+  @override
+  Widget build(BuildContext context) {
+    final game = GameStateProvider.of(context);
+
+    return Scaffold(
+      backgroundColor: const Color(0xFF0a0e27),
+      appBar: AppBar(
+        backgroundColor: const Color(0xFF1a1030),
+        title: Text('ASCENSION',
+            style: AppTheme.pixelHeading(
+                fontSize: 13, letterSpacing: 2, color: _accentColor)),
+        actions: [
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            child: _AscPointBadge(points: game.ascensionPoints),
+          ),
+        ],
+      ),
+      body: ListView(
+        padding: const EdgeInsets.all(16),
+        children: [
+          _InfoBanner(game: game),
+          const SizedBox(height: 16),
+          if (game.canAscend)
+            _AscendButton(game: game),
+          if (game.ascensionLevel > 0) ...[
+            const SizedBox(height: 16),
+            Text('META-BOARD',
+                style: AppTheme.pixelHeading(
+                    fontSize: 11, letterSpacing: 2, color: _accentColor)),
+            const SizedBox(height: 10),
+            ...AscensionNode.all.map((node) => Padding(
+                  padding: const EdgeInsets.only(bottom: 10),
+                  child: _NodeCard(game: game, node: node),
+                )),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _AscPointBadge extends StatelessWidget {
+  const _AscPointBadge({required this.points});
+  final int points;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: const Color(0xFF6622aa).withValues(alpha: 0.2),
+        border: Border.all(
+            color: const Color(0xFFcc88ff).withValues(alpha: 0.6)),
+        borderRadius: BorderRadius.circular(3),
+      ),
+      child: Row(mainAxisSize: MainAxisSize.min, children: [
+        const Text('✦', style: TextStyle(fontSize: 10, color: Color(0xFFcc88ff))),
+        const SizedBox(width: 4),
+        Text('$points AP',
+            style: AppTheme.pixelHeading(
+                fontSize: 11, color: const Color(0xFFcc88ff))),
+      ]),
+    );
+  }
+}
+
+class _InfoBanner extends StatelessWidget {
+  const _InfoBanner({required this.game});
+  final GameState game;
+
+  @override
+  Widget build(BuildContext context) {
+    final level = game.ascensionLevel;
+    final prestige = game.prestigeLevel;
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: const Color(0xFF100818),
+        border: Border.all(color: const Color(0xFFcc88ff).withValues(alpha: 0.3)),
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(children: [
+            Text('Ascension Level: ',
+                style: const TextStyle(color: AppTheme.textMuted, fontSize: 12)),
+            Text('$level',
+                style: const TextStyle(
+                    color: Color(0xFFcc88ff),
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold)),
+          ]),
+          const SizedBox(height: 4),
+          Row(children: [
+            Text('Prestige Level: ',
+                style: const TextStyle(color: AppTheme.textMuted, fontSize: 12)),
+            Text('$prestige',
+                style: TextStyle(
+                    color: prestige >= 5 ? Colors.white70 : AppTheme.textMuted,
+                    fontSize: 12)),
+          ]),
+          const SizedBox(height: 8),
+          const Text(
+            'Ascension resets your prestige count to 0 but grants Ascension Points to invest '
+            'in the Meta-Board — permanent bonuses that survive all future resets.',
+            style: TextStyle(fontSize: 10, color: AppTheme.textMuted, height: 1.5),
+          ),
+          if (prestige < 5) ...[
+            const SizedBox(height: 8),
+            Text(
+              'Requires Prestige Level 5 to Ascend  (current: $prestige/5)',
+              style: const TextStyle(
+                  fontSize: 10, color: Color(0xFFff6644)),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _AscendButton extends StatelessWidget {
+  const _AscendButton({required this.game});
+  final GameState game;
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: ElevatedButton(
+        onPressed: () => _confirm(context, game),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: const Color(0xFF6622aa),
+          foregroundColor: Colors.white,
+          padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 14),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+        ),
+        child: Text('ASCEND  (+${game.ascensionPointsForNextAscension} AP)',
+            style: AppTheme.pixelHeading(
+                fontSize: 12, letterSpacing: 1, color: Colors.white)),
+      ),
+    );
+  }
+
+  void _confirm(BuildContext context, GameState game) {
+    showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF1a1030),
+        title: Text('Ascend?',
+            style: AppTheme.pixelHeading(
+                fontSize: 13, color: const Color(0xFFcc88ff))),
+        content: Text(
+          'This will reset your prestige level to 0 and grant '
+          '${game.ascensionPointsForNextAscension} Ascension Point(s).\n\n'
+          'All prestige upgrades and shards will be lost. This cannot be undone.',
+          style: const TextStyle(color: Colors.white70, fontSize: 12, height: 1.5),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('CANCEL',
+                style: TextStyle(color: AppTheme.textMuted)),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(ctx, true);
+              game.ascend();
+            },
+            child: Text('ASCEND',
+                style: TextStyle(
+                    color: const Color(0xFFcc88ff),
+                    fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _NodeCard extends StatelessWidget {
+  const _NodeCard({required this.game, required this.node});
+  final GameState game;
+  final AscensionNode node;
+
+  @override
+  Widget build(BuildContext context) {
+    final level = game.ascensionNodeLevel(node.id);
+    final maxed = level >= node.maxLevel;
+    final cost = node.costPerLevel;
+    final canAfford = game.ascensionPoints >= cost && !maxed;
+
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: level > 0
+            ? const Color(0xFF100818)
+            : const Color(0xFF0e1225),
+        border: Border.all(
+          color: maxed
+              ? const Color(0xFFcc88ff).withValues(alpha: 0.6)
+              : level > 0
+                  ? const Color(0xFFcc88ff).withValues(alpha: 0.3)
+                  : AppTheme.cardBorder,
+        ),
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: Row(children: [
+        Text(node.icon, style: const TextStyle(fontSize: 22)),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(node.label,
+                  style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.bold,
+                      color: level > 0
+                          ? const Color(0xFFcc88ff)
+                          : Colors.white70)),
+              const SizedBox(height: 2),
+              Text(node.description,
+                  style: const TextStyle(
+                      fontSize: 10, color: AppTheme.textMuted)),
+              const SizedBox(height: 4),
+              _LevelPips(level: level, max: node.maxLevel),
+            ],
+          ),
+        ),
+        const SizedBox(width: 12),
+        if (maxed)
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            decoration: BoxDecoration(
+              color: const Color(0xFFcc88ff).withValues(alpha: 0.12),
+              border: Border.all(
+                  color: const Color(0xFFcc88ff).withValues(alpha: 0.5)),
+              borderRadius: BorderRadius.circular(3),
+            ),
+            child: Text('MAX',
+                style: AppTheme.pixelHeading(
+                    fontSize: 9,
+                    color: const Color(0xFFcc88ff))),
+          )
+        else
+          TextButton(
+            onPressed: canAfford
+                ? () => game.spendAscensionPoint(node.id)
+                : null,
+            style: TextButton.styleFrom(
+              foregroundColor: const Color(0xFFcc88ff),
+              disabledForegroundColor: AppTheme.cardBorder,
+              side: BorderSide(
+                  color: canAfford
+                      ? const Color(0xFFcc88ff)
+                      : AppTheme.cardBorder),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              minimumSize: Size.zero,
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            ),
+            child: Text('✦$cost',
+                style: AppTheme.pixelHeading(
+                    fontSize: 10,
+                    color: canAfford
+                        ? const Color(0xFFcc88ff)
+                        : AppTheme.cardBorder)),
+          ),
+      ]),
+    );
+  }
+}
+
+class _LevelPips extends StatelessWidget {
+  const _LevelPips({required this.level, required this.max});
+  final int level;
+  final int max;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: List.generate(max, (i) {
+        final filled = i < level;
+        return Container(
+          width: 10,
+          height: 10,
+          margin: const EdgeInsets.only(right: 3),
+          decoration: BoxDecoration(
+            color: filled
+                ? const Color(0xFFcc88ff)
+                : Colors.transparent,
+            border: Border.all(
+                color: filled
+                    ? const Color(0xFFcc88ff)
+                    : AppTheme.cardBorder),
+            borderRadius: BorderRadius.circular(2),
+          ),
+        );
+      }),
+    );
+  }
+}

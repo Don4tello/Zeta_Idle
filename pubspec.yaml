@@ -1,0 +1,31 @@
+name: zeta_idle
+description: A dark medieval idle RPG prototype.
+publish_to: 'none'
+version: 0.1.0+1
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+  flutter: '>=3.0.0'
+dependencies:
+  flutter:
+    sdk: flutter
+  cupertino_icons: ^1.0.5
+  shared_preferences: ^2.1.1
+  firebase_core: ^4.9.0
+  firebase_auth: ^6.5.1
+  cloud_firestore: ^6.4.1
+  flutter_animate: ^4.5.0
+  google_fonts: ^6.2.1
+  audioplayers: ^6.1.0
+  in_app_purchase: ^3.3.0
+  google_sign_in: ^6.1.1
+dependency_overrides:
+  path_provider_foundation: ">=2.3.2 <2.6.0"
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/
