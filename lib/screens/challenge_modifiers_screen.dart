@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import '../models/challenge_modifier.dart';
 import '../services/game_state.dart';
 import '../theme/app_theme.dart';
@@ -11,11 +11,11 @@ class ChallengeModifiersScreen extends StatelessWidget {
     final game = GameStateProvider.of(context);
 
     return Scaffold(
-      backgroundColor: const Color(0xFF0a0e27),
+      backgroundColor: const Color(0xFF1B1A17),
       appBar: AppBar(
-        backgroundColor: const Color(0xFF1a1f3a),
+        backgroundColor: const Color(0xFF2A2623),
         title: Text('CHALLENGE MODIFIERS',
-            style: AppTheme.pixelHeading(fontSize: 12, letterSpacing: 2)),
+            style: AppTheme.pixelHeading(fontSize: 13, letterSpacing: 2)),
       ),
       body: ListView(
         padding: const EdgeInsets.all(16),
@@ -24,19 +24,19 @@ class ChallengeModifiersScreen extends StatelessWidget {
             padding: const EdgeInsets.all(12),
             margin: const EdgeInsets.only(bottom: 16),
             decoration: BoxDecoration(
-              color: const Color(0xFF0e1225),
+              color: const Color(0xFF231F1B),
               border: Border.all(color: AppTheme.accentGold.withValues(alpha: 0.4)),
               borderRadius: BorderRadius.circular(4),
             ),
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Text('OPTIONAL HANDICAPS',
                   style: AppTheme.pixelHeading(
-                      fontSize: 11, color: AppTheme.accentGold, letterSpacing: 2)),
+                      fontSize: 12, color: AppTheme.accentGold, letterSpacing: 2)),
               const SizedBox(height: 6),
               Text(
                 'Enable up to one modifier before entering Campaign or Dungeon. '
                 'Modifiers make battles harder but increase shard rewards per kill.',
-                style: const TextStyle(fontSize: 10, color: AppTheme.textMuted, height: 1.4),
+                style: const TextStyle(fontSize: 11, color: AppTheme.textMuted, height: 1.4),
               ),
               const SizedBox(height: 8),
               if (game.activeModifierId != null) ...[
@@ -44,12 +44,12 @@ class ChallengeModifiersScreen extends StatelessWidget {
                 const SizedBox(height: 8),
                 Row(children: [
                   const Text('Active: ',
-                      style: TextStyle(fontSize: 10, color: AppTheme.textMuted)),
+                      style: TextStyle(fontSize: 11, color: AppTheme.textMuted)),
                   Text(
                     ChallengeModifier.all
                         .firstWhere((m) => m.id == game.activeModifierId).name,
                     style: AppTheme.pixelHeading(
-                        fontSize: 10, color: AppTheme.accentGold),
+                        fontSize: 11, color: AppTheme.accentGold),
                   ),
                   const Spacer(),
                   GestureDetector(
@@ -62,7 +62,7 @@ class ChallengeModifiersScreen extends StatelessWidget {
                       ),
                       child: Text('CLEAR',
                           style: AppTheme.pixelHeading(
-                              fontSize: 9, color: AppTheme.accentRed)),
+                              fontSize: 10, color: AppTheme.accentRed)),
                     ),
                   ),
                 ]),
@@ -95,7 +95,7 @@ class _ModifierCard extends StatelessWidget {
           decoration: BoxDecoration(
             color: active
                 ? AppTheme.accentGold.withValues(alpha: 0.06)
-                : const Color(0xFF0e1225),
+                : const Color(0xFF231F1B),
             border: Border.all(
               color: active ? AppTheme.accentGold : AppTheme.cardBorder,
               width: active ? 1.5 : 1,
@@ -103,21 +103,21 @@ class _ModifierCard extends StatelessWidget {
             borderRadius: BorderRadius.circular(4),
           ),
           child: Row(children: [
-            Text(mod.icon, style: const TextStyle(fontSize: 26)),
+            Text(mod.icon, style: const TextStyle(fontSize: 27)),
             const SizedBox(width: 14),
             Expanded(child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(mod.name,
                     style: TextStyle(
-                      fontSize: 14,
+                      fontSize: 15,
                       fontWeight: FontWeight.bold,
                       color: active ? AppTheme.accentGold : Colors.white,
                     )),
                 const SizedBox(height: 4),
                 Text(mod.description,
                     style: const TextStyle(
-                        fontSize: 10, color: AppTheme.textMuted, height: 1.3)),
+                        fontSize: 11, color: AppTheme.textMuted, height: 1.3)),
                 const SizedBox(height: 8),
                 Row(children: [
                   _StatBadge('+${mod.rewardShardBonus} shards/kill',
@@ -165,7 +165,7 @@ class _StatBadge extends StatelessWidget {
         borderRadius: BorderRadius.circular(3),
       ),
       child: Text(label,
-          style: TextStyle(fontSize: 9, color: color, fontWeight: FontWeight.bold)),
+          style: TextStyle(fontSize: 10, color: color, fontWeight: FontWeight.bold)),
     );
   }
 }

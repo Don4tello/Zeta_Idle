@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../data/ability_data.dart';
 import '../models/hero_ability.dart';
@@ -11,53 +11,77 @@ class AbilityUpgradeScreen extends StatelessWidget {
   final bool embedded;
 
   static const _effectColors = <AbilityEffect, Color>{
-    AbilityEffect.bonusDamage: Color(0xFFff6633),
-    AbilityEffect.heal:        Color(0xFF44cc66),
-    AbilityEffect.attackBonus: Color(0xFFffcc00),
-    AbilityEffect.acBonus:     Color(0xFF66aaff),
-    AbilityEffect.stun:        Color(0xFFcc44ff),
-    AbilityEffect.dot:         Color(0xFF88dd00),
-    AbilityEffect.dodge:       Color(0xFF44ddcc),
+    AbilityEffect.bonusDamage:      Color(0xFFff6633),
+    AbilityEffect.heal:             Color(0xFF44cc66),
+    AbilityEffect.attackBonus:      Color(0xFFffcc00),
+    AbilityEffect.acBonus:          Color(0xFF66aaff),
+    AbilityEffect.stun:             Color(0xFFcc44ff),
+    AbilityEffect.dot:              Color(0xFF88dd00),
+    AbilityEffect.dodge:            Color(0xFF44ddcc),
+    AbilityEffect.aura:             Color(0xFF55eebb),
+    AbilityEffect.debuffWeaken:     Color(0xFFff8844),
+    AbilityEffect.debuffVulnerable: Color(0xFFdd44aa),
   };
 
   static const _effectLabel = <AbilityEffect, String>{
-    AbilityEffect.bonusDamage: 'Bonus Damage',
-    AbilityEffect.heal:        'Heal',
-    AbilityEffect.attackBonus: 'Attack Bonus',
-    AbilityEffect.acBonus:     'AC Bonus',
-    AbilityEffect.stun:        'Stun',
-    AbilityEffect.dot:         'Damage Over Time',
-    AbilityEffect.dodge:       'Dodge',
+    AbilityEffect.bonusDamage:      'Bonus Damage',
+    AbilityEffect.heal:             'Heal',
+    AbilityEffect.attackBonus:      'Attack Bonus',
+    AbilityEffect.acBonus:          'AC Bonus',
+    AbilityEffect.stun:             'Stun',
+    AbilityEffect.dot:              'Damage Over Time',
+    AbilityEffect.dodge:            'Dodge',
+    AbilityEffect.aura:             'Aura',
+    AbilityEffect.debuffWeaken:     'Weaken',
+    AbilityEffect.debuffVulnerable: 'Vulnerable',
   };
 
-  String _effectSummary(HeroAbility a, int rank, GameState game) {
+  static const _categoryColors = <AbilityCategory, Color>{
+    AbilityCategory.damage: Color(0xFFff6633),
+    AbilityCategory.buff:   Color(0xFF44cc88),
+    AbilityCategory.debuff: Color(0xFFdd44aa),
+  };
+
+  static const _categoryLabel = <AbilityCategory, String>{
+    AbilityCategory.damage: 'DMG',
+    AbilityCategory.buff:   'BUFF',
+    AbilityCategory.debuff: 'DEBUFF',
+  };
+
+  String _effectSummary(HeroAbility a, GameState game) {
     final sv = game.scaledAbilityValue(a);
     final cd = game.scaledAbilityCooldown(a);
     switch (a.effect) {
-      case AbilityEffect.bonusDamage: return '+d$sv dmg  •  ${cd}r cd';
-      case AbilityEffect.heal:        return '+${sv}% HP  •  ${cd}r cd';
-      case AbilityEffect.attackBonus: return '+$sv ATK for ${a.duration}r  •  ${cd}r cd';
-      case AbilityEffect.acBonus:     return '+$sv AC for ${a.duration}r  •  ${cd}r cd';
-      case AbilityEffect.stun:        return 'Stun ${a.duration}r  •  ${cd}r cd';
-      case AbilityEffect.dot:         return '$sv dmg/r for ${a.duration}r  •  ${cd}r cd';
-      case AbilityEffect.dodge:       return 'Dodge 1 hit  •  ${cd}r cd';
+      case AbilityEffect.bonusDamage:      return '+d$sv dmg  •  ${cd}r cd';
+      case AbilityEffect.heal:             return '+${sv}% HP  •  ${cd}r cd';
+      case AbilityEffect.attackBonus:      return '+$sv ATK for ${a.duration}r  •  ${cd}r cd';
+      case AbilityEffect.acBonus:          return '+$sv AC for ${a.duration}r  •  ${cd}r cd';
+      case AbilityEffect.stun:             return 'Stun ${a.duration}r  •  ${cd}r cd';
+      case AbilityEffect.dot:              return '$sv dmg/r for ${a.duration}r  •  ${cd}r cd';
+      case AbilityEffect.dodge:            return 'Dodge 1 hit  •  ${cd}r cd';
+      case AbilityEffect.aura:             return '$sv HP/r for ${a.duration}r  •  ${cd}r cd';
+      case AbilityEffect.debuffWeaken:     return '−$sv% ATK for ${a.duration}r  •  ${cd}r cd';
+      case AbilityEffect.debuffVulnerable: return '+$sv% dmg taken for ${a.duration}r  •  ${cd}r cd';
     }
   }
 
   String _nextEffectSummary(HeroAbility a, GameState game) {
     final rank = game.abilityRank(a.id);
-    if (rank >= 3) return 'MAX RANK';
-    // Temporarily preview at rank+1
-    final previewValue = a.value == 0 ? 0 : a.value + (rank + 1) * (a.value ~/ 4).clamp(1, 9999);
-    final previewCd = (a.cooldownRounds - (rank + 1)).clamp(2, 99);
+    if (rank >= 15) return 'MAX RANK';
+    final nextRank = rank + 1;
+    final nv = a.value == 0 ? 0 : a.value + nextRank * (a.value ~/ 8).clamp(1, 9999);
+    final ncd = (a.cooldownRounds - nextRank ~/ 3).clamp(2, 99);
     switch (a.effect) {
-      case AbilityEffect.bonusDamage: return '+d$previewValue dmg  •  ${previewCd}r cd';
-      case AbilityEffect.heal:        return '+${previewValue}% HP  •  ${previewCd}r cd';
-      case AbilityEffect.attackBonus: return '+${a.value + rank + 1} ATK for ${a.duration}r  •  ${previewCd}r cd';
-      case AbilityEffect.acBonus:     return '+${a.value + rank + 1} AC for ${a.duration}r  •  ${previewCd}r cd';
-      case AbilityEffect.stun:        return 'Stun ${a.duration}r  •  ${previewCd}r cd';
-      case AbilityEffect.dot:         return '$previewValue dmg/r for ${a.duration}r  •  ${previewCd}r cd';
-      case AbilityEffect.dodge:       return 'Dodge 1 hit  •  ${previewCd}r cd';
+      case AbilityEffect.bonusDamage:      return '+d$nv dmg  •  ${ncd}r cd';
+      case AbilityEffect.heal:             return '+${nv}% HP  •  ${ncd}r cd';
+      case AbilityEffect.attackBonus:      return '+${a.value + nextRank} ATK for ${a.duration}r  •  ${ncd}r cd';
+      case AbilityEffect.acBonus:          return '+${a.value + nextRank} AC for ${a.duration}r  •  ${ncd}r cd';
+      case AbilityEffect.stun:             return 'Stun ${a.duration}r  •  ${ncd}r cd';
+      case AbilityEffect.dot:              return '$nv dmg/r for ${a.duration}r  •  ${ncd}r cd';
+      case AbilityEffect.dodge:            return 'Dodge 1 hit  •  ${ncd}r cd';
+      case AbilityEffect.aura:             return '$nv HP/r for ${a.duration}r  •  ${ncd}r cd';
+      case AbilityEffect.debuffWeaken:     return '−$nv% ATK for ${a.duration}r  •  ${ncd}r cd';
+      case AbilityEffect.debuffVulnerable: return '+$nv% dmg taken for ${a.duration}r  •  ${ncd}r cd';
     }
   }
 
@@ -76,12 +100,12 @@ class AbilityUpgradeScreen extends StatelessWidget {
             '${game.shards}',
             style: GoogleFonts.pixelifySans(
               color: const Color(0xFF80d0ff),
-              fontSize: 14,
+              fontSize: 15,
               fontWeight: FontWeight.bold,
             ),
           ),
           const SizedBox(width: 4),
-          const Text('shards', style: TextStyle(color: Colors.white38, fontSize: 11)),
+          const Text('shards', style: TextStyle(color: Colors.white38, fontSize: 12)),
         ],
       ),
     );
@@ -93,24 +117,25 @@ class AbilityUpgradeScreen extends StatelessWidget {
           game.hero.heroClass.displayName.toUpperCase(),
           style: GoogleFonts.cinzel(
             color: AppTheme.accentGold,
-            fontSize: 13,
+            fontSize: 14,
             letterSpacing: 2,
           ),
         ),
         const SizedBox(height: 4),
         const Text(
-          'Spend shards to empower your abilities. Upgrades increase effect magnitude and reduce cooldowns.',
-          style: TextStyle(color: Colors.white38, fontSize: 11),
+          'Spend shards to empower your abilities. Milestones unlock at ranks 5, 10 and 15.',
+          style: TextStyle(color: Colors.white38, fontSize: 14),
         ),
         const SizedBox(height: 16),
         ...allAbilities.map((a) => _AbilityCard(
               ability: a,
               game: game,
-              effectSummary: _effectSummary(a, game.abilityRank(a.id), game),
+              effectSummary: _effectSummary(a, game),
               nextEffectSummary: _nextEffectSummary(a, game),
               effectColor: _effectColors[a.effect] ?? Colors.grey,
               effectLabel: _effectLabel[a.effect] ?? '',
-              chosenBranchId: game.abilityBranchChoice(a.id),
+              categoryColor: _categoryColors[a.category] ?? Colors.grey,
+              categoryLabel: _categoryLabel[a.category] ?? '',
             )),
       ],
     );
@@ -143,13 +168,13 @@ class AbilityUpgradeScreen extends StatelessWidget {
                   '${game.shards}',
                   style: GoogleFonts.pixelifySans(
                     color: const Color(0xFF80d0ff),
-                    fontSize: 16,
+                    fontSize: 17,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
                 const SizedBox(width: 4),
                 const Text('shards',
-                    style: TextStyle(color: Colors.white38, fontSize: 11)),
+                    style: TextStyle(color: Colors.white38, fontSize: 12)),
               ],
             ),
           ),
@@ -160,6 +185,8 @@ class AbilityUpgradeScreen extends StatelessWidget {
   }
 }
 
+// ── Ability card ──────────────────────────────────────────────────────────────
+
 class _AbilityCard extends StatelessWidget {
   const _AbilityCard({
     required this.ability,
@@ -168,7 +195,8 @@ class _AbilityCard extends StatelessWidget {
     required this.nextEffectSummary,
     required this.effectColor,
     required this.effectLabel,
-    this.chosenBranchId,
+    required this.categoryColor,
+    required this.categoryLabel,
   });
 
   final HeroAbility ability;
@@ -177,24 +205,25 @@ class _AbilityCard extends StatelessWidget {
   final String nextEffectSummary;
   final Color effectColor;
   final String effectLabel;
-  final String? chosenBranchId;
+  final Color categoryColor;
+  final String categoryLabel;
 
   @override
   Widget build(BuildContext context) {
-    final rank = game.abilityRank(ability.id);
-    final cost = game.abilityUpgradeCost(ability.id);
-    final locked = game.hero.level < ability.levelRequired;
-    final maxed = rank >= 3;
+    final rank    = game.abilityRank(ability.id);
+    final cost    = game.abilityUpgradeCost(ability.id);
+    final locked  = game.hero.level < ability.levelRequired;
+    final maxed   = rank >= 15;
     final canAfford = !locked && !maxed && game.shards >= cost;
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: Container(
         decoration: BoxDecoration(
-          color: const Color(0xFF111525),
+          color: const Color(0xFF1B1814),
           border: Border.all(
             color: locked
-                ? const Color(0xFF2a2e3f)
+                ? const Color(0xFF2E2A26)
                 : effectColor.withOpacity(0.4),
             width: 1.5,
           ),
@@ -203,17 +232,31 @@ class _AbilityCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Header
+            // Header row
             Row(
               children: [
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                  color: effectColor.withOpacity(0.15),
+                  padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                  color: categoryColor.withOpacity(0.15),
+                  child: Text(
+                    categoryLabel,
+                    style: TextStyle(
+                      color: categoryColor,
+                      fontSize: 9,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 1,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 6),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                  color: effectColor.withOpacity(0.12),
                   child: Text(
                     effectLabel.toUpperCase(),
                     style: TextStyle(
                       color: effectColor,
-                      fontSize: 8,
+                      fontSize: 9,
                       fontWeight: FontWeight.bold,
                       letterSpacing: 1,
                     ),
@@ -223,62 +266,60 @@ class _AbilityCard extends StatelessWidget {
                 if (locked)
                   Text(
                     'UNLOCKS LV ${ability.levelRequired}',
-                    style: const TextStyle(color: Colors.white30, fontSize: 9),
+                    style: const TextStyle(color: Colors.white30, fontSize: 10),
                   ),
                 const Spacer(),
-                // Rank stars
-                Row(
-                  children: List.generate(3, (i) => Padding(
-                    padding: const EdgeInsets.only(left: 3),
-                    child: Icon(
-                      i < rank ? Icons.star : Icons.star_border,
-                      color: i < rank ? AppTheme.accentGold : Colors.white24,
-                      size: 14,
-                    ),
-                  )),
+                Text(
+                  '$rank / 15',
+                  style: TextStyle(
+                    color: maxed ? AppTheme.accentGold : Colors.white54,
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ],
             ),
+            const SizedBox(height: 6),
+            // Rank pip bar (15 pips, milestone markers at 5/10/15)
+            _RankPips(rank: rank, locked: locked, effectColor: effectColor),
             const SizedBox(height: 8),
             Text(
               ability.name,
               style: TextStyle(
                 color: locked ? Colors.white30 : Colors.white,
-                fontSize: 15,
+                fontSize: 16,
                 fontWeight: FontWeight.bold,
               ),
             ),
             const SizedBox(height: 4),
             Text(
               ability.description,
-              style: const TextStyle(color: Colors.white54, fontSize: 11),
+              style: const TextStyle(color: Colors.white54, fontSize: 14),
             ),
             const SizedBox(height: 8),
-            // Current stats
-            _statRow('Current', effectSummary, locked ? Colors.white24 : effectColor),
+            _statRow('Current', effectSummary,
+                locked ? Colors.white24 : effectColor),
             if (!maxed && !locked) ...[
               const SizedBox(height: 4),
               _statRow('At rank ${rank + 1}', nextEffectSummary, Colors.white54),
             ],
-            if (maxed) ...[
+            // Milestone choosers
+            for (final ms in ability.milestones)
+              if (rank >= ms.rank)
+                _MilestoneRow(
+                  milestone: ms,
+                  abilityId: ability.id,
+                  game: game,
+                  effectColor: effectColor,
+                ),
+            if (maxed)
               const Padding(
                 padding: EdgeInsets.only(top: 4),
                 child: Text('MAX RANK', style: TextStyle(
-                  color: AppTheme.accentGold, fontSize: 10,
+                  color: AppTheme.accentGold, fontSize: 11,
                   fontWeight: FontWeight.bold, letterSpacing: 1,
                 )),
               ),
-              if (ability.branchA != null && ability.branchB != null) ...[
-                const SizedBox(height: 12),
-                if (chosenBranchId == null)
-                  _BranchPicker(ability: ability, effectColor: effectColor, game: game)
-                else
-                  _ChosenBranchBadge(
-                    branch: chosenBranchId == 'a' ? ability.branchA! : ability.branchB!,
-                    effectColor: effectColor,
-                  ),
-              ],
-            ],
             if (!locked && !maxed) ...[
               const SizedBox(height: 12),
               SizedBox(
@@ -301,7 +342,9 @@ class _AbilityCard extends StatelessWidget {
                       Text(
                         'UPGRADE  ($cost shards)',
                         style: const TextStyle(
-                            fontSize: 11, fontWeight: FontWeight.bold, letterSpacing: 1),
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 1),
                       ),
                     ],
                   ),
@@ -317,132 +360,173 @@ class _AbilityCard extends StatelessWidget {
   Widget _statRow(String label, String value, Color color) => Row(
     children: [
       SizedBox(
-        width: 70,
+        width: 80,
         child: Text(label,
-            style: const TextStyle(color: Colors.white30, fontSize: 10)),
+            style: const TextStyle(color: Colors.white30, fontSize: 13)),
       ),
-      Text(value, style: TextStyle(color: color, fontSize: 10, fontWeight: FontWeight.bold)),
+      Expanded(
+        child: Text(value,
+            style: TextStyle(
+                color: color, fontSize: 13, fontWeight: FontWeight.bold)),
+      ),
     ],
   );
 }
 
-// ── Branch picker (shown when rank 3 and no branch chosen yet) ────────────────
+// ── 15-pip rank bar with milestone markers ────────────────────────────────────
 
-class _BranchPicker extends StatelessWidget {
-  const _BranchPicker({
-    required this.ability,
+class _RankPips extends StatelessWidget {
+  const _RankPips({
+    required this.rank,
+    required this.locked,
     required this.effectColor,
-    required this.game,
   });
-  final HeroAbility ability;
+
+  final int   rank;
+  final bool  locked;
   final Color effectColor;
-  final GameState game;
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Container(
-          width: double.infinity,
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-          color: effectColor.withOpacity(0.10),
-          child: Row(children: [
-            Icon(Icons.call_split, color: effectColor, size: 13),
-            const SizedBox(width: 6),
-            Text('BRANCH UNLOCKED — choose one path',
-                style: TextStyle(color: effectColor, fontSize: 10,
-                    fontWeight: FontWeight.bold, letterSpacing: 0.5)),
-          ]),
-        ),
-        const SizedBox(height: 8),
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Expanded(child: _BranchOption(
-              branch: ability.branchA!,
-              label: 'A',
-              effectColor: effectColor,
-              onChoose: () => game.chooseBranch(ability.id, 'a'),
-            )),
-            const SizedBox(width: 8),
-            Expanded(child: _BranchOption(
-              branch: ability.branchB!,
-              label: 'B',
-              effectColor: effectColor,
-              onChoose: () => game.chooseBranch(ability.id, 'b'),
-            )),
-          ],
-        ),
-        const Padding(
-          padding: EdgeInsets.only(top: 6),
-          child: Text('This choice is permanent until Rebirth.',
-              style: TextStyle(color: Colors.white24, fontSize: 9,
-                  fontStyle: FontStyle.italic)),
-        ),
-      ],
+    return Row(
+      children: List.generate(15, (i) {
+        final filled    = i < rank;
+        final isMilestone = (i == 4) || (i == 9) || (i == 14); // pips 5,10,15
+        final pipColor  = locked
+            ? Colors.white12
+            : filled
+                ? (isMilestone ? AppTheme.accentGold : effectColor)
+                : Colors.white12;
+        return Expanded(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 1),
+            child: Container(
+              height: isMilestone ? 7 : 5,
+              decoration: BoxDecoration(
+                color: pipColor,
+                borderRadius: BorderRadius.circular(1),
+              ),
+            ),
+          ),
+        );
+      }),
     );
   }
 }
 
-class _BranchOption extends StatelessWidget {
-  const _BranchOption({
-    required this.branch,
-    required this.label,
+// ── Milestone row (shown once rank >= milestone.rank) ─────────────────────────
+
+class _MilestoneRow extends StatelessWidget {
+  const _MilestoneRow({
+    required this.milestone,
+    required this.abilityId,
+    required this.game,
+    required this.effectColor,
+  });
+
+  final AbilityMilestone milestone;
+  final String           abilityId;
+  final GameState        game;
+  final Color            effectColor;
+
+  @override
+  Widget build(BuildContext context) {
+    final chosen = game.milestoneChoice(abilityId, milestone.rank);
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 10),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(children: [
+            Icon(Icons.call_split, color: effectColor, size: 12),
+            const SizedBox(width: 5),
+            Text(
+              'MILESTONE ${milestone.rank}',
+              style: TextStyle(
+                  color: effectColor,
+                  fontSize: 11,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 1),
+            ),
+          ]),
+          const SizedBox(height: 6),
+          if (chosen == null)
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(child: _ChoiceOption(
+                  choice: milestone.a,
+                  effectColor: effectColor,
+                  onChoose: () => game.setMilestoneChoice(abilityId, milestone.rank, 'a'),
+                )),
+                const SizedBox(width: 8),
+                Expanded(child: _ChoiceOption(
+                  choice: milestone.b,
+                  effectColor: effectColor,
+                  onChoose: () => game.setMilestoneChoice(abilityId, milestone.rank, 'b'),
+                )),
+              ],
+            )
+          else
+            _ChosenBadge(
+              choice: chosen == 'a' ? milestone.a : milestone.b,
+              effectColor: effectColor,
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ChoiceOption extends StatelessWidget {
+  const _ChoiceOption({
+    required this.choice,
     required this.effectColor,
     required this.onChoose,
   });
-  final AbilityBranch branch;
-  final String label;
-  final Color effectColor;
-  final VoidCallback onChoose;
+
+  final AbilityChoice  choice;
+  final Color          effectColor;
+  final VoidCallback   onChoose;
 
   @override
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
-        color: const Color(0xFF0e1225),
+        color: const Color(0xFF231F1B),
         border: Border.all(color: effectColor.withOpacity(0.35)),
         borderRadius: BorderRadius.circular(3),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(children: [
-            Container(
-              width: 18, height: 18,
-              alignment: Alignment.center,
-              decoration: BoxDecoration(
-                color: effectColor.withOpacity(0.15),
-                border: Border.all(color: effectColor.withOpacity(0.6)),
-                borderRadius: BorderRadius.circular(2),
-              ),
-              child: Text(label, style: TextStyle(color: effectColor,
-                  fontSize: 10, fontWeight: FontWeight.bold)),
-            ),
-            const SizedBox(width: 6),
-            Expanded(child: Text(branch.name,
-                style: TextStyle(color: effectColor, fontSize: 11,
-                    fontWeight: FontWeight.bold))),
-          ]),
-          const SizedBox(height: 6),
-          Text(branch.description,
-              style: const TextStyle(color: Colors.white54, fontSize: 10,
-                  height: 1.3)),
+          Text(choice.name,
+              style: TextStyle(
+                  color: effectColor,
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold)),
+          const SizedBox(height: 4),
+          Text(choice.description,
+              style: const TextStyle(
+                  color: Colors.white54, fontSize: 12, height: 1.3)),
           const SizedBox(height: 8),
           SizedBox(
             width: double.infinity,
             child: OutlinedButton(
               onPressed: onChoose,
               style: OutlinedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(vertical: 6),
+                minimumSize: const Size(double.infinity, 44),
                 side: BorderSide(color: effectColor.withOpacity(0.7)),
                 foregroundColor: effectColor,
               ),
-              child: Text('CHOOSE', style: TextStyle(
-                  fontSize: 10, fontWeight: FontWeight.bold,
-                  color: effectColor, letterSpacing: 1)),
+              child: Text('CHOOSE',
+                  style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.bold,
+                      color: effectColor,
+                      letterSpacing: 1)),
             ),
           ),
         ],
@@ -451,12 +535,11 @@ class _BranchOption extends StatelessWidget {
   }
 }
 
-// ── Chosen branch badge ───────────────────────────────────────────────────────
+class _ChosenBadge extends StatelessWidget {
+  const _ChosenBadge({required this.choice, required this.effectColor});
 
-class _ChosenBranchBadge extends StatelessWidget {
-  const _ChosenBranchBadge({required this.branch, required this.effectColor});
-  final AbilityBranch branch;
-  final Color effectColor;
+  final AbilityChoice choice;
+  final Color         effectColor;
 
   @override
   Widget build(BuildContext context) {
@@ -473,12 +556,15 @@ class _ChosenBranchBadge extends StatelessWidget {
         Expanded(child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Branch: ${branch.name}',
-                style: TextStyle(color: effectColor, fontSize: 11,
+            Text(choice.name,
+                style: TextStyle(
+                    color: effectColor,
+                    fontSize: 12,
                     fontWeight: FontWeight.bold)),
             const SizedBox(height: 2),
-            Text(branch.description,
-                style: const TextStyle(color: Colors.white38, fontSize: 10)),
+            Text(choice.description,
+                style:
+                    const TextStyle(color: Colors.white38, fontSize: 11)),
           ],
         )),
       ]),

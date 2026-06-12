@@ -1,4 +1,4 @@
-import 'dart:async';
+﻿import 'dart:async';
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -128,7 +128,7 @@ class _PvpScreenState extends State<PvpScreen> {
     await showDialog<void>(
       context: context,
       builder: (_) => AlertDialog(
-        backgroundColor: const Color(0xFF1a1f3a),
+        backgroundColor: const Color(0xFF2A2623),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -136,12 +136,12 @@ class _PvpScreenState extends State<PvpScreen> {
           children: [
             Text(
               won ? '⚔ VICTORY!' : '💀 DEFEATED',
-              style: AppTheme.pixelHeading(fontSize: 16, color: color),
+              style: AppTheme.pixelHeading(fontSize: 17, color: color),
             ),
             const SizedBox(height: 4),
             Text(
               'vs ${opponent.heroName} (${opponent.heroClass[0].toUpperCase()}${opponent.heroClass.substring(1)}  Lv${opponent.level}  ★${opponent.rating})',
-              style: const TextStyle(fontSize: 11, color: AppTheme.textMuted),
+              style: const TextStyle(fontSize: 12, color: AppTheme.textMuted),
             ),
           ],
         ),
@@ -159,20 +159,20 @@ class _PvpScreenState extends State<PvpScreen> {
               ),
               child: Text(
                 'Rating: ${game.pvpRating}  ($ratingDelta)',
-                style: AppTheme.pixelHeading(fontSize: 13, color: color),
+                style: AppTheme.pixelHeading(fontSize: 14, color: color),
                 textAlign: TextAlign.center,
               ),
             ),
             const SizedBox(height: 12),
             Text('BATTLE LOG',
                 style: AppTheme.pixelHeading(
-                    fontSize: 9, color: AppTheme.textMuted, letterSpacing: 2)),
+                    fontSize: 10, color: AppTheme.textMuted, letterSpacing: 2)),
             const SizedBox(height: 6),
             ...log.map((line) => Padding(
                   padding: const EdgeInsets.only(bottom: 3),
                   child: Text(line,
                       style: TextStyle(
-                          fontSize: 11,
+                          fontSize: 12,
                           color: line.startsWith('⚔')
                               ? const Color(0xFF44dd88)
                               : line.startsWith('💀')
@@ -186,7 +186,7 @@ class _PvpScreenState extends State<PvpScreen> {
             onPressed: () => Navigator.pop(context),
             child: Text('CLOSE',
                 style: AppTheme.pixelHeading(
-                    fontSize: 11, color: AppTheme.accentGold)),
+                    fontSize: 12, color: AppTheme.accentGold)),
           ),
         ],
       ),
@@ -197,12 +197,12 @@ class _PvpScreenState extends State<PvpScreen> {
   Widget build(BuildContext context) {
     final game = GameStateProvider.of(context);
     return Scaffold(
-      backgroundColor: const Color(0xFF0a0e27),
+      backgroundColor: const Color(0xFF1B1A17),
       appBar: AppBar(
-        backgroundColor: const Color(0xFF1a1f3a),
+        backgroundColor: const Color(0xFF2A2623),
         title: Text('PVP ARENA',
             style: AppTheme.pixelHeading(
-                fontSize: 13, letterSpacing: 2, color: AppTheme.accentGold)),
+                fontSize: 14, letterSpacing: 2, color: AppTheme.accentGold)),
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh, size: 18, color: AppTheme.textMuted),
@@ -223,7 +223,7 @@ class _PvpScreenState extends State<PvpScreen> {
                 padding: EdgeInsets.symmetric(horizontal: 10),
                 child: Text('LEADERBOARD',
                     style: TextStyle(
-                        fontSize: 10,
+                        fontSize: 11,
                         color: AppTheme.textMuted,
                         letterSpacing: 2,
                         fontWeight: FontWeight.bold)),
@@ -256,7 +256,7 @@ class _PvpScreenState extends State<PvpScreen> {
         child: Text(
           'No players found yet.\nBe the first to fight!',
           textAlign: TextAlign.center,
-          style: TextStyle(color: AppTheme.textMuted, fontSize: 12),
+          style: TextStyle(color: AppTheme.textMuted, fontSize: 13),
         ),
       );
     }
@@ -274,7 +274,7 @@ class _PvpScreenState extends State<PvpScreen> {
           decoration: BoxDecoration(
             color: isMe
                 ? AppTheme.accentGold.withValues(alpha: 0.07)
-                : const Color(0xFF0e1225),
+                : const Color(0xFF231F1B),
             border: Border.all(
               color: isMe ? AppTheme.accentGold : AppTheme.cardBorder,
             ),
@@ -295,7 +295,7 @@ class _PvpScreenState extends State<PvpScreen> {
                   children: [
                     Text(p.heroName,
                         style: TextStyle(
-                            fontSize: 13,
+                            fontSize: 14,
                             fontWeight: FontWeight.bold,
                             color: isMe ? AppTheme.accentGold : Colors.white)),
                     Text(
@@ -303,7 +303,7 @@ class _PvpScreenState extends State<PvpScreen> {
                       'Lv${p.level}  '
                       '${p.wins}W / ${p.losses}L',
                       style: const TextStyle(
-                          fontSize: 10, color: AppTheme.textMuted),
+                          fontSize: 11, color: AppTheme.textMuted),
                     ),
                   ],
                 ),
@@ -313,12 +313,12 @@ class _PvpScreenState extends State<PvpScreen> {
                 children: [
                   Text('★${p.rating}',
                       style: GoogleFonts.pixelifySans(
-                          fontSize: 14,
+                          fontSize: 15,
                           color: AppTheme.accentGold,
                           fontWeight: FontWeight.bold)),
                   Text('HP:${p.maxHp}  AC:${p.armorClass}',
                       style: const TextStyle(
-                          fontSize: 9, color: AppTheme.textMuted)),
+                          fontSize: 10, color: AppTheme.textMuted)),
                 ],
               ),
             ],
@@ -347,14 +347,14 @@ class _StaminaBar extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
       decoration: const BoxDecoration(
-        color: Color(0xFF0e1225),
+        color: Color(0xFF231F1B),
         border: Border(bottom: BorderSide(color: AppTheme.cardBorder)),
       ),
       child: Row(
         children: [
           Text('STAMINA  ',
               style: AppTheme.pixelHeading(
-                  fontSize: 9, color: AppTheme.textMuted, letterSpacing: 2)),
+                  fontSize: 10, color: AppTheme.textMuted, letterSpacing: 2)),
           ...List.generate(
             GameState.pvpMaxStamina,
             (i) => Padding(
@@ -373,7 +373,7 @@ class _StaminaBar extends StatelessWidget {
             game.pvpStamina >= GameState.pvpMaxStamina
                 ? 'FULL'
                 : 'Next in $countdownLabel',
-            style: const TextStyle(fontSize: 10, color: AppTheme.textMuted),
+            style: const TextStyle(fontSize: 11, color: AppTheme.textMuted),
           ),
         ],
       ),
@@ -393,7 +393,7 @@ class _RatingCard extends StatelessWidget {
       margin: const EdgeInsets.all(12),
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
       decoration: BoxDecoration(
-        color: const Color(0xFF0e1225),
+        color: const Color(0xFF231F1B),
         border: Border.all(color: AppTheme.accentGold.withValues(alpha: 0.4)),
         borderRadius: BorderRadius.circular(4),
       ),
@@ -428,10 +428,10 @@ class _Stat extends StatelessWidget {
         children: [
           Text(value,
               style: GoogleFonts.pixelifySans(
-                  fontSize: 16, color: color, fontWeight: FontWeight.bold)),
+                  fontSize: 17, color: color, fontWeight: FontWeight.bold)),
           const SizedBox(height: 2),
           Text(label,
-              style: const TextStyle(fontSize: 9, color: AppTheme.textMuted,
+              style: const TextStyle(fontSize: 10, color: AppTheme.textMuted,
                   letterSpacing: 1.5)),
         ],
       );
@@ -459,7 +459,7 @@ class _MatchButton extends StatelessWidget {
         padding: const EdgeInsets.symmetric(vertical: 14),
         decoration: BoxDecoration(
           color: canFight
-              ? const Color(0xFF8b0000)
+              ? const Color(0xFF7A2E2E)
               : AppTheme.cardBorder.withValues(alpha: 0.3),
           border: Border.all(
             color: canFight ? const Color(0xFFcc2222) : AppTheme.cardBorder,
@@ -479,7 +479,7 @@ class _MatchButton extends StatelessWidget {
                       ? '⚔  FIND MATCH  (−1 ♥)'
                       : 'NO STAMINA — WAIT FOR RECHARGE',
                   style: AppTheme.pixelHeading(
-                      fontSize: 12,
+                      fontSize: 13,
                       color: canFight ? Colors.white : AppTheme.textMuted,
                       letterSpacing: 1),
                 ),

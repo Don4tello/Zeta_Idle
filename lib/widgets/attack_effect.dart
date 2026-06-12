@@ -1,4 +1,4 @@
-import 'dart:math';
+﻿import 'dart:math';
 import 'package:flutter/material.dart';
 import '../models/dnd_class.dart';
 
@@ -512,7 +512,7 @@ class _AttackEffectPainter extends CustomPainter {
             saffron.withValues(alpha: (4 - i) / 4 * p * 0.7), (4 - i) * 1.5);
       }
       // Wrapped fist
-      _circle(c, fpos, 11, const Color(0xFFe8dcc8));
+      _circle(c, fpos, 11, const Color(0xFFE8E3D9));
       _circle(c, fpos, 7, const Color(0xFFc8785c));
     } else if (t < 0.68) {
       // Expanding ki rings

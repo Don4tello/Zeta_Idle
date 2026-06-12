@@ -8,18 +8,31 @@ class CharacterSummary {
     required this.name,
     required this.level,
     this.heroClass,
+    this.prestigeLevel = 0,
   });
   final int slot;
   final String name;
   final int level;
   final DndClass? heroClass;
+  final int prestigeLevel;
 }
 
 class SaveService {
-  static const String _savePrefix    = 'zeta_idle_save_';
-  static const String _extraSlotsKey = 'zeta_idle_extra_slots';
-  static const int maxSlots     = 5; // physical storage supports up to 5
-  static const int defaultSlots = 3; // always-unlocked slots
+  static const String _savePrefix        = 'zeta_idle_save_';
+  static const String _extraSlotsKey     = 'zeta_idle_extra_slots';
+  static const String _welcomeSeenKey    = 'zeta_idle_welcome_seen';
+  static const int maxSlots     = 5;
+  static const int defaultSlots = 3;
+
+  static Future<bool> isWelcomeSeen() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool(_welcomeSeenKey) ?? false;
+  }
+
+  static Future<void> markWelcomeSeen() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_welcomeSeenKey, true);
+  }
 
   Future<void> saveRaw(Map<String, dynamic> rawData, {int slot = 0}) async {
     final prefs = await SharedPreferences.getInstance();
@@ -56,6 +69,7 @@ class SaveService {
           name: hero['name'] as String,
           level: hero['level'] as int,
           heroClass: DndClass.tryParse(hero['heroClass'] as String?),
+          prestigeLevel: (data['prestigeLevel'] as int?) ?? 0,
         );
       } catch (_) {
         return null;

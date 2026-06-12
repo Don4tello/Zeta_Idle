@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import '../services/game_state.dart';
 import '../services/leaderboard_service.dart';
 import '../theme/app_theme.dart';
@@ -47,11 +47,11 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
     final game = GameStateProvider.of(context);
 
     return Scaffold(
-      backgroundColor: const Color(0xFF0a0e27),
+      backgroundColor: const Color(0xFF1B1A17),
       appBar: AppBar(
-        backgroundColor: const Color(0xFF1a1f3a),
+        backgroundColor: const Color(0xFF2A2623),
         title: Text('ENDLESS LEADERBOARD',
-            style: AppTheme.pixelHeading(fontSize: 12, letterSpacing: 2)),
+            style: AppTheme.pixelHeading(fontSize: 13, letterSpacing: 2)),
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh, size: 18),
@@ -97,21 +97,21 @@ class _PersonalBestBar extends StatelessWidget {
   Widget build(BuildContext context) {
     final floor = entry?.floor ?? 0;
     return Container(
-      color: const Color(0xFF0e1225),
+      color: const Color(0xFF231F1B),
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       child: Row(children: [
-        const Text('🎯 ', style: TextStyle(fontSize: 16)),
+        const Text('🎯 ', style: TextStyle(fontSize: 17)),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text('Your personal best',
                   style: const TextStyle(
-                      color: AppTheme.textMuted, fontSize: 10)),
+                      color: AppTheme.textMuted, fontSize: 11)),
               Text('Floor $floor',
                   style: const TextStyle(
                       color: Colors.white,
-                      fontSize: 14,
+                      fontSize: 15,
                       fontWeight: FontWeight.bold)),
             ],
           ),
@@ -146,7 +146,7 @@ class _SubmitButtonState extends State<_SubmitButton> {
       ),
       child: Text(
         _submitting ? 'SUBMITTING...' : 'SUBMIT SCORE',
-        style: AppTheme.pixelHeading(fontSize: 9, letterSpacing: 1),
+        style: AppTheme.pixelHeading(fontSize: 10, letterSpacing: 1),
       ),
     );
   }
@@ -189,7 +189,7 @@ class _EntryTile extends StatelessWidget {
       decoration: BoxDecoration(
         color: isTop3
             ? rankColor.withValues(alpha: 0.06)
-            : const Color(0xFF0e1225),
+            : const Color(0xFF231F1B),
         border: Border.all(
           color: isTop3
               ? rankColor.withValues(alpha: 0.4)
@@ -201,10 +201,10 @@ class _EntryTile extends StatelessWidget {
         SizedBox(
           width: 36,
           child: rank <= 3
-              ? Text(rankIcon, style: const TextStyle(fontSize: 18))
+              ? Text(rankIcon, style: const TextStyle(fontSize: 19))
               : Text(rankIcon,
                   style: TextStyle(
-                      fontSize: 10,
+                      fontSize: 11,
                       color: rankColor,
                       fontWeight: FontWeight.bold)),
         ),
@@ -214,18 +214,18 @@ class _EntryTile extends StatelessWidget {
             children: [
               Text(entry.name,
                   style: TextStyle(
-                      fontSize: 13,
+                      fontSize: 14,
                       fontWeight: FontWeight.bold,
                       color: isTop3 ? rankColor : Colors.white70)),
               Text(entry.heroClass,
                   style: const TextStyle(
-                      fontSize: 9, color: AppTheme.textMuted)),
+                      fontSize: 10, color: AppTheme.textMuted)),
             ],
           ),
         ),
         Text('Floor ${entry.floor}',
             style: TextStyle(
-                fontSize: 13,
+                fontSize: 14,
                 fontWeight: FontWeight.bold,
                 color: isTop3 ? rankColor : Colors.white70)),
       ]),

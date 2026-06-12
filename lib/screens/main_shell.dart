@@ -1,12 +1,11 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../screens/aura_shop_screen.dart';
-import '../screens/campaign_screen.dart';
-import '../screens/daily_screen.dart';
-import '../screens/endless_screen.dart';
 import '../screens/hero_hub_screen.dart';
-import '../screens/pvp_screen.dart';
+import '../screens/inventory_hub_screen.dart';
+import '../screens/modes_screen.dart';
 import '../services/game_state.dart';
+import '../services/save_service.dart';
 import '../theme/app_theme.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -36,20 +35,24 @@ class _MainShellState extends State<MainShell> {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-      final game = GameStateProvider.of(context);
-      if (!game.tutorialWelcomeSeen) {
-        _showWelcomeTutorial(game);
-      } else if (game.offlineGoldEarned > 0) {
-        _showOfflineDialog(game);
-        game.clearOfflineReport();
-      }
-    });
+    _checkOnStart();
+  }
+
+  Future<void> _checkOnStart() async {
+    final seen = await SaveService.isWelcomeSeen();
+    if (!mounted) return;
+    final game = GameStateProvider.of(context);
+    if (!seen) {
+      await SaveService.markWelcomeSeen();
+      game.markTutorialSeen('welcome');
+      if (mounted) _showWelcomeTutorial(game);
+    } else if (game.offlineGoldEarned > 0) {
+      _showOfflineDialog(game);
+      game.clearOfflineReport();
+    }
   }
 
   void _showWelcomeTutorial(GameState game) {
-    game.markTutorialSeen('welcome');
     showDialog<void>(
       context: context,
       barrierDismissible: false,
@@ -86,15 +89,15 @@ class _MainShellState extends State<MainShell> {
     showDialog<void>(
       context: context,
       builder: (_) => AlertDialog(
-        backgroundColor: const Color(0xFF1a1f3a),
+        backgroundColor: const Color(0xFF2A2623),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
         title: Text('Welcome back!',
-            style: AppTheme.pixelHeading(fontSize: 13, color: AppTheme.accentGold)),
+            style: AppTheme.pixelHeading(fontSize: 14, color: AppTheme.accentGold)),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             Text('You were away for $timeLabel.',
-                style: const TextStyle(fontSize: 12, color: AppTheme.textMuted)),
+                style: const TextStyle(fontSize: 13, color: AppTheme.textMuted)),
             const SizedBox(height: 12),
             Container(
               padding: const EdgeInsets.all(12),
@@ -104,22 +107,22 @@ class _MainShellState extends State<MainShell> {
                 borderRadius: BorderRadius.circular(4),
               ),
               child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                const Text('💰', style: TextStyle(fontSize: 20)),
+                const Text('💰', style: TextStyle(fontSize: 21)),
                 const SizedBox(width: 8),
                 Text('+$goldLabel gold',
-                    style: AppTheme.pixelHeading(fontSize: 16, color: AppTheme.accentGold)),
+                    style: AppTheme.pixelHeading(fontSize: 17, color: AppTheme.accentGold)),
               ]),
             ),
             const SizedBox(height: 8),
             const Text('Idle income collected while you rested.',
-                style: TextStyle(fontSize: 11, color: AppTheme.textMuted,
+                style: TextStyle(fontSize: 12, color: AppTheme.textMuted,
                     fontStyle: FontStyle.italic)),
           ],
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: Text('CLAIM', style: AppTheme.pixelHeading(fontSize: 11, color: AppTheme.accentGold)),
+            child: Text('CLAIM', style: AppTheme.pixelHeading(fontSize: 12, color: AppTheme.accentGold)),
           ),
         ],
       ),
@@ -133,23 +136,14 @@ class _MainShellState extends State<MainShell> {
       label: 'HERO',
     ),
     BottomNavigationBarItem(
-      icon: Icon(Icons.map_outlined, size: 20),
-      activeIcon: Icon(Icons.map, size: 20),
-      label: 'CAMPAIGN',
+      icon: Icon(Icons.games_outlined, size: 20),
+      activeIcon: Icon(Icons.games, size: 20),
+      label: 'MODES',
     ),
     BottomNavigationBarItem(
-      icon: Icon(Icons.all_inclusive, size: 20),
-      label: 'ENDLESS',
-    ),
-    BottomNavigationBarItem(
-      icon: Icon(Icons.event_outlined, size: 20),
-      activeIcon: Icon(Icons.event, size: 20),
-      label: 'DAILY',
-    ),
-    BottomNavigationBarItem(
-      icon: Icon(Icons.sports_kabaddi_outlined, size: 20),
-      activeIcon: Icon(Icons.sports_kabaddi, size: 20),
-      label: 'PVP',
+      icon: Icon(Icons.backpack_outlined, size: 20),
+      activeIcon: Icon(Icons.backpack, size: 20),
+      label: 'INVENTORY',
     ),
     BottomNavigationBarItem(
       icon: Icon(Icons.storefront_outlined, size: 20),
@@ -166,10 +160,8 @@ class _MainShellState extends State<MainShell> {
         index: _tab,
         children: [
           HeroHubScreen(onBackToSelect: widget.onBackToSelect),
-          const CampaignScreen(),
-          const EndlessScreen(),
-          const DailyScreen(),
-          const PvpScreen(),
+          const ModesScreen(),
+          const InventoryHubScreen(),
           const AuraShopScreen(),
         ],
       ),
@@ -191,12 +183,12 @@ class _MainShellState extends State<MainShell> {
             selectedFontSize: 9,
             unselectedFontSize: 9,
             selectedLabelStyle: GoogleFonts.pixelifySans(
-              fontSize: 9,
+              fontSize: 10,
               fontWeight: FontWeight.bold,
               letterSpacing: 1,
             ),
             unselectedLabelStyle: GoogleFonts.pixelifySans(
-              fontSize: 9,
+              fontSize: 10,
               letterSpacing: 1,
             ),
             elevation: 0,
@@ -256,28 +248,28 @@ class _WelcomeDialogState extends State<_WelcomeDialog> {
     final p = _pages[_page];
     final isLast = _page == _pages.length - 1;
     return AlertDialog(
-      backgroundColor: const Color(0xFF1a1f3a),
+      backgroundColor: const Color(0xFF2A2623),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
       title: Row(children: [
-        Text(p.icon, style: const TextStyle(fontSize: 22)),
+        Text(p.icon, style: const TextStyle(fontSize: 23)),
         const SizedBox(width: 10),
-        Text(p.title, style: AppTheme.pixelHeading(fontSize: 14, color: AppTheme.accentGold)),
+        Text(p.title, style: AppTheme.pixelHeading(fontSize: 15, color: AppTheme.accentGold)),
         const Spacer(),
         Text('${_page + 1}/${_pages.length}',
-            style: const TextStyle(fontSize: 11, color: AppTheme.textMuted)),
+            style: const TextStyle(fontSize: 12, color: AppTheme.textMuted)),
       ]),
       content: Text(p.body,
-          style: const TextStyle(fontSize: 13, color: AppTheme.textLight, height: 1.5)),
+          style: const TextStyle(fontSize: 14, color: AppTheme.textLight, height: 1.5)),
       actions: [
         if (_page > 0)
           TextButton(
             onPressed: () => setState(() => _page--),
-            child: Text('BACK', style: AppTheme.pixelHeading(fontSize: 10, color: AppTheme.textMuted)),
+            child: Text('BACK', style: AppTheme.pixelHeading(fontSize: 11, color: AppTheme.textMuted)),
           ),
         TextButton(
           onPressed: isLast ? widget.onDismiss : () => setState(() => _page++),
           child: Text(isLast ? 'START PLAYING' : 'NEXT',
-              style: AppTheme.pixelHeading(fontSize: 10, color: AppTheme.accentGold)),
+              style: AppTheme.pixelHeading(fontSize: 11, color: AppTheme.accentGold)),
         ),
       ],
     );
@@ -322,10 +314,10 @@ class TutorialTip extends StatelessWidget {
       ),
       child: Row(
         children: [
-          const Text('💡', style: TextStyle(fontSize: 16)),
+          const Text('💡', style: TextStyle(fontSize: 17)),
           const SizedBox(width: 10),
           Expanded(child: Text(text,
-              style: const TextStyle(fontSize: 12, color: Color(0xFF88eeaa), height: 1.4))),
+              style: const TextStyle(fontSize: 13, color: Color(0xFF88eeaa), height: 1.4))),
           GestureDetector(
             onTap: () => game.markTutorialSeen(tutorialKey),
             child: const Padding(

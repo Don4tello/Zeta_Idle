@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../models/dnd_class.dart';
@@ -131,12 +131,14 @@ class _CharacterCreationScreenState extends State<CharacterCreationScreen> {
           GestureDetector(
             onTap: _goBack,
             child: Container(
+              constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
+              alignment: Alignment.center,
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
                 border: Border.all(color: AppTheme.cardBorder),
               ),
               child: const Icon(Icons.arrow_back,
-                  color: AppTheme.textMuted, size: 16),
+                  color: AppTheme.textMuted, size: 20),
             ),
           ),
           const Spacer(),
@@ -202,7 +204,7 @@ class _NameStep extends StatelessWidget {
         children: [
           Text(
             'FORGE YOUR LEGEND',
-            style: AppTheme.pixelHeading(fontSize: 22, letterSpacing: 4),
+            style: AppTheme.pixelHeading(fontSize: 23, letterSpacing: 4),
           )
               .animate()
               .fadeIn(duration: 500.ms)
@@ -211,7 +213,7 @@ class _NameStep extends StatelessWidget {
           Text(
             '— NAME YOUR WARRIOR —',
             style: GoogleFonts.pixelifySans(
-              fontSize: 11,
+              fontSize: 12,
               color: AppTheme.textMuted,
               letterSpacing: 3,
             ),
@@ -223,11 +225,12 @@ class _NameStep extends StatelessWidget {
             maxLength: 20,
             textAlign: TextAlign.center,
             style: GoogleFonts.pixelifySans(
-                color: AppTheme.textLight, fontSize: 22),
+                color: AppTheme.textLight, fontSize: 23),
             cursorColor: AppTheme.accentGold,
             decoration: InputDecoration(
               counterStyle: GoogleFonts.pixelifySans(
-                  color: AppTheme.textMuted, fontSize: 10),
+                  color: AppTheme.textMuted, fontSize: 13),
+              contentPadding: const EdgeInsets.symmetric(vertical: 16, horizontal: 8),
               enabledBorder: const UnderlineInputBorder(
                 borderSide:
                     BorderSide(color: AppTheme.cardBorder, width: 2),
@@ -247,7 +250,7 @@ class _NameStep extends StatelessWidget {
               child: Text(
                 'CHOOSE CLASS  →',
                 style: GoogleFonts.pixelifySans(
-                    fontSize: 14, letterSpacing: 2),
+                    fontSize: 15, letterSpacing: 2),
               ),
             ),
           ).animate(delay: 300.ms).fadeIn(duration: 400.ms),
@@ -278,13 +281,13 @@ class _ClassStep extends StatelessWidget {
         const SizedBox(height: 24),
         Text(
           'CHOOSE YOUR CLASS',
-          style: AppTheme.pixelHeading(fontSize: 18, letterSpacing: 4),
+          style: AppTheme.pixelHeading(fontSize: 19, letterSpacing: 4),
         ).animate().fadeIn(duration: 400.ms),
         const SizedBox(height: 4),
         Text(
           '— SELECT YOUR PATH —',
           style: GoogleFonts.pixelifySans(
-            fontSize: 11,
+            fontSize: 12,
             color: AppTheme.textMuted,
             letterSpacing: 3,
           ),
@@ -329,7 +332,7 @@ class _ClassStep extends StatelessWidget {
                     ? 'CHOOSE RACE  →'
                     : 'SELECT A CLASS',
                 style: GoogleFonts.pixelifySans(
-                    fontSize: 14, letterSpacing: 2),
+                    fontSize: 15, letterSpacing: 2),
               ),
             ),
           ),
@@ -385,7 +388,7 @@ class _ClassStep extends StatelessWidget {
                     Text(
                       s.$1,
                       style: GoogleFonts.pixelifySans(
-                        fontSize: 9,
+                        fontSize: 10,
                         color: isPrimary
                             ? AppTheme.accentGold
                             : AppTheme.textMuted,
@@ -396,7 +399,7 @@ class _ClassStep extends StatelessWidget {
                     Text(
                       '${s.$2}',
                       style: GoogleFonts.pixelifySans(
-                        fontSize: 14,
+                        fontSize: 15,
                         fontWeight: FontWeight.bold,
                         color: isPrimary
                             ? AppTheme.accentGold
@@ -406,7 +409,7 @@ class _ClassStep extends StatelessWidget {
                     Text(
                       modStr,
                       style: GoogleFonts.pixelifySans(
-                        fontSize: 9,
+                        fontSize: 10,
                         color: mod >= 0
                             ? AppTheme.accentGold.withValues(alpha: 0.7)
                             : AppTheme.textMuted,
@@ -488,7 +491,7 @@ class _ClassCard extends StatelessWidget {
                   child: Text(
                     info.displayName.toUpperCase(),
                     style: GoogleFonts.pixelifySans(
-                      fontSize: 11,
+                      fontSize: 12,
                       fontWeight: FontWeight.bold,
                       color: selected
                           ? AppTheme.accentGold
@@ -504,7 +507,7 @@ class _ClassCard extends StatelessWidget {
             Text(
               info.likes,
               style: GoogleFonts.pixelifySans(
-                fontSize: 9,
+                fontSize: 10,
                 color: AppTheme.textMuted,
               ),
             ),
@@ -512,7 +515,7 @@ class _ClassCard extends StatelessWidget {
             Text(
               info.primaryAbility,
               style: GoogleFonts.pixelifySans(
-                fontSize: 9,
+                fontSize: 10,
                 color: AppTheme.accentGold.withValues(alpha: 0.75),
               ),
               overflow: TextOverflow.ellipsis,
@@ -524,7 +527,7 @@ class _ClassCard extends StatelessWidget {
                 Text(
                   info.complexityDots,
                   style: GoogleFonts.pixelifySans(
-                    fontSize: 10,
+                    fontSize: 11,
                     color: _complexityColor(info.complexity),
                     letterSpacing: 3,
                   ),
@@ -532,7 +535,7 @@ class _ClassCard extends StatelessWidget {
                 Text(
                   info.complexityLabel.toUpperCase(),
                   style: GoogleFonts.pixelifySans(
-                    fontSize: 8,
+                    fontSize: 9,
                     color: _complexityColor(info.complexity),
                     letterSpacing: 1,
                   ),
@@ -580,13 +583,13 @@ class _RaceStep extends StatelessWidget {
         const SizedBox(height: 20),
         Text(
           'CHOOSE YOUR RACE',
-          style: AppTheme.pixelHeading(fontSize: 18, letterSpacing: 4),
+          style: AppTheme.pixelHeading(fontSize: 19, letterSpacing: 4),
         ).animate().fadeIn(duration: 400.ms),
         const SizedBox(height: 4),
         Text(
           '— YOUR HERITAGE DEFINES YOU —',
           style: GoogleFonts.pixelifySans(
-            fontSize: 11,
+            fontSize: 12,
             color: AppTheme.textMuted,
             letterSpacing: 3,
           ),
@@ -629,7 +632,7 @@ class _RaceStep extends StatelessWidget {
                             : null,
                       ),
                       child: Row(children: [
-                        Text(info.icon, style: const TextStyle(fontSize: 20)),
+                        Text(info.icon, style: const TextStyle(fontSize: 21)),
                         const SizedBox(width: 8),
                         Expanded(
                           child: Column(
@@ -638,7 +641,7 @@ class _RaceStep extends StatelessWidget {
                             children: [
                               Text(info.displayName.toUpperCase(),
                                   style: GoogleFonts.pixelifySans(
-                                    fontSize: 11,
+                                    fontSize: 12,
                                     fontWeight: FontWeight.bold,
                                     color: sel ? AppTheme.accentGold : AppTheme.textLight,
                                     letterSpacing: 1,
@@ -646,7 +649,7 @@ class _RaceStep extends StatelessWidget {
                                   overflow: TextOverflow.ellipsis),
                               Text(info.tags,
                                   style: GoogleFonts.pixelifySans(
-                                    fontSize: 8,
+                                    fontSize: 9,
                                     color: AppTheme.textMuted,
                                   ),
                                   overflow: TextOverflow.ellipsis),
@@ -665,7 +668,7 @@ class _RaceStep extends StatelessWidget {
                   '— CHOOSE YOUR RACIAL TRAIT —',
                   textAlign: TextAlign.center,
                   style: GoogleFonts.pixelifySans(
-                    fontSize: 10,
+                    fontSize: 11,
                     color: AppTheme.textMuted,
                     letterSpacing: 2,
                   ),
@@ -693,14 +696,14 @@ class _RaceStep extends StatelessWidget {
                             : null,
                       ),
                       child: Row(children: [
-                        Text(t.icon, style: const TextStyle(fontSize: 24)),
+                        Text(t.icon, style: const TextStyle(fontSize: 25)),
                         const SizedBox(width: 14),
                         Expanded(child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(t.name,
                                 style: GoogleFonts.pixelifySans(
-                                  fontSize: 14,
+                                  fontSize: 15,
                                   fontWeight: FontWeight.bold,
                                   color: sel ? AppTheme.accentGold : AppTheme.textLight,
                                   letterSpacing: 1,
@@ -708,7 +711,7 @@ class _RaceStep extends StatelessWidget {
                             const SizedBox(height: 4),
                             Text(t.description,
                                 style: GoogleFonts.pixelifySans(
-                                  fontSize: 10,
+                                  fontSize: 11,
                                   color: AppTheme.textMuted,
                                   height: 1.4,
                                 )),
@@ -743,7 +746,7 @@ class _RaceStep extends StatelessWidget {
                     : selectedRace == null
                         ? 'SELECT A RACE'
                         : 'SELECT A TRAIT',
-                style: GoogleFonts.pixelifySans(fontSize: 14, letterSpacing: 2),
+                style: GoogleFonts.pixelifySans(fontSize: 15, letterSpacing: 2),
               ),
             ),
           ),

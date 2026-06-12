@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import '../models/daily_challenge.dart';
 import '../services/game_state.dart';
 import '../theme/app_theme.dart';
@@ -16,11 +16,11 @@ class DailyScreen extends StatelessWidget {
     final total     = game.dailyChallenges.length;
 
     return Scaffold(
-      backgroundColor: const Color(0xFF0a0e27),
+      backgroundColor: const Color(0xFF1B1A17),
       appBar: AppBar(
-        backgroundColor: const Color(0xFF1a1f3a),
+        backgroundColor: const Color(0xFF2A2623),
         title: Text('DAILY CHALLENGES',
-            style: AppTheme.pixelHeading(fontSize: 13, letterSpacing: 2)),
+            style: AppTheme.pixelHeading(fontSize: 14, letterSpacing: 2)),
         actions: [
           Padding(
             padding: const EdgeInsets.only(right: 14),
@@ -29,7 +29,7 @@ class DailyScreen extends StatelessWidget {
                 const Icon(Icons.access_time, size: 13, color: AppTheme.textMuted),
                 const SizedBox(width: 4),
                 Text('~$resetHour h',
-                    style: const TextStyle(fontSize: 11, color: AppTheme.textMuted)),
+                    style: const TextStyle(fontSize: 12, color: AppTheme.textMuted)),
               ],
             ),
           ),
@@ -94,10 +94,10 @@ class _OverallProgress extends StatelessWidget {
           children: [
             Text('TODAY\'S PROGRESS',
                 style: AppTheme.pixelHeading(
-                    fontSize: 9, color: AppTheme.textMuted, letterSpacing: 2)),
+                    fontSize: 10, color: AppTheme.textMuted, letterSpacing: 2)),
             Text('$claimed / $total',
                 style: AppTheme.pixelHeading(
-                    fontSize: 11,
+                    fontSize: 12,
                     color: claimed == total
                         ? AppTheme.accentGold
                         : AppTheme.textMuted)),
@@ -148,7 +148,7 @@ class _DailyChestCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: const Color(0xFF0e1225),
+        color: const Color(0xFF231F1B),
         border: Border.all(color: borderColor, width: ready ? 1.5 : 1),
         borderRadius: BorderRadius.circular(4),
       ),
@@ -156,7 +156,7 @@ class _DailyChestCard extends StatelessWidget {
         children: [
           Text(
             gotChest ? '📦' : allDone ? '🎁' : '🔒',
-            style: const TextStyle(fontSize: 28),
+            style: const TextStyle(fontSize: 29),
           ),
           const SizedBox(width: 14),
           Expanded(
@@ -166,7 +166,7 @@ class _DailyChestCard extends StatelessWidget {
                 Text(
                   'DAILY CHEST',
                   style: AppTheme.pixelHeading(
-                      fontSize: 12,
+                      fontSize: 13,
                       color: gotChest
                           ? AppTheme.textMuted
                           : ready
@@ -179,7 +179,7 @@ class _DailyChestCard extends StatelessWidget {
                       ? 'Claimed! Come back tomorrow.'
                       : 'Complete all 7 tasks to unlock.',
                   style: const TextStyle(
-                      fontSize: 11, color: AppTheme.textMuted),
+                      fontSize: 12, color: AppTheme.textMuted),
                 ),
                 const SizedBox(height: 6),
                 Wrap(
@@ -188,7 +188,7 @@ class _DailyChestCard extends StatelessWidget {
                     _RewardChip('💰 1000',  Color(0xFFccaa22)),
                     _RewardChip('◆ 75',     Color(0xFF88aaff)),
                     _RewardChip('✦ 50',     Color(0xFF88cc44)),
-                    _RewardChip('💎 50',    Color(0xFF44ddcc)),
+                    _RewardChip('💎 150',   Color(0xFF44ddcc)),
                   ],
                 ),
               ],
@@ -206,7 +206,7 @@ class _DailyChestCard extends StatelessWidget {
                 ),
                 child: Text('CLAIM',
                     style: AppTheme.pixelHeading(
-                        fontSize: 11, color: AppTheme.accentGold)),
+                        fontSize: 12, color: AppTheme.accentGold)),
               ),
             ),
         ],
@@ -237,7 +237,7 @@ class _ChallengeCard extends StatelessWidget {
 
     return Container(
       decoration: BoxDecoration(
-        color: const Color(0xFF0e1225),
+        color: const Color(0xFF231F1B),
         border: Border.all(
           color: challenge.claimed
               ? AppTheme.cardBorder
@@ -263,7 +263,7 @@ class _ChallengeCard extends StatelessWidget {
                       ? AppTheme.cardBorder.withValues(alpha: 0.3)
                       : isComplete
                           ? AppTheme.accentGold.withValues(alpha: 0.2)
-                          : const Color(0xFF1a1f3a),
+                          : const Color(0xFF2A2623),
                   border: Border.all(
                     color: challenge.claimed
                         ? AppTheme.cardBorder
@@ -278,7 +278,7 @@ class _ChallengeCard extends StatelessWidget {
                         color: Color(0xFF55cc55))
                     : Text('$taskNumber',
                         style: TextStyle(
-                            fontSize: 11,
+                            fontSize: 12,
                             fontWeight: FontWeight.bold,
                             color: isComplete
                                 ? AppTheme.accentGold
@@ -288,20 +288,20 @@ class _ChallengeCard extends StatelessWidget {
               Expanded(
                 child: Text(
                   challenge.title,
-                  style: AppTheme.pixelHeading(fontSize: 13, letterSpacing: 0.5),
+                  style: AppTheme.pixelHeading(fontSize: 14, letterSpacing: 0.5),
                 ),
               ),
               if (isComplete && !challenge.claimed)
                 Text('READY',
                     style: AppTheme.pixelHeading(
-                        fontSize: 9,
+                        fontSize: 10,
                         color: AppTheme.accentGold,
                         letterSpacing: 1)),
             ],
           ),
           const SizedBox(height: 8),
           Text(challenge.description,
-              style: const TextStyle(fontSize: 12, color: AppTheme.textLight)),
+              style: const TextStyle(fontSize: 13, color: AppTheme.textLight)),
           const SizedBox(height: 10),
           Row(
             children: [
@@ -312,7 +312,7 @@ class _ChallengeCard extends StatelessWidget {
                     Text(
                       '${progress.clamp(0, challenge.target)} / ${challenge.target}',
                       style: TextStyle(
-                          fontSize: 11,
+                          fontSize: 12,
                           color: isComplete
                               ? AppTheme.accentGold
                               : AppTheme.textMuted),
@@ -341,11 +341,13 @@ class _ChallengeCard extends StatelessWidget {
           const SizedBox(height: 10),
           Row(
             children: [
-              _RewardChip('💰 ${challenge.rewardGold}',   const Color(0xFFccaa22)),
+              _RewardChip('💰 ${challenge.rewardGold}',    const Color(0xFFccaa22)),
               const SizedBox(width: 6),
-              _RewardChip('◆ ${challenge.rewardShards}',  const Color(0xFF88aaff)),
+              _RewardChip('◆ ${challenge.rewardShards}',   const Color(0xFF88aaff)),
               const SizedBox(width: 6),
-              _RewardChip('✦ ${challenge.rewardEssence}', const Color(0xFF88cc44)),
+              _RewardChip('✦ ${challenge.rewardEssence}',  const Color(0xFF88cc44)),
+              const SizedBox(width: 6),
+              _RewardChip('💎 ${challenge.rewardCrystals}', const Color(0xFF44ddcc)),
               const Spacer(),
               if (!challenge.claimed)
                 TextButton(
@@ -364,7 +366,7 @@ class _ChallengeCard extends StatelessWidget {
                   ),
                   child: Text('CLAIM',
                       style: AppTheme.pixelHeading(
-                          fontSize: 10,
+                          fontSize: 11,
                           color: isComplete
                               ? AppTheme.accentGold
                               : AppTheme.cardBorder,
@@ -392,7 +394,7 @@ class _RewardChip extends StatelessWidget {
         border: Border.all(color: color.withValues(alpha: 0.5), width: 1),
         borderRadius: BorderRadius.circular(3),
       ),
-      child: Text(label, style: TextStyle(fontSize: 10, color: color)),
+      child: Text(label, style: TextStyle(fontSize: 11, color: color)),
     );
   }
 }
@@ -413,14 +415,14 @@ class _HintRow extends StatelessWidget {
             width: 110,
             child: Text(label,
                 style: AppTheme.pixelHeading(
-                    fontSize: 10,
+                    fontSize: 11,
                     color: AppTheme.accentGold,
                     letterSpacing: 0)),
           ),
           Expanded(
               child: Text(text,
                   style: const TextStyle(
-                      fontSize: 10, color: AppTheme.textMuted))),
+                      fontSize: 11, color: AppTheme.textMuted))),
         ],
       ),
     );

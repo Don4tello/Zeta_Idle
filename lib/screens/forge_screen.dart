@@ -1,11 +1,12 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import '../models/equipment.dart';
 import '../models/gem.dart';
 import '../services/game_state.dart';
 import '../theme/app_theme.dart';
 
 class ForgeScreen extends StatefulWidget {
-  const ForgeScreen({super.key});
+  const ForgeScreen({super.key, this.embedded = false});
+  final bool embedded;
 
   @override
   State<ForgeScreen> createState() => _ForgeScreenState();
@@ -30,28 +31,43 @@ class _ForgeScreenState extends State<ForgeScreen>
   @override
   Widget build(BuildContext context) {
     final game = GameStateProvider.of(context);
+
+    final tabBar = TabBar(
+      controller: _tabs,
+      labelStyle: AppTheme.pixelHeading(fontSize: 11, letterSpacing: 1),
+      unselectedLabelColor: AppTheme.textMuted,
+      indicatorColor: AppTheme.accentGold,
+      tabs: const [Tab(text: 'COMBINE'), Tab(text: 'DISENCHANT'), Tab(text: 'GEMS'), Tab(text: 'REFORGE')],
+    );
+
+    final tabView = TabBarView(
+      controller: _tabs,
+      children: [
+        _CombineTab(game: game),
+        _DisenchantTab(game: game),
+        _GemsTab(game: game),
+        _ReforgeTab(game: game),
+      ],
+    );
+
+    if (widget.embedded) {
+      return Container(
+        color: const Color(0xFF1B1A17),
+        child: Column(children: [
+          Container(color: const Color(0xFF2A2623), child: tabBar),
+          Expanded(child: tabView),
+        ]),
+      );
+    }
+
     return Scaffold(
-      backgroundColor: const Color(0xFF0a0e27),
+      backgroundColor: const Color(0xFF1B1A17),
       appBar: AppBar(
-        backgroundColor: const Color(0xFF1a1f3a),
-        title: Text('FORGE', style: AppTheme.pixelHeading(fontSize: 13, letterSpacing: 2)),
-        bottom: TabBar(
-          controller: _tabs,
-          labelStyle: AppTheme.pixelHeading(fontSize: 10, letterSpacing: 1),
-          unselectedLabelColor: AppTheme.textMuted,
-          indicatorColor: AppTheme.accentGold,
-          tabs: const [Tab(text: 'COMBINE'), Tab(text: 'DISENCHANT'), Tab(text: 'GEMS'), Tab(text: 'REFORGE')],
-        ),
+        backgroundColor: const Color(0xFF2A2623),
+        title: Text('FORGE', style: AppTheme.pixelHeading(fontSize: 14, letterSpacing: 2)),
+        bottom: tabBar,
       ),
-      body: TabBarView(
-        controller: _tabs,
-        children: [
-          _CombineTab(game: game),
-          _DisenchantTab(game: game),
-          _GemsTab(game: game),
-          _ReforgeTab(game: game),
-        ],
-      ),
+      body: tabView,
     );
   }
 }
@@ -105,7 +121,7 @@ class _CombineTabState extends State<_CombineTab> {
           const SizedBox(height: 14),
 
           // Slot picker
-          Text('SLOT', style: AppTheme.pixelHeading(fontSize: 9, letterSpacing: 2, color: AppTheme.textMuted)),
+          Text('SLOT', style: AppTheme.pixelHeading(fontSize: 10, letterSpacing: 2, color: AppTheme.textMuted)),
           const SizedBox(height: 6),
           Wrap(
             spacing: 6, runSpacing: 6,
@@ -119,7 +135,7 @@ class _CombineTabState extends State<_CombineTab> {
 
           // Rarity picker
           Row(children: [
-            Text('FROM  ', style: AppTheme.pixelHeading(fontSize: 9, letterSpacing: 2, color: AppTheme.textMuted)),
+            Text('FROM  ', style: AppTheme.pixelHeading(fontSize: 10, letterSpacing: 2, color: AppTheme.textMuted)),
             _ChoiceChip(
               label: 'COMMON → RARE',
               selected: _rarity == ItemRarity.common,
@@ -145,7 +161,7 @@ class _CombineTabState extends State<_CombineTab> {
               alignment: Alignment.center,
               child: Text(
                 'No ${_rarity.name} ${_slot.name}s in your bag.',
-                style: const TextStyle(fontSize: 12, color: AppTheme.textMuted),
+                style: const TextStyle(fontSize: 13, color: AppTheme.textMuted),
               ),
             )
           else
@@ -172,14 +188,14 @@ class _CombineTabState extends State<_CombineTab> {
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF1a2a0a),
                 foregroundColor: AppTheme.accentGold,
-                disabledBackgroundColor: const Color(0xFF0e1225),
+                disabledBackgroundColor: const Color(0xFF231F1B),
                 disabledForegroundColor: AppTheme.cardBorder,
                 side: BorderSide(color: _canForge ? AppTheme.accentGold : AppTheme.cardBorder),
                 padding: const EdgeInsets.symmetric(vertical: 14),
               ),
               child: Text(
                 _canForge ? '🔥  FORGE  (${_selected.length}/$_needed selected)' : 'SELECT $_needed ITEMS TO FORGE',
-                style: AppTheme.pixelHeading(fontSize: 11, letterSpacing: 1,
+                style: AppTheme.pixelHeading(fontSize: 12, letterSpacing: 1,
                     color: _canForge ? AppTheme.accentGold : AppTheme.cardBorder),
               ),
             ),
@@ -200,7 +216,7 @@ class _CombineTabState extends State<_CombineTab> {
         SnackBar(
           content: Text('Forged: ${result.name} (${result.rarityLabel})!',
               style: const TextStyle(color: AppTheme.accentGold)),
-          backgroundColor: const Color(0xFF1a1f3a),
+          backgroundColor: const Color(0xFF2A2623),
           duration: const Duration(seconds: 3),
         ),
       );
@@ -244,7 +260,7 @@ class _DisenchantTabState extends State<_DisenchantTab> {
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: const Color(0xFF1a1f3a),
+              color: const Color(0xFF2A2623),
               border: Border.all(color: AppTheme.cardBorder),
               borderRadius: BorderRadius.circular(4),
             ),
@@ -252,7 +268,7 @@ class _DisenchantTabState extends State<_DisenchantTab> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text('DISENCHANT RATES',
-                    style: TextStyle(fontSize: 10, color: AppTheme.textMuted,
+                    style: TextStyle(fontSize: 11, color: AppTheme.textMuted,
                         fontWeight: FontWeight.bold, letterSpacing: 1)),
                 SizedBox(height: 6),
                 Wrap(spacing: 8, runSpacing: 4, children: const [
@@ -272,12 +288,12 @@ class _DisenchantTabState extends State<_DisenchantTab> {
               padding: const EdgeInsets.all(20),
               alignment: Alignment.center,
               child: const Text('Your bag is empty.',
-                  style: TextStyle(fontSize: 12, color: AppTheme.textMuted)),
+                  style: TextStyle(fontSize: 13, color: AppTheme.textMuted)),
             )
           else ...[
             Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
               Text('BAG  (${bag.length} items)',
-                  style: AppTheme.pixelHeading(fontSize: 9, letterSpacing: 2)),
+                  style: AppTheme.pixelHeading(fontSize: 10, letterSpacing: 2)),
               TextButton(
                 onPressed: () => setState(() {
                   if (_selected.length == bag.length) {
@@ -294,7 +310,7 @@ class _DisenchantTabState extends State<_DisenchantTab> {
                 ),
                 child: Text(
                   _selected.length == bag.length ? 'Deselect all' : 'Select all',
-                  style: const TextStyle(fontSize: 10, color: AppTheme.textMuted),
+                  style: const TextStyle(fontSize: 11, color: AppTheme.textMuted),
                 ),
               ),
             ]),
@@ -318,14 +334,14 @@ class _DisenchantTabState extends State<_DisenchantTab> {
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: const Color(0xFF1a1f3a),
+                color: const Color(0xFF2A2623),
                 border: Border.all(color: AppTheme.accentGold.withValues(alpha: 0.4)),
                 borderRadius: BorderRadius.circular(4),
               ),
               child: Row(children: [
-                const Text('◆ ', style: TextStyle(fontSize: 16, color: AppTheme.accentGold)),
+                const Text('◆ ', style: TextStyle(fontSize: 17, color: AppTheme.accentGold)),
                 Text('You will receive $_shardPreview shards',
-                    style: const TextStyle(fontSize: 13, color: AppTheme.accentGold,
+                    style: const TextStyle(fontSize: 14, color: AppTheme.accentGold,
                         fontWeight: FontWeight.bold)),
               ]),
             ),
@@ -341,7 +357,7 @@ class _DisenchantTabState extends State<_DisenchantTab> {
                   padding: const EdgeInsets.symmetric(vertical: 14),
                 ),
                 child: Text('DISENCHANT  ${_selected.length} ITEM(S)',
-                    style: AppTheme.pixelHeading(fontSize: 11, letterSpacing: 1,
+                    style: AppTheme.pixelHeading(fontSize: 12, letterSpacing: 1,
                         color: const Color(0xFFcc4444))),
               ),
             ),
@@ -362,7 +378,7 @@ class _DisenchantTabState extends State<_DisenchantTab> {
         SnackBar(
           content: Text('Disenchanted: +$earned ◆',
               style: const TextStyle(color: AppTheme.accentGold)),
-          backgroundColor: const Color(0xFF1a1f3a),
+          backgroundColor: const Color(0xFF2A2623),
           duration: const Duration(seconds: 2),
         ),
       );
@@ -387,21 +403,21 @@ class _RecipeBanner extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: const Color(0xFF1a1f3a),
+        color: const Color(0xFF2A2623),
         border: Border.all(color: AppTheme.cardBorder),
         borderRadius: BorderRadius.circular(4),
       ),
       child: Row(
         children: [
           _RarityDot(rarity: from),
-          Text(' ×$needed', style: const TextStyle(fontSize: 13, color: AppTheme.textLight)),
+          Text(' ×$needed', style: const TextStyle(fontSize: 14, color: AppTheme.textLight)),
           const Padding(
             padding: EdgeInsets.symmetric(horizontal: 10),
             child: Icon(Icons.arrow_forward, size: 18, color: AppTheme.textMuted),
           ),
           _RarityDot(rarity: to),
           Text('  ×1 (random)',
-              style: const TextStyle(fontSize: 12, color: AppTheme.textMuted)),
+              style: const TextStyle(fontSize: 13, color: AppTheme.textMuted)),
           if (hasMasterForger && from == ItemRarity.common) ...[
             const SizedBox(width: 8),
             Container(
@@ -412,7 +428,7 @@ class _RecipeBanner extends StatelessWidget {
                 borderRadius: BorderRadius.circular(3),
               ),
               child: Text('Master Forger',
-                  style: AppTheme.pixelHeading(fontSize: 8, color: const Color(0xFFcc8844))),
+                  style: AppTheme.pixelHeading(fontSize: 9, color: const Color(0xFFcc8844))),
             ),
           ],
         ],
@@ -446,7 +462,7 @@ class _RarityDot extends StatelessWidget {
         border: Border.all(color: color),
         borderRadius: BorderRadius.circular(3),
       ),
-      child: Text(_labels[rarity]!, style: TextStyle(fontSize: 11, color: color)),
+      child: Text(_labels[rarity]!, style: TextStyle(fontSize: 12, color: color)),
     );
   }
 }
@@ -462,10 +478,10 @@ class _SelectionProgress extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-          Text('SELECTED', style: AppTheme.pixelHeading(fontSize: 9, letterSpacing: 2)),
+          Text('SELECTED', style: AppTheme.pixelHeading(fontSize: 10, letterSpacing: 2)),
           Text('$selected / $needed',
               style: TextStyle(
-                  fontSize: 12,
+                  fontSize: 13,
                   color: selected == needed ? AppTheme.accentGold : AppTheme.textMuted,
                   fontWeight: FontWeight.bold)),
         ]),
@@ -513,7 +529,7 @@ class _ForgeItemTile extends StatelessWidget {
         margin: const EdgeInsets.only(bottom: 6),
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
         decoration: BoxDecoration(
-          color: selected ? item.rarityColor.withValues(alpha: 0.08) : const Color(0xFF0e1225),
+          color: selected ? item.rarityColor.withValues(alpha: 0.08) : const Color(0xFF231F1B),
           border: Border.all(
             color: selected ? item.rarityColor : AppTheme.cardBorder,
             width: selected ? 1.5 : 1,
@@ -537,18 +553,18 @@ class _ForgeItemTile extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(item.name,
-                      style: TextStyle(fontSize: 13, color: item.rarityColor,
+                      style: TextStyle(fontSize: 14, color: item.rarityColor,
                           fontWeight: FontWeight.bold)),
                   Text(
                     item.bonuses.map((b) => '${b.stat.name} +${b.value}').join('  '),
-                    style: const TextStyle(fontSize: 10, color: AppTheme.textMuted),
+                    style: const TextStyle(fontSize: 11, color: AppTheme.textMuted),
                   ),
                 ],
               ),
             ),
             if (showShardValue)
               Text('$_shards ◆',
-                  style: const TextStyle(fontSize: 11, color: AppTheme.accentGold)),
+                  style: const TextStyle(fontSize: 12, color: AppTheme.accentGold)),
             const SizedBox(width: 8),
             Icon(
               selected ? Icons.check_box : Icons.check_box_outline_blank,
@@ -575,13 +591,13 @@ class _ChoiceChip extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
         decoration: BoxDecoration(
-          color: selected ? AppTheme.accentGold.withValues(alpha: 0.12) : const Color(0xFF0e1225),
+          color: selected ? AppTheme.accentGold.withValues(alpha: 0.12) : const Color(0xFF231F1B),
           border: Border.all(color: selected ? AppTheme.accentGold : AppTheme.cardBorder),
           borderRadius: BorderRadius.circular(3),
         ),
         child: Text(label,
             style: TextStyle(
-                fontSize: 10,
+                fontSize: 11,
                 color: selected ? AppTheme.accentGold : AppTheme.textMuted,
                 fontWeight: selected ? FontWeight.bold : FontWeight.normal)),
       ),
@@ -603,7 +619,7 @@ class _RateChip extends StatelessWidget {
         decoration: BoxDecoration(shape: BoxShape.circle, color: color),
       ),
       const SizedBox(width: 4),
-      Text('$label → $value', style: TextStyle(fontSize: 10, color: color)),
+      Text('$label → $value', style: TextStyle(fontSize: 11, color: color)),
     ]);
   }
 }
@@ -636,24 +652,24 @@ class _GemsTabState extends State<_GemsTab> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
             decoration: BoxDecoration(
-              color: const Color(0xFF0e1225),
+              color: const Color(0xFF231F1B),
               border: Border.all(color: const Color(0xFF6688aa)),
               borderRadius: BorderRadius.circular(4),
             ),
             child: Row(children: [
-              const Text('💠', style: TextStyle(fontSize: 18)),
+              const Text('💠', style: TextStyle(fontSize: 19)),
               const SizedBox(width: 10),
               Text('GEM SHARDS',
-                  style: AppTheme.pixelHeading(fontSize: 10, color: const Color(0xFF88aacc), letterSpacing: 2)),
+                  style: AppTheme.pixelHeading(fontSize: 11, color: const Color(0xFF88aacc), letterSpacing: 2)),
               const Spacer(),
               Text('${game.gemShards}',
-                  style: AppTheme.pixelHeading(fontSize: 16, color: const Color(0xFF88ddee))),
+                  style: AppTheme.pixelHeading(fontSize: 17, color: const Color(0xFF88ddee))),
             ]),
           ),
           const SizedBox(height: 16),
 
           // ── Gem type picker ───────────────────────────────────────────
-          Text('GEM TYPE', style: AppTheme.pixelHeading(fontSize: 9, letterSpacing: 2, color: AppTheme.textMuted)),
+          Text('GEM TYPE', style: AppTheme.pixelHeading(fontSize: 10, letterSpacing: 2, color: AppTheme.textMuted)),
           const SizedBox(height: 8),
           GridView.count(
             shrinkWrap: true,
@@ -668,16 +684,16 @@ class _GemsTabState extends State<_GemsTab> {
                 onTap: () => setState(() => _type = t),
                 child: Container(
                   decoration: BoxDecoration(
-                    color: sel ? t.color.withValues(alpha: 0.15) : const Color(0xFF0e1225),
+                    color: sel ? t.color.withValues(alpha: 0.15) : const Color(0xFF231F1B),
                     border: Border.all(color: sel ? t.color : AppTheme.cardBorder, width: sel ? 1.5 : 1),
                     borderRadius: BorderRadius.circular(4),
                   ),
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Text(t.emoji, style: const TextStyle(fontSize: 18)),
+                      Text(t.emoji, style: const TextStyle(fontSize: 19)),
                       const SizedBox(height: 2),
-                      Text(t.label, style: TextStyle(fontSize: 9, color: sel ? t.color : AppTheme.textMuted)),
+                      Text(t.label, style: TextStyle(fontSize: 10, color: sel ? t.color : AppTheme.textMuted)),
                     ],
                   ),
                 ),
@@ -687,7 +703,7 @@ class _GemsTabState extends State<_GemsTab> {
           const SizedBox(height: 14),
 
           // ── Tier picker ───────────────────────────────────────────────
-          Text('TIER', style: AppTheme.pixelHeading(fontSize: 9, letterSpacing: 2, color: AppTheme.textMuted)),
+          Text('TIER', style: AppTheme.pixelHeading(fontSize: 10, letterSpacing: 2, color: AppTheme.textMuted)),
           const SizedBox(height: 8),
           Row(children: GemTier.values.map((t) {
             final sel = _tier == t;
@@ -699,15 +715,15 @@ class _GemsTabState extends State<_GemsTab> {
                   child: Container(
                     padding: const EdgeInsets.symmetric(vertical: 8),
                     decoration: BoxDecoration(
-                      color: sel ? t.color.withValues(alpha: 0.12) : const Color(0xFF0e1225),
+                      color: sel ? t.color.withValues(alpha: 0.12) : const Color(0xFF231F1B),
                       border: Border.all(color: sel ? t.color : AppTheme.cardBorder, width: sel ? 1.5 : 1),
                       borderRadius: BorderRadius.circular(4),
                     ),
                     child: Column(
                       children: [
-                        Text(t.label, style: TextStyle(fontSize: 9, color: sel ? t.color : AppTheme.textMuted),
+                        Text(t.label, style: TextStyle(fontSize: 10, color: sel ? t.color : AppTheme.textMuted),
                             textAlign: TextAlign.center),
-                        Text('${t.shardCost} 💠', style: TextStyle(fontSize: 9, color: sel ? t.color : AppTheme.textMuted)),
+                        Text('${t.shardCost} 💠', style: TextStyle(fontSize: 10, color: sel ? t.color : AppTheme.textMuted)),
                       ],
                     ),
                   ),
@@ -721,22 +737,22 @@ class _GemsTabState extends State<_GemsTab> {
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: const Color(0xFF0e1225),
+              color: const Color(0xFF231F1B),
               border: Border.all(color: _type.color.withValues(alpha: 0.5)),
               borderRadius: BorderRadius.circular(4),
             ),
             child: Row(children: [
-              Text(_type.emoji, style: const TextStyle(fontSize: 24)),
+              Text(_type.emoji, style: const TextStyle(fontSize: 25)),
               const SizedBox(width: 12),
               Expanded(child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(previewGem.name,
-                      style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: _type.color)),
+                      style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: _type.color)),
                   Text(_type.statDescription,
-                      style: const TextStyle(fontSize: 11, color: AppTheme.textLight)),
+                      style: const TextStyle(fontSize: 12, color: AppTheme.textLight)),
                   Text('+${previewGem.value}  •  ${_tier.shardCost} 💠 to craft',
-                      style: const TextStyle(fontSize: 10, color: AppTheme.textMuted)),
+                      style: const TextStyle(fontSize: 11, color: AppTheme.textMuted)),
                 ],
               )),
             ]),
@@ -754,7 +770,7 @@ class _GemsTabState extends State<_GemsTab> {
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF0e1a0e),
                 foregroundColor: AppTheme.accentGold,
-                disabledBackgroundColor: const Color(0xFF0e1225),
+                disabledBackgroundColor: const Color(0xFF231F1B),
                 disabledForegroundColor: AppTheme.cardBorder,
                 side: BorderSide(color: canCraft ? AppTheme.accentGold : AppTheme.cardBorder),
                 padding: const EdgeInsets.symmetric(vertical: 14),
@@ -765,7 +781,7 @@ class _GemsTabState extends State<_GemsTab> {
                     : game.gemShards < _tier.shardCost
                         ? 'NEED ${_tier.shardCost - game.gemShards} MORE 💠'
                         : '✦  CRAFT  ${_tier.shardCost} 💠',
-                style: AppTheme.pixelHeading(fontSize: 11, letterSpacing: 1,
+                style: AppTheme.pixelHeading(fontSize: 12, letterSpacing: 1,
                     color: canCraft ? AppTheme.accentGold : AppTheme.cardBorder),
               ),
             ),
@@ -776,9 +792,9 @@ class _GemsTabState extends State<_GemsTab> {
           if (game.gemBag.isNotEmpty) ...[
             Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
               Text('GEM BAG  (${game.gemBag.length}/${GameState.gemBagMax})',
-                  style: AppTheme.pixelHeading(fontSize: 9, letterSpacing: 2)),
+                  style: AppTheme.pixelHeading(fontSize: 10, letterSpacing: 2)),
               Text('Tap a gem to socket it into an item',
-                  style: const TextStyle(fontSize: 10, color: AppTheme.textMuted)),
+                  style: const TextStyle(fontSize: 11, color: AppTheme.textMuted)),
             ]),
             const SizedBox(height: 8),
             ...game.gemBag.asMap().entries.map((e) => Padding(
@@ -795,7 +811,7 @@ class _GemsTabState extends State<_GemsTab> {
               padding: const EdgeInsets.all(20),
               alignment: Alignment.center,
               child: const Text('No gems crafted yet. Craft one above!',
-                  style: TextStyle(fontSize: 12, color: AppTheme.textMuted)),
+                  style: TextStyle(fontSize: 13, color: AppTheme.textMuted)),
             ),
           ],
 
@@ -804,20 +820,20 @@ class _GemsTabState extends State<_GemsTab> {
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: const Color(0xFF0e1225),
+              color: const Color(0xFF231F1B),
               border: Border.all(color: AppTheme.cardBorder),
               borderRadius: BorderRadius.circular(4),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('HOW GEMS WORK', style: AppTheme.pixelHeading(fontSize: 9, letterSpacing: 2, color: AppTheme.textMuted)),
+                Text('HOW GEMS WORK', style: AppTheme.pixelHeading(fontSize: 10, letterSpacing: 2, color: AppTheme.textMuted)),
                 const SizedBox(height: 6),
                 const Text('• Gem shards drop from combat kills (25% chance) and bosses.\n'
                     '• Each item can hold 1 gem in its socket.\n'
                     '• Socket gems from this bag via the Inventory screen.\n'
                     '• Replacing or removing a gem destroys the old one.',
-                    style: TextStyle(fontSize: 10, color: AppTheme.textMuted, height: 1.5)),
+                    style: TextStyle(fontSize: 11, color: AppTheme.textMuted, height: 1.5)),
               ],
             ),
           ),
@@ -841,18 +857,18 @@ class _GemBagTile extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
         decoration: BoxDecoration(
-          color: const Color(0xFF0e1225),
+          color: const Color(0xFF231F1B),
           border: Border.all(color: gem.color.withValues(alpha: 0.5)),
           borderRadius: BorderRadius.circular(4),
         ),
         child: Row(children: [
-          Text(gem.type.emoji, style: const TextStyle(fontSize: 20)),
+          Text(gem.type.emoji, style: const TextStyle(fontSize: 21)),
           const SizedBox(width: 10),
           Expanded(child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(gem.name, style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: gem.color)),
-              Text(gem.type.statDescription, style: const TextStyle(fontSize: 10, color: AppTheme.textMuted)),
+              Text(gem.name, style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: gem.color)),
+              Text(gem.type.statDescription, style: const TextStyle(fontSize: 11, color: AppTheme.textMuted)),
             ],
           )),
           Container(
@@ -862,7 +878,7 @@ class _GemBagTile extends StatelessWidget {
               border: Border.all(color: gem.tier.color.withValues(alpha: 0.4)),
               borderRadius: BorderRadius.circular(3),
             ),
-            child: Text('+${gem.value}', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: gem.tier.color)),
+            child: Text('+${gem.value}', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: gem.tier.color)),
           ),
           const SizedBox(width: 8),
           Icon(Icons.open_in_new, size: 14, color: AppTheme.textMuted),
@@ -879,13 +895,13 @@ class _GemBagTile extends StatelessWidget {
     if (allItems.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
         content: Text('No items to socket into.', style: TextStyle(color: AppTheme.accentGold)),
-        backgroundColor: Color(0xFF1a1f3a),
+        backgroundColor: Color(0xFF2A2623),
       ));
       return;
     }
     showModalBottomSheet(
       context: context,
-      backgroundColor: const Color(0xFF1a1f3a),
+      backgroundColor: const Color(0xFF2A2623),
       isScrollControlled: true,
       builder: (_) => _SocketPickerSheet(gem: gem, items: allItems, game: game, onDone: onSocket),
     );
@@ -916,15 +932,15 @@ class _SocketPickerSheet extends StatelessWidget {
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
             child: Row(children: [
-              Text(gem.type.emoji, style: const TextStyle(fontSize: 22)),
+              Text(gem.type.emoji, style: const TextStyle(fontSize: 23)),
               const SizedBox(width: 8),
               Expanded(child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text('Socket ${gem.name}',
-                      style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: gem.color)),
+                      style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: gem.color)),
                   Text('Choose an item to socket this gem into.',
-                      style: const TextStyle(fontSize: 11, color: AppTheme.textMuted)),
+                      style: const TextStyle(fontSize: 12, color: AppTheme.textMuted)),
                 ],
               )),
             ]),
@@ -952,7 +968,7 @@ class _SocketPickerSheet extends StatelessWidget {
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF0e1225),
+                      color: const Color(0xFF231F1B),
                       border: Border.all(color: item.rarityColor.withValues(alpha: 0.4)),
                       borderRadius: BorderRadius.circular(4),
                     ),
@@ -966,8 +982,8 @@ class _SocketPickerSheet extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(item.name,
-                              style: TextStyle(fontSize: 12, color: item.rarityColor, fontWeight: FontWeight.bold)),
-                          Text(item.slot.label, style: const TextStyle(fontSize: 10, color: AppTheme.textMuted)),
+                              style: TextStyle(fontSize: 13, color: item.rarityColor, fontWeight: FontWeight.bold)),
+                          Text(item.slot.label, style: const TextStyle(fontSize: 11, color: AppTheme.textMuted)),
                         ],
                       )),
                       if (hasGem)
@@ -979,7 +995,7 @@ class _SocketPickerSheet extends StatelessWidget {
                             borderRadius: BorderRadius.circular(3),
                           ),
                           child: Text('${item.gem!.type.emoji} ${item.gem!.tier.label}',
-                              style: TextStyle(fontSize: 9, color: item.gem!.color)),
+                              style: TextStyle(fontSize: 10, color: item.gem!.color)),
                         )
                       else
                         const Icon(Icons.radio_button_unchecked, size: 14, color: AppTheme.textMuted),
@@ -998,18 +1014,18 @@ class _SocketPickerSheet extends StatelessWidget {
     showDialog<void>(
       context: context,
       builder: (_) => AlertDialog(
-        backgroundColor: const Color(0xFF1a1f3a),
+        backgroundColor: const Color(0xFF2A2623),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
         title: Text('Replace Gem?',
-            style: AppTheme.pixelHeading(fontSize: 13, color: AppTheme.accentGold)),
+            style: AppTheme.pixelHeading(fontSize: 14, color: AppTheme.accentGold)),
         content: Text(
           '${item.gem!.name} will be destroyed and replaced with ${gem.name}. This cannot be undone.',
-          style: const TextStyle(fontSize: 12, color: AppTheme.textLight, height: 1.4),
+          style: const TextStyle(fontSize: 13, color: AppTheme.textLight, height: 1.4),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: Text('CANCEL', style: AppTheme.pixelHeading(fontSize: 10, color: AppTheme.textMuted)),
+            child: Text('CANCEL', style: AppTheme.pixelHeading(fontSize: 11, color: AppTheme.textMuted)),
           ),
           TextButton(
             onPressed: () {
@@ -1018,7 +1034,7 @@ class _SocketPickerSheet extends StatelessWidget {
               Navigator.pop(context); // close sheet
               onDone();
             },
-            child: Text('REPLACE', style: AppTheme.pixelHeading(fontSize: 10, color: const Color(0xFFcc4444))),
+            child: Text('REPLACE', style: AppTheme.pixelHeading(fontSize: 11, color: const Color(0xFFcc4444))),
           ),
         ],
       ),
@@ -1066,10 +1082,10 @@ class _ReforgeTabState extends State<_ReforgeTab> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('REFORGE', style: AppTheme.pixelHeading(fontSize: 11, color: const Color(0xFFaa66ff), letterSpacing: 2)),
+              Text('REFORGE', style: AppTheme.pixelHeading(fontSize: 12, color: const Color(0xFFaa66ff), letterSpacing: 2)),
               const SizedBox(height: 6),
               const Text('Reroll all stat values on an item. Stats stay the same — only the numbers change.',
-                  style: TextStyle(fontSize: 11, color: AppTheme.textMuted)),
+                  style: TextStyle(fontSize: 12, color: AppTheme.textMuted)),
               const SizedBox(height: 8),
               for (final r in [ItemRarity.rare, ItemRarity.epic, ItemRarity.legendary]) ...[
                 _CostRow(rarity: r),
@@ -1085,11 +1101,11 @@ class _ReforgeTabState extends State<_ReforgeTab> {
             child: Padding(
               padding: EdgeInsets.all(32),
               child: Text('No rare, epic, or legendary items in inventory.',
-                  style: TextStyle(fontSize: 12, color: AppTheme.textMuted), textAlign: TextAlign.center),
+                  style: TextStyle(fontSize: 13, color: AppTheme.textMuted), textAlign: TextAlign.center),
             ),
           )
         else ...[
-          Text('SELECT ITEM', style: AppTheme.pixelHeading(fontSize: 9, color: AppTheme.textMuted, letterSpacing: 1)),
+          Text('SELECT ITEM', style: AppTheme.pixelHeading(fontSize: 10, color: AppTheme.textMuted, letterSpacing: 1)),
           const SizedBox(height: 8),
           ...items.map((item) {
             final isSelected = _selected?.id == item.id;
@@ -1099,7 +1115,7 @@ class _ReforgeTabState extends State<_ReforgeTab> {
                 margin: const EdgeInsets.only(bottom: 6),
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                 decoration: BoxDecoration(
-                  color: isSelected ? item.rarityColor.withValues(alpha: 0.12) : const Color(0xFF0e1225),
+                  color: isSelected ? item.rarityColor.withValues(alpha: 0.12) : const Color(0xFF231F1B),
                   border: Border.all(
                     color: isSelected ? item.rarityColor : item.rarityColor.withValues(alpha: 0.3),
                     width: isSelected ? 1.5 : 1,
@@ -1116,10 +1132,10 @@ class _ReforgeTabState extends State<_ReforgeTab> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(item.name,
-                              style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: item.rarityColor)),
+                              style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: item.rarityColor)),
                           const SizedBox(height: 2),
                           Text(item.bonuses.map((b) => '${_sn(b.stat)} +${b.value}').join('  '),
-                              style: const TextStyle(fontSize: 10, color: Colors.white54)),
+                              style: const TextStyle(fontSize: 11, color: Colors.white54)),
                         ],
                       ),
                     ),
@@ -1155,9 +1171,10 @@ class _ReforgeTabState extends State<_ReforgeTab> {
     ItemStat.intelligence => 'ARC',
     ItemStat.wisdom       => 'FOC',
     ItemStat.charisma     => 'FOR',
-    ItemStat.maxHpPct     => 'HP%',
-    ItemStat.goldPct      => 'Gold%',
-    ItemStat.xpPct        => 'XP%',
+    ItemStat.maxHpPct        => 'HP%',
+    ItemStat.goldPct         => 'Gold%',
+    ItemStat.xpPct           => 'XP%',
+    ItemStat.elemPenetration => 'PEN%',
   };
 }
 
@@ -1183,10 +1200,10 @@ class _CostRow extends StatelessWidget {
     return Row(children: [
       Container(width: 6, height: 6, decoration: BoxDecoration(shape: BoxShape.circle, color: color)),
       const SizedBox(width: 6),
-      Text('$label:', style: TextStyle(fontSize: 10, color: color)),
+      Text('$label:', style: TextStyle(fontSize: 11, color: color)),
       const SizedBox(width: 6),
       Text('💰 ${cost.gold}  ◆ ${cost.shards}',
-          style: const TextStyle(fontSize: 10, color: AppTheme.textLight)),
+          style: const TextStyle(fontSize: 11, color: AppTheme.textLight)),
     ]);
   }
 }
@@ -1221,14 +1238,14 @@ class _ReforgeButtonState extends State<_ReforgeButton> {
               backgroundColor: const Color(0xFFaa66ff).withValues(alpha: 0.15),
               side: const BorderSide(color: Color(0xFFaa66ff)),
             ),
-            child: Text('CONFIRM REFORGE', style: AppTheme.pixelHeading(fontSize: 10, color: const Color(0xFFaa66ff))),
+            child: Text('CONFIRM REFORGE', style: AppTheme.pixelHeading(fontSize: 11, color: const Color(0xFFaa66ff))),
           ),
         ),
         const SizedBox(width: 8),
         TextButton(
           onPressed: () => setState(() => _confirm = false),
           style: TextButton.styleFrom(side: const BorderSide(color: AppTheme.cardBorder)),
-          child: Text('CANCEL', style: AppTheme.pixelHeading(fontSize: 10, color: AppTheme.textMuted)),
+          child: Text('CANCEL', style: AppTheme.pixelHeading(fontSize: 11, color: AppTheme.textMuted)),
         ),
       ]);
     }
@@ -1241,11 +1258,11 @@ class _ReforgeButtonState extends State<_ReforgeButton> {
         minimumSize: const Size(double.infinity, 44),
       ),
       child: Column(mainAxisSize: MainAxisSize.min, children: [
-        Text('REFORGE', style: AppTheme.pixelHeading(fontSize: 11,
+        Text('REFORGE', style: AppTheme.pixelHeading(fontSize: 12,
             color: canAfford ? const Color(0xFFaa66ff) : AppTheme.cardBorder)),
         const SizedBox(height: 2),
         Text('💰 ${cost.gold}  ◆ ${cost.shards}',
-            style: TextStyle(fontSize: 10,
+            style: TextStyle(fontSize: 11,
                 color: canAfford ? const Color(0xFFaa66ff).withValues(alpha: 0.7) : AppTheme.cardBorder)),
       ]),
     );

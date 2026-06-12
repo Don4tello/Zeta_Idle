@@ -1,6 +1,8 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../core/routing/app_router.dart';
 import '../services/game_state.dart';
 import '../screens/endless_upgrade_screen.dart';
 import '../widgets/battle_sprites.dart';
@@ -16,19 +18,19 @@ class HomeScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final game = GameStateProvider.of(context);
     return Scaffold(
-      backgroundColor: const Color(0xFF0a0e27),
+      backgroundColor: const Color(0xFF1B1A17),
       appBar: AppBar(
-        backgroundColor: const Color(0xFF1a1f3a),
+        backgroundColor: const Color(0xFF2A2623),
         title: const Text('ZETA IDLE'),
         actions: [
           IconButton(
             icon: const Icon(Icons.help_outline, color: AppTheme.textMuted),
-            onPressed: () => Navigator.pushNamed(context, '/knowledge-base'),
+            onPressed: () => context.push(Routes.knowledgeBase),
             tooltip: 'Knowledge Base',
           ),
           IconButton(
             icon: const Icon(Icons.settings, color: AppTheme.textMuted),
-            onPressed: () => Navigator.pushNamed(context, '/settings'),
+            onPressed: () => context.push(Routes.settings),
             tooltip: 'Settings',
           ),
         ],
@@ -50,7 +52,7 @@ class HomeScreen extends StatelessWidget {
                         width: 90,
                         height: 130,
                         decoration: BoxDecoration(
-                          color: const Color(0xFF0a0c18),
+                          color: const Color(0xFF17150E),
                           border: Border.all(
                               color: AppTheme.accentGold.withValues(alpha: 0.4),
                               width: 1),
@@ -111,7 +113,7 @@ class HomeScreen extends StatelessWidget {
                                   Text(
                                       'HP  ${game.hero.currentHealth}/${game.hero.maxHealth}',
                                       style: AppTheme.pixelHeading(
-                                          fontSize: 9,
+                                          fontSize: 10,
                                           letterSpacing: 1,
                                           color: const Color(0xFF88cc44))),
                                 ]),
@@ -135,11 +137,11 @@ class HomeScreen extends StatelessWidget {
                                 children: [
                                   Text('EXP',
                                       style: AppTheme.pixelHeading(
-                                          fontSize: 9, letterSpacing: 1)),
+                                          fontSize: 10, letterSpacing: 1)),
                                   Text(
                                       '${game.hero.experience} / ${game.hero.experienceToNextLevel}',
                                       style: const TextStyle(
-                                          fontSize: 9,
+                                          fontSize: 10,
                                           color: AppTheme.textMuted)),
                                 ]),
                             const SizedBox(height: 3),
@@ -220,7 +222,7 @@ class HomeScreen extends StatelessWidget {
                 children: [
                   Text('STAGE ${game.campaignStageIndex + 1}',
                       style: AppTheme.pixelHeading(
-                          fontSize: 12, letterSpacing: 1)),
+                          fontSize: 13, letterSpacing: 1)),
                   const SizedBox(height: 12),
                   Container(
                     padding: const EdgeInsets.all(12),
@@ -238,14 +240,14 @@ class HomeScreen extends StatelessWidget {
                           style: GoogleFonts.pixelifySans(
                             fontWeight: FontWeight.bold,
                             color: AppTheme.textLight,
-                            fontSize: 13,
+                            fontSize: 14,
                           ),
                         ),
                         const SizedBox(height: 6),
                         Text(
                           'Difficulty: ${game.currentCampaignStage.difficulty}',
                           style: const TextStyle(
-                              fontSize: 12, color: AppTheme.textMuted),
+                              fontSize: 13, color: AppTheme.textMuted),
                         ),
                       ],
                     ),
@@ -276,27 +278,27 @@ class HomeScreen extends StatelessWidget {
                 color: const Color(0xFFff6644)),
             const SizedBox(height: 10),
             _buildModeButton(context, '📜  CAMPAIGN',
-                () => Navigator.pushNamed(context, '/campaign')),
+                () => context.push(Routes.campaign)),
             const SizedBox(height: 8),
             _buildModeButton(context, '⚔️  QUICK BATTLE', () {
               game.startBattle();
-              Navigator.pushNamed(context, '/battle');
+              context.push(Routes.battle);
             }),
             const SizedBox(height: 8),
             _buildModeButton(context, '♾️  ENDLESS MODE',
-                () => Navigator.pushNamed(context, '/endless')),
+                () => context.push(Routes.endless)),
             const SizedBox(height: 8),
             _buildModeButton(context, '🎯  DAILY CHALLENGES',
-                () => Navigator.pushNamed(context, '/daily')),
+                () => context.push(Routes.daily)),
             const SizedBox(height: 8),
             _buildModeButton(context, '☠  BOSS RUSH',
-                () => Navigator.pushNamed(context, '/boss-rush')),
+                () => context.push(Routes.bossRush)),
             const SizedBox(height: 8),
             _buildModeButton(context, '⚔  CHALLENGE GAUNTLET',
-                () => Navigator.pushNamed(context, '/gauntlet')),
+                () => context.push(Routes.gauntlet)),
             const SizedBox(height: 8),
             _buildModeButton(context, '🏰  DUNGEON',
-                () => Navigator.pushNamed(context, '/dungeon')),
+                () => context.push(Routes.dungeon)),
             const SizedBox(height: 20),
 
             // ── Character section ─────────────────────────────────────────────
@@ -304,7 +306,7 @@ class HomeScreen extends StatelessWidget {
                 color: const Color(0xFF66aaff)),
             const SizedBox(height: 10),
             _buildModeButton(context, '📋  CHARACTER SHEET',
-                () => Navigator.pushNamed(context, '/dashboard')),
+                () => context.go(Routes.shell)),
             const SizedBox(height: 8),
             _buildModeButton(context, '⬆  UPGRADES',
                 () => Navigator.push(context,
@@ -312,20 +314,20 @@ class HomeScreen extends StatelessWidget {
                         builder: (_) => const EndlessUpgradeScreen()))),
             const SizedBox(height: 8),
             _buildModeButton(context, '⚡  ABILITIES',
-                () => Navigator.pushNamed(context, '/ability-upgrades')),
+                () => context.push(Routes.abilityUpgrades)),
             const SizedBox(height: 8),
             _buildModeButton(context, '🌿  PASSIVES',
-                () => Navigator.pushNamed(context, '/passive-tree')),
+                () => context.push(Routes.passiveTree)),
             const SizedBox(height: 8),
             _buildModeButton(context, '⚔  MASTERIES',
-                () => Navigator.pushNamed(context, '/mastery')),
+                () => context.push(Routes.mastery)),
             const SizedBox(height: 8),
             _buildModeButtonBadged(
               context,
               game.subclassAvailable
                   ? '✨  SUBCLASS  (READY)'
                   : '✨  SUBCLASS',
-              () => Navigator.pushNamed(context, '/subclass'),
+              () => context.push(Routes.subclass),
               badge: game.subclassAvailable,
             ),
             const SizedBox(height: 20),
@@ -335,15 +337,15 @@ class HomeScreen extends StatelessWidget {
                 color: const Color(0xFFaa88ff)),
             const SizedBox(height: 10),
             _buildModeButton(context, '✦  PRESTIGE',
-                () => Navigator.pushNamed(context, '/prestige')),
+                () => context.push(Routes.prestige)),
             const SizedBox(height: 8),
             _buildModeButton(context, '✦  ASCENSION',
-                () => Navigator.pushNamed(context, '/ascension')),
+                () => context.push(Routes.ascension)),
             const SizedBox(height: 8),
             _buildModeButtonBadged(
               context,
               '🏆  ACHIEVEMENTS',
-              () => Navigator.pushNamed(context, '/achievements'),
+              () => context.push(Routes.achievements),
               badge: game.achievementsClaimable > 0,
             ),
             const SizedBox(height: 20),
@@ -353,22 +355,22 @@ class HomeScreen extends StatelessWidget {
                 color: const Color(0xFFffdd44)),
             const SizedBox(height: 10),
             _buildModeButton(context, '🎒  INVENTORY',
-                () => Navigator.pushNamed(context, '/inventory')),
+                () => context.push(Routes.inventory)),
             const SizedBox(height: 8),
             _buildModeButton(context, '🔨  FORGE',
-                () => Navigator.pushNamed(context, '/forge')),
+                () => context.push(Routes.forge)),
             const SizedBox(height: 8),
             _buildModeButton(context, '⬡  ARTIFACT FORGE',
-                () => Navigator.pushNamed(context, '/artifacts')),
+                () => context.push(Routes.artifacts)),
             const SizedBox(height: 8),
             _buildModeButton(context, '✦  RUNE FORGE',
-                () => Navigator.pushNamed(context, '/rune-forge')),
+                () => context.push(Routes.runeForge)),
             const SizedBox(height: 8),
             _buildModeButton(context, '🛒  MERCHANT',
-                () => Navigator.pushNamed(context, '/shop')),
+                () => context.push(Routes.shop)),
             const SizedBox(height: 8),
             _buildModeButton(context, '🗺  EXPEDITIONS',
-                () => Navigator.pushNamed(context, '/expedition')),
+                () => context.push(Routes.expedition)),
             const SizedBox(height: 20),
 
             // ── Events section ────────────────────────────────────────────────
@@ -376,15 +378,15 @@ class HomeScreen extends StatelessWidget {
                 color: const Color(0xFF44ccaa)),
             const SizedBox(height: 10),
             _buildModeButton(context, '📋  BOUNTY BOARD',
-                () => Navigator.pushNamed(context, '/bounty-board')),
+                () => context.push(Routes.bounties)),
             const SizedBox(height: 8),
             _buildModeButton(context, '🌐  WORLD EVENT',
-                () => Navigator.pushNamed(context, '/world-event')),
+                () => context.push(Routes.worldEvent)),
             const SizedBox(height: 8),
             _LoginStreakButton(),
             const SizedBox(height: 8),
             _buildModeButton(context, '🏆  LEADERBOARD',
-                () => Navigator.pushNamed(context, '/leaderboard')),
+                () => context.push(Routes.leaderboard)),
             const SizedBox(height: 20),
 
             // ── Lore & More section ───────────────────────────────────────────
@@ -392,28 +394,28 @@ class HomeScreen extends StatelessWidget {
                 color: const Color(0xFF88aacc)),
             const SizedBox(height: 10),
             _buildModeButton(context, '📖  BESTIARY',
-                () => Navigator.pushNamed(context, '/bestiary')),
+                () => context.push(Routes.bestiary)),
             const SizedBox(height: 8),
             _buildModeButtonBadged(
               context,
               game.questsClaimable > 0
                   ? '📜  QUESTLINES  (${game.questsClaimable} ready)'
                   : '📜  QUESTLINES',
-              () => Navigator.pushNamed(context, '/quests'),
+              () => context.push(Routes.quests),
               badge: game.questsClaimable > 0,
             ),
             const SizedBox(height: 8),
             _buildModeButton(context, '🤝  MERCENARIES',
-                () => Navigator.pushNamed(context, '/npc-allies')),
+                () => context.push(Routes.npcAllies)),
             const SizedBox(height: 8),
             _buildModeButton(context, '⚠  CHALLENGE MODIFIERS',
-                () => Navigator.pushNamed(context, '/challenge-modifiers')),
+                () => context.push(Routes.challengeMods)),
             const SizedBox(height: 8),
             _buildModeButton(context, '💎  COSMETICS',
-                () => Navigator.pushNamed(context, '/aura-shop')),
+                () => context.push(Routes.auraShop)),
             const SizedBox(height: 8),
             _buildModeButton(context, '❓  KNOWLEDGE BASE',
-                () => Navigator.pushNamed(context, '/knowledge-base')),
+                () => context.push(Routes.knowledgeBase)),
             const SizedBox(height: 20),
 
             // ── Last action bar ───────────────────────────────────────────────
@@ -432,7 +434,7 @@ class HomeScreen extends StatelessWidget {
                   child: Text(
                     game.lastAction,
                     style: const TextStyle(
-                        fontSize: 12,
+                        fontSize: 13,
                         color: AppTheme.textLight,
                         fontStyle: FontStyle.italic),
                   ),
@@ -448,7 +450,9 @@ class HomeScreen extends StatelessWidget {
               onTap: onBackToSelect,
               child: Container(
                 width: double.infinity,
+                constraints: const BoxConstraints(minHeight: 48),
                 padding: const EdgeInsets.symmetric(vertical: 14),
+                alignment: Alignment.center,
                 decoration: BoxDecoration(
                   border: Border.all(color: AppTheme.cardBorder, width: 1),
                 ),
@@ -456,12 +460,12 @@ class HomeScreen extends StatelessWidget {
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     const Icon(Icons.arrow_back,
-                        size: 14, color: AppTheme.textMuted),
+                        size: 16, color: AppTheme.textMuted),
                     const SizedBox(width: 8),
                     Text(
                       'CHARACTER SELECTION',
                       style: AppTheme.pixelHeading(
-                          fontSize: 11,
+                          fontSize: 14,
                           color: AppTheme.textMuted,
                           letterSpacing: 2),
                     ),
@@ -488,7 +492,7 @@ class HomeScreen extends StatelessWidget {
         color: AppTheme.darkBg,
       ),
       child:
-          Text('Lv $level', style: AppTheme.pixelHeading(fontSize: 10, letterSpacing: 1)),
+          Text('Lv $level', style: AppTheme.pixelHeading(fontSize: 11, letterSpacing: 1)),
     );
   }
 
@@ -519,14 +523,14 @@ class HomeScreen extends StatelessWidget {
             size: 12, color: AppTheme.accentGold.withValues(alpha: 0.8)),
         const SizedBox(height: 2),
         Text(abbr,
-            style: AppTheme.pixelHeading(fontSize: 8, letterSpacing: 0)),
+            style: AppTheme.pixelHeading(fontSize: 9, letterSpacing: 0)),
         Text('$score',
             style: GoogleFonts.pixelifySans(
-                fontSize: 12,
+                fontSize: 13,
                 fontWeight: FontWeight.bold,
                 color: AppTheme.textLight)),
         Text('$sign$mod',
-            style: AppTheme.pixelHeading(fontSize: 8, color: modColor)),
+            style: AppTheme.pixelHeading(fontSize: 9, color: modColor)),
       ]),
     );
   }
@@ -543,15 +547,15 @@ class HomeScreen extends StatelessWidget {
             size: 12, color: AppTheme.accentGold.withValues(alpha: 0.8)),
         const SizedBox(height: 2),
         Text(label,
-            style: AppTheme.pixelHeading(fontSize: 8, letterSpacing: 0)),
+            style: AppTheme.pixelHeading(fontSize: 9, letterSpacing: 0)),
         Text(value,
             style: GoogleFonts.pixelifySans(
-                fontSize: 12,
+                fontSize: 13,
                 fontWeight: FontWeight.bold,
                 color: AppTheme.textLight)),
         Text('—',
             style:
-                AppTheme.pixelHeading(fontSize: 8, color: AppTheme.textMuted)),
+                AppTheme.pixelHeading(fontSize: 9, color: AppTheme.textMuted)),
       ]),
     );
   }
@@ -561,11 +565,11 @@ class HomeScreen extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(label,
-            style: AppTheme.pixelHeading(fontSize: 10, letterSpacing: 1)),
+            style: AppTheme.pixelHeading(fontSize: 11, letterSpacing: 1)),
         const SizedBox(height: 4),
         Text(value,
             style: GoogleFonts.pixelifySans(
-                fontSize: 15,
+                fontSize: 16,
                 fontWeight: FontWeight.bold,
                 color: AppTheme.textLight)),
       ],
@@ -581,14 +585,14 @@ class HomeScreen extends StatelessWidget {
         borderRadius: BorderRadius.circular(4),
       ),
       child: Column(children: [
-        Text(emoji, style: const TextStyle(fontSize: 18)),
+        Text(emoji, style: const TextStyle(fontSize: 19)),
         const SizedBox(height: 4),
         Text(label,
-            style: AppTheme.pixelHeading(fontSize: 8, letterSpacing: 0.5)),
+            style: AppTheme.pixelHeading(fontSize: 9, letterSpacing: 0.5)),
         const SizedBox(height: 3),
         Text(value,
             style: GoogleFonts.pixelifySans(
-                fontSize: 13,
+                fontSize: 14,
                 fontWeight: FontWeight.bold,
                 color: AppTheme.textLight)),
       ]),
@@ -635,7 +639,7 @@ class HomeScreen extends StatelessWidget {
             Expanded(
               child: Text(label,
                   style: AppTheme.pixelHeading(
-                      fontSize: 11,
+                      fontSize: 12,
                       letterSpacing: 1,
                       color: labelColor)),
             ),
@@ -663,12 +667,12 @@ class _QuickAccessGrid extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final items = [
-      _QuickItem('📜', 'CAMPAIGN',   () => Navigator.pushNamed(context, '/campaign')),
-      _QuickItem('⚔️', 'BATTLE',    () { game.startBattle(); Navigator.pushNamed(context, '/battle'); }),
-      _QuickItem('♾️', 'ENDLESS',   () => Navigator.pushNamed(context, '/endless')),
-      _QuickItem('🎒', 'INVENTORY', () => Navigator.pushNamed(context, '/inventory')),
-      _QuickItem('🔨', 'FORGE',     () => Navigator.pushNamed(context, '/forge')),
-      _QuickItem('📋', 'CHARACTER', () => Navigator.pushNamed(context, '/dashboard')),
+      _QuickItem('📜', 'CAMPAIGN',   () => context.push(Routes.campaign)),
+      _QuickItem('⚔️', 'BATTLE',    () { game.startBattle(); context.push(Routes.battle); }),
+      _QuickItem('♾️', 'ENDLESS',   () => context.push(Routes.endless)),
+      _QuickItem('🎒', 'INVENTORY', () => context.push(Routes.inventory)),
+      _QuickItem('🔨', 'FORGE',     () => context.push(Routes.forge)),
+      _QuickItem('📋', 'CHARACTER', () => context.go(Routes.shell)),
     ];
 
     Widget row(List<_QuickItem> rowItems) => Row(
@@ -686,7 +690,7 @@ class _QuickAccessGrid extends StatelessWidget {
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       Text('QUICK ACCESS',
           style: AppTheme.pixelHeading(
-              fontSize: 9, letterSpacing: 2, color: AppTheme.textMuted)),
+              fontSize: 10, letterSpacing: 2, color: AppTheme.textMuted)),
       const SizedBox(height: 8),
       row(items.sublist(0, 3)),
       const SizedBox(height: 8),
@@ -709,7 +713,7 @@ class _QuickTile extends StatelessWidget {
         child: Container(
           padding: const EdgeInsets.symmetric(vertical: 14),
           decoration: BoxDecoration(
-            color: const Color(0xFF0e1225),
+            color: const Color(0xFF231F1B),
             border: Border.all(
                 color: AppTheme.accentGold.withValues(alpha: 0.35)),
             borderRadius: BorderRadius.circular(6),
@@ -717,11 +721,11 @@ class _QuickTile extends StatelessWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text(item.emoji, style: const TextStyle(fontSize: 22)),
+              Text(item.emoji, style: const TextStyle(fontSize: 23)),
               const SizedBox(height: 6),
               Text(item.label,
                   style: AppTheme.pixelHeading(
-                      fontSize: 8,
+                      fontSize: 9,
                       letterSpacing: 1,
                       color: AppTheme.accentGold)),
             ],
@@ -753,7 +757,7 @@ class _SectionHeader extends StatelessWidget {
       const SizedBox(width: 10),
       Text('$icon  $label',
           style: AppTheme.pixelHeading(
-              fontSize: 9, letterSpacing: 2, color: color)),
+              fontSize: 10, letterSpacing: 2, color: color)),
       const SizedBox(width: 10),
       Expanded(
         child: Container(height: 1, color: color.withValues(alpha: 0.25)),
@@ -775,7 +779,7 @@ class _LoginStreakButton extends StatelessWidget {
         Material(
           color: Colors.transparent,
           child: InkWell(
-            onTap: () => Navigator.pushNamed(context, '/login-streak'),
+            onTap: () => context.push(Routes.loginStreak),
             borderRadius: BorderRadius.circular(4),
             child: Container(
               padding:
@@ -797,7 +801,7 @@ class _LoginStreakButton extends StatelessWidget {
                   child: Text(
                     '🔥  DAILY LOGIN',
                     style: AppTheme.pixelHeading(
-                        fontSize: 11,
+                        fontSize: 12,
                         letterSpacing: 1,
                         color: unclaimed
                             ? const Color(0xFFff8800)

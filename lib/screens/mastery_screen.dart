@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import '../data/class_mastery_data.dart';
 import '../models/class_mastery.dart';
 import '../services/game_state.dart';
@@ -18,8 +18,8 @@ class MasteryScreen extends StatelessWidget {
     return Scaffold(
       backgroundColor: AppTheme.darkBg,
       appBar: AppBar(
-        backgroundColor: const Color(0xFF1a1f3a),
-        title: Text('CLASS MASTERIES', style: AppTheme.pixelHeading(fontSize: 13, letterSpacing: 2)),
+        backgroundColor: const Color(0xFF2A2623),
+        title: Text('CLASS MASTERIES', style: AppTheme.pixelHeading(fontSize: 14, letterSpacing: 2)),
         actions: [
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -62,7 +62,7 @@ class _ClassHeader extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: const Color(0xFF0e1225),
+        color: const Color(0xFF231F1B),
         border: Border.all(color: AppTheme.cardBorder),
         borderRadius: BorderRadius.circular(4),
       ),
@@ -74,10 +74,10 @@ class _ClassHeader extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(game.hero.heroClass.displayName.toUpperCase(),
-                  style: AppTheme.pixelHeading(fontSize: 14, letterSpacing: 2)),
+                  style: AppTheme.pixelHeading(fontSize: 15, letterSpacing: 2)),
               const SizedBox(height: 2),
               Text('Lv ${game.hero.level}  ·  ${game.hero.name}',
-                  style: const TextStyle(fontSize: 11, color: AppTheme.textMuted)),
+                  style: const TextStyle(fontSize: 12, color: AppTheme.textMuted)),
             ],
           ),
           const Spacer(),
@@ -85,12 +85,12 @@ class _ClassHeader extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
               Text('UNLOCKED',
-                  style: const TextStyle(fontSize: 9, color: AppTheme.textMuted, letterSpacing: 1)),
+                  style: const TextStyle(fontSize: 10, color: AppTheme.textMuted, letterSpacing: 1)),
               const SizedBox(height: 2),
               Text(
                 '${game.masteryLevels.entries.where((e) => masteriesForClass(game.hero.heroClass).any((m) => m.id == e.key)).length}'
                 '/${masteriesForClass(game.hero.heroClass).length}',
-                style: AppTheme.pixelHeading(fontSize: 14, color: const Color(0xFFaaff88)),
+                style: AppTheme.pixelHeading(fontSize: 15, color: const Color(0xFFaaff88)),
               ),
             ],
           ),
@@ -111,7 +111,7 @@ class _SectionHeader extends StatelessWidget {
       children: [
         Container(width: 3, height: 14, color: color,
             margin: const EdgeInsets.only(right: 8)),
-        Text(label, style: AppTheme.pixelHeading(fontSize: 10, letterSpacing: 2, color: color)),
+        Text(label, style: AppTheme.pixelHeading(fontSize: 11, letterSpacing: 2, color: color)),
         const SizedBox(width: 8),
         Expanded(child: Container(height: 1, color: color.withValues(alpha: 0.2))),
       ],
@@ -142,7 +142,7 @@ class _MasteryCard extends StatelessWidget {
         border: Border.all(
           color: unlocked ? color.withValues(alpha: 0.6)
               : canUnlock ? color.withValues(alpha: 0.3)
-              : const Color(0xFF2a2e3f),
+              : const Color(0xFF2E2A26),
           width: unlocked ? 1.5 : 1,
         ),
         borderRadius: BorderRadius.circular(4),
@@ -170,7 +170,7 @@ class _MasteryCard extends StatelessWidget {
                     Expanded(
                       child: Text(mastery.name,
                           style: TextStyle(
-                            fontSize: 13,
+                            fontSize: 14,
                             fontWeight: FontWeight.bold,
                             color: unlocked ? color : levelMet ? Colors.white60 : Colors.white30,
                           )),
@@ -186,16 +186,16 @@ class _MasteryCard extends StatelessWidget {
                 const SizedBox(height: 3),
                 Text(mastery.description,
                     style: TextStyle(
-                      fontSize: 11,
+                      fontSize: 12,
                       color: unlocked ? Colors.white60 : Colors.white30,
                     )),
                 const SizedBox(height: 5),
                 if (unlocked)
                   Text(mastery.effectLabel(lvl),
-                      style: TextStyle(fontSize: 12, color: color, fontWeight: FontWeight.w600))
+                      style: TextStyle(fontSize: 13, color: color, fontWeight: FontWeight.w600))
                 else if (levelMet)
                   Text('${mastery.effectLabel(1)} at rank 1',
-                      style: const TextStyle(fontSize: 11, color: Colors.white38)),
+                      style: const TextStyle(fontSize: 12, color: Colors.white38)),
               ],
             ),
           ),
@@ -239,7 +239,7 @@ class _LockBadge extends StatelessWidget {
       child: Row(mainAxisSize: MainAxisSize.min, children: [
         const Icon(Icons.lock_outline, size: 9, color: Colors.white38),
         const SizedBox(width: 3),
-        Text('Lv $level', style: const TextStyle(fontSize: 9, color: Colors.white38)),
+        Text('Lv $level', style: const TextStyle(fontSize: 10, color: Colors.white38)),
       ]),
     );
   }
@@ -258,7 +258,7 @@ class _MaxBadge extends StatelessWidget {
         border: Border.all(color: color.withValues(alpha: 0.6)),
         borderRadius: BorderRadius.circular(3),
       ),
-      child: Text('MAX', style: TextStyle(fontSize: 9, color: color, fontWeight: FontWeight.bold)),
+      child: Text('MAX', style: TextStyle(fontSize: 10, color: color, fontWeight: FontWeight.bold)),
     );
   }
 }
@@ -316,9 +316,9 @@ class _ActionButton extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text(label, style: AppTheme.pixelHeading(fontSize: 9, color: c)),
+            Text(label, style: AppTheme.pixelHeading(fontSize: 10, color: c)),
             const SizedBox(height: 2),
-            Text(sublabel, style: TextStyle(fontSize: 9, color: c)),
+            Text(sublabel, style: TextStyle(fontSize: 10, color: c)),
           ],
         ),
       ),
@@ -334,23 +334,23 @@ class _UpgradeCostTable extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: const Color(0xFF0e1225),
+        color: const Color(0xFF231F1B),
         border: Border.all(color: AppTheme.cardBorder),
         borderRadius: BorderRadius.circular(4),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('UPGRADE COSTS', style: AppTheme.pixelHeading(fontSize: 9, color: AppTheme.textMuted, letterSpacing: 1)),
+          Text('UPGRADE COSTS', style: AppTheme.pixelHeading(fontSize: 10, color: AppTheme.textMuted, letterSpacing: 1)),
           const SizedBox(height: 8),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
               for (final entry in [('Rank 2', 300), ('Rank 3', 800), ('Rank 4', 2000), ('Rank 5', 5000)])
                 Column(children: [
-                  Text(entry.$1, style: const TextStyle(fontSize: 10, color: Colors.white54)),
+                  Text(entry.$1, style: const TextStyle(fontSize: 11, color: Colors.white54)),
                   const SizedBox(height: 3),
-                  Text('💰 ${entry.$2}', style: const TextStyle(fontSize: 11, color: AppTheme.accentGold)),
+                  Text('💰 ${entry.$2}', style: const TextStyle(fontSize: 12, color: AppTheme.accentGold)),
                 ]),
             ],
           ),
@@ -374,10 +374,10 @@ class _GoldBadge extends StatelessWidget {
         borderRadius: BorderRadius.circular(4),
       ),
       child: Row(mainAxisSize: MainAxisSize.min, children: [
-        const Text('💰', style: TextStyle(fontSize: 13)),
+        const Text('💰', style: TextStyle(fontSize: 14)),
         const SizedBox(width: 5),
         Text(_fmt(gold),
-            style: AppTheme.pixelHeading(fontSize: 12, letterSpacing: 0, color: AppTheme.accentGold)),
+            style: AppTheme.pixelHeading(fontSize: 13, letterSpacing: 0, color: AppTheme.accentGold)),
       ]),
     );
   }

@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import '../models/achievement.dart';
 import '../services/game_state.dart';
 import '../theme/app_theme.dart';
@@ -12,10 +12,10 @@ class AchievementScreen extends StatelessWidget {
     final claimable = game.achievementsClaimable;
 
     return Scaffold(
-      backgroundColor: const Color(0xFF0a0e27),
+      backgroundColor: const Color(0xFF1B1A17),
       appBar: AppBar(
-        backgroundColor: const Color(0xFF1a1f3a),
-        title: Text('ACHIEVEMENTS', style: AppTheme.pixelHeading(fontSize: 13, letterSpacing: 2)),
+        backgroundColor: const Color(0xFF2A2623),
+        title: Text('ACHIEVEMENTS', style: AppTheme.pixelHeading(fontSize: 14, letterSpacing: 2)),
         actions: [
           if (claimable > 0)
             Padding(
@@ -28,7 +28,7 @@ class AchievementScreen extends StatelessWidget {
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                 ),
                 child: Text('CLAIM ALL ($claimable)',
-                    style: AppTheme.pixelHeading(fontSize: 9, letterSpacing: 1,
+                    style: AppTheme.pixelHeading(fontSize: 10, letterSpacing: 1,
                         color: AppTheme.accentGold)),
               ),
             ),
@@ -103,7 +103,7 @@ class _SummaryBar extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: const Color(0xFF0e1225),
+        color: const Color(0xFF231F1B),
         border: Border.all(color: AppTheme.cardBorder),
         borderRadius: BorderRadius.circular(4),
       ),
@@ -111,9 +111,9 @@ class _SummaryBar extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-            Text('PROGRESS', style: AppTheme.pixelHeading(fontSize: 9, letterSpacing: 2, color: AppTheme.textMuted)),
+            Text('PROGRESS', style: AppTheme.pixelHeading(fontSize: 10, letterSpacing: 2, color: AppTheme.textMuted)),
             Text('$claimed / $total claimed',
-                style: const TextStyle(fontSize: 11, color: AppTheme.textMuted)),
+                style: const TextStyle(fontSize: 12, color: AppTheme.textMuted)),
           ]),
           const SizedBox(height: 6),
           ClipRRect(
@@ -134,7 +134,7 @@ class _SummaryBar extends StatelessWidget {
               ),
               const SizedBox(width: 6),
               Text('${unlocked - claimed} achievement${unlocked - claimed == 1 ? '' : 's'} ready to claim!',
-                  style: const TextStyle(fontSize: 11, color: Color(0xFFaacc44))),
+                  style: const TextStyle(fontSize: 12, color: Color(0xFFaacc44))),
             ]),
           ],
         ],
@@ -160,10 +160,10 @@ class _CategorySection extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(children: [
-          Text(title, style: AppTheme.pixelHeading(fontSize: 10, letterSpacing: 2)),
+          Text(title, style: AppTheme.pixelHeading(fontSize: 11, letterSpacing: 2)),
           const SizedBox(width: 10),
           Text('$done/${achievements.length}',
-              style: const TextStyle(fontSize: 10, color: AppTheme.textMuted)),
+              style: const TextStyle(fontSize: 11, color: AppTheme.textMuted)),
         ]),
         const SizedBox(height: 8),
         ...achievements.map((a) => Padding(
@@ -200,7 +200,7 @@ class _AchievementTile extends StatelessWidget {
       decoration: BoxDecoration(
         color: a.claimed
             ? AppTheme.accentGold.withValues(alpha: 0.04)
-            : const Color(0xFF0e1225),
+            : const Color(0xFF231F1B),
         border: Border.all(color: borderColor, width: isReady ? 1.5 : 1),
         borderRadius: BorderRadius.circular(4),
       ),
@@ -214,7 +214,7 @@ class _AchievementTile extends StatelessWidget {
               children: [
                 Opacity(
                   opacity: a.claimed ? 0.4 : 1.0,
-                  child: Text(a.emoji, style: const TextStyle(fontSize: 22)),
+                  child: Text(a.emoji, style: const TextStyle(fontSize: 23)),
                 ),
                 if (a.claimed)
                   const Icon(Icons.check_circle, color: AppTheme.accentGold, size: 18),
@@ -228,12 +228,12 @@ class _AchievementTile extends StatelessWidget {
               children: [
                 Text(a.name,
                     style: TextStyle(
-                        fontSize: 13,
+                        fontSize: 14,
                         fontWeight: FontWeight.bold,
                         color: a.claimed ? AppTheme.textMuted : AppTheme.textLight)),
                 const SizedBox(height: 2),
                 Text(a.description,
-                    style: const TextStyle(fontSize: 11, color: AppTheme.textMuted)),
+                    style: const TextStyle(fontSize: 12, color: AppTheme.textMuted)),
                 if (!a.claimed) ...[
                   const SizedBox(height: 6),
                   Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
@@ -253,7 +253,7 @@ class _AchievementTile extends StatelessWidget {
                     Text(
                       '${_fmt(progress)} / ${_fmt(a.target)}',
                       style: TextStyle(
-                          fontSize: 9,
+                          fontSize: 10,
                           color: isReady ? const Color(0xFFaacc44) : AppTheme.textMuted),
                     ),
                   ]),
@@ -276,9 +276,9 @@ class _AchievementTile extends StatelessWidget {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text('CLAIM', style: AppTheme.pixelHeading(fontSize: 9, color: const Color(0xFFaacc44))),
+                  Text('CLAIM', style: AppTheme.pixelHeading(fontSize: 10, color: const Color(0xFFaacc44))),
                   Text(a.rewardLabel,
-                      style: const TextStyle(fontSize: 10, color: Color(0xFFaacc44), fontWeight: FontWeight.bold)),
+                      style: const TextStyle(fontSize: 11, color: Color(0xFFaacc44), fontWeight: FontWeight.bold)),
                 ],
               ),
             )
@@ -311,7 +311,7 @@ class _RewardBadge extends StatelessWidget {
         borderRadius: BorderRadius.circular(3),
       ),
       child: Text(a.rewardLabel,
-          style: TextStyle(fontSize: 10, color: color, fontWeight: FontWeight.bold)),
+          style: TextStyle(fontSize: 11, color: color, fontWeight: FontWeight.bold)),
     );
   }
 }

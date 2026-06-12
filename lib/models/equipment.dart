@@ -7,6 +7,7 @@ enum ItemRarity { common, rare, epic, legendary, set }
 enum ItemStat {
   strength, dexterity, constitution, intelligence, wisdom, charisma,
   attackBonus, damageBonus, armorClass, maxHpPct, goldPct, xpPct,
+  elemPenetration,
 }
 
 extension ItemStatInfo on ItemStat {
@@ -20,9 +21,10 @@ extension ItemStatInfo on ItemStat {
     ItemStat.intelligence => 'ARC',
     ItemStat.wisdom       => 'FOC',
     ItemStat.charisma     => 'FOR',
-    ItemStat.maxHpPct     => '%HP',
-    ItemStat.goldPct      => '%G',
-    ItemStat.xpPct        => '%XP',
+    ItemStat.maxHpPct        => '%HP',
+    ItemStat.goldPct         => '%G',
+    ItemStat.xpPct           => '%XP',
+    ItemStat.elemPenetration => 'PEN',
   };
 }
 
@@ -309,46 +311,51 @@ class ItemLootTable {
   static const _relicNames   = ['Eye of Fate', 'Bone Fragment', 'Shadow Shard', 'Cursed Rune', 'Ancient Token', 'Void Crystal', 'Hex Ember', 'Death Spark'];
 
   // ── Stat pools per slot ────────────────────────────────────────────────────
-  static const _weaponStats   = [ItemStat.attackBonus, ItemStat.damageBonus, ItemStat.strength];
+  static const _weaponStats   = [ItemStat.attackBonus, ItemStat.damageBonus, ItemStat.strength, ItemStat.elemPenetration];
   static const _offHandStats  = [ItemStat.armorClass, ItemStat.attackBonus, ItemStat.constitution];
   static const _helmetStats   = [ItemStat.armorClass, ItemStat.constitution, ItemStat.wisdom];
   static const _armorStats    = [ItemStat.armorClass, ItemStat.constitution, ItemStat.maxHpPct];
   static const _glovesStats   = [ItemStat.attackBonus, ItemStat.damageBonus, ItemStat.dexterity];
   static const _pantsStats    = [ItemStat.armorClass, ItemStat.constitution, ItemStat.dexterity];
   static const _bootsStats    = [ItemStat.dexterity, ItemStat.armorClass, ItemStat.wisdom];
-  static const _accessoryStats = [ItemStat.goldPct, ItemStat.xpPct, ItemStat.wisdom, ItemStat.intelligence, ItemStat.charisma, ItemStat.dexterity, ItemStat.attackBonus];
-  static const _relicStats    = [ItemStat.goldPct, ItemStat.xpPct, ItemStat.wisdom, ItemStat.intelligence, ItemStat.charisma];
+  static const _accessoryStats = [ItemStat.goldPct, ItemStat.xpPct, ItemStat.wisdom, ItemStat.intelligence, ItemStat.charisma, ItemStat.dexterity, ItemStat.attackBonus, ItemStat.elemPenetration];
+  static const _relicStats    = [ItemStat.goldPct, ItemStat.xpPct, ItemStat.wisdom, ItemStat.intelligence, ItemStat.charisma, ItemStat.elemPenetration];
 
   // ── Affix prefix/suffix tables (common, rare, epic) ───────────────────────
   static const _prefixCommon = {
-    ItemStat.attackBonus: 'Keen',     ItemStat.damageBonus:  'Sharp',    ItemStat.armorClass:   'Guard',
-    ItemStat.strength:    'Strong',   ItemStat.dexterity:    'Quick',    ItemStat.constitution: 'Tough',
-    ItemStat.intelligence:'Arcane',   ItemStat.wisdom:       'Sage',     ItemStat.charisma:     'Bold',
-    ItemStat.maxHpPct:    'Hearty',   ItemStat.goldPct:      'Lucky',    ItemStat.xpPct:        'Learned',
+    ItemStat.attackBonus:     'Keen',      ItemStat.damageBonus:  'Sharp',       ItemStat.armorClass:      'Guard',
+    ItemStat.strength:        'Strong',    ItemStat.dexterity:    'Quick',       ItemStat.constitution:    'Tough',
+    ItemStat.intelligence:    'Arcane',    ItemStat.wisdom:       'Sage',        ItemStat.charisma:        'Bold',
+    ItemStat.maxHpPct:        'Hearty',    ItemStat.goldPct:      'Lucky',       ItemStat.xpPct:           'Learned',
+    ItemStat.elemPenetration: 'Seeping',
   };
   static const _prefixRare = {
-    ItemStat.attackBonus: 'Keen',       ItemStat.damageBonus:  'Savage',    ItemStat.armorClass:   'Stalwart',
-    ItemStat.strength:    'Mighty',     ItemStat.dexterity:    'Swift',     ItemStat.constitution: 'Hardy',
-    ItemStat.intelligence:'Mystic',     ItemStat.wisdom:       'Ancient',   ItemStat.charisma:     'Commanding',
-    ItemStat.maxHpPct:    'Vital',      ItemStat.goldPct:      'Prosperous',ItemStat.xpPct:        "Veteran's",
+    ItemStat.attackBonus:     'Keen',       ItemStat.damageBonus:  'Savage',     ItemStat.armorClass:      'Stalwart',
+    ItemStat.strength:        'Mighty',     ItemStat.dexterity:    'Swift',      ItemStat.constitution:    'Hardy',
+    ItemStat.intelligence:    'Mystic',     ItemStat.wisdom:       'Ancient',    ItemStat.charisma:        'Commanding',
+    ItemStat.maxHpPct:        'Vital',      ItemStat.goldPct:      'Prosperous', ItemStat.xpPct:           "Veteran's",
+    ItemStat.elemPenetration: 'Piercing',
   };
   static const _prefixEpic = {
-    ItemStat.attackBonus: 'Deadly',     ItemStat.damageBonus:  'Brutal',    ItemStat.armorClass:   'Fortified',
-    ItemStat.strength:    "Titan's",    ItemStat.dexterity:    'Shadow',    ItemStat.constitution: 'Stone',
-    ItemStat.intelligence:'Elder',      ItemStat.wisdom:       'Eternal',   ItemStat.charisma:     'Glorious',
-    ItemStat.maxHpPct:    'Ironhide',   ItemStat.goldPct:      "Fortune's", ItemStat.xpPct:        'Enlightened',
+    ItemStat.attackBonus:     'Deadly',     ItemStat.damageBonus:  'Brutal',     ItemStat.armorClass:      'Fortified',
+    ItemStat.strength:        "Titan's",    ItemStat.dexterity:    'Shadow',     ItemStat.constitution:    'Stone',
+    ItemStat.intelligence:    'Elder',       ItemStat.wisdom:       'Eternal',   ItemStat.charisma:        'Glorious',
+    ItemStat.maxHpPct:        'Ironhide',   ItemStat.goldPct:      "Fortune's",  ItemStat.xpPct:           'Enlightened',
+    ItemStat.elemPenetration: 'Veilbreaker',
   };
   static const _suffixRare = {
-    ItemStat.attackBonus: 'Striking',   ItemStat.damageBonus:  'Ruin',      ItemStat.armorClass:   'Warding',
-    ItemStat.strength:    'Might',      ItemStat.dexterity:    'Agility',   ItemStat.constitution: 'Endurance',
-    ItemStat.intelligence:'Arcana',     ItemStat.wisdom:       'Foresight', ItemStat.charisma:     'Command',
-    ItemStat.maxHpPct:    'Vitality',   ItemStat.goldPct:      'Fortune',   ItemStat.xpPct:        'Wisdom',
+    ItemStat.attackBonus:     'Striking',   ItemStat.damageBonus:  'Ruin',       ItemStat.armorClass:      'Warding',
+    ItemStat.strength:        'Might',      ItemStat.dexterity:    'Agility',    ItemStat.constitution:    'Endurance',
+    ItemStat.intelligence:    'Arcana',     ItemStat.wisdom:       'Foresight',  ItemStat.charisma:        'Command',
+    ItemStat.maxHpPct:        'Vitality',   ItemStat.goldPct:      'Fortune',    ItemStat.xpPct:           'Wisdom',
+    ItemStat.elemPenetration: 'Penetration',
   };
   static const _suffixEpic = {
-    ItemStat.attackBonus: 'Slaughter',  ItemStat.damageBonus:  'Destruction',ItemStat.armorClass:  'the Bastion',
-    ItemStat.strength:    'Dominion',   ItemStat.dexterity:    'the Void',  ItemStat.constitution: 'Eternity',
-    ItemStat.intelligence:'the Abyss',  ItemStat.wisdom:       'the Ages',  ItemStat.charisma:     'Legend',
-    ItemStat.maxHpPct:    'the Colossus',ItemStat.goldPct:     'Avarice',   ItemStat.xpPct:        'Transcendence',
+    ItemStat.attackBonus:     'Slaughter',  ItemStat.damageBonus:  'Destruction',ItemStat.armorClass:      'the Bastion',
+    ItemStat.strength:        'Dominion',   ItemStat.dexterity:    'the Void',   ItemStat.constitution:    'Eternity',
+    ItemStat.intelligence:    'the Abyss',  ItemStat.wisdom:       'the Ages',   ItemStat.charisma:        'Legend',
+    ItemStat.maxHpPct:        'the Colossus',ItemStat.goldPct:     'Avarice',    ItemStat.xpPct:           'Transcendence',
+    ItemStat.elemPenetration: 'the Rift',
   };
   static const _keywordTitle = {
     ItemKeyword.lifeSteal:    'Blooddrinker', ItemKeyword.riposte:     'Retaliator',
@@ -411,8 +418,8 @@ class ItemLootTable {
 
   // ── tryDrop: regular combat drop ──────────────────────────────────────────
   static EquipmentItem? tryDrop(int enemyLevel, Random rng) {
-    final dropChance = (3 + enemyLevel * 0.5).clamp(3.0, 15.0);
-    if (rng.nextInt(100) >= dropChance) return null;
+    final dropChance = (30 + enemyLevel * 5.0).clamp(30.0, 100.0);
+    if (rng.nextDouble() * 100 >= dropChance) return null;
 
     final rarityRoll = rng.nextInt(100);
     final rarity = rarityRoll < 5  ? ItemRarity.epic
@@ -435,7 +442,7 @@ class ItemLootTable {
 
   // ── tryDropLegendary: 1% chance on boss kills ─────────────────────────────
   static EquipmentItem? tryDropLegendary(int heroLevel, Random rng) {
-    if (rng.nextInt(100) >= 1) return null;
+    if (rng.nextInt(100) >= 10) return null;
 
     final slot     = ItemSlot.values[rng.nextInt(ItemSlot.values.length)];
     final pool     = _statsFor(slot);
@@ -455,7 +462,7 @@ class ItemLootTable {
 
   // ── tryDropSet: 0.3% chance on boss kills — very rare ────────────────────
   static EquipmentItem? tryDropSet(int heroLevel, Random rng) {
-    if (rng.nextInt(1000) >= 3) return null;
+    if (rng.nextInt(1000) >= 30) return null;
 
     // Pick a random set, then a random slot from that set
     final set      = kSetCatalog[rng.nextInt(kSetCatalog.length)];
@@ -532,9 +539,10 @@ class ItemLootTable {
       ItemStat.intelligence => 1 + m,
       ItemStat.wisdom       => 1 + m,
       ItemStat.charisma     => 1 + m,
-      ItemStat.maxHpPct     => 5 + m * 5,
-      ItemStat.goldPct      => 5 + m * 5,
-      ItemStat.xpPct        => 5 + m * 5,
+      ItemStat.maxHpPct        => 5 + m * 5,
+      ItemStat.goldPct         => 5 + m * 5,
+      ItemStat.xpPct           => 5 + m * 5,
+      ItemStat.elemPenetration => 5 + m * 5,
     };
   }
 

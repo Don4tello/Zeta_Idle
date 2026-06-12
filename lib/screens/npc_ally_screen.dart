@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import '../models/npc_ally.dart';
 import '../services/game_state.dart';
 import '../theme/app_theme.dart';
@@ -13,18 +13,18 @@ class NpcAllyScreen extends StatelessWidget {
     final unlockedCount = allies.where((a) => game.allyUnlocked(a.id)).length;
 
     return Scaffold(
-      backgroundColor: const Color(0xFF0a0e27),
+      backgroundColor: const Color(0xFF1B1A17),
       appBar: AppBar(
-        backgroundColor: const Color(0xFF1a1f3a),
+        backgroundColor: const Color(0xFF2A2623),
         title: Text('MERCENARIES',
-            style: AppTheme.pixelHeading(fontSize: 13, letterSpacing: 2)),
+            style: AppTheme.pixelHeading(fontSize: 14, letterSpacing: 2)),
         actions: [
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
             child: Text(
               '$unlockedCount / ${allies.length}  recruited',
               style: AppTheme.pixelHeading(
-                  fontSize: 11, color: AppTheme.accentGold),
+                  fontSize: 12, color: AppTheme.accentGold),
             ),
           ),
         ],
@@ -36,13 +36,13 @@ class NpcAllyScreen extends StatelessWidget {
           const SizedBox(height: 16),
           Text('ROSTER',
               style: AppTheme.pixelHeading(
-                  fontSize: 10, letterSpacing: 2, color: AppTheme.textMuted)),
+                  fontSize: 11, letterSpacing: 2, color: AppTheme.textMuted)),
           const SizedBox(height: 10),
           ...allies.map((a) => _AllyCard(def: a, game: game)),
           const SizedBox(height: 8),
           Text('SYNERGIES',
               style: AppTheme.pixelHeading(
-                  fontSize: 10, letterSpacing: 2, color: AppTheme.textMuted)),
+                  fontSize: 11, letterSpacing: 2, color: AppTheme.textMuted)),
           const SizedBox(height: 10),
           ...SynergyDef.all.map((s) => _SynergyCard(syn: s, game: game)),
           const SizedBox(height: 8),
@@ -87,13 +87,13 @@ class _ActiveBonusBar extends StatelessWidget {
       return Container(
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: const Color(0xFF0e1225),
+          color: const Color(0xFF231F1B),
           border: Border.all(color: AppTheme.cardBorder),
           borderRadius: BorderRadius.circular(4),
         ),
         child: const Text(
           'No mercenaries recruited yet. Fulfill milestones to unlock them.',
-          style: TextStyle(fontSize: 10, color: AppTheme.textMuted, height: 1.4),
+          style: TextStyle(fontSize: 11, color: AppTheme.textMuted, height: 1.4),
         ),
       );
     }
@@ -101,14 +101,14 @@ class _ActiveBonusBar extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.fromLTRB(14, 10, 14, 12),
       decoration: BoxDecoration(
-        color: const Color(0xFF0e1225),
+        color: const Color(0xFF231F1B),
         border: Border.all(color: AppTheme.cardBorder),
         borderRadius: BorderRadius.circular(4),
       ),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Text('TOTAL ACTIVE BONUSES',
             style: AppTheme.pixelHeading(
-                fontSize: 9, letterSpacing: 1, color: AppTheme.textMuted)),
+                fontSize: 10, letterSpacing: 1, color: AppTheme.textMuted)),
         const SizedBox(height: 8),
         Wrap(
           spacing: 8,
@@ -128,7 +128,7 @@ class _ActiveBonusBar extends StatelessWidget {
         ),
         child: Text(c.label,
             style: TextStyle(
-                fontSize: 10, color: c.color, fontWeight: FontWeight.bold)),
+                fontSize: 11, color: c.color, fontWeight: FontWeight.bold)),
       );
 }
 
@@ -165,7 +165,7 @@ class _AllyCard extends StatelessWidget {
         decoration: BoxDecoration(
           color: unlocked
               ? const Color(0xFF0d1e14)
-              : const Color(0xFF0e1225),
+              : const Color(0xFF231F1B),
           border: Border.all(
             color: unlocked
                 ? const Color(0xFF3a7a50).withValues(alpha: 0.7)
@@ -178,7 +178,7 @@ class _AllyCard extends StatelessWidget {
           Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Text(def.icon,
                 style: TextStyle(
-                    fontSize: 26,
+                    fontSize: 27,
                     color: unlocked ? null : Colors.white24)),
             const SizedBox(width: 12),
             Expanded(
@@ -188,7 +188,7 @@ class _AllyCard extends StatelessWidget {
                   Row(children: [
                     Text(def.name,
                         style: TextStyle(
-                            fontSize: 14,
+                            fontSize: 15,
                             fontWeight: FontWeight.bold,
                             color: unlocked
                                 ? const Color(0xFF77dd99)
@@ -198,7 +198,7 @@ class _AllyCard extends StatelessWidget {
                   ]),
                   Text(def.title,
                       style: TextStyle(
-                          fontSize: 10,
+                          fontSize: 11,
                           color: unlocked
                               ? AppTheme.textMuted
                               : AppTheme.textMuted.withValues(alpha: 0.4),
@@ -216,7 +216,7 @@ class _AllyCard extends StatelessWidget {
           // ── Lore ───────────────────────────────────────────────────────────
           Text(def.lore,
               style: TextStyle(
-                  fontSize: 10,
+                  fontSize: 11,
                   color: unlocked ? Colors.white54 : Colors.white24,
                   height: 1.4)),
 
@@ -228,11 +228,11 @@ class _AllyCard extends StatelessWidget {
               Expanded(
                 child: Text('Unlock: ${def.milestoneLabel}',
                     style: const TextStyle(
-                        fontSize: 10, color: AppTheme.textMuted)),
+                        fontSize: 11, color: AppTheme.textMuted)),
               ),
               Text('$progress / ${def.milestoneTarget}',
                   style: const TextStyle(
-                      fontSize: 10, color: Colors.white38)),
+                      fontSize: 11, color: Colors.white38)),
             ]),
             const SizedBox(height: 6),
             ClipRRect(
@@ -265,7 +265,7 @@ class _AllyCard extends StatelessWidget {
                   ),
                   child: Text('MAX',
                       style: AppTheme.pixelHeading(
-                          fontSize: 9, color: AppTheme.accentGold)),
+                          fontSize: 10, color: AppTheme.accentGold)),
                 )
               else
                 _UpgradeButton(
@@ -297,7 +297,7 @@ class _LevelBadge extends StatelessWidget {
         ),
         child: Text('LV $level',
             style: AppTheme.pixelHeading(
-                fontSize: 9, color: AppTheme.accentGold)),
+                fontSize: 10, color: AppTheme.accentGold)),
       );
 }
 
@@ -359,7 +359,7 @@ class _BonusTag extends StatelessWidget {
       ),
       child: Text(_label,
           style: const TextStyle(
-              fontSize: 9, color: c, fontWeight: FontWeight.bold)),
+              fontSize: 10, color: c, fontWeight: FontWeight.bold)),
     );
   }
 }
@@ -393,17 +393,17 @@ class _UpgradeButton extends StatelessWidget {
         ),
         child: Row(mainAxisSize: MainAxisSize.min, children: [
           Text('UPGRADE  ',
-              style: AppTheme.pixelHeading(fontSize: 9, color: color)),
+              style: AppTheme.pixelHeading(fontSize: 10, color: color)),
           Text('🔷$costShards',
               style: TextStyle(
-                  fontSize: 9,
+                  fontSize: 10,
                   color: color,
                   fontWeight: FontWeight.bold)),
           if (costCrystals > 0) ...[
             const SizedBox(width: 4),
             Text('💎$costCrystals',
                 style: TextStyle(
-                    fontSize: 9,
+                    fontSize: 10,
                     color: color,
                     fontWeight: FontWeight.bold)),
           ],
@@ -433,7 +433,7 @@ class _SynergyCard extends StatelessWidget {
         : AppTheme.cardBorder;
     final bgColor = active
         ? const Color(0xFF150e25)
-        : const Color(0xFF0a0d1a);
+        : const Color(0xFF1A1714);
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
@@ -448,7 +448,7 @@ class _SynergyCard extends StatelessWidget {
           Row(children: [
             Text(syn.name,
                 style: TextStyle(
-                    fontSize: 13,
+                    fontSize: 14,
                     fontWeight: FontWeight.bold,
                     color: active
                         ? const Color(0xFFcc99ff)
@@ -461,7 +461,7 @@ class _SynergyCard extends StatelessWidget {
           const SizedBox(height: 4),
           Text(syn.description,
               style: TextStyle(
-                  fontSize: 10,
+                  fontSize: 11,
                   color: active ? Colors.white54 : Colors.white24,
                   height: 1.4)),
           const SizedBox(height: 8),
@@ -476,7 +476,7 @@ class _SynergyCard extends StatelessWidget {
             const SizedBox(width: 4),
             Text('+',
                 style: TextStyle(
-                    fontSize: 12,
+                    fontSize: 13,
                     color: active
                         ? const Color(0xFFcc99ff)
                         : Colors.white24)),
@@ -504,7 +504,7 @@ class _SynergyCard extends StatelessWidget {
               ),
               child: Text(syn.bonusSummary,
                   style: TextStyle(
-                      fontSize: 9,
+                      fontSize: 10,
                       color: active
                           ? const Color(0xFFcc99ff)
                           : AppTheme.textMuted,
@@ -517,7 +517,7 @@ class _SynergyCard extends StatelessWidget {
               'Requires both at LV ${syn.minLevel}+  '
               '(${ally1.name} LV$lv1, ${ally2.name} LV$lv2)',
               style: const TextStyle(
-                  fontSize: 9,
+                  fontSize: 10,
                   color: AppTheme.textMuted,
                   fontStyle: FontStyle.italic),
             ),
@@ -556,16 +556,16 @@ class _PartnerChip extends StatelessWidget {
         borderRadius: BorderRadius.circular(3),
       ),
       child: Row(mainAxisSize: MainAxisSize.min, children: [
-        Text(icon, style: const TextStyle(fontSize: 12)),
+        Text(icon, style: const TextStyle(fontSize: 13)),
         const SizedBox(width: 4),
         Text(name,
             style: TextStyle(
-                fontSize: 9,
+                fontSize: 10,
                 color: met ? const Color(0xFFcc99ff) : Colors.white38)),
         const SizedBox(width: 4),
         Text('LV$level',
             style: TextStyle(
-                fontSize: 9,
+                fontSize: 10,
                 color: met ? AppTheme.accentGold : AppTheme.textMuted,
                 fontWeight: FontWeight.bold)),
       ]),

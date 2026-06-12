@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../services/game_state.dart';
 import '../theme/app_theme.dart';
@@ -67,12 +67,12 @@ class _CombatLogPanelState extends State<CombatLogPanel> {
                     size: 12, color: AppTheme.accentGold),
                 const SizedBox(width: 8),
                 Text('BATTLE LOG',
-                    style: AppTheme.pixelHeading(fontSize: 10, letterSpacing: 2)),
+                    style: AppTheme.pixelHeading(fontSize: 11, letterSpacing: 2)),
                 const Spacer(),
                 Text(
                   '${log.length} entries',
                   style: AppTheme.pixelHeading(
-                      fontSize: 8,
+                      fontSize: 9,
                       letterSpacing: 1,
                       color: AppTheme.textMuted),
                 ),
@@ -88,7 +88,7 @@ class _CombatLogPanelState extends State<CombatLogPanel> {
                     child: Text(
                       'No battle activity yet.',
                       style: AppTheme.pixelHeading(
-                          fontSize: 9,
+                          fontSize: 10,
                           color: AppTheme.textMuted,
                           letterSpacing: 1),
                     ),
@@ -162,14 +162,14 @@ class _LogEntry extends StatelessWidget {
             '▸ ',
             style: TextStyle(
               color: AppTheme.accentGold.withValues(alpha: dimmed ? 0.2 : 0.7),
-              fontSize: 10,
+              fontSize: 11,
             ),
           ),
           Expanded(
             child: Text(
               text,
               style: GoogleFonts.sourceCodePro(
-                fontSize: 10,
+                fontSize: 11,
                 color: color.withValues(alpha: alpha),
                 height: 1.5,
               ),

@@ -19,6 +19,7 @@ class DailyChallenge {
     required this.rewardGold,
     required this.rewardShards,
     required this.rewardEssence,
+    required this.rewardCrystals,
     this.claimed = false,
   });
 
@@ -30,6 +31,7 @@ class DailyChallenge {
   final int rewardGold;
   final int rewardShards;
   final int rewardEssence;
+  final int rewardCrystals;
   bool claimed;
 
   Map<String, dynamic> toJson() => {
@@ -41,6 +43,7 @@ class DailyChallenge {
     'rewardGold': rewardGold,
     'rewardShards': rewardShards,
     'rewardEssence': rewardEssence,
+    'rewardCrystals': rewardCrystals,
     'claimed': claimed,
   };
 
@@ -55,6 +58,7 @@ class DailyChallenge {
     rewardGold: json['rewardGold'] as int,
     rewardShards: (json['rewardShards'] as int?) ?? 0,
     rewardEssence: (json['rewardEssence'] as int?) ?? 0,
+    rewardCrystals: (json['rewardCrystals'] as int?) ?? 0,
     claimed: (json['claimed'] as bool?) ?? false,
   );
 }

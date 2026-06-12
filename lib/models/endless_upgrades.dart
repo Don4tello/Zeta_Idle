@@ -1,4 +1,4 @@
-import 'dart:math';
+﻿import 'dart:math';
 import 'package:flutter/material.dart' show Color;
 
 // ─────────────────────────────────────────────────────────────
@@ -77,7 +77,7 @@ enum EndlessNode {
       case EndlessNode.str:          return const Color(0xFFe05030);
       case EndlessNode.dex:          return const Color(0xFF40b060);
       case EndlessNode.con:          return const Color(0xFF4488cc);
-      case EndlessNode.intelligence: return const Color(0xFFd4af37);
+      case EndlessNode.intelligence: return const Color(0xFFC9A35A);
       case EndlessNode.wis:          return const Color(0xFF9060c0);
       case EndlessNode.cha:          return const Color(0xFFc06080);
     }

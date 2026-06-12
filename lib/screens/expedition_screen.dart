@@ -1,4 +1,4 @@
-import 'dart:async';
+﻿import 'dart:async';
 import 'package:flutter/material.dart';
 import '../models/expedition.dart';
 import '../services/game_state.dart';
@@ -33,10 +33,10 @@ class _ExpeditionScreenState extends State<ExpeditionScreen> {
     final active = game.activeExpedition;
 
     return Scaffold(
-      backgroundColor: const Color(0xFF0a0e27),
+      backgroundColor: const Color(0xFF1B1A17),
       appBar: AppBar(
-        backgroundColor: const Color(0xFF1a1f3a),
-        title: Text('EXPEDITIONS', style: AppTheme.pixelHeading(fontSize: 13, letterSpacing: 2)),
+        backgroundColor: const Color(0xFF2A2623),
+        title: Text('EXPEDITIONS', style: AppTheme.pixelHeading(fontSize: 14, letterSpacing: 2)),
       ),
       body: ListView(
         padding: const EdgeInsets.all(16),
@@ -46,14 +46,14 @@ class _ExpeditionScreenState extends State<ExpeditionScreen> {
             padding: const EdgeInsets.all(12),
             margin: const EdgeInsets.only(bottom: 16),
             decoration: BoxDecoration(
-              color: const Color(0xFF0e1225),
+              color: const Color(0xFF231F1B),
               border: Border.all(color: AppTheme.cardBorder),
               borderRadius: BorderRadius.circular(4),
             ),
             child: const Text(
               'Send your hero on a timed expedition to gather resources. '
               'Only one expedition can run at a time. Rewards scale with hero level.',
-              style: TextStyle(fontSize: 11, color: AppTheme.textMuted, height: 1.4),
+              style: TextStyle(fontSize: 12, color: AppTheme.textMuted, height: 1.4),
             ),
           ),
 
@@ -99,13 +99,13 @@ class _ActiveExpeditionCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(children: [
-            Text(expedition.type.icon, style: const TextStyle(fontSize: 22)),
+            Text(expedition.type.icon, style: const TextStyle(fontSize: 23)),
             const SizedBox(width: 10),
             Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Text(expedition.type.label.toUpperCase(),
-                  style: AppTheme.pixelHeading(fontSize: 12, color: color, letterSpacing: 1)),
+                  style: AppTheme.pixelHeading(fontSize: 13, color: color, letterSpacing: 1)),
               Text(expedition.duration.label,
-                  style: TextStyle(fontSize: 10, color: color.withValues(alpha: 0.6))),
+                  style: TextStyle(fontSize: 11, color: color.withValues(alpha: 0.6))),
             ]),
             const Spacer(),
             if (done)
@@ -116,11 +116,11 @@ class _ActiveExpeditionCard extends StatelessWidget {
                   border: Border.all(color: color),
                   borderRadius: BorderRadius.circular(3),
                 ),
-                child: Text('COMPLETE', style: AppTheme.pixelHeading(fontSize: 9, color: color)),
+                child: Text('COMPLETE', style: AppTheme.pixelHeading(fontSize: 10, color: color)),
               )
             else
               Text(_fmtDuration(rem),
-                  style: AppTheme.pixelHeading(fontSize: 13, color: color)),
+                  style: AppTheme.pixelHeading(fontSize: 14, color: color)),
           ]),
           const SizedBox(height: 14),
           ClipRRect(
@@ -137,7 +137,7 @@ class _ActiveExpeditionCard extends StatelessWidget {
           Wrap(spacing: 12, children: [
             for (final e in preview.entries)
               Text('${_rewardIcon(e.key)} ${e.value} ${e.key}',
-                  style: TextStyle(fontSize: 11, color: color.withValues(alpha: 0.8))),
+                  style: TextStyle(fontSize: 12, color: color.withValues(alpha: 0.8))),
           ]),
           const SizedBox(height: 14),
           SizedBox(
@@ -156,7 +156,7 @@ class _ActiveExpeditionCard extends StatelessWidget {
                 if (context.mounted) _showRewards(context, rewards, color);
               } : null,
               child: Text(done ? 'COLLECT REWARDS' : 'IN PROGRESS...',
-                  style: AppTheme.pixelHeading(fontSize: 11,
+                  style: AppTheme.pixelHeading(fontSize: 12,
                       color: done ? color : Colors.white24)),
             ),
           ),
@@ -170,11 +170,11 @@ class _ActiveExpeditionCard extends StatelessWidget {
     showDialog<void>(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF111525),
+        backgroundColor: const Color(0xFF1B1814),
         title: Text('Expedition Complete!',
             style: TextStyle(color: color, fontWeight: FontWeight.bold)),
         content: Text(lines,
-            style: const TextStyle(color: Colors.white70, fontSize: 14, height: 1.6)),
+            style: const TextStyle(color: Colors.white70, fontSize: 15, height: 1.6)),
         actions: [
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: color.withValues(alpha: 0.2),
@@ -219,7 +219,7 @@ class _ExpeditionPickerState extends State<_ExpeditionPicker> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text('SELECT TYPE', style: AppTheme.pixelHeading(
-            fontSize: 9, color: AppTheme.textMuted, letterSpacing: 1)),
+            fontSize: 10, color: AppTheme.textMuted, letterSpacing: 1)),
         const SizedBox(height: 8),
         // Type cards
         ...ExpeditionType.values.map((type) {
@@ -231,21 +231,21 @@ class _ExpeditionPickerState extends State<_ExpeditionPicker> {
               margin: const EdgeInsets.only(bottom: 8),
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
               decoration: BoxDecoration(
-                color: selected ? color.withValues(alpha: 0.10) : const Color(0xFF0e1225),
+                color: selected ? color.withValues(alpha: 0.10) : const Color(0xFF231F1B),
                 border: Border.all(
                     color: selected ? color : color.withValues(alpha: 0.25),
                     width: selected ? 1.5 : 1),
                 borderRadius: BorderRadius.circular(4),
               ),
               child: Row(children: [
-                Text(type.icon, style: const TextStyle(fontSize: 18)),
+                Text(type.icon, style: const TextStyle(fontSize: 19)),
                 const SizedBox(width: 10),
                 Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                   Text(type.label,
-                      style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold,
+                      style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold,
                           color: selected ? color : Colors.white60)),
                   Text('Rewards: ${type.rewardLabel}',
-                      style: TextStyle(fontSize: 10,
+                      style: TextStyle(fontSize: 11,
                           color: selected ? color.withValues(alpha: 0.7) : Colors.white30)),
                 ]),
                 if (selected) ...[
@@ -258,7 +258,7 @@ class _ExpeditionPickerState extends State<_ExpeditionPicker> {
         }),
         const SizedBox(height: 16),
         Text('SELECT DURATION', style: AppTheme.pixelHeading(
-            fontSize: 9, color: AppTheme.textMuted, letterSpacing: 1)),
+            fontSize: 10, color: AppTheme.textMuted, letterSpacing: 1)),
         const SizedBox(height: 8),
         // Duration buttons
         Row(children: ExpeditionDuration.values.map((dur) {
@@ -311,13 +311,13 @@ class _DurationButton extends StatelessWidget {
         ),
         child: Column(children: [
           Text(duration.label,
-              style: AppTheme.pixelHeading(fontSize: 11, color: color)),
+              style: AppTheme.pixelHeading(fontSize: 12, color: color)),
           const SizedBox(height: 6),
           Text(previewStr,
-              style: TextStyle(fontSize: 9, color: color.withValues(alpha: 0.7)),
+              style: TextStyle(fontSize: 10, color: color.withValues(alpha: 0.7)),
               textAlign: TextAlign.center),
           const SizedBox(height: 6),
-          Text('START', style: AppTheme.pixelHeading(fontSize: 8,
+          Text('START', style: AppTheme.pixelHeading(fontSize: 9,
               color: color.withValues(alpha: 0.8), letterSpacing: 1)),
         ]),
       ),

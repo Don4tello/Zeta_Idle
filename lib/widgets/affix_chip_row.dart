@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../models/zone_affix.dart';
 import '../theme/app_theme.dart';
@@ -57,7 +57,7 @@ class _AffixChip extends StatelessWidget {
       preferBelow: false,
       waitDuration: Duration.zero,
       textStyle: GoogleFonts.sourceCodePro(
-        fontSize: 10,
+        fontSize: 11,
         color: AppTheme.textLight,
       ),
       decoration: BoxDecoration(
@@ -82,7 +82,7 @@ class _AffixChip extends StatelessWidget {
             Text(
               affix.displayName.toUpperCase(),
               style: GoogleFonts.pixelifySans(
-                fontSize: 8,
+                fontSize: 9,
                 color: color,
                 letterSpacing: 0.5,
                 fontWeight: FontWeight.bold,

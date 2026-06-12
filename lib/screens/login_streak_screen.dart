@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import '../models/login_streak.dart';
 import '../services/game_state.dart';
 import '../theme/app_theme.dart';
@@ -14,11 +14,11 @@ class LoginStreakScreen extends StatelessWidget {
     final todayClaimed = game.loginTodayClaimed;
 
     return Scaffold(
-      backgroundColor: const Color(0xFF0a0e27),
+      backgroundColor: const Color(0xFF1B1A17),
       appBar: AppBar(
-        backgroundColor: const Color(0xFF1a1f3a),
+        backgroundColor: const Color(0xFF2A2623),
         title: Text('DAILY LOGIN',
-            style: AppTheme.pixelHeading(fontSize: 13, letterSpacing: 2)),
+            style: AppTheme.pixelHeading(fontSize: 14, letterSpacing: 2)),
         actions: [
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -70,7 +70,7 @@ class LoginStreakScreen extends StatelessWidget {
                 ),
                 child: const Text('Come back tomorrow for your next reward!',
                     style: TextStyle(
-                        fontSize: 11, color: Color(0xFF88cc88))),
+                        fontSize: 12, color: Color(0xFF88cc88))),
               ),
             ),
           const SizedBox(height: 24),
@@ -96,11 +96,11 @@ class _StreakBadge extends StatelessWidget {
         borderRadius: BorderRadius.circular(3),
       ),
       child: Row(mainAxisSize: MainAxisSize.min, children: [
-        const Text('🔥', style: TextStyle(fontSize: 11)),
+        const Text('🔥', style: TextStyle(fontSize: 12)),
         const SizedBox(width: 4),
         Text('$streak day${streak == 1 ? '' : 's'}',
             style: AppTheme.pixelHeading(
-                fontSize: 11, color: const Color(0xFFff8800))),
+                fontSize: 12, color: const Color(0xFFff8800))),
       ]),
     );
   }
@@ -126,7 +126,7 @@ class _InfoBanner extends StatelessWidget {
             : 'You\'ve been here $streak day${streak == 1 ? '' : 's'} in a row. '
               'Claim today\'s reward below. Missing a day resets your streak.',
         style: const TextStyle(
-            fontSize: 11, color: AppTheme.textMuted, height: 1.5),
+            fontSize: 12, color: AppTheme.textMuted, height: 1.5),
       ),
     );
   }
@@ -161,7 +161,7 @@ class _DayCell extends StatelessWidget {
       textColor = AppTheme.accentGold;
     } else {
       border = AppTheme.cardBorder;
-      bg     = const Color(0xFF0e1225);
+      bg     = const Color(0xFF231F1B);
       textColor = AppTheme.textMuted;
     }
 
@@ -177,11 +177,11 @@ class _DayCell extends StatelessWidget {
           if (isPast || claimed)
             const Icon(Icons.check, size: 14, color: Color(0xFF44aa44))
           else
-            Text(reward.icon, style: const TextStyle(fontSize: 14)),
+            Text(reward.icon, style: const TextStyle(fontSize: 15)),
           const SizedBox(height: 2),
           Text('D${reward.day}',
               style: TextStyle(
-                  fontSize: 8,
+                  fontSize: 9,
                   color: textColor,
                   fontWeight: isToday ? FontWeight.bold : FontWeight.normal)),
         ],
@@ -207,11 +207,11 @@ class _ClaimButton extends StatelessWidget {
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
         ),
         child: Row(mainAxisSize: MainAxisSize.min, children: [
-          Text(reward.icon, style: const TextStyle(fontSize: 18)),
+          Text(reward.icon, style: const TextStyle(fontSize: 19)),
           const SizedBox(width: 10),
           Text('CLAIM  ${reward.label}',
               style: AppTheme.pixelHeading(
-                  fontSize: 11, letterSpacing: 1, color: Colors.black)),
+                  fontSize: 12, letterSpacing: 1, color: Colors.black)),
         ]),
       ),
     );
@@ -230,7 +230,7 @@ class _CyclePreview extends StatelessWidget {
       children: [
         Text('FULL 7-DAY CYCLE',
             style: AppTheme.pixelHeading(
-                fontSize: 10, letterSpacing: 2, color: AppTheme.textMuted)),
+                fontSize: 11, letterSpacing: 2, color: AppTheme.textMuted)),
         const SizedBox(height: 10),
         ...LoginReward.cycle.map((r) {
           final isToday = r.day == dayInCycle;
@@ -243,7 +243,7 @@ class _CyclePreview extends StatelessWidget {
                   ? AppTheme.accentGold.withValues(alpha: 0.06)
                   : isPast
                       ? const Color(0xFF0e1f0e)
-                      : const Color(0xFF0e1225),
+                      : const Color(0xFF231F1B),
               border: Border.all(
                   color: isToday && !claimed
                       ? AppTheme.accentGold.withValues(alpha: 0.6)
@@ -253,11 +253,11 @@ class _CyclePreview extends StatelessWidget {
               borderRadius: BorderRadius.circular(3),
             ),
             child: Row(children: [
-              Text(r.icon, style: const TextStyle(fontSize: 16)),
+              Text(r.icon, style: const TextStyle(fontSize: 17)),
               const SizedBox(width: 10),
               Text('Day ${r.day}',
                   style: TextStyle(
-                      fontSize: 11,
+                      fontSize: 12,
                       fontWeight: FontWeight.bold,
                       color: isToday && !claimed
                           ? AppTheme.accentGold
@@ -268,7 +268,7 @@ class _CyclePreview extends StatelessWidget {
               Expanded(
                 child: Text(r.label,
                     style: const TextStyle(
-                        fontSize: 10, color: AppTheme.textMuted)),
+                        fontSize: 11, color: AppTheme.textMuted)),
               ),
               if (isPast)
                 const Icon(Icons.check_circle,
@@ -284,7 +284,7 @@ class _CyclePreview extends StatelessWidget {
                   ),
                   child: Text('TODAY',
                       style: AppTheme.pixelHeading(
-                          fontSize: 7, color: AppTheme.accentGold)),
+                          fontSize: 8, color: AppTheme.accentGold)),
                 ),
             ]),
           );

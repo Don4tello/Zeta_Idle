@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../models/upgrade.dart';
 import '../theme/app_theme.dart';
@@ -55,7 +55,7 @@ class _UpgradeTileState extends State<UpgradeTile>
               border: Border(
                 left: BorderSide(
                   color: maxed
-                      ? const Color(0xFF2d5016)
+                      ? const Color(0xFF3E5A3C)
                       : affordable
                           ? col.withValues(alpha: 0.7 + hv * 0.3)
                           : col.withValues(alpha: 0.35),
@@ -94,7 +94,7 @@ class _UpgradeTileState extends State<UpgradeTile>
                       child: Text(
                         widget.upgrade.type.label,
                         style: GoogleFonts.pixelifySans(
-                          fontSize: 13,
+                          fontSize: 14,
                           fontWeight: FontWeight.bold,
                           color: maxed
                               ? col.withValues(alpha: 0.40)
@@ -119,7 +119,7 @@ class _UpgradeTileState extends State<UpgradeTile>
                               child: Text(
                                 widget.upgrade.name.toUpperCase(),
                                 style: GoogleFonts.pixelifySans(
-                                  fontSize: 11,
+                                  fontSize: 12,
                                   fontWeight: FontWeight.bold,
                                   color: maxed
                                       ? AppTheme.textMuted
@@ -136,13 +136,13 @@ class _UpgradeTileState extends State<UpgradeTile>
                               decoration: BoxDecoration(
                                 border: Border.all(
                                   color: maxed
-                                      ? const Color(0xFF2d5016)
+                                      ? const Color(0xFF3E5A3C)
                                       : widget.upgrade.level > 0
                                           ? col.withValues(alpha: 0.55)
                                           : AppTheme.cardBorder,
                                 ),
                                 color: maxed
-                                    ? const Color(0xFF2d5016)
+                                    ? const Color(0xFF3E5A3C)
                                         .withValues(alpha: 0.25)
                                     : Colors.transparent,
                               ),
@@ -151,7 +151,7 @@ class _UpgradeTileState extends State<UpgradeTile>
                                     ? 'MAXED'
                                     : 'Lv ${widget.upgrade.level}/${widget.upgrade.maxLevel}',
                                 style: GoogleFonts.pixelifySans(
-                                  fontSize: 9,
+                                  fontSize: 10,
                                   letterSpacing: 1,
                                   color: maxed
                                       ? const Color(0xFF4a8020)
@@ -169,7 +169,7 @@ class _UpgradeTileState extends State<UpgradeTile>
                         Text(
                           widget.upgrade.description,
                           style: GoogleFonts.pixelifySans(
-                            fontSize: 10,
+                            fontSize: 13,
                             color: widget.upgrade.level > 0
                                 ? AppTheme.accentGold
                                 : AppTheme.textMuted,
@@ -196,7 +196,7 @@ class _UpgradeTileState extends State<UpgradeTile>
                                   Text(
                                     '${widget.upgrade.cost}',
                                     style: GoogleFonts.pixelifySans(
-                                      fontSize: 11,
+                                      fontSize: 12,
                                       color: affordable
                                           ? AppTheme.accentGold
                                           : AppTheme.textMuted,
@@ -206,7 +206,7 @@ class _UpgradeTileState extends State<UpgradeTile>
                                   Text(
                                     'gold',
                                     style: GoogleFonts.pixelifySans(
-                                      fontSize: 9,
+                                      fontSize: 10,
                                       color: AppTheme.textMuted,
                                     ),
                                   ),
@@ -220,8 +220,10 @@ class _UpgradeTileState extends State<UpgradeTile>
                               GestureDetector(
                                 onTap: affordable ? widget.onPurchase : null,
                                 child: Container(
+                                  constraints: const BoxConstraints(minHeight: 48, minWidth: 80),
                                   padding: const EdgeInsets.symmetric(
-                                      horizontal: 14, vertical: 7),
+                                      horizontal: 14, vertical: 8),
+                                  alignment: Alignment.center,
                                   decoration: BoxDecoration(
                                     color: affordable
                                         ? col.withValues(alpha: 0.18 + hv * 0.10)
@@ -235,7 +237,7 @@ class _UpgradeTileState extends State<UpgradeTile>
                                   child: Text(
                                     'UPGRADE',
                                     style: GoogleFonts.pixelifySans(
-                                      fontSize: 10,
+                                      fontSize: 14,
                                       fontWeight: FontWeight.bold,
                                       color: affordable
                                           ? col
@@ -247,18 +249,20 @@ class _UpgradeTileState extends State<UpgradeTile>
                               )
                             else
                               Container(
+                                constraints: const BoxConstraints(minHeight: 48, minWidth: 80),
                                 padding: const EdgeInsets.symmetric(
-                                    horizontal: 14, vertical: 7),
+                                    horizontal: 14, vertical: 8),
+                                alignment: Alignment.center,
                                 decoration: BoxDecoration(
                                   border: Border.all(
-                                      color: const Color(0xFF2d5016)),
-                                  color: const Color(0xFF2d5016)
+                                      color: const Color(0xFF3E5A3C)),
+                                  color: const Color(0xFF3E5A3C)
                                       .withValues(alpha: 0.20),
                                 ),
                                 child: Text(
                                   'MAXED',
                                   style: GoogleFonts.pixelifySans(
-                                    fontSize: 10,
+                                    fontSize: 14,
                                     fontWeight: FontWeight.bold,
                                     color: const Color(0xFF4a8020),
                                     letterSpacing: 1,
@@ -287,6 +291,7 @@ class _UpgradeTileState extends State<UpgradeTile>
       case UpgradeType.intelligence: return AppTheme.accentGold;
       case UpgradeType.wisdom:       return const Color(0xFF9060c0);
       case UpgradeType.charisma:     return const Color(0xFFcc66aa);
+      case UpgradeType.dualMastery:  return const Color(0xFFD580FF);
     }
   }
 }

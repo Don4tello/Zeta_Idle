@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../theme/app_theme.dart';
 
@@ -47,7 +47,7 @@ class SectionCard extends StatelessWidget {
                 Text(
                   title.toUpperCase(),
                   style: GoogleFonts.pixelifySans(
-                    fontSize: 12,
+                    fontSize: 13,
                     fontWeight: FontWeight.bold,
                     color: AppTheme.accentGold,
                     letterSpacing: 2,

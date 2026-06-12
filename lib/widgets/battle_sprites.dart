@@ -14,6 +14,7 @@ class BattleSprite extends StatefulWidget {
     this.auraColor,
     this.auraIntensity = 1.0,
     this.colorFilter,
+    this.buffGlows = const [],
   });
 
   final String spriteId;
@@ -21,6 +22,8 @@ class BattleSprite extends StatefulWidget {
   final Color? auraColor;
   final double auraIntensity;
   final ColorFilter? colorFilter;
+  /// Active buff/debuff glow colors — each adds a pulsing ring around the sprite.
+  final List<Color> buffGlows;
 
   /// Returns the aura color for the first matching affix element, or null.
   static Color? auraColorFor(List<ZoneAffix> affixes) {
@@ -131,19 +134,34 @@ class BattleSpriteState extends State<BattleSprite>
           );
         }
 
-        if (widget.auraColor != null) {
+        if (widget.auraColor != null || widget.buffGlows.isNotEmpty) {
           final pulse = 0.5 + 0.5 * sin(_idle.value * pi);
-          final intensity = widget.auraIntensity;
+          final shadows = <BoxShadow>[];
+
+          // Cosmetic / zone-affix aura
+          if (widget.auraColor != null) {
+            final intensity = widget.auraIntensity;
+            shadows.add(BoxShadow(
+              color: widget.auraColor!.withValues(
+                  alpha: (0.35 + pulse * 0.4) * intensity.clamp(0.3, 1.5)),
+              blurRadius: (8 + pulse * 10) * intensity,
+              spreadRadius: (1 + pulse * 3) * intensity,
+            ));
+          }
+
+          // Active buff / debuff glows — tighter inner ring per effect
+          for (int i = 0; i < widget.buffGlows.length; i++) {
+            final phase = pulse + i * 0.3;
+            shadows.add(BoxShadow(
+              color: widget.buffGlows[i].withValues(
+                  alpha: (0.45 + (phase % 1.0) * 0.45).clamp(0.0, 1.0)),
+              blurRadius: 5 + (phase % 1.0) * 7,
+              spreadRadius: 1.0 + (phase % 1.0) * 2.0,
+            ));
+          }
+
           sprite = Container(
-            decoration: BoxDecoration(
-              boxShadow: [
-                BoxShadow(
-                  color: widget.auraColor!.withValues(alpha: (0.35 + pulse * 0.4) * intensity.clamp(0.3, 1.5)),
-                  blurRadius: (8 + pulse * 10) * intensity,
-                  spreadRadius: (1 + pulse * 3) * intensity,
-                ),
-              ],
-            ),
+            decoration: BoxDecoration(boxShadow: shadows),
             child: sprite,
           );
         }

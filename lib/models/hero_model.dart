@@ -1,4 +1,7 @@
+import 'damage_type.dart';
 import 'dnd_class.dart';
+
+const int kStatCap = 100;
 
 class HeroModel {
   HeroModel({
@@ -36,6 +39,13 @@ class HeroModel {
 
   // Applied by HeroTrait chosen at character creation (+/- %)
   int extraHpPct = 0;
+
+  // ── Elemental damage system ────────────────────────────────────────────────
+  // classElement unlocks at level 5 (auto).
+  // secondaryElement unlocks via the Dual Mastery upgrade.
+  // activeDamageTypeIndex: 0 = physical, 1 = classElement, 2 = secondaryElement
+  int activeDamageTypeIndex = 0;
+  bool dualMasteryUnlocked  = false;
 
   // ── Modern display aliases ─────────────────────────────────────
   int get power    => strength;
@@ -85,6 +95,34 @@ class HeroModel {
   // Battle sprite ID based on chosen class
   String get spriteId => heroClass.spriteId;
 
+  // ── Damage type accessors ──────────────────────────────────────────────────
+  // Returns the DamageType the hero is currently dealing.
+  // physical is always available; classElement at lv5+; secondaryElement if unlocked.
+  bool get classElementUnlocked => level >= 5;
+
+  DamageType get activeDamageType {
+    if (activeDamageTypeIndex == 2 && dualMasteryUnlocked) {
+      return heroClass.info.secondaryElement;
+    }
+    if (activeDamageTypeIndex == 1 && classElementUnlocked) {
+      return heroClass.info.classElement;
+    }
+    return DamageType.physical;
+  }
+
+  List<DamageType> get availableDamageTypes {
+    final types = [DamageType.physical];
+    if (classElementUnlocked) types.add(heroClass.info.classElement);
+    if (dualMasteryUnlocked)  types.add(heroClass.info.secondaryElement);
+    return types;
+  }
+
+  void cycleNextDamageType() {
+    final available = availableDamageTypes;
+    if (available.length <= 1) return;
+    activeDamageTypeIndex = (activeDamageTypeIndex + 1) % available.length;
+  }
+
   // XP progress 0→1
   double get progress => experience / experienceToNextLevel;
 
@@ -122,24 +160,24 @@ class HeroModel {
 
   void levelUp() {
     level += 1;
-    experienceToNextLevel = (experienceToNextLevel * 1.20).round();
+    experienceToNextLevel = (experienceToNextLevel * 1.22).round();
 
     // Grant automatic stat growth on every level-up
     _applyStat(_primaryStat[heroClass] ?? 'strength', 1);
     if (level % 2 == 0) _applyStat(_secondaryStat[heroClass] ?? 'constitution', 1);
-    if (level % 3 == 0) constitution += 1; // all classes gain Vitality every 3 levels
+    if (level % 3 == 0) constitution = (constitution + 1).clamp(0, kStatCap);
 
     currentHealth = maxHealth; // full heal on level-up
   }
 
   void _applyStat(String stat, int amount) {
     switch (stat) {
-      case 'strength':     strength += amount;
-      case 'dexterity':    dexterity += amount;
-      case 'constitution': constitution += amount;
-      case 'intelligence': intelligence += amount;
-      case 'wisdom':       wisdom += amount;
-      case 'charisma':     charisma += amount;
+      case 'strength':     strength     = (strength     + amount).clamp(0, kStatCap);
+      case 'dexterity':    dexterity    = (dexterity    + amount).clamp(0, kStatCap);
+      case 'constitution': constitution = (constitution + amount).clamp(0, kStatCap);
+      case 'intelligence': intelligence = (intelligence + amount).clamp(0, kStatCap);
+      case 'wisdom':       wisdom       = (wisdom       + amount).clamp(0, kStatCap);
+      case 'charisma':     charisma     = (charisma     + amount).clamp(0, kStatCap);
     }
   }
 
@@ -151,13 +189,13 @@ class HeroModel {
     currentHealth = maxHealth;
   }
 
-  // Stat-specific adders called by upgrades
-  void addStrength(int amount)     { strength += amount; }
-  void addDexterity(int amount)    { dexterity += amount; }
-  void addConstitution(int amount) { constitution += amount; currentHealth = maxHealth; }
-  void addIntelligence(int amount) { intelligence += amount; }
-  void addWisdom(int amount)       { wisdom += amount; }
-  void addCharisma(int amount)     { charisma += amount; }
+  // Stat-specific adders called by upgrades — all clamped to kStatCap
+  void addStrength(int amount)     { strength     = (strength     + amount).clamp(0, kStatCap); }
+  void addDexterity(int amount)    { dexterity    = (dexterity    + amount).clamp(0, kStatCap); }
+  void addConstitution(int amount) { constitution = (constitution + amount).clamp(0, kStatCap); currentHealth = maxHealth; }
+  void addIntelligence(int amount) { intelligence = (intelligence + amount).clamp(0, kStatCap); }
+  void addWisdom(int amount)       { wisdom       = (wisdom       + amount).clamp(0, kStatCap); }
+  void addCharisma(int amount)     { charisma     = (charisma     + amount).clamp(0, kStatCap); }
 
   Map<String, dynamic> toJson() => {
     'name': name,
@@ -173,6 +211,8 @@ class HeroModel {
     'charisma': charisma,
     'currentHealth': currentHealth,
     'extraHpPct': extraHpPct,
+    'activeDamageTypeIndex': activeDamageTypeIndex,
+    'dualMasteryUnlocked': dualMasteryUnlocked,
   };
 
   void loadFromJson(Map<String, dynamic> json) {
@@ -188,7 +228,9 @@ class HeroModel {
     intelligence = (json['intelligence'] as int?) ?? 10;
     wisdom       = (json['wisdom']       as int?) ?? 10;
     charisma     = (json['charisma']     as int?) ?? 10;
-    extraHpPct    = (json['extraHpPct']   as int?) ?? 0;
+    extraHpPct             = (json['extraHpPct']             as int?)  ?? 0;
+    activeDamageTypeIndex  = (json['activeDamageTypeIndex']  as int?)  ?? 0;
+    dualMasteryUnlocked    = (json['dualMasteryUnlocked']    as bool?) ?? false;
     currentHealth = (json['currentHealth'] as int?) ?? maxHealth;
   }
 }

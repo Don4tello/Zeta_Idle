@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../models/endless_upgrades.dart';
@@ -28,7 +28,7 @@ class EndlessUpgradeScreen extends StatelessWidget {
                   _fmt(game.shards),
                   style: GoogleFonts.pixelifySans(
                     color: const Color(0xFF80d0ff),
-                    fontSize: 14,
+                    fontSize: 15,
                     fontWeight: FontWeight.bold,
                     letterSpacing: 1,
                   ),
@@ -38,7 +38,7 @@ class EndlessUpgradeScreen extends StatelessWidget {
                   'SHARDS',
                   style: GoogleFonts.pixelifySans(
                     color: const Color(0xFF80d0ff).withValues(alpha: 0.6),
-                    fontSize: 9,
+                    fontSize: 10,
                     letterSpacing: 1,
                   ),
                 ),
@@ -69,7 +69,7 @@ class EndlessUpgradeScreen extends StatelessWidget {
                     'Upgrades are permanent per character. '
                     'Bonuses apply in all game modes.',
                     style: GoogleFonts.pixelifySans(
-                      fontSize: 10,
+                      fontSize: 11,
                       color: AppTheme.textMuted,
                       height: 1.5,
                     ),
@@ -192,7 +192,7 @@ class _NodeCardState extends State<_NodeCard> with SingleTickerProviderStateMixi
               child: Text(
                 node.statLabel,
                 style: GoogleFonts.pixelifySans(
-                  fontSize: 13,
+                  fontSize: 14,
                   fontWeight: FontWeight.bold,
                   color: col,
                   letterSpacing: 1,
@@ -214,7 +214,7 @@ class _NodeCardState extends State<_NodeCard> with SingleTickerProviderStateMixi
                     Text(
                       node.displayName.toUpperCase(),
                       style: GoogleFonts.pixelifySans(
-                        fontSize: 12,
+                        fontSize: 13,
                         fontWeight: FontWeight.bold,
                         color: AppTheme.textLight,
                         letterSpacing: 1,
@@ -235,7 +235,7 @@ class _NodeCardState extends State<_NodeCard> with SingleTickerProviderStateMixi
                       child: Text(
                         'Lv $level',
                         style: GoogleFonts.pixelifySans(
-                          fontSize: 10,
+                          fontSize: 11,
                           color: level > 0 ? col : AppTheme.textMuted,
                           letterSpacing: 1,
                         ),
@@ -249,7 +249,7 @@ class _NodeCardState extends State<_NodeCard> with SingleTickerProviderStateMixi
                 Text(
                   level > 0 ? _bonusText(node, u) : node.effectLabel,
                   style: GoogleFonts.pixelifySans(
-                    fontSize: 10,
+                    fontSize: 11,
                     color:
                         level > 0 ? AppTheme.accentGold : AppTheme.textMuted,
                   ),
@@ -274,7 +274,7 @@ class _NodeCardState extends State<_NodeCard> with SingleTickerProviderStateMixi
                         Text(
                           EndlessUpgradeScreen._fmt(cost),
                           style: GoogleFonts.pixelifySans(
-                            fontSize: 11,
+                            fontSize: 12,
                             color: canAfford
                                 ? const Color(0xFF80d0ff)
                                 : AppTheme.textMuted,
@@ -284,7 +284,7 @@ class _NodeCardState extends State<_NodeCard> with SingleTickerProviderStateMixi
                         Text(
                           'for Lv ${level + 1}',
                           style: GoogleFonts.pixelifySans(
-                            fontSize: 9,
+                            fontSize: 10,
                             color: AppTheme.textMuted,
                           ),
                         ),
@@ -321,7 +321,7 @@ class _NodeCardState extends State<_NodeCard> with SingleTickerProviderStateMixi
                               Text(
                                 canAfford ? 'UPGRADE' : 'UPGRADE',
                                 style: GoogleFonts.pixelifySans(
-                                  fontSize: 10,
+                                  fontSize: 11,
                                   fontWeight: FontWeight.bold,
                                   color: canAfford ? col : AppTheme.textMuted,
                                   letterSpacing: 1,
@@ -365,7 +365,7 @@ class _NodeCardState extends State<_NodeCard> with SingleTickerProviderStateMixi
                           child: Text(
                             'Lv${perk.levelRequired}',
                             style: GoogleFonts.pixelifySans(
-                              fontSize: 8,
+                              fontSize: 9,
                               color:
                                   unlocked ? col : AppTheme.textMuted,
                               letterSpacing: 0.5,
@@ -392,7 +392,7 @@ class _NodeCardState extends State<_NodeCard> with SingleTickerProviderStateMixi
                                   Text(
                                     perk.name,
                                     style: GoogleFonts.pixelifySans(
-                                      fontSize: 10,
+                                      fontSize: 11,
                                       fontWeight: FontWeight.bold,
                                       color: unlocked
                                           ? col
@@ -407,7 +407,7 @@ class _NodeCardState extends State<_NodeCard> with SingleTickerProviderStateMixi
                                 child: Text(
                                   perk.description,
                                   style: GoogleFonts.pixelifySans(
-                                    fontSize: 9,
+                                    fontSize: 10,
                                     color: unlocked
                                         ? AppTheme.textLight
                                             .withValues(alpha: 0.65)

@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../models/endless_upgrades.dart';
 import '../models/hero_model.dart';
@@ -66,7 +66,7 @@ class StatsGridPanel extends StatelessWidget {
           padding: const EdgeInsets.only(bottom: 8),
           child: Text(
             'ABILITY SCORES',
-            style: AppTheme.pixelHeading(fontSize: 10, letterSpacing: 2, color: AppTheme.textMuted),
+            style: AppTheme.pixelHeading(fontSize: 11, letterSpacing: 2, color: AppTheme.textMuted),
           ),
         ),
         row(0),
@@ -202,11 +202,11 @@ class _StatCardState extends State<_StatCard>
                 const SizedBox(height: 6),
                 Text(
                   widget.abbr,
-                  style: AppTheme.pixelHeading(fontSize: 20, color: widget.color, letterSpacing: 3),
+                  style: AppTheme.pixelHeading(fontSize: 21, color: widget.color, letterSpacing: 3),
                 ),
                 Text(
                   _fullName.toUpperCase(),
-                  style: AppTheme.pixelHeading(fontSize: 9, color: AppTheme.textMuted, letterSpacing: 2),
+                  style: AppTheme.pixelHeading(fontSize: 10, color: AppTheme.textMuted, letterSpacing: 2),
                 ),
                 const SizedBox(height: 14),
                 Container(height: 1, color: widget.color.withValues(alpha: 0.3)),
@@ -217,7 +217,7 @@ class _StatCardState extends State<_StatCard>
                   _description,
                   textAlign: TextAlign.center,
                   style: GoogleFonts.sourceCodePro(
-                    fontSize: 11,
+                    fontSize: 14,
                     color: AppTheme.textLight,
                     height: 1.6,
                   ),
@@ -236,7 +236,7 @@ class _StatCardState extends State<_StatCard>
                     _currentEffect,
                     textAlign: TextAlign.center,
                     style: AppTheme.pixelHeading(
-                      fontSize: 10,
+                      fontSize: 11,
                       color: widget.color,
                       letterSpacing: 0.5,
                     ),
@@ -255,7 +255,9 @@ class _StatCardState extends State<_StatCard>
                       },
                       child: Container(
                         width: double.infinity,
-                        padding: const EdgeInsets.symmetric(vertical: 10),
+                        constraints: const BoxConstraints(minHeight: 48),
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        alignment: Alignment.center,
                         decoration: BoxDecoration(
                           color: widget.color.withValues(alpha: 0.18),
                           border: Border.all(color: widget.color),
@@ -264,7 +266,7 @@ class _StatCardState extends State<_StatCard>
                           '+ UPGRADE  ·  ${widget.upgrade!.cost} GOLD',
                           textAlign: TextAlign.center,
                           style: AppTheme.pixelHeading(
-                            fontSize: 10,
+                            fontSize: 14,
                             color: widget.color,
                             letterSpacing: 1,
                           ),
@@ -275,12 +277,12 @@ class _StatCardState extends State<_StatCard>
                     Text(
                       'Need ${widget.upgrade?.cost} gold to upgrade',
                       style: AppTheme.pixelHeading(
-                          fontSize: 9, color: AppTheme.textMuted, letterSpacing: 0.5),
+                          fontSize: 13, color: AppTheme.textMuted, letterSpacing: 0.5),
                     ),
                   const SizedBox(height: 10),
                 ] else ...[
                   Text('FULLY UPGRADED',
-                      style: AppTheme.pixelHeading(fontSize: 9, color: AppTheme.textMuted)),
+                      style: AppTheme.pixelHeading(fontSize: 13, color: AppTheme.textMuted)),
                   const SizedBox(height: 10),
                 ],
 
@@ -288,14 +290,16 @@ class _StatCardState extends State<_StatCard>
                 GestureDetector(
                   onTap: () => Navigator.of(ctx).pop(),
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 7),
+                    constraints: const BoxConstraints(minHeight: 48, minWidth: 120),
+                    padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 10),
+                    alignment: Alignment.center,
                     decoration: BoxDecoration(
                       border: Border.all(color: AppTheme.cardBorder),
                     ),
                     child: Text(
                       'CLOSE',
                       style: AppTheme.pixelHeading(
-                          fontSize: 9, color: AppTheme.textMuted, letterSpacing: 2),
+                          fontSize: 14, color: AppTheme.textMuted, letterSpacing: 2),
                     ),
                   ),
                 ),
@@ -350,7 +354,7 @@ class _StatCardState extends State<_StatCard>
                 message: _description.replaceAll('\n', ' '),
                 preferBelow: false,
                 waitDuration: const Duration(milliseconds: 600),
-                textStyle: GoogleFonts.sourceCodePro(fontSize: 10, color: AppTheme.textLight),
+                textStyle: GoogleFonts.sourceCodePro(fontSize: 11, color: AppTheme.textLight),
                 decoration: BoxDecoration(
                   color: AppTheme.cardBg,
                   border: Border.all(color: widget.color.withValues(alpha: 0.6)),
@@ -365,12 +369,12 @@ class _StatCardState extends State<_StatCard>
                       Text(
                         widget.abbr,
                         style: AppTheme.pixelHeading(
-                            fontSize: 9, letterSpacing: 0.5, color: widget.color),
+                            fontSize: 10, letterSpacing: 0.5, color: widget.color),
                       ),
                       Text(
                         '${widget.score}',
                         style: GoogleFonts.pixelifySans(
-                          fontSize: 18,
+                          fontSize: 19,
                           fontWeight: FontWeight.bold,
                           color: AppTheme.textLight,
                         ),
@@ -378,14 +382,14 @@ class _StatCardState extends State<_StatCard>
                       Text(
                         '$modSign${widget.modifier}',
                         style: AppTheme.pixelHeading(
-                            fontSize: 9, letterSpacing: 0, color: modColor),
+                            fontSize: 10, letterSpacing: 0, color: modColor),
                       ),
                       // Small hint nudging the player to tap for info
                       const SizedBox(height: 4),
                       Text(
                         'tap for info',
                         style: AppTheme.pixelHeading(
-                          fontSize: 6,
+                          fontSize: 7,
                           letterSpacing: 0.3,
                           color: AppTheme.textMuted.withValues(alpha: 0.5),
                         ),
@@ -405,7 +409,7 @@ class _StatCardState extends State<_StatCard>
                 padding: const EdgeInsets.symmetric(vertical: 6),
                 child: Text(
                   'MAX',
-                  style: AppTheme.pixelHeading(fontSize: 7, letterSpacing: 1, color: AppTheme.textMuted),
+                  style: AppTheme.pixelHeading(fontSize: 8, letterSpacing: 1, color: AppTheme.textMuted),
                 ),
               )
             else
@@ -460,7 +464,7 @@ class _PlusButton extends StatelessWidget {
                 '+',
                 textAlign: TextAlign.center,
                 style: GoogleFonts.pixelifySans(
-                  fontSize: 18,
+                  fontSize: 19,
                   fontWeight: FontWeight.bold,
                   color: color,
                 ),
@@ -469,7 +473,7 @@ class _PlusButton extends StatelessWidget {
                 '${cost}g',
                 textAlign: TextAlign.center,
                 style: AppTheme.pixelHeading(
-                  fontSize: 8,
+                  fontSize: 9,
                   letterSpacing: 0.5,
                   color: AppTheme.textMuted.withValues(alpha: 0.4),
                 ),

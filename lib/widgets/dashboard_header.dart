@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../services/game_state.dart';
 import '../theme/app_theme.dart';
@@ -112,7 +112,7 @@ class _DashboardHeaderState extends State<DashboardHeader>
                         Expanded(
                           child: Text(
                             hero.name.toUpperCase(),
-                            style: AppTheme.pixelHeading(fontSize: 14, letterSpacing: 1.5),
+                            style: AppTheme.pixelHeading(fontSize: 15, letterSpacing: 1.5),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                           ),
@@ -122,14 +122,38 @@ class _DashboardHeaderState extends State<DashboardHeader>
                     ),
                     const SizedBox(height: 3),
 
-                    // Class
-                    Text(
-                      hero.heroClass.displayName.toUpperCase(),
-                      style: AppTheme.pixelHeading(
-                        fontSize: 9,
-                        color: AppTheme.textMuted,
-                        letterSpacing: 2,
-                      ),
+                    // Class + prestige badge
+                    Row(
+                      children: [
+                        Text(
+                          hero.heroClass.displayName.toUpperCase(),
+                          style: AppTheme.pixelHeading(
+                            fontSize: 10,
+                            color: AppTheme.textMuted,
+                            letterSpacing: 2,
+                          ),
+                        ),
+                        if (game.prestigeLevel > 0) ...[
+                          const SizedBox(width: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFcc8844).withValues(alpha: 0.15),
+                              border: Border.all(
+                                  color: const Color(0xFFcc8844).withValues(alpha: 0.7)),
+                              borderRadius: BorderRadius.circular(2),
+                            ),
+                            child: Text(
+                              '✦ REBIRTH LV.${game.prestigeLevel}',
+                              style: AppTheme.pixelHeading(
+                                fontSize: 9,
+                                color: const Color(0xFFcc8844),
+                                letterSpacing: 1,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ],
                     ),
                     const SizedBox(height: 10),
 
@@ -205,6 +229,15 @@ class _DashboardHeaderState extends State<DashboardHeader>
                 label: 'AC',
                 value: '${hero.armorClass}',
               ),
+              if (game.prestigeLevel > 0) ...[
+                const SizedBox(width: 6),
+                _ResourceChip(
+                  icon: Icons.auto_awesome,
+                  label: 'SOULS',
+                  value: '${game.prestigeSouls}',
+                  color: const Color(0xFFcc8844),
+                ),
+              ],
             ],
           ),
           const SizedBox(height: 8),
@@ -242,7 +275,7 @@ class _LevelBadge extends StatelessWidget {
         border: Border.all(color: AppTheme.accentGold),
         color: AppTheme.darkBg,
       ),
-      child: Text('LV.$level', style: AppTheme.pixelHeading(fontSize: 10, letterSpacing: 1)),
+      child: Text('LV.$level', style: AppTheme.pixelHeading(fontSize: 11, letterSpacing: 1)),
     );
   }
 }
@@ -265,11 +298,11 @@ class _BarLabel extends StatelessWidget {
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         Text(label,
-            style: AppTheme.pixelHeading(fontSize: 9, letterSpacing: 1, color: color)),
+            style: AppTheme.pixelHeading(fontSize: 10, letterSpacing: 1, color: color)),
         Text(
           '$current / $max',
           style: GoogleFonts.pixelifySans(
-              fontSize: 9, color: color.withValues(alpha: 0.75)),
+              fontSize: 10, color: color.withValues(alpha: 0.75)),
         ),
       ],
     );
@@ -346,7 +379,7 @@ class _IdleIncomeBar extends StatelessWidget {
           Text(
             'IDLE',
             style: AppTheme.pixelHeading(
-                fontSize: 8, letterSpacing: 1, color: AppTheme.textMuted),
+                fontSize: 9, letterSpacing: 1, color: AppTheme.textMuted),
           ),
           const SizedBox(width: 10),
           // Segmented fill bar
@@ -363,7 +396,7 @@ class _IdleIncomeBar extends StatelessWidget {
           Text(
             pendingGold > 0 ? '+${pendingGold}g' : '${goldPerMinute}g/min',
             style: AppTheme.pixelHeading(
-              fontSize: 9,
+              fontSize: 10,
               letterSpacing: 0.5,
               color: pendingGold > 0 ? _barColor : AppTheme.textMuted,
             ),
@@ -379,10 +412,12 @@ class _ResourceChip extends StatelessWidget {
     required this.icon,
     required this.label,
     required this.value,
+    this.color,
   });
   final IconData icon;
   final String label;
   final String value;
+  final Color? color;
 
   @override
   Widget build(BuildContext context) {
@@ -396,18 +431,18 @@ class _ResourceChip extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, size: 12, color: AppTheme.accentGold.withValues(alpha: 0.7)),
+            Icon(icon, size: 12, color: (color ?? AppTheme.accentGold).withValues(alpha: 0.7)),
             const SizedBox(height: 2),
             Text(label,
                 style: AppTheme.pixelHeading(
-                    fontSize: 7, letterSpacing: 0.5, color: AppTheme.textMuted)),
+                    fontSize: 8, letterSpacing: 0.5, color: AppTheme.textMuted)),
             const SizedBox(height: 1),
             Text(
               value,
               style: GoogleFonts.pixelifySans(
-                  fontSize: 11,
+                  fontSize: 12,
                   fontWeight: FontWeight.bold,
-                  color: AppTheme.textLight),
+                  color: color ?? AppTheme.textLight),
             ),
           ],
         ),

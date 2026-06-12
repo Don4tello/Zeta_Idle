@@ -1,11 +1,12 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../theme/app_theme.dart';
 import 'dashboard_screen.dart';
 import 'ability_upgrade_screen.dart';
 import 'hero_stats_screen.dart';
-import 'inventory_screen.dart';
 import 'passive_tree_screen.dart';
+import 'prestige_screen.dart';
+import 'ascension_screen.dart';
 
 class HeroHubScreen extends StatelessWidget {
   const HeroHubScreen({super.key, this.onBackToSelect});
@@ -15,21 +16,22 @@ class HeroHubScreen extends StatelessWidget {
   static const _tabs = [
     Tab(text: 'SHEET'),
     Tab(text: 'ABILITIES'),
-    Tab(text: 'INVENTORY'),
     Tab(text: 'PASSIVES'),
     Tab(text: 'BONUSES'),
+    Tab(text: 'REBIRTH'),
+    Tab(text: 'ASCEND'),
   ];
 
   @override
   Widget build(BuildContext context) {
     return DefaultTabController(
-      length: _tabs.length, // 5 tabs
+      length: 6,
       child: Scaffold(
         backgroundColor: AppTheme.darkBg,
         appBar: AppBar(
           title: Text(
             'HERO',
-            style: AppTheme.pixelHeading(fontSize: 14, letterSpacing: 3),
+            style: AppTheme.pixelHeading(fontSize: 15, letterSpacing: 3),
           ),
           actions: [
             if (onBackToSelect != null)
@@ -38,7 +40,7 @@ class HeroHubScreen extends StatelessWidget {
                 child: Text(
                   'CHANGE',
                   style: AppTheme.pixelHeading(
-                      fontSize: 9, color: AppTheme.textMuted, letterSpacing: 1),
+                      fontSize: 10, color: AppTheme.textMuted, letterSpacing: 1),
                 ),
               ),
             const SizedBox(width: 4),
@@ -48,12 +50,12 @@ class HeroHubScreen extends StatelessWidget {
             isScrollable: true,
             tabAlignment: TabAlignment.start,
             labelStyle: GoogleFonts.pixelifySans(
-              fontSize: 9,
+              fontSize: 10,
               fontWeight: FontWeight.bold,
               letterSpacing: 1,
             ),
             unselectedLabelStyle:
-                GoogleFonts.pixelifySans(fontSize: 9, letterSpacing: 1),
+                GoogleFonts.pixelifySans(fontSize: 10, letterSpacing: 1),
             labelColor: AppTheme.accentGold,
             unselectedLabelColor: AppTheme.textMuted,
             indicatorColor: AppTheme.accentGold,
@@ -64,9 +66,10 @@ class HeroHubScreen extends StatelessWidget {
           children: [
             DashboardScreen(embedded: true),
             AbilityUpgradeScreen(embedded: true),
-            InventoryScreen(embedded: true),
             PassiveTreeScreen(embedded: true),
             HeroStatsScreen(embedded: true),
+            PrestigeScreen(embedded: true),
+            AscensionScreen(embedded: true),
           ],
         ),
       ),

@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import '../models/bounty.dart';
 import '../services/game_state.dart';
 import '../theme/app_theme.dart';
@@ -12,11 +12,11 @@ class BountyBoardScreen extends StatelessWidget {
     final bounties = game.dailyBounties;
 
     return Scaffold(
-      backgroundColor: const Color(0xFF0a0e27),
+      backgroundColor: const Color(0xFF1B1A17),
       appBar: AppBar(
-        backgroundColor: const Color(0xFF1a1f3a),
+        backgroundColor: const Color(0xFF2A2623),
         title: Text('BOUNTY BOARD',
-            style: AppTheme.pixelHeading(fontSize: 13, letterSpacing: 2)),
+            style: AppTheme.pixelHeading(fontSize: 14, letterSpacing: 2)),
         actions: [
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -38,7 +38,7 @@ class BountyBoardScreen extends StatelessWidget {
             child: const Text(
               'Three bounties refresh each day. Complete objectives during normal play — '
               'progress is tracked automatically. Claim rewards when done.',
-              style: TextStyle(fontSize: 10, color: AppTheme.textMuted, height: 1.5),
+              style: TextStyle(fontSize: 11, color: AppTheme.textMuted, height: 1.5),
             ),
           ),
           if (bounties.isEmpty)
@@ -80,7 +80,7 @@ class _TimeChip extends StatelessWidget {
       ),
       child: Text(
         'Resets in ${h}h ${m}m',
-        style: const TextStyle(fontSize: 9, color: Color(0xFF88cc88)),
+        style: const TextStyle(fontSize: 10, color: Color(0xFF88cc88)),
       ),
     );
   }
@@ -104,7 +104,7 @@ class _BountyCard extends StatelessWidget {
             ? const Color(0xFF0e1f0e)
             : bounty.isComplete
                 ? def.color.withValues(alpha: 0.06)
-                : const Color(0xFF0e1225),
+                : const Color(0xFF231F1B),
         border: Border.all(
           color: bounty.claimed
               ? const Color(0xFF44aa44).withValues(alpha: 0.4)
@@ -119,7 +119,7 @@ class _BountyCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(children: [
-            Text(def.icon, style: const TextStyle(fontSize: 20)),
+            Text(def.icon, style: const TextStyle(fontSize: 21)),
             const SizedBox(width: 10),
             Expanded(
               child: Column(
@@ -127,13 +127,13 @@ class _BountyCard extends StatelessWidget {
                 children: [
                   Text(def.label,
                       style: TextStyle(
-                          fontSize: 13,
+                          fontSize: 14,
                           fontWeight: FontWeight.bold,
                           color: bounty.claimed ? Colors.white38 : Colors.white)),
                   const SizedBox(height: 2),
                   Text('$progress / ${def.target}',
                       style: TextStyle(
-                          fontSize: 10,
+                          fontSize: 11,
                           color: bounty.claimed ? Colors.white24 : AppTheme.textMuted)),
                 ],
               ),
@@ -193,7 +193,7 @@ class _RewardChip extends StatelessWidget {
       ),
       child: Text(label,
           style: TextStyle(
-              fontSize: 9, color: color, fontWeight: FontWeight.bold)),
+              fontSize: 10, color: color, fontWeight: FontWeight.bold)),
     );
   }
 }
@@ -215,7 +215,7 @@ class _ClaimButton extends StatelessWidget {
       ),
       child: Text('CLAIM',
           style: AppTheme.pixelHeading(
-              fontSize: 10, letterSpacing: 1, color: AppTheme.accentGold)),
+              fontSize: 11, letterSpacing: 1, color: AppTheme.accentGold)),
     );
   }
 }

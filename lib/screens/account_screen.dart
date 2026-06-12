@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import '../services/game_state.dart';
 
 class AccountScreen extends StatefulWidget {
@@ -65,7 +65,7 @@ class _AccountScreenState extends State<AccountScreen> {
     final signedIn = auth.isGoogleSignedIn;
 
     return Scaffold(
-      backgroundColor: const Color(0xFF0d0d1a),
+      backgroundColor: const Color(0xFF181614),
       appBar: AppBar(
         backgroundColor: const Color(0xFF1a1a2e),
         title: const Text('ACCOUNT',
@@ -153,12 +153,12 @@ class _AvatarTile extends StatelessWidget {
               Text(displayName,
                   style: const TextStyle(
                       color: Colors.white,
-                      fontSize: 18,
+                      fontSize: 19,
                       fontWeight: FontWeight.bold)),
               const SizedBox(height: 4),
               Text(email,
                   style: const TextStyle(
-                      color: Color(0xFF888888), fontSize: 13)),
+                      color: Color(0xFF888888), fontSize: 14)),
               const SizedBox(height: 4),
               const Row(
                 children: [
@@ -166,7 +166,7 @@ class _AvatarTile extends StatelessWidget {
                   SizedBox(width: 4),
                   Text('Google account linked',
                       style: TextStyle(
-                          color: Color(0xFF44ccaa), fontSize: 12)),
+                          color: Color(0xFF44ccaa), fontSize: 13)),
                 ],
               ),
             ],
@@ -198,7 +198,7 @@ class _SyncStatus extends StatelessWidget {
           const Icon(Icons.access_time, color: Color(0xFF888888), size: 16),
           const SizedBox(width: 8),
           Text(label,
-              style: const TextStyle(color: Color(0xFFaaaaaa), fontSize: 13)),
+              style: const TextStyle(color: Color(0xFFaaaaaa), fontSize: 14)),
         ],
       ),
     );
@@ -234,13 +234,13 @@ class _SignedOutHero extends StatelessWidget {
         const Text('No account linked',
             style: TextStyle(
                 color: Colors.white,
-                fontSize: 18,
+                fontSize: 19,
                 fontWeight: FontWeight.bold)),
         const SizedBox(height: 8),
         const Text(
           'Sign in with Google to sync your progress\nacross devices automatically.',
           textAlign: TextAlign.center,
-          style: TextStyle(color: Color(0xFF888888), fontSize: 14, height: 1.5),
+          style: TextStyle(color: Color(0xFF888888), fontSize: 15, height: 1.5),
         ),
       ],
     );
@@ -293,7 +293,7 @@ class _InfoSection extends StatelessWidget {
         const Text('ABOUT CLOUD SAVES',
             style: TextStyle(
                 color: Color(0xFF888888),
-                fontSize: 11,
+                fontSize: 12,
                 letterSpacing: 2,
                 fontWeight: FontWeight.bold)),
         const SizedBox(height: 8),
@@ -325,7 +325,7 @@ class _InfoRow extends StatelessWidget {
           Expanded(
             child: Text(text,
                 style: const TextStyle(
-                    color: Color(0xFF777799), fontSize: 13, height: 1.4)),
+                    color: Color(0xFF777799), fontSize: 14, height: 1.4)),
           ),
         ],
       ),

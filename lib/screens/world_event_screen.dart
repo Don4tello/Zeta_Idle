@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import '../models/world_event.dart';
 import '../services/game_state.dart';
 import '../theme/app_theme.dart';
@@ -12,11 +12,11 @@ class WorldEventScreen extends StatelessWidget {
     final event = WorldEventDef.forWeek();
 
     return Scaffold(
-      backgroundColor: const Color(0xFF0a0e27),
+      backgroundColor: const Color(0xFF1B1A17),
       appBar: AppBar(
-        backgroundColor: const Color(0xFF1a1f3a),
+        backgroundColor: const Color(0xFF2A2623),
         title: Text('WORLD EVENT',
-            style: AppTheme.pixelHeading(fontSize: 13, letterSpacing: 2)),
+            style: AppTheme.pixelHeading(fontSize: 14, letterSpacing: 2)),
         actions: [
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
@@ -35,7 +35,7 @@ class WorldEventScreen extends StatelessWidget {
           const SizedBox(height: 16),
           Text('EVENT SHOP',
               style: AppTheme.pixelHeading(
-                  fontSize: 10, letterSpacing: 2, color: event.color)),
+                  fontSize: 11, letterSpacing: 2, color: event.color)),
           const SizedBox(height: 10),
           ...event.rewards.map((r) => Padding(
                 padding: const EdgeInsets.only(bottom: 10),
@@ -68,10 +68,10 @@ class _TokenBadge extends StatelessWidget {
         borderRadius: BorderRadius.circular(3),
       ),
       child: Row(mainAxisSize: MainAxisSize.min, children: [
-        const Text('🪙', style: TextStyle(fontSize: 10)),
+        const Text('🪙', style: TextStyle(fontSize: 11)),
         const SizedBox(width: 4),
         Text('$tokens tokens',
-            style: AppTheme.pixelHeading(fontSize: 11, color: color)),
+            style: AppTheme.pixelHeading(fontSize: 12, color: color)),
       ]),
     );
   }
@@ -94,12 +94,12 @@ class _EventBanner extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(children: [
-            Text(event.icon, style: const TextStyle(fontSize: 28)),
+            Text(event.icon, style: const TextStyle(fontSize: 29)),
             const SizedBox(width: 12),
             Expanded(
               child: Text(event.name,
                   style: TextStyle(
-                      fontSize: 18,
+                      fontSize: 19,
                       fontWeight: FontWeight.bold,
                       color: event.color)),
             ),
@@ -107,7 +107,7 @@ class _EventBanner extends StatelessWidget {
           const SizedBox(height: 10),
           Text(event.description,
               style: const TextStyle(
-                  fontSize: 11, color: Colors.white60, height: 1.5)),
+                  fontSize: 12, color: Colors.white60, height: 1.5)),
         ],
       ),
     );
@@ -136,7 +136,7 @@ class _WeekTimer extends StatelessWidget {
         const Icon(Icons.timer_outlined, size: 14, color: AppTheme.textMuted),
         const SizedBox(width: 8),
         Text('Event ends in  ${d}d ${h}h ${m}m',
-            style: const TextStyle(fontSize: 11, color: AppTheme.textMuted)),
+            style: const TextStyle(fontSize: 12, color: AppTheme.textMuted)),
       ]),
     );
   }
@@ -151,7 +151,7 @@ class _HowToEarn extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: const Color(0xFF0e1225),
+        color: const Color(0xFF231F1B),
         border: Border.all(color: AppTheme.cardBorder),
         borderRadius: BorderRadius.circular(4),
       ),
@@ -160,17 +160,17 @@ class _HowToEarn extends StatelessWidget {
         children: [
           Text('HOW TO EARN TOKENS',
               style: AppTheme.pixelHeading(
-                  fontSize: 9, letterSpacing: 1, color: AppTheme.textMuted)),
+                  fontSize: 10, letterSpacing: 1, color: AppTheme.textMuted)),
           const SizedBox(height: 8),
           Row(children: [
-            Text(event.enemyEmoji, style: const TextStyle(fontSize: 16)),
+            Text(event.enemyEmoji, style: const TextStyle(fontSize: 17)),
             const SizedBox(width: 10),
             Expanded(
               child: Text(
                 '${event.enemyName}s have a 15% chance to appear during any '
                 'battle. Defeat them for 1–3 Event Tokens each.',
                 style: const TextStyle(
-                    fontSize: 11, color: Colors.white60, height: 1.4),
+                    fontSize: 12, color: Colors.white60, height: 1.4),
               ),
             ),
           ]),
@@ -203,7 +203,7 @@ class _RewardCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: claimed
             ? const Color(0xFF0e1f0e)
-            : const Color(0xFF0e1225),
+            : const Color(0xFF231F1B),
         border: Border.all(
           color: claimed
               ? const Color(0xFF44aa44).withValues(alpha: 0.4)
@@ -214,7 +214,7 @@ class _RewardCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(4),
       ),
       child: Row(children: [
-        Text(reward.icon, style: const TextStyle(fontSize: 22)),
+        Text(reward.icon, style: const TextStyle(fontSize: 23)),
         const SizedBox(width: 12),
         Expanded(
           child: Column(
@@ -222,10 +222,10 @@ class _RewardCard extends StatelessWidget {
             children: [
               Text(reward.name,
                   style: const TextStyle(
-                      fontSize: 13, fontWeight: FontWeight.bold)),
+                      fontSize: 14, fontWeight: FontWeight.bold)),
               Text(reward.description,
                   style: const TextStyle(
-                      fontSize: 10, color: AppTheme.textMuted)),
+                      fontSize: 11, color: AppTheme.textMuted)),
             ],
           ),
         ),
@@ -234,7 +234,7 @@ class _RewardCard extends StatelessWidget {
         else ...[
           Text('🪙${reward.tokenCost}',
               style: TextStyle(
-                  fontSize: 12,
+                  fontSize: 13,
                   color: canAfford ? color : AppTheme.textMuted,
                   fontWeight: FontWeight.bold)),
           const SizedBox(width: 8),
@@ -251,7 +251,7 @@ class _RewardCard extends StatelessWidget {
             ),
             child: Text('BUY',
                 style: AppTheme.pixelHeading(
-                    fontSize: 10,
+                    fontSize: 11,
                     color: canAfford ? color : AppTheme.cardBorder)),
           ),
         ],

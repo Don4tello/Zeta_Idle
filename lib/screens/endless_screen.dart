@@ -1,4 +1,4 @@
-import 'dart:async';
+﻿import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../data/enemy_data.dart';
@@ -205,7 +205,7 @@ class _EndlessScreenState extends State<EndlessScreen> {
               Text(
                 'ENDLESS MODE LOCKED',
                 style: GoogleFonts.pixelifySans(
-                  fontSize: 16,
+                  fontSize: 17,
                   color: AppTheme.accentGold,
                   letterSpacing: 3,
                 ),
@@ -215,7 +215,7 @@ class _EndlessScreenState extends State<EndlessScreen> {
                 'Defeat your first enemy in Campaign\nto unlock Endless Mode.',
                 textAlign: TextAlign.center,
                 style: GoogleFonts.pixelifySans(
-                  fontSize: 12,
+                  fontSize: 13,
                   color: AppTheme.textMuted,
                   height: 1.6,
                 ),
@@ -238,7 +238,7 @@ class _EndlessScreenState extends State<EndlessScreen> {
             '— ENDLESS ARENA —',
             textAlign: TextAlign.center,
             style: GoogleFonts.pixelifySans(
-              fontSize: 13,
+              fontSize: 14,
               color: AppTheme.textMuted,
               letterSpacing: 3,
             ),
@@ -248,7 +248,7 @@ class _EndlessScreenState extends State<EndlessScreen> {
             'The battle rages on forever.',
             textAlign: TextAlign.center,
             style: GoogleFonts.pixelifySans(
-              fontSize: 11,
+              fontSize: 12,
               color: AppTheme.textMuted.withValues(alpha: 0.6),
               letterSpacing: 1,
             ),
@@ -270,7 +270,7 @@ class _EndlessScreenState extends State<EndlessScreen> {
                 Text(
                   'YOUR OPPONENT',
                   style: GoogleFonts.pixelifySans(
-                    fontSize: 9,
+                    fontSize: 10,
                     color: AppTheme.textMuted,
                     letterSpacing: 3,
                   ),
@@ -288,7 +288,7 @@ class _EndlessScreenState extends State<EndlessScreen> {
                 Text(
                   baseEnemy.name.toUpperCase(),
                   style: GoogleFonts.pixelifySans(
-                    fontSize: 18,
+                    fontSize: 19,
                     fontWeight: FontWeight.bold,
                     color: const Color(0xFFee4040),
                     letterSpacing: 2,
@@ -298,7 +298,7 @@ class _EndlessScreenState extends State<EndlessScreen> {
                 Text(
                   'Level ${baseEnemy.level}',
                   style: GoogleFonts.pixelifySans(
-                    fontSize: 12,
+                    fontSize: 13,
                     color: AppTheme.accentGold,
                   ),
                 ),
@@ -317,7 +317,7 @@ class _EndlessScreenState extends State<EndlessScreen> {
                   baseEnemy.description,
                   textAlign: TextAlign.center,
                   style: GoogleFonts.pixelifySans(
-                    fontSize: 10,
+                    fontSize: 11,
                     color: AppTheme.textMuted,
                     height: 1.5,
                   ),
@@ -343,7 +343,7 @@ class _EndlessScreenState extends State<EndlessScreen> {
                   child: Text(
                     'Rewards identical to campaign. Enemy respawns on each victory.',
                     style: GoogleFonts.pixelifySans(
-                      fontSize: 10,
+                      fontSize: 11,
                       color: AppTheme.textMuted,
                       height: 1.5,
                     ),
@@ -373,7 +373,7 @@ class _EndlessScreenState extends State<EndlessScreen> {
                     Text(
                       '${_fmtShards(game.shards)}  Shards of Fate',
                       style: GoogleFonts.pixelifySans(
-                        fontSize: 12,
+                        fontSize: 13,
                         color: const Color(0xFF80d0ff),
                         letterSpacing: 1,
                       ),
@@ -399,7 +399,7 @@ class _EndlessScreenState extends State<EndlessScreen> {
                     child: Text(
                       'UPGRADES',
                       style: GoogleFonts.pixelifySans(
-                        fontSize: 10,
+                        fontSize: 11,
                         color: const Color(0xFF80d0ff),
                         letterSpacing: 1,
                       ),
@@ -416,7 +416,7 @@ class _EndlessScreenState extends State<EndlessScreen> {
             child: Text(
               '⚔  ENTER ENDLESS BATTLE',
               style: GoogleFonts.pixelifySans(
-                  fontSize: 14, letterSpacing: 2),
+                  fontSize: 15, letterSpacing: 2),
             ),
           ),
         ],
@@ -437,13 +437,13 @@ class _EndlessScreenState extends State<EndlessScreen> {
         Text(
           label,
           style: GoogleFonts.pixelifySans(
-              fontSize: 9, color: AppTheme.textMuted, letterSpacing: 1),
+              fontSize: 10, color: AppTheme.textMuted, letterSpacing: 1),
         ),
         const SizedBox(height: 2),
         Text(
           value,
           style: GoogleFonts.pixelifySans(
-            fontSize: 16,
+            fontSize: 17,
             fontWeight: FontWeight.bold,
             color: AppTheme.textLight,
           ),
@@ -504,7 +504,7 @@ class _EndlessScreenState extends State<EndlessScreen> {
                     child: const Text(
                       '∞  ENDLESS ARENA  ∞',
                       style: TextStyle(
-                        fontSize: 11,
+                        fontSize: 12,
                         color: Color(0xFFee4040),
                         letterSpacing: 2,
                       ),
@@ -545,7 +545,7 @@ class _EndlessScreenState extends State<EndlessScreen> {
                           child: Text(
                             'VS',
                             style: TextStyle(
-                              fontSize: 20,
+                              fontSize: 21,
                               fontWeight: FontWeight.bold,
                               color: AppTheme.accentGold,
                               letterSpacing: 2,
@@ -610,7 +610,7 @@ class _EndlessScreenState extends State<EndlessScreen> {
                   decoration: BoxDecoration(
                     color: _busy
                         ? const Color(0xFF5a0000)
-                        : const Color(0xFF8b0000),
+                        : const Color(0xFF7A2E2E),
                     border: Border.all(
                       color: _busy
                           ? const Color(0xFFff4040)
@@ -631,7 +631,7 @@ class _EndlessScreenState extends State<EndlessScreen> {
                         _busy ? 'ATTACKING...' : '⚔ AUTO BATTLE',
                         style: const TextStyle(
                           color: Colors.white,
-                          fontSize: 12,
+                          fontSize: 13,
                           fontWeight: FontWeight.bold,
                           letterSpacing: 1,
                         ),
@@ -655,7 +655,7 @@ class _EndlessScreenState extends State<EndlessScreen> {
         Container(
           height: 130,
           decoration: const BoxDecoration(
-            color: Color(0xFF0a0c18),
+            color: Color(0xFF17150E),
             border: Border(
               top: BorderSide(color: AppTheme.pixelBorder, width: 2),
             ),
@@ -667,11 +667,11 @@ class _EndlessScreenState extends State<EndlessScreen> {
                 width: double.infinity,
                 padding: const EdgeInsets.symmetric(
                     horizontal: 12, vertical: 4),
-                color: const Color(0xFF141828),
+                color: const Color(0xFF211E1A),
                 child: const Text(
                   'BATTLE LOG',
                   style: TextStyle(
-                    fontSize: 10,
+                    fontSize: 11,
                     color: AppTheme.accentGold,
                     letterSpacing: 2,
                   ),
@@ -713,7 +713,7 @@ class _EndlessScreenState extends State<EndlessScreen> {
               children: [
                 const Text('VICTORY!',
                     style: TextStyle(
-                      fontSize: 26,
+                      fontSize: 27,
                       fontWeight: FontWeight.bold,
                       color: AppTheme.accentGold,
                       letterSpacing: 4,
@@ -721,7 +721,7 @@ class _EndlessScreenState extends State<EndlessScreen> {
                 const SizedBox(height: 16),
                 Text('+$_rewardGold GOLD',
                     style: const TextStyle(
-                      fontSize: 20,
+                      fontSize: 21,
                       fontWeight: FontWeight.bold,
                       color: Color(0xFFffd700),
                       letterSpacing: 2,
@@ -729,7 +729,7 @@ class _EndlessScreenState extends State<EndlessScreen> {
                 const SizedBox(height: 6),
                 Text('+$_rewardExp XP',
                     style: const TextStyle(
-                      fontSize: 20,
+                      fontSize: 21,
                       fontWeight: FontWeight.bold,
                       color: Color(0xFF4ad46a),
                       letterSpacing: 2,
@@ -741,7 +741,7 @@ class _EndlessScreenState extends State<EndlessScreen> {
                   const SizedBox(width: 6),
                   Text('+$_rewardShards SHARDS',
                       style: const TextStyle(
-                        fontSize: 16,
+                        fontSize: 17,
                         fontWeight: FontWeight.bold,
                         color: Color(0xFF80d0ff),
                         letterSpacing: 2,
@@ -756,7 +756,7 @@ class _EndlessScreenState extends State<EndlessScreen> {
                 const SizedBox(height: 16),
                 const Text('The enemy stirs again...',
                     style: TextStyle(
-                      fontSize: 11,
+                      fontSize: 12,
                       color: Color(0xFFee4040),
                       letterSpacing: 1,
                     )),
@@ -804,7 +804,7 @@ class _CombatantPanel extends StatelessWidget {
           Text(
             name.toUpperCase(),
             style: TextStyle(
-              fontSize: 11,
+              fontSize: 12,
               fontWeight: FontWeight.bold,
               color: nameColor,
               letterSpacing: 1,
@@ -815,7 +815,7 @@ class _CombatantPanel extends StatelessWidget {
           Text(
             'LV.$level  ATK:$attack',
             style: const TextStyle(
-                fontSize: 9, color: AppTheme.textMuted),
+                fontSize: 10, color: AppTheme.textMuted),
           ),
           const SizedBox(height: 6),
           Center(child: sprite),
@@ -825,7 +825,7 @@ class _CombatantPanel extends StatelessWidget {
           Text(
             '$currentHp / $maxHp',
             style: const TextStyle(
-                fontSize: 9, color: AppTheme.textMuted),
+                fontSize: 10, color: AppTheme.textMuted),
           ),
           const SizedBox(height: 8),
         ],
@@ -846,12 +846,12 @@ class _LogLine extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text('▸ ',
-              style: TextStyle(color: AppTheme.accentGold, fontSize: 10)),
+              style: TextStyle(color: AppTheme.accentGold, fontSize: 11)),
           Expanded(
             child: Text(
               text,
               style: const TextStyle(
-                  fontSize: 10, color: AppTheme.textLight, height: 1.4),
+                  fontSize: 11, color: AppTheme.textLight, height: 1.4),
             ),
           ),
         ],

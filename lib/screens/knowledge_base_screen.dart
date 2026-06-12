@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import '../models/equipment.dart';
 import '../theme/app_theme.dart';
 
@@ -10,19 +10,19 @@ class KnowledgeBaseScreen extends StatelessWidget {
     return DefaultTabController(
       length: 3,
       child: Scaffold(
-        backgroundColor: const Color(0xFF0a0e27),
+        backgroundColor: const Color(0xFF1B1A17),
         appBar: AppBar(
-          backgroundColor: const Color(0xFF1a1f3a),
+          backgroundColor: const Color(0xFF2A2623),
           title: Text('KNOWLEDGE BASE',
-              style: AppTheme.pixelHeading(fontSize: 12, letterSpacing: 2)),
+              style: AppTheme.pixelHeading(fontSize: 13, letterSpacing: 2)),
           bottom: TabBar(
             indicatorColor: AppTheme.accentGold,
             labelColor: AppTheme.accentGold,
             unselectedLabelColor: AppTheme.textMuted,
             tabs: const [
-              Tab(child: Text('KEYWORDS', style: TextStyle(fontSize: 10))),
-              Tab(child: Text('SYSTEMS',  style: TextStyle(fontSize: 10))),
-              Tab(child: Text('CURRENCIES', style: TextStyle(fontSize: 10))),
+              Tab(child: Text('KEYWORDS', style: TextStyle(fontSize: 11))),
+              Tab(child: Text('SYSTEMS',  style: TextStyle(fontSize: 11))),
+              Tab(child: Text('CURRENCIES', style: TextStyle(fontSize: 11))),
             ],
           ),
         ),
@@ -68,7 +68,7 @@ class _KeywordsTab extends StatelessWidget {
           child: const Text(
             'These keywords only appear on Legendary-tier items. '
             'They carry powerful effects unavailable on any other rarity.',
-            style: TextStyle(fontSize: 10, color: AppTheme.textMuted, height: 1.5),
+            style: TextStyle(fontSize: 11, color: AppTheme.textMuted, height: 1.5),
           ),
         ),
         ...legendary.map((k) => _KeywordCard(keyword: k, legendary: true)),
@@ -106,7 +106,7 @@ class _KeywordCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: legendary
             ? const Color(0xFF1a0a12)
-            : const Color(0xFF0e1225),
+            : const Color(0xFF231F1B),
         border: Border.all(color: color.withValues(alpha: 0.35)),
         borderRadius: BorderRadius.circular(4),
       ),
@@ -114,7 +114,7 @@ class _KeywordCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(_icons[keyword] ?? '✦',
-              style: const TextStyle(fontSize: 18)),
+              style: const TextStyle(fontSize: 19)),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
@@ -123,7 +123,7 @@ class _KeywordCard extends StatelessWidget {
                 Row(children: [
                   Text(keyword.label,
                       style: TextStyle(
-                          fontSize: 13,
+                          fontSize: 14,
                           fontWeight: FontWeight.bold,
                           color: color)),
                   if (legendary) ...[
@@ -139,7 +139,7 @@ class _KeywordCard extends StatelessWidget {
                       ),
                       child: const Text('LEGENDARY',
                           style: TextStyle(
-                              fontSize: 7,
+                              fontSize: 8,
                               color: Color(0xFFff88aa),
                               fontWeight: FontWeight.bold,
                               letterSpacing: 0.5)),
@@ -149,7 +149,7 @@ class _KeywordCard extends StatelessWidget {
                 const SizedBox(height: 3),
                 Text(keyword.description,
                     style: const TextStyle(
-                        fontSize: 11,
+                        fontSize: 12,
                         color: Colors.white60,
                         height: 1.4)),
               ],
@@ -314,7 +314,7 @@ class _SystemCardState extends State<_SystemCard> {
         decoration: BoxDecoration(
           color: _expanded
               ? e.color.withValues(alpha: 0.06)
-              : const Color(0xFF0e1225),
+              : const Color(0xFF231F1B),
           border: Border.all(
             color: _expanded
                 ? e.color.withValues(alpha: 0.55)
@@ -326,12 +326,12 @@ class _SystemCardState extends State<_SystemCard> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(children: [
-              Text(e.icon, style: const TextStyle(fontSize: 20)),
+              Text(e.icon, style: const TextStyle(fontSize: 21)),
               const SizedBox(width: 10),
               Expanded(
                 child: Text(e.title,
                     style: TextStyle(
-                        fontSize: 13,
+                        fontSize: 14,
                         fontWeight: FontWeight.bold,
                         color: _expanded ? e.color : Colors.white70)),
               ),
@@ -345,7 +345,7 @@ class _SystemCardState extends State<_SystemCard> {
               const SizedBox(height: 8),
               Text(e.body,
                   style: const TextStyle(
-                      fontSize: 11,
+                      fontSize: 12,
                       color: Colors.white60,
                       height: 1.55)),
             ],
@@ -458,14 +458,14 @@ class _CurrencyCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: const Color(0xFF0e1225),
+        color: const Color(0xFF231F1B),
         border: Border.all(color: entry.color.withValues(alpha: 0.35)),
         borderRadius: BorderRadius.circular(4),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(entry.icon, style: const TextStyle(fontSize: 22)),
+          Text(entry.icon, style: const TextStyle(fontSize: 23)),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
@@ -473,7 +473,7 @@ class _CurrencyCard extends StatelessWidget {
               children: [
                 Text(entry.name,
                     style: TextStyle(
-                        fontSize: 13,
+                        fontSize: 14,
                         fontWeight: FontWeight.bold,
                         color: entry.color)),
                 const SizedBox(height: 6),
@@ -512,7 +512,7 @@ class _Row extends StatelessWidget {
           ),
           child: Text(label,
               style: TextStyle(
-                  fontSize: 8,
+                  fontSize: 9,
                   color: color,
                   fontWeight: FontWeight.bold,
                   letterSpacing: 0.5)),
@@ -520,7 +520,7 @@ class _Row extends StatelessWidget {
         Expanded(
           child: Text(text,
               style: const TextStyle(
-                  fontSize: 11, color: Colors.white60, height: 1.4)),
+                  fontSize: 12, color: Colors.white60, height: 1.4)),
         ),
       ],
     );
@@ -538,6 +538,6 @@ class _SectionHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     return Text(label,
         style: AppTheme.pixelHeading(
-            fontSize: 10, letterSpacing: 2, color: color));
+            fontSize: 11, letterSpacing: 2, color: color));
   }
 }

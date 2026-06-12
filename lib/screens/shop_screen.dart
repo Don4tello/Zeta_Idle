@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import '../models/equipment.dart';
 import '../services/game_state.dart';
 import '../theme/app_theme.dart';
@@ -30,10 +30,10 @@ class _ShopScreenState extends State<ShopScreen>
   Widget build(BuildContext context) {
     final game = GameStateProvider.of(context);
     return Scaffold(
-      backgroundColor: const Color(0xFF0a0e27),
+      backgroundColor: const Color(0xFF1B1A17),
       appBar: AppBar(
-        backgroundColor: const Color(0xFF1a1f3a),
-        title: Text('MERCHANT', style: AppTheme.pixelHeading(fontSize: 13, letterSpacing: 2)),
+        backgroundColor: const Color(0xFF2A2623),
+        title: Text('MERCHANT', style: AppTheme.pixelHeading(fontSize: 14, letterSpacing: 2)),
         actions: [
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
@@ -44,7 +44,7 @@ class _ShopScreenState extends State<ShopScreen>
           controller: _tabs,
           isScrollable: true,
           tabAlignment: TabAlignment.start,
-          labelStyle: AppTheme.pixelHeading(fontSize: 9, letterSpacing: 1),
+          labelStyle: AppTheme.pixelHeading(fontSize: 10, letterSpacing: 1),
           unselectedLabelColor: AppTheme.textMuted,
           indicatorColor: AppTheme.accentGold,
           tabs: ItemSlot.values.map((s) => Tab(text: s.label.toUpperCase())).toList(),
@@ -81,7 +81,7 @@ class _RerollBar extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
       decoration: const BoxDecoration(
-        color: Color(0xFF0e1225),
+        color: Color(0xFF231F1B),
         border: Border(bottom: BorderSide(color: AppTheme.cardBorder)),
       ),
       child: Row(
@@ -89,7 +89,7 @@ class _RerollBar extends StatelessWidget {
           const Icon(Icons.sync, color: AppTheme.textMuted, size: 14),
           const SizedBox(width: 6),
           const Text('Stock refreshes daily at midnight.',
-              style: TextStyle(fontSize: 11, color: AppTheme.textMuted)),
+              style: TextStyle(fontSize: 12, color: AppTheme.textMuted)),
           const Spacer(),
           TextButton(
             onPressed: canAfford
@@ -109,10 +109,10 @@ class _RerollBar extends StatelessWidget {
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Text('REROLL  ', style: AppTheme.pixelHeading(fontSize: 9,
+                Text('REROLL  ', style: AppTheme.pixelHeading(fontSize: 10,
                     color: canAfford ? const Color(0xFF6699ff) : AppTheme.cardBorder)),
                 Text('${GameState.shopRerollCost} ◆',
-                    style: TextStyle(fontSize: 10,
+                    style: TextStyle(fontSize: 11,
                         color: canAfford ? const Color(0xFF6699ff) : AppTheme.cardBorder,
                         fontWeight: FontWeight.bold)),
               ],
@@ -137,7 +137,7 @@ class _SlotTab extends StatelessWidget {
     if (items.isEmpty) {
       return const Center(
         child: Text('All items in this category sold out.',
-            style: TextStyle(fontSize: 12, color: AppTheme.textMuted)),
+            style: TextStyle(fontSize: 13, color: AppTheme.textMuted)),
       );
     }
     return ListView.separated(
@@ -165,7 +165,7 @@ class _ShopItemCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: const Color(0xFF0e1225),
+        color: const Color(0xFF231F1B),
         border: Border.all(color: item.rarityColor.withValues(alpha: 0.5), width: 1),
         borderRadius: BorderRadius.circular(4),
       ),
@@ -188,7 +188,7 @@ class _ShopItemCard extends StatelessWidget {
                 Row(children: [
                   Expanded(
                     child: Text(item.name,
-                        style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold,
+                        style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold,
                             color: item.rarityColor)),
                   ),
                   Container(
@@ -199,7 +199,7 @@ class _ShopItemCard extends StatelessWidget {
                       borderRadius: BorderRadius.circular(3),
                     ),
                     child: Text(item.rarityLabel,
-                        style: TextStyle(fontSize: 9, color: item.rarityColor)),
+                        style: TextStyle(fontSize: 10, color: item.rarityColor)),
                   ),
                 ]),
                 const SizedBox(height: 4),
@@ -222,12 +222,12 @@ class _ShopItemCard extends StatelessWidget {
                         children: [
                           TextSpan(
                             text: '${_statName(b.stat)} +${b.value}',
-                            style: const TextStyle(fontSize: 11, color: AppTheme.textLight),
+                            style: const TextStyle(fontSize: 12, color: AppTheme.textLight),
                           ),
                           if (equipped != null)
                             TextSpan(
                               text: diffStr,
-                              style: TextStyle(fontSize: 10, color: diffColor),
+                              style: TextStyle(fontSize: 11, color: diffColor),
                             ),
                         ],
                       ),
@@ -238,11 +238,11 @@ class _ShopItemCard extends StatelessWidget {
                   Padding(
                     padding: const EdgeInsets.only(top: 3),
                     child: Text('✦ ${item.keyword!.label}',
-                        style: const TextStyle(fontSize: 10, color: Color(0xFFFFD700))),
+                        style: const TextStyle(fontSize: 11, color: Color(0xFFFFD700))),
                   ),
                 const SizedBox(height: 2),
                 Text('Req. Lv ${item.levelRequired}',
-                    style: const TextStyle(fontSize: 10, color: AppTheme.textMuted)),
+                    style: const TextStyle(fontSize: 11, color: AppTheme.textMuted)),
               ],
             ),
           ),
@@ -263,7 +263,7 @@ class _ShopItemCard extends StatelessWidget {
                   tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                 ),
                 child: Text(bagFull ? 'BAG FULL' : 'BUY',
-                    style: AppTheme.pixelHeading(fontSize: 10, letterSpacing: 1,
+                    style: AppTheme.pixelHeading(fontSize: 11, letterSpacing: 1,
                         color: (canAfford && !bagFull) ? AppTheme.accentGold : AppTheme.cardBorder)),
               ),
             ],
@@ -279,7 +279,7 @@ class _ShopItemCard extends StatelessWidget {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         content: Text('Purchased ${item.name}!',
             style: const TextStyle(color: AppTheme.accentGold)),
-        backgroundColor: const Color(0xFF1a1f3a),
+        backgroundColor: const Color(0xFF2A2623),
         duration: const Duration(seconds: 2),
       ));
     }
@@ -295,9 +295,10 @@ class _ShopItemCard extends StatelessWidget {
     ItemStat.attackBonus  => 'ATK',
     ItemStat.damageBonus  => 'DMG',
     ItemStat.armorClass   => 'AC',
-    ItemStat.maxHpPct     => 'MaxHP%',
-    ItemStat.goldPct      => 'Gold%',
-    ItemStat.xpPct        => 'XP%',
+    ItemStat.maxHpPct        => 'MaxHP%',
+    ItemStat.goldPct         => 'Gold%',
+    ItemStat.xpPct           => 'XP%',
+    ItemStat.elemPenetration => 'PEN%',
   };
 }
 
@@ -319,10 +320,10 @@ class _GoldBadge extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Text('💰', style: TextStyle(fontSize: 13)),
+          const Text('💰', style: TextStyle(fontSize: 14)),
           const SizedBox(width: 5),
           Text(_fmt(gold),
-              style: AppTheme.pixelHeading(fontSize: 12, letterSpacing: 0,
+              style: AppTheme.pixelHeading(fontSize: 13, letterSpacing: 0,
                   color: AppTheme.accentGold)),
         ],
       ),
@@ -347,9 +348,9 @@ class _GoldCost extends StatelessWidget {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Text('💰', style: TextStyle(fontSize: 12, color: color)),
+        Text('💰', style: TextStyle(fontSize: 13, color: color)),
         const SizedBox(width: 3),
-        Text('$gold', style: TextStyle(fontSize: 11, color: color, fontWeight: FontWeight.bold)),
+        Text('$gold', style: TextStyle(fontSize: 12, color: color, fontWeight: FontWeight.bold)),
       ],
     );
   }

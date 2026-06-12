@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../models/dnd_class.dart';
@@ -101,14 +101,26 @@ class _CharacterSelectScreenState extends State<CharacterSelectScreen> {
       body: Column(
         children: [
           const SizedBox(height: 60),
-          Text(
-            'ZETA IDLE',
-            style: GoogleFonts.pixelifySans(
-              fontSize: 36,
-              fontWeight: FontWeight.bold,
-              color: AppTheme.accentGold,
-              letterSpacing: 6,
-            ),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Image.asset(
+                'assets/zeta_icon.png',
+                width: 54,
+                height: 54,
+                filterQuality: FilterQuality.none,
+              ),
+              const SizedBox(width: 14),
+              Text(
+                'ZETA IDLE',
+                style: GoogleFonts.pixelifySans(
+                  fontSize: 37,
+                  fontWeight: FontWeight.bold,
+                  color: AppTheme.accentGold,
+                  letterSpacing: 6,
+                ),
+              ),
+            ],
           )
               .animate()
               .fadeIn(duration: 600.ms)
@@ -117,7 +129,7 @@ class _CharacterSelectScreenState extends State<CharacterSelectScreen> {
           Text(
             '— SELECT CHARACTER —',
             style: GoogleFonts.pixelifySans(
-              fontSize: 11,
+              fontSize: 12,
               color: AppTheme.textMuted,
               letterSpacing: 3,
             ),
@@ -168,7 +180,7 @@ class _CharacterSelectScreenState extends State<CharacterSelectScreen> {
             child: Text(
               'Tap the trash icon to delete a character',
               style: GoogleFonts.pixelifySans(
-                fontSize: 10,
+                fontSize: 11,
                 color: AppTheme.textMuted.withValues(alpha: 0.5),
                 letterSpacing: 1,
               ),
@@ -220,7 +232,7 @@ class _SlotTile extends StatelessWidget {
               child: Text(
                 '${index + 1}',
                 style: GoogleFonts.pixelifySans(
-                  fontSize: 11,
+                  fontSize: 12,
                   color: AppTheme.textMuted.withValues(alpha: 0.5),
                 ),
               ),
@@ -239,7 +251,7 @@ class _SlotTile extends StatelessWidget {
                   child: Text(
                     '>',
                     style: GoogleFonts.pixelifySans(
-                      fontSize: 18,
+                      fontSize: 19,
                       color: AppTheme.accentGold.withValues(alpha: 0.7),
                     ),
                   ),
@@ -276,7 +288,7 @@ class _SlotTile extends StatelessWidget {
         Text(
           'NEW CHARACTER',
           style: GoogleFonts.pixelifySans(
-            fontSize: 14,
+            fontSize: 15,
             color: AppTheme.textMuted,
             letterSpacing: 2,
           ),
@@ -293,7 +305,7 @@ class _SlotTile extends StatelessWidget {
         Text(
           char.name,
           style: GoogleFonts.pixelifySans(
-            fontSize: 18,
+            fontSize: 19,
             fontWeight: FontWeight.bold,
             color: AppTheme.textLight,
             letterSpacing: 1,
@@ -307,7 +319,7 @@ class _SlotTile extends StatelessWidget {
               Text(
                 classLabel,
                 style: GoogleFonts.pixelifySans(
-                  fontSize: 11,
+                  fontSize: 12,
                   color: AppTheme.textMuted,
                   letterSpacing: 1,
                 ),
@@ -315,7 +327,7 @@ class _SlotTile extends StatelessWidget {
               Text(
                 '  ·  ',
                 style: GoogleFonts.pixelifySans(
-                  fontSize: 11,
+                  fontSize: 12,
                   color: AppTheme.cardBorder,
                 ),
               ),
@@ -323,11 +335,28 @@ class _SlotTile extends StatelessWidget {
             Text(
               'Level ${char.level}',
               style: GoogleFonts.pixelifySans(
-                fontSize: 12,
+                fontSize: 13,
                 color: AppTheme.accentGold,
                 letterSpacing: 1,
               ),
             ),
+            if (char.prestigeLevel > 0) ...[
+              Text(
+                '  ·  ',
+                style: GoogleFonts.pixelifySans(
+                  fontSize: 12,
+                  color: AppTheme.cardBorder,
+                ),
+              ),
+              Text(
+                '✦ ${char.prestigeLevel}',
+                style: GoogleFonts.pixelifySans(
+                  fontSize: 13,
+                  color: const Color(0xFFcc88ff),
+                  letterSpacing: 1,
+                ),
+              ),
+            ],
           ],
         ),
       ],
@@ -357,7 +386,7 @@ class _LockedSlotTile extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const Text('🔒', style: TextStyle(fontSize: 18)),
+          const Text('🔒', style: TextStyle(fontSize: 19)),
           const SizedBox(width: 10),
           Column(
             mainAxisSize: MainAxisSize.min,
@@ -366,7 +395,7 @@ class _LockedSlotTile extends StatelessWidget {
               Text(
                 'LOCKED SLOT',
                 style: GoogleFonts.pixelifySans(
-                  fontSize: 11,
+                  fontSize: 12,
                   color: AppTheme.textMuted,
                   letterSpacing: 2,
                 ),
@@ -375,7 +404,7 @@ class _LockedSlotTile extends StatelessWidget {
               Text(
                 'Unlock in Cosmetics → Boosts (100 💎)',
                 style: GoogleFonts.pixelifySans(
-                  fontSize: 9,
+                  fontSize: 10,
                   color: AppTheme.textMuted.withValues(alpha: 0.5),
                 ),
               ),

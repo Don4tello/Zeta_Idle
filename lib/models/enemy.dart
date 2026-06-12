@@ -1,3 +1,5 @@
+import 'damage_type.dart';
+
 class Enemy {
   Enemy({
     required this.id,
@@ -7,6 +9,8 @@ class Enemy {
     required this.attack,
     required this.level,
     this.armorClass = 10,
+    this.attackType = DamageType.physical,
+    this.resistances = const {},
     int? currentHealth,
   }) : currentHealth = currentHealth ?? maxHealth;
 
@@ -17,6 +21,11 @@ class Enemy {
   final int attack;
   final int level;
   final int armorClass;
+  // Damage type this enemy's attacks deal.
+  final DamageType attackType;
+  // Elemental resistances (positive = resists, negative = vulnerable).
+  // Values are in percent. 100 = immune. -50 = takes 50% more damage.
+  final Map<DamageType, int> resistances;
   int currentHealth;
 
   bool get isDefeated => currentHealth <= 0;

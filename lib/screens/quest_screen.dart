@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import '../data/class_quest_data.dart';
 import '../models/class_quest.dart';
 import '../services/game_state.dart';
@@ -13,10 +13,10 @@ class QuestScreen extends StatelessWidget {
     final quests = ClassQuestData.questsForClass(game.hero.heroClass);
 
     return Scaffold(
-      backgroundColor: const Color(0xFF0a0e27),
+      backgroundColor: const Color(0xFF1B1A17),
       appBar: AppBar(
-        backgroundColor: const Color(0xFF1a1f3a),
-        title: Text('QUESTLINES', style: AppTheme.pixelHeading(fontSize: 13, letterSpacing: 2)),
+        backgroundColor: const Color(0xFF2A2623),
+        title: Text('QUESTLINES', style: AppTheme.pixelHeading(fontSize: 14, letterSpacing: 2)),
         actions: [
           if (game.heroTitle != null)
             Padding(
@@ -31,7 +31,7 @@ class QuestScreen extends StatelessWidget {
                   ),
                   child: Text('"${game.heroTitle}"',
                       style: AppTheme.pixelHeading(
-                          fontSize: 9, color: AppTheme.accentGold, letterSpacing: 1)),
+                          fontSize: 10, color: AppTheme.accentGold, letterSpacing: 1)),
                 ),
               ),
             ),
@@ -45,7 +45,7 @@ class QuestScreen extends StatelessWidget {
             padding: const EdgeInsets.all(12),
             margin: const EdgeInsets.only(bottom: 16),
             decoration: BoxDecoration(
-              color: const Color(0xFF0e1225),
+              color: const Color(0xFF231F1B),
               border: Border.all(color: AppTheme.cardBorder),
               borderRadius: BorderRadius.circular(4),
             ),
@@ -56,10 +56,10 @@ class QuestScreen extends StatelessWidget {
               Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Text(game.hero.heroClass.displayName.toUpperCase(),
                     style: AppTheme.pixelHeading(
-                        fontSize: 12, color: AppTheme.accentGold, letterSpacing: 2)),
+                        fontSize: 13, color: AppTheme.accentGold, letterSpacing: 2)),
                 const SizedBox(height: 2),
                 Text('Complete quests to earn permanent rewards.',
-                    style: const TextStyle(fontSize: 10, color: AppTheme.textMuted)),
+                    style: const TextStyle(fontSize: 11, color: AppTheme.textMuted)),
               ]),
             ]),
           ),
@@ -111,7 +111,7 @@ class _QuestCard extends StatelessWidget {
               ? const Color(0xFF0d1a10)
               : claimable
                   ? AppTheme.accentGold.withValues(alpha: 0.04)
-                  : const Color(0xFF0e1225),
+                  : const Color(0xFF231F1B),
           border: Border.all(
               color: borderColor,
               width: claimable ? 1.5 : 1),
@@ -129,7 +129,7 @@ class _QuestCard extends StatelessWidget {
                 children: [
                   Text(quest.title,
                       style: TextStyle(
-                          fontSize: 14,
+                          fontSize: 15,
                           fontWeight: FontWeight.bold,
                           color: claimed
                               ? const Color(0xFF44cc66)
@@ -137,7 +137,7 @@ class _QuestCard extends StatelessWidget {
                   const SizedBox(height: 2),
                   Text(quest.description,
                       style: TextStyle(
-                          fontSize: 10,
+                          fontSize: 11,
                           color: unlocked ? AppTheme.textMuted : Colors.white24,
                           height: 1.3)),
                 ],
@@ -169,19 +169,19 @@ class _QuestCard extends StatelessWidget {
               const SizedBox(width: 10),
               Text('$progress / ${quest.target}',
                   style: TextStyle(
-                      fontSize: 10,
+                      fontSize: 11,
                       color: condMet ? Colors.white70 : Colors.white38,
                       fontWeight: condMet ? FontWeight.bold : FontWeight.normal)),
             ]),
             const SizedBox(height: 4),
             Text('${_conditionLabels[quest.condition] ?? 'Progress'}',
-                style: const TextStyle(fontSize: 9, color: Colors.white24)),
+                style: const TextStyle(fontSize: 10, color: Colors.white24)),
 
             // Lock message
             if (!unlocked) ...[
               const SizedBox(height: 6),
               Text('Complete quest ${quest.questIndex} first to unlock.',
-                  style: const TextStyle(fontSize: 10, color: Colors.white30,
+                  style: const TextStyle(fontSize: 11, color: Colors.white30,
                       fontStyle: FontStyle.italic)),
             ],
 
@@ -205,7 +205,7 @@ class _QuestCard extends StatelessWidget {
                   onPressed: () => game.claimQuest(quest),
                   child: Text('CLAIM REWARD',
                       style: AppTheme.pixelHeading(
-                          fontSize: 11, color: AppTheme.accentGold, letterSpacing: 1)),
+                          fontSize: 12, color: AppTheme.accentGold, letterSpacing: 1)),
                 ),
               ),
             ],
@@ -246,7 +246,7 @@ class _QuestBadge extends StatelessWidget {
       ),
       child: Text('${index + 1}',
           style: TextStyle(
-              fontSize: 11, fontWeight: FontWeight.bold, color: color)),
+              fontSize: 12, fontWeight: FontWeight.bold, color: color)),
     );
   }
 }
@@ -261,7 +261,7 @@ class _RewardRow extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(children: [
       const Text('Reward: ',
-          style: TextStyle(fontSize: 10, color: Colors.white38)),
+          style: TextStyle(fontSize: 11, color: Colors.white38)),
       Expanded(child: Wrap(spacing: 8, runSpacing: 4, children: [
         if (reward.gold > 0) _Chip('💰 ${reward.gold}g', const Color(0xFFFFD700)),
         if (reward.shards > 0) _Chip('◆ ${reward.shards}', const Color(0xFF66aaff)),
@@ -294,7 +294,7 @@ class _Chip extends StatelessWidget {
       ),
       child: Text(label,
           style: TextStyle(
-              fontSize: 9, color: color, fontWeight: FontWeight.bold)),
+              fontSize: 10, color: color, fontWeight: FontWeight.bold)),
     );
   }
 }

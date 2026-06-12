@@ -1,4 +1,4 @@
-import 'package:flutter/foundation.dart' show kDebugMode;
+﻿import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
 import 'dart:math' show pi, sin;
 import '../models/attack_effect.dart';
@@ -46,10 +46,10 @@ class _AuraShopScreenState extends State<AuraShopScreen>
   Widget build(BuildContext context) {
     final game = GameStateProvider.of(context);
     return Scaffold(
-      backgroundColor: const Color(0xFF0a0e27),
+      backgroundColor: const Color(0xFF1B1A17),
       appBar: AppBar(
-        backgroundColor: const Color(0xFF1a1f3a),
-        title: Text('COSMETICS', style: AppTheme.pixelHeading(fontSize: 13, letterSpacing: 2)),
+        backgroundColor: const Color(0xFF2A2623),
+        title: Text('COSMETICS', style: AppTheme.pixelHeading(fontSize: 14, letterSpacing: 2)),
         actions: [
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
@@ -62,11 +62,11 @@ class _AuraShopScreenState extends State<AuraShopScreen>
           labelColor: AppTheme.accentGold,
           unselectedLabelColor: AppTheme.textMuted,
           tabs: [
-            Tab(child: Text('AURAS', style: AppTheme.pixelHeading(fontSize: 10, letterSpacing: 1))),
-            Tab(child: Text('SKINS', style: AppTheme.pixelHeading(fontSize: 10, letterSpacing: 1))),
-            Tab(child: Text('PETS', style: AppTheme.pixelHeading(fontSize: 10, letterSpacing: 1))),
-            Tab(child: Text('CRYSTALS', style: AppTheme.pixelHeading(fontSize: 10, letterSpacing: 1))),
-            Tab(child: Text('BOOSTS', style: AppTheme.pixelHeading(fontSize: 10, letterSpacing: 1))),
+            Tab(child: Text('AURAS', style: AppTheme.pixelHeading(fontSize: 11, letterSpacing: 1))),
+            Tab(child: Text('SKINS', style: AppTheme.pixelHeading(fontSize: 11, letterSpacing: 1))),
+            Tab(child: Text('PETS', style: AppTheme.pixelHeading(fontSize: 11, letterSpacing: 1))),
+            Tab(child: Text('CRYSTALS', style: AppTheme.pixelHeading(fontSize: 11, letterSpacing: 1))),
+            Tab(child: Text('BOOSTS', style: AppTheme.pixelHeading(fontSize: 11, letterSpacing: 1))),
           ],
         ),
       ),
@@ -98,7 +98,7 @@ class _AurasTab extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           if (game.equippedAuraId != null) ...[
-            Text('EQUIPPED', style: AppTheme.pixelHeading(fontSize: 10, letterSpacing: 2, color: AppTheme.accentGold)),
+            Text('EQUIPPED', style: AppTheme.pixelHeading(fontSize: 11, letterSpacing: 2, color: AppTheme.accentGold)),
             const SizedBox(height: 8),
             _buildAuraCard(context, kAuraCatalog.firstWhere((a) => a.id == game.equippedAuraId)),
             const SizedBox(height: 16),
@@ -106,7 +106,7 @@ class _AurasTab extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text('ALL AURAS', style: AppTheme.pixelHeading(fontSize: 10, letterSpacing: 2)),
+              Text('ALL AURAS', style: AppTheme.pixelHeading(fontSize: 11, letterSpacing: 2)),
               if (game.equippedAuraId != null)
                 TextButton(
                   onPressed: () => game.equipAura(null),
@@ -116,7 +116,7 @@ class _AurasTab extends StatelessWidget {
                     minimumSize: Size.zero,
                     tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                   ),
-                  child: Text('Remove aura', style: const TextStyle(fontSize: 10, color: AppTheme.textMuted)),
+                  child: Text('Remove aura', style: const TextStyle(fontSize: 11, color: AppTheme.textMuted)),
                 ),
             ],
           ),
@@ -138,7 +138,7 @@ class _AurasTab extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: const Color(0xFF0e1225),
+        color: const Color(0xFF231F1B),
         border: Border.all(
           color: equipped ? aura.color : AppTheme.cardBorder,
           width: equipped ? 1.5 : 1,
@@ -156,7 +156,7 @@ class _AurasTab extends StatelessWidget {
                 Row(
                   children: [
                     Text(aura.name,
-                        style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: aura.color)),
+                        style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: aura.color)),
                     if (equipped) ...[
                       const SizedBox(width: 8),
                       Container(
@@ -166,14 +166,14 @@ class _AurasTab extends StatelessWidget {
                           border: Border.all(color: aura.color, width: 1),
                           borderRadius: BorderRadius.circular(3),
                         ),
-                        child: Text('ON', style: TextStyle(fontSize: 8, color: aura.color)),
+                        child: Text('ON', style: TextStyle(fontSize: 9, color: aura.color)),
                       ),
                     ],
                   ],
                 ),
                 const SizedBox(height: 3),
                 Text(aura.description,
-                    style: const TextStyle(fontSize: 11, color: AppTheme.textMuted)),
+                    style: const TextStyle(fontSize: 14, color: AppTheme.textMuted)),
                 const SizedBox(height: 5),
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
@@ -184,7 +184,7 @@ class _AurasTab extends StatelessWidget {
                   ),
                   child: Text(
                     '✦ ${aura.bonusLabel}',
-                    style: TextStyle(fontSize: 10, color: aura.color, fontWeight: FontWeight.bold),
+                    style: TextStyle(fontSize: 11, color: aura.color, fontWeight: FontWeight.bold),
                   ),
                 ),
                 const SizedBox(height: 8),
@@ -220,29 +220,29 @@ class _AurasTab extends StatelessWidget {
     showDialog<void>(
       context: context,
       builder: (_) => AlertDialog(
-        backgroundColor: const Color(0xFF1a1f3a),
+        backgroundColor: const Color(0xFF2A2623),
         title: Text('Unlock ${aura.name}?',
-            style: AppTheme.pixelHeading(fontSize: 13, color: aura.color)),
+            style: AppTheme.pixelHeading(fontSize: 14, color: aura.color)),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             _AuraOrb(aura: aura, size: 72),
             const SizedBox(height: 12),
             Text('Cost: ${aura.crystalCost} crystals',
-                style: const TextStyle(color: AppTheme.textLight, fontSize: 13)),
+                style: const TextStyle(color: AppTheme.textLight, fontSize: 14)),
           ],
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: Text('CANCEL', style: AppTheme.pixelHeading(fontSize: 10, color: AppTheme.textMuted)),
+            child: Text('CANCEL', style: AppTheme.pixelHeading(fontSize: 11, color: AppTheme.textMuted)),
           ),
           TextButton(
             onPressed: () {
               Navigator.pop(context);
               game.purchaseAura(aura.id);
             },
-            child: Text('CONFIRM', style: AppTheme.pixelHeading(fontSize: 10, color: AppTheme.accentGold)),
+            child: Text('CONFIRM', style: AppTheme.pixelHeading(fontSize: 11, color: AppTheme.accentGold)),
           ),
         ],
       ),
@@ -264,7 +264,7 @@ class _SkinsTab extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           if (game.equippedSkinId != null) ...[
-            Text('EQUIPPED', style: AppTheme.pixelHeading(fontSize: 10, letterSpacing: 2, color: AppTheme.accentGold)),
+            Text('EQUIPPED', style: AppTheme.pixelHeading(fontSize: 11, letterSpacing: 2, color: AppTheme.accentGold)),
             const SizedBox(height: 8),
             _buildSkinCard(context, kSkinCatalog.firstWhere((s) => s.id == game.equippedSkinId)),
             const SizedBox(height: 16),
@@ -272,7 +272,7 @@ class _SkinsTab extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text('ALL SKINS', style: AppTheme.pixelHeading(fontSize: 10, letterSpacing: 2)),
+              Text('ALL SKINS', style: AppTheme.pixelHeading(fontSize: 11, letterSpacing: 2)),
               if (game.equippedSkinId != null)
                 TextButton(
                   onPressed: () => game.equipSkin(null),
@@ -282,7 +282,7 @@ class _SkinsTab extends StatelessWidget {
                     minimumSize: Size.zero,
                     tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                   ),
-                  child: const Text('Remove skin', style: TextStyle(fontSize: 10, color: AppTheme.textMuted)),
+                  child: const Text('Remove skin', style: TextStyle(fontSize: 11, color: AppTheme.textMuted)),
                 ),
             ],
           ),
@@ -304,7 +304,7 @@ class _SkinsTab extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: const Color(0xFF0e1225),
+        color: const Color(0xFF231F1B),
         border: Border.all(
           color: equipped ? AppTheme.accentGold : AppTheme.cardBorder,
           width: equipped ? 1.5 : 1,
@@ -323,7 +323,7 @@ class _SkinsTab extends StatelessWidget {
                 Row(
                   children: [
                     Text(skin.name,
-                        style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: skin.previewColor)),
+                        style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: skin.previewColor)),
                     if (equipped) ...[
                       const SizedBox(width: 8),
                       Container(
@@ -333,14 +333,14 @@ class _SkinsTab extends StatelessWidget {
                           border: Border.all(color: AppTheme.accentGold),
                           borderRadius: BorderRadius.circular(3),
                         ),
-                        child: Text('ON', style: AppTheme.pixelHeading(fontSize: 8, color: AppTheme.accentGold)),
+                        child: Text('ON', style: AppTheme.pixelHeading(fontSize: 9, color: AppTheme.accentGold)),
                       ),
                     ],
                   ],
                 ),
                 const SizedBox(height: 3),
                 Text(skin.description,
-                    style: const TextStyle(fontSize: 11, color: AppTheme.textMuted)),
+                    style: const TextStyle(fontSize: 12, color: AppTheme.textMuted)),
                 const SizedBox(height: 5),
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
@@ -351,7 +351,7 @@ class _SkinsTab extends StatelessWidget {
                   ),
                   child: Text(
                     '✦ ${skin.bonusLabel}',
-                    style: TextStyle(fontSize: 10, color: skin.previewColor, fontWeight: FontWeight.bold),
+                    style: TextStyle(fontSize: 11, color: skin.previewColor, fontWeight: FontWeight.bold),
                   ),
                 ),
                 const SizedBox(height: 8),
@@ -385,29 +385,29 @@ class _SkinsTab extends StatelessWidget {
     showDialog<void>(
       context: context,
       builder: (_) => AlertDialog(
-        backgroundColor: const Color(0xFF1a1f3a),
+        backgroundColor: const Color(0xFF2A2623),
         title: Text('Unlock ${skin.name}?',
-            style: AppTheme.pixelHeading(fontSize: 13, color: skin.previewColor)),
+            style: AppTheme.pixelHeading(fontSize: 14, color: skin.previewColor)),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             _SkinPreview(spriteId: game.hero.spriteId, skin: skin, showLabel: true),
             const SizedBox(height: 12),
             Text('Cost: ${skin.crystalCost} crystals',
-                style: const TextStyle(color: AppTheme.textLight, fontSize: 13)),
+                style: const TextStyle(color: AppTheme.textLight, fontSize: 14)),
           ],
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: Text('CANCEL', style: AppTheme.pixelHeading(fontSize: 10, color: AppTheme.textMuted)),
+            child: Text('CANCEL', style: AppTheme.pixelHeading(fontSize: 11, color: AppTheme.textMuted)),
           ),
           TextButton(
             onPressed: () {
               Navigator.pop(context);
               game.purchaseSkin(skin.id);
             },
-            child: Text('CONFIRM', style: AppTheme.pixelHeading(fontSize: 10, color: AppTheme.accentGold)),
+            child: Text('CONFIRM', style: AppTheme.pixelHeading(fontSize: 11, color: AppTheme.accentGold)),
           ),
         ],
       ),
@@ -432,14 +432,14 @@ class _SkinPreview extends StatelessWidget {
           children: [
             _spriteBox(null),
             const SizedBox(width: 6),
-            const Text('→', style: TextStyle(color: AppTheme.textMuted, fontSize: 10)),
+            const Text('→', style: TextStyle(color: AppTheme.textMuted, fontSize: 11)),
             const SizedBox(width: 6),
             _spriteBox(skin.toColorFilter()),
           ],
         ),
         if (showLabel) ...[
           const SizedBox(height: 4),
-          Text('Before / After', style: const TextStyle(fontSize: 9, color: AppTheme.textMuted)),
+          Text('Before / After', style: const TextStyle(fontSize: 10, color: AppTheme.textMuted)),
         ],
       ],
     );
@@ -450,7 +450,7 @@ class _SkinPreview extends StatelessWidget {
       width: 44,
       height: 56,
       decoration: BoxDecoration(
-        color: const Color(0xFF0a0c18),
+        color: const Color(0xFF17150E),
         border: Border.all(color: AppTheme.cardBorder, width: 1),
       ),
       child: Center(
@@ -477,8 +477,13 @@ class _PetsTab extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          Text(
+            'All owned pets grant their passive bonus automatically. Use SEND OUT to choose which pet accompanies you in battle.',
+            style: const TextStyle(fontSize: 14, color: AppTheme.textMuted, height: 1.4),
+          ),
+          const SizedBox(height: 12),
           if (game.equippedPetId != null) ...[
-            Text('COMPANION', style: AppTheme.pixelHeading(fontSize: 10, letterSpacing: 2, color: AppTheme.accentGold)),
+            Text('BATTLE COMPANION', style: AppTheme.pixelHeading(fontSize: 11, letterSpacing: 2, color: AppTheme.accentGold)),
             const SizedBox(height: 8),
             _buildPetCard(context, kPetCatalog.firstWhere((p) => p.id == game.equippedPetId)),
             const SizedBox(height: 16),
@@ -486,7 +491,7 @@ class _PetsTab extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text('ALL PETS', style: AppTheme.pixelHeading(fontSize: 10, letterSpacing: 2)),
+              Text('ALL PETS', style: AppTheme.pixelHeading(fontSize: 11, letterSpacing: 2)),
               if (game.equippedPetId != null)
                 TextButton(
                   onPressed: () => game.equipPet(null),
@@ -496,13 +501,13 @@ class _PetsTab extends StatelessWidget {
                     minimumSize: Size.zero,
                     tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                   ),
-                  child: const Text('Dismiss pet', style: TextStyle(fontSize: 10, color: AppTheme.textMuted)),
+                  child: const Text('Dismiss pet', style: TextStyle(fontSize: 11, color: AppTheme.textMuted)),
                 ),
             ],
           ),
           const SizedBox(height: 4),
           Text('One companion can be active at a time. Each grants a small passive bonus.',
-              style: const TextStyle(fontSize: 11, color: AppTheme.textMuted)),
+              style: const TextStyle(fontSize: 12, color: AppTheme.textMuted)),
           const SizedBox(height: 12),
           ...kPetCatalog.map((pet) => Padding(
             padding: const EdgeInsets.only(bottom: 10),
@@ -521,7 +526,7 @@ class _PetsTab extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: const Color(0xFF0e1225),
+        color: const Color(0xFF231F1B),
         border: Border.all(
           color: equipped ? pet.color : AppTheme.cardBorder,
           width: equipped ? 1.5 : 1,
@@ -542,7 +547,7 @@ class _PetsTab extends StatelessWidget {
                   children: [
                     Expanded(
                       child: Text(pet.name,
-                          style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: pet.color)),
+                          style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: pet.color)),
                     ),
                     if (equipped)
                       Container(
@@ -552,16 +557,16 @@ class _PetsTab extends StatelessWidget {
                           border: Border.all(color: pet.color),
                           borderRadius: BorderRadius.circular(3),
                         ),
-                        child: Text('ON', style: TextStyle(fontSize: 8, color: pet.color)),
+                        child: Text('ON', style: TextStyle(fontSize: 9, color: pet.color)),
                       ),
                   ],
                 ),
                 const SizedBox(height: 2),
                 Text(pet.flavorLine,
-                    style: const TextStyle(fontSize: 10, color: AppTheme.textMuted, fontStyle: FontStyle.italic)),
+                    style: const TextStyle(fontSize: 11, color: AppTheme.textMuted, fontStyle: FontStyle.italic)),
                 const SizedBox(height: 4),
                 Text(pet.description,
-                    style: const TextStyle(fontSize: 11, color: AppTheme.textLight)),
+                    style: const TextStyle(fontSize: 12, color: AppTheme.textLight)),
                 const SizedBox(height: 6),
                 // Bonus chip
                 Container(
@@ -573,7 +578,7 @@ class _PetsTab extends StatelessWidget {
                   ),
                   child: Text(
                     '✦ ${pet.bonusLabel}',
-                    style: TextStyle(fontSize: 10, color: pet.color, fontWeight: FontWeight.bold),
+                    style: TextStyle(fontSize: 11, color: pet.color, fontWeight: FontWeight.bold),
                   ),
                 ),
                 const SizedBox(height: 8),
@@ -608,13 +613,13 @@ class _PetsTab extends StatelessWidget {
     showDialog<void>(
       context: context,
       builder: (_) => AlertDialog(
-        backgroundColor: const Color(0xFF1a1f3a),
+        backgroundColor: const Color(0xFF2A2623),
         title: Text('Adopt ${pet.name}?',
-            style: AppTheme.pixelHeading(fontSize: 13, color: pet.color)),
+            style: AppTheme.pixelHeading(fontSize: 14, color: pet.color)),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text(pet.emoji, style: const TextStyle(fontSize: 48)),
+            Text(pet.emoji, style: const TextStyle(fontSize: 49)),
             const SizedBox(height: 8),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
@@ -624,24 +629,24 @@ class _PetsTab extends StatelessWidget {
                 borderRadius: BorderRadius.circular(3),
               ),
               child: Text('✦ ${pet.bonusLabel}',
-                  style: TextStyle(fontSize: 12, color: pet.color, fontWeight: FontWeight.bold)),
+                  style: TextStyle(fontSize: 13, color: pet.color, fontWeight: FontWeight.bold)),
             ),
             const SizedBox(height: 12),
             Text('Cost: ${pet.crystalCost} crystals',
-                style: const TextStyle(color: AppTheme.textLight, fontSize: 13)),
+                style: const TextStyle(color: AppTheme.textLight, fontSize: 14)),
           ],
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: Text('CANCEL', style: AppTheme.pixelHeading(fontSize: 10, color: AppTheme.textMuted)),
+            child: Text('CANCEL', style: AppTheme.pixelHeading(fontSize: 11, color: AppTheme.textMuted)),
           ),
           TextButton(
             onPressed: () {
               Navigator.pop(context);
               game.purchasePet(pet.id);
             },
-            child: Text('ADOPT', style: AppTheme.pixelHeading(fontSize: 10, color: pet.color)),
+            child: Text('ADOPT', style: AppTheme.pixelHeading(fontSize: 11, color: pet.color)),
           ),
         ],
       ),
@@ -668,7 +673,7 @@ class _PetAvatar extends StatelessWidget {
         borderRadius: BorderRadius.circular(6),
       ),
       child: Center(
-        child: Text(pet.emoji, style: const TextStyle(fontSize: 28)),
+        child: Text(pet.emoji, style: const TextStyle(fontSize: 29)),
       ),
     );
   }
@@ -695,7 +700,7 @@ class _CrystalsTab extends StatelessWidget {
               width: double.infinity,
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: const Color(0xFF1a1f3a),
+                color: const Color(0xFF2A2623),
                 border: Border.all(color: const Color(0xFF3a4a6a)),
                 borderRadius: BorderRadius.circular(4),
               ),
@@ -703,25 +708,25 @@ class _CrystalsTab extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const Row(children: [
-                    Text('💎', style: TextStyle(fontSize: 20)),
+                    Text('💎', style: TextStyle(fontSize: 21)),
                     SizedBox(width: 10),
                     Text('EARNING CRYSTALS',
                         style: TextStyle(color: Color(0xFF88aaff),
-                            fontSize: 12, fontWeight: FontWeight.bold, letterSpacing: 1.5)),
+                            fontSize: 13, fontWeight: FontWeight.bold, letterSpacing: 1.5)),
                   ]),
                   const SizedBox(height: 12),
                   const Text(
                     'On PC, crystals are earned through gameplay:',
-                    style: TextStyle(color: AppTheme.textLight, fontSize: 12),
+                    style: TextStyle(color: AppTheme.textLight, fontSize: 13),
                   ),
                   const SizedBox(height: 10),
                   ..._kCrystalSources.map((s) => Padding(
                     padding: const EdgeInsets.only(bottom: 6),
                     child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                      Text(s.$1, style: const TextStyle(fontSize: 14)),
+                      Text(s.$1, style: const TextStyle(fontSize: 15)),
                       const SizedBox(width: 8),
                       Expanded(child: Text(s.$2,
-                          style: const TextStyle(color: AppTheme.textMuted, fontSize: 12, height: 1.4))),
+                          style: const TextStyle(color: AppTheme.textMuted, fontSize: 13, height: 1.4))),
                     ]),
                   )),
                 ],
@@ -729,7 +734,7 @@ class _CrystalsTab extends StatelessWidget {
             ),
             if (kDebugMode) ...[
               const SizedBox(height: 16),
-              Text('DEV MODE', style: AppTheme.pixelHeading(fontSize: 9, color: const Color(0xFFcc4444), letterSpacing: 2)),
+              Text('DEV MODE', style: AppTheme.pixelHeading(fontSize: 10, color: const Color(0xFFcc4444), letterSpacing: 2)),
               const SizedBox(height: 8),
               ...IapService.packages.map((pkg) => Padding(
                 padding: const EdgeInsets.only(bottom: 8),
@@ -737,7 +742,7 @@ class _CrystalsTab extends StatelessWidget {
               )),
             ],
           ] else ...[
-            Text('CRYSTAL PACKS', style: AppTheme.pixelHeading(fontSize: 10, letterSpacing: 2)),
+            Text('CRYSTAL PACKS', style: AppTheme.pixelHeading(fontSize: 11, letterSpacing: 2)),
             const SizedBox(height: 10),
             ...IapService.packages.map((pkg) => Padding(
               padding: const EdgeInsets.only(bottom: 10),
@@ -761,23 +766,23 @@ class _PackageCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       decoration: BoxDecoration(
-        color: const Color(0xFF0e1225),
+        color: const Color(0xFF231F1B),
         border: Border.all(color: AppTheme.cardBorder),
         borderRadius: BorderRadius.circular(4),
       ),
       child: Row(
         children: [
-          const Text('💎', style: TextStyle(fontSize: 28)),
+          const Text('💎', style: TextStyle(fontSize: 29)),
           const SizedBox(width: 14),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(pkg.label,
-                    style: AppTheme.pixelHeading(fontSize: 12, letterSpacing: 0)),
+                    style: AppTheme.pixelHeading(fontSize: 13, letterSpacing: 0)),
                 Text(devMode ? 'Debug grant (free)' : pkg.fallbackPrice,
                     style: TextStyle(
-                        fontSize: 11,
+                        fontSize: 12,
                         color: devMode ? const Color(0xFFcc4444) : AppTheme.accentGold)),
               ],
             ),
@@ -789,7 +794,7 @@ class _PackageCard extends StatelessWidget {
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
                     content: Text('+${pkg.crystals} crystals granted (debug)'),
-                    backgroundColor: const Color(0xFF1a1f3a),
+                    backgroundColor: const Color(0xFF2A2623),
                     duration: const Duration(seconds: 2),
                   ),
                 );
@@ -804,7 +809,7 @@ class _PackageCard extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
             ),
             child: Text(devMode ? 'GRANT' : 'BUY',
-                style: AppTheme.pixelHeading(fontSize: 10)),
+                style: AppTheme.pixelHeading(fontSize: 11)),
           ),
         ],
       ),
@@ -890,7 +895,7 @@ class _CrystalBadge extends StatelessWidget {
     return Container(
       padding: EdgeInsets.symmetric(horizontal: large ? 16 : 10, vertical: large ? 10 : 5),
       decoration: BoxDecoration(
-        color: const Color(0xFF0e1225),
+        color: const Color(0xFF231F1B),
         border: Border.all(color: const Color(0xFF6688ff), width: 1),
         borderRadius: BorderRadius.circular(4),
       ),
@@ -923,12 +928,12 @@ class _CrystalCost extends StatelessWidget {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        const Text('💎', style: TextStyle(fontSize: 13)),
+        const Text('💎', style: TextStyle(fontSize: 14)),
         const SizedBox(width: 4),
         Text(
           '$crystals',
           style: TextStyle(
-            fontSize: 12,
+            fontSize: 13,
             color: affordable ? const Color(0xFF88aaff) : AppTheme.cardBorder,
             fontWeight: FontWeight.bold,
           ),
@@ -952,11 +957,10 @@ class _ActionButton extends StatelessWidget {
         foregroundColor: color,
         disabledForegroundColor: AppTheme.cardBorder,
         side: BorderSide(color: onTap != null ? color : AppTheme.cardBorder),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-        minimumSize: Size.zero,
-        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        minimumSize: const Size(64, 44),
       ),
-      child: Text(label, style: AppTheme.pixelHeading(fontSize: 10, letterSpacing: 1, color: onTap != null ? color : AppTheme.cardBorder)),
+      child: Text(label, style: AppTheme.pixelHeading(fontSize: 14, letterSpacing: 1, color: onTap != null ? color : AppTheme.cardBorder)),
     );
   }
 }
@@ -976,7 +980,7 @@ class _PetEvolutionRow extends StatelessWidget {
       return Padding(
         padding: const EdgeInsets.only(top: 6),
         child: Text('★★ MAX EVOLUTION',
-            style: TextStyle(fontSize: 9, color: petColor, fontWeight: FontWeight.bold)),
+            style: TextStyle(fontSize: 10, color: petColor, fontWeight: FontWeight.bold)),
       );
     }
     final cost      = game.evolutionCost(petId);
@@ -986,10 +990,10 @@ class _PetEvolutionRow extends StatelessWidget {
       padding: const EdgeInsets.only(top: 8),
       child: Row(children: [
         Text(starLabel,
-            style: TextStyle(fontSize: 12, color: petColor.withValues(alpha: 0.7))),
+            style: TextStyle(fontSize: 13, color: petColor.withValues(alpha: 0.7))),
         const SizedBox(width: 6),
         Text(evo == 0 ? 'Evo I: 1.5× bonus' : 'Evo II: 2× bonus',
-            style: const TextStyle(fontSize: 9, color: AppTheme.textMuted)),
+            style: const TextStyle(fontSize: 10, color: AppTheme.textMuted)),
         const SizedBox(width: 8),
         _CrystalCost(crystals: cost, affordable: canAfford),
         const SizedBox(width: 6),
@@ -1017,12 +1021,12 @@ class _BoostsTab extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // ── Waystones ─────────────────────────────────────────────────────
-          Text('WAYSTONES', style: AppTheme.pixelHeading(fontSize: 10, letterSpacing: 2, color: AppTheme.accentGold)),
+          Text('WAYSTONES', style: AppTheme.pixelHeading(fontSize: 11, letterSpacing: 2, color: AppTheme.accentGold)),
           const SizedBox(height: 4),
           const Text(
             'Multiply idle gold income while active. Activate one before closing '
             'the app to boost offline earnings. Only one can be active at a time.',
-            style: TextStyle(fontSize: 10, color: AppTheme.textMuted, height: 1.5),
+            style: TextStyle(fontSize: 11, color: AppTheme.textMuted, height: 1.5),
           ),
           const SizedBox(height: 8),
           if (game.waystoneActive)
@@ -1035,11 +1039,11 @@ class _BoostsTab extends StatelessWidget {
           const SizedBox(height: 20),
 
           // ── Attack Effects ─────────────────────────────────────────────────
-          Text('ATTACK EFFECTS', style: AppTheme.pixelHeading(fontSize: 10, letterSpacing: 2, color: AppTheme.accentGold)),
+          Text('ATTACK EFFECTS', style: AppTheme.pixelHeading(fontSize: 11, letterSpacing: 2, color: AppTheme.accentGold)),
           const SizedBox(height: 4),
           const Text(
             'Cosmetic visual effects on your attacks. Purely decorative — no gameplay impact.',
-            style: TextStyle(fontSize: 10, color: AppTheme.textMuted, height: 1.5),
+            style: TextStyle(fontSize: 11, color: AppTheme.textMuted, height: 1.5),
           ),
           const SizedBox(height: 8),
           ...AttackEffect.all.map((e) => Padding(
@@ -1049,26 +1053,26 @@ class _BoostsTab extends StatelessWidget {
           const SizedBox(height: 20),
 
           // ── Extra Character Slots ──────────────────────────────────────────
-          Text('CHARACTER SLOTS', style: AppTheme.pixelHeading(fontSize: 10, letterSpacing: 2, color: AppTheme.accentGold)),
+          Text('CHARACTER SLOTS', style: AppTheme.pixelHeading(fontSize: 11, letterSpacing: 2, color: AppTheme.accentGold)),
           const SizedBox(height: 4),
           Text(
             'Unlock additional character save slots. You currently have '
             '${3 + game.extraCharacterSlots} of 5.',
-            style: const TextStyle(fontSize: 10, color: AppTheme.textMuted, height: 1.5),
+            style: const TextStyle(fontSize: 11, color: AppTheme.textMuted, height: 1.5),
           ),
           const SizedBox(height: 8),
           if (game.extraCharacterSlots >= 2)
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: const Color(0xFF0e1225),
+                color: const Color(0xFF231F1B),
                 border: Border.all(color: const Color(0xFF44cc66).withValues(alpha: 0.4)),
                 borderRadius: BorderRadius.circular(4),
               ),
               child: const Row(children: [
                 Text('✓ ', style: TextStyle(color: Color(0xFF44cc66))),
                 Text('All 5 slots unlocked.',
-                    style: TextStyle(fontSize: 11, color: Color(0xFF44cc66))),
+                    style: TextStyle(fontSize: 12, color: Color(0xFF44cc66))),
               ]),
             )
           else
@@ -1096,13 +1100,13 @@ class _WaystoneActiveBanner extends StatelessWidget {
         borderRadius: BorderRadius.circular(4),
       ),
       child: Row(children: [
-        const Text('🌀', style: TextStyle(fontSize: 16)),
+        const Text('🌀', style: TextStyle(fontSize: 17)),
         const SizedBox(width: 8),
         Expanded(
           child: Text(
             'Waystone active — ${mult.toStringAsFixed(1)}× idle income  ·  '
             '$mins min remaining',
-            style: const TextStyle(fontSize: 11, color: Color(0xFF66aaff)),
+            style: const TextStyle(fontSize: 12, color: Color(0xFF66aaff)),
           ),
         ),
       ]),
@@ -1125,25 +1129,25 @@ class _WaystoneCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: const Color(0xFF0e1225),
+        color: const Color(0xFF231F1B),
         border: Border.all(color: AppTheme.cardBorder),
         borderRadius: BorderRadius.circular(4),
       ),
       child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Text(waystone.icon, style: const TextStyle(fontSize: 24)),
+        Text(waystone.icon, style: const TextStyle(fontSize: 25)),
         const SizedBox(width: 12),
         Expanded(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Row(children: [
               Text(waystone.name,
-                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: waystone.color)),
+                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: waystone.color)),
               const Spacer(),
               Text('Owned: $count',
-                  style: const TextStyle(fontSize: 10, color: AppTheme.textMuted)),
+                  style: const TextStyle(fontSize: 11, color: AppTheme.textMuted)),
             ]),
             const SizedBox(height: 2),
             Text('${waystone.durationHours}h  ·  ${waystone.multiplier.toStringAsFixed(1)}× idle income',
-                style: const TextStyle(fontSize: 10, color: AppTheme.textMuted)),
+                style: const TextStyle(fontSize: 11, color: AppTheme.textMuted)),
             const SizedBox(height: 8),
             Row(children: [
               _CrystalCost(crystals: waystone.crystalCost, affordable: canBuy),
@@ -1183,22 +1187,22 @@ class _AttackEffectCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: equipped ? effect.color.withValues(alpha: 0.05) : const Color(0xFF0e1225),
+        color: equipped ? effect.color.withValues(alpha: 0.05) : const Color(0xFF231F1B),
         border: Border.all(
             color: equipped ? effect.color.withValues(alpha: 0.6) : AppTheme.cardBorder,
             width: equipped ? 1.5 : 1),
         borderRadius: BorderRadius.circular(4),
       ),
       child: Row(children: [
-        Text(effect.icon, style: const TextStyle(fontSize: 22)),
+        Text(effect.icon, style: const TextStyle(fontSize: 23)),
         const SizedBox(width: 12),
         Expanded(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Text(effect.name,
-                style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: effect.color)),
+                style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: effect.color)),
             const SizedBox(height: 2),
             Text('"${effect.hitText}" on every hit',
-                style: const TextStyle(fontSize: 10, color: AppTheme.textMuted, fontStyle: FontStyle.italic)),
+                style: const TextStyle(fontSize: 11, color: AppTheme.textMuted, fontStyle: FontStyle.italic)),
           ]),
         ),
         const SizedBox(width: 8),
@@ -1234,20 +1238,20 @@ class _SlotUnlockCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: const Color(0xFF0e1225),
+        color: const Color(0xFF231F1B),
         border: Border.all(color: AppTheme.cardBorder),
         borderRadius: BorderRadius.circular(4),
       ),
       child: Row(children: [
-        const Text('🔓', style: TextStyle(fontSize: 22)),
+        const Text('🔓', style: TextStyle(fontSize: 23)),
         const SizedBox(width: 12),
         Expanded(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Text('Slot ${4 + game.extraCharacterSlots}',
-                style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Colors.white70)),
+                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.white70)),
             const SizedBox(height: 2),
             const Text('Add one more character save slot.',
-                style: TextStyle(fontSize: 10, color: AppTheme.textMuted)),
+                style: TextStyle(fontSize: 11, color: AppTheme.textMuted)),
             const SizedBox(height: 8),
             Row(children: [
               _CrystalCost(crystals: cost, affordable: canAfford),

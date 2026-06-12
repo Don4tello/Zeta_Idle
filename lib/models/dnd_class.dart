@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'damage_type.dart';
 
 enum DndComplexity { low, average, high }
 
@@ -16,6 +17,8 @@ class DndClassInfo {
     required this.wis,
     required this.cha,
     required this.icon,
+    required this.classElement,
+    required this.secondaryElement,
   });
 
   final String displayName;
@@ -30,6 +33,11 @@ class DndClassInfo {
   final int wis;
   final int cha;
   final IconData icon;
+  // Two elemental damage types this class can unlock beyond Physical.
+  // classElement unlocks automatically at hero level 5.
+  // secondaryElement requires purchasing the Dual Mastery upgrade.
+  final DamageType classElement;
+  final DamageType secondaryElement;
 
   String get complexityLabel {
     switch (complexity) {
@@ -101,6 +109,8 @@ const _infos = <DndClass, DndClassInfo>{
     flavor: 'Primal fury channels into devastating melee strikes.',
     str: 15, dex: 13, con: 14, intelligence: 8,  wis: 12, cha: 10,
     icon: Icons.bolt,
+    classElement: DamageType.poison,      // blood / frenzy wound
+    secondaryElement: DamageType.lightning,
   ),
   DndClass.bard: DndClassInfo(
     displayName: 'Bard',
@@ -110,6 +120,8 @@ const _infos = <DndClass, DndClassInfo>{
     flavor: 'Words and melody weave powerful magic into battle.',
     str: 8,  dex: 14, con: 13, intelligence: 10, wis: 12, cha: 15,
     icon: Icons.music_note,
+    classElement: DamageType.void_,        // eldritch charm / fey magic
+    secondaryElement: DamageType.lightning,
   ),
   DndClass.cleric: DndClassInfo(
     displayName: 'Cleric',
@@ -119,6 +131,8 @@ const _infos = <DndClass, DndClassInfo>{
     flavor: 'Divine power flows through a devout vessel.',
     str: 13, dex: 8,  con: 14, intelligence: 10, wis: 15, cha: 12,
     icon: Icons.brightness_high,
+    classElement: DamageType.fire,        // radiant / holy flame
+    secondaryElement: DamageType.void_,
   ),
   DndClass.druid: DndClassInfo(
     displayName: 'Druid',
@@ -128,6 +142,8 @@ const _infos = <DndClass, DndClassInfo>{
     flavor: "Nature's ancient magic bends to your will.",
     str: 8,  dex: 12, con: 14, intelligence: 13, wis: 15, cha: 10,
     icon: Icons.eco,
+    classElement: DamageType.poison,      // nature toxins
+    secondaryElement: DamageType.cold,
   ),
   DndClass.fighter: DndClassInfo(
     displayName: 'Fighter',
@@ -137,6 +153,8 @@ const _infos = <DndClass, DndClassInfo>{
     flavor: 'Master of arms with unmatched combat training.',
     str: 15, dex: 13, con: 14, intelligence: 8,  wis: 12, cha: 10,
     icon: Icons.shield,
+    classElement: DamageType.lightning,   // thunder strike
+    secondaryElement: DamageType.fire,
   ),
   DndClass.monk: DndClassInfo(
     displayName: 'Monk',
@@ -146,6 +164,8 @@ const _infos = <DndClass, DndClassInfo>{
     flavor: 'Body and mind honed to lethal precision.',
     str: 12, dex: 15, con: 13, intelligence: 8,  wis: 14, cha: 10,
     icon: Icons.self_improvement,
+    classElement: DamageType.lightning,   // ki energy discharge
+    secondaryElement: DamageType.void_,
   ),
   DndClass.paladin: DndClassInfo(
     displayName: 'Paladin',
@@ -155,6 +175,8 @@ const _infos = <DndClass, DndClassInfo>{
     flavor: 'Sacred oaths empower both blade and spirit.',
     str: 15, dex: 10, con: 13, intelligence: 8,  wis: 12, cha: 14,
     icon: Icons.shield_outlined,
+    classElement: DamageType.fire,        // divine smite / radiant fire
+    secondaryElement: DamageType.cold,
   ),
   DndClass.ranger: DndClassInfo(
     displayName: 'Ranger',
@@ -164,6 +186,8 @@ const _infos = <DndClass, DndClassInfo>{
     flavor: 'Hunter and tracker who thrives in the wild.',
     str: 12, dex: 15, con: 13, intelligence: 10, wis: 14, cha: 8,
     icon: Icons.gps_fixed,
+    classElement: DamageType.poison,      // toxin-tipped arrows
+    secondaryElement: DamageType.cold,
   ),
   DndClass.rogue: DndClassInfo(
     displayName: 'Rogue',
@@ -173,6 +197,8 @@ const _infos = <DndClass, DndClassInfo>{
     flavor: 'Swift and cunning, striking from the shadows.',
     str: 8,  dex: 15, con: 13, intelligence: 14, wis: 12, cha: 10,
     icon: Icons.visibility_off,
+    classElement: DamageType.poison,      // poisoned blade
+    secondaryElement: DamageType.void_,
   ),
   DndClass.sorcerer: DndClassInfo(
     displayName: 'Sorcerer',
@@ -182,6 +208,8 @@ const _infos = <DndClass, DndClassInfo>{
     flavor: 'Raw arcane power flows through innate magic.',
     str: 8,  dex: 13, con: 14, intelligence: 10, wis: 12, cha: 15,
     icon: Icons.auto_fix_high,
+    classElement: DamageType.fire,        // innate fire magic
+    secondaryElement: DamageType.cold,
   ),
   DndClass.warlock: DndClassInfo(
     displayName: 'Warlock',
@@ -191,6 +219,8 @@ const _infos = <DndClass, DndClassInfo>{
     flavor: 'A pact with dark powers grants eldritch might.',
     str: 8,  dex: 13, con: 14, intelligence: 12, wis: 10, cha: 15,
     icon: Icons.dark_mode,
+    classElement: DamageType.void_,        // eldritch energy
+    secondaryElement: DamageType.cold,
   ),
   DndClass.wizard: DndClassInfo(
     displayName: 'Wizard',
@@ -200,5 +230,7 @@ const _infos = <DndClass, DndClassInfo>{
     flavor: 'Vast arcane knowledge unlocks limitless spells.',
     str: 8,  dex: 12, con: 13, intelligence: 15, wis: 14, cha: 10,
     icon: Icons.menu_book,
+    classElement: DamageType.cold,        // ice spells
+    secondaryElement: DamageType.void_,
   ),
 };

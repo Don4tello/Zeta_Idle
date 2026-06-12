@@ -5,6 +5,7 @@ class BossRushResult {
     required this.elapsedSeconds,
     required this.finalHpPct,
     required this.cleared,
+    this.tier = 1,
   });
 
   final int bossesDefeated;
@@ -12,16 +13,15 @@ class BossRushResult {
   final int elapsedSeconds;
   final double finalHpPct; // hero HP% when run ended (0 = died)
   final bool cleared;      // all bosses defeated
+  final int tier;
 
   int get score {
     if (bossesDefeated == 0) return 0;
     final base = bossesDefeated * 1000;
-    // Speed bonus: under 3 min = full, scales down to 0 at 10 min
     final timeSec = elapsedSeconds.clamp(0, 600);
     final speedBonus = ((600 - timeSec) / 600 * 2000).round();
-    // Survival bonus: hp remaining * 500
     final hpBonus = (finalHpPct * 500).round();
-    return base + speedBonus + hpBonus;
+    return (base + speedBonus + hpBonus) * tier;
   }
 
   String get rank {

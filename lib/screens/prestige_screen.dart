@@ -1,19 +1,54 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import '../models/prestige_shop.dart';
 import '../services/game_state.dart';
 import '../theme/app_theme.dart';
 
 class PrestigeScreen extends StatelessWidget {
-  const PrestigeScreen({super.key});
+  const PrestigeScreen({super.key, this.embedded = false});
+
+  final bool embedded;
 
   @override
   Widget build(BuildContext context) {
     final game = GameStateProvider.of(context);
+    final body = SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _RebirthPanel(game: game),
+          const SizedBox(height: 20),
+          _BonusPanel(game: game),
+          const SizedBox(height: 20),
+          Row(children: [
+            Text('SOUL SHOP',
+                style: AppTheme.pixelHeading(fontSize: 14, letterSpacing: 2)),
+            const SizedBox(width: 10),
+            _SoulBadge(souls: game.prestigeSouls, large: false),
+          ]),
+          const SizedBox(height: 4),
+          const Text(
+            'Spend souls on permanent upgrades that persist across all future runs.',
+            style: TextStyle(fontSize: 14, color: AppTheme.textMuted),
+          ),
+          const SizedBox(height: 14),
+          // Grouped by category
+          ...PrestigeCategory.values.map((cat) => _CategorySection(
+                cat: cat,
+                nodes: kPrestigeNodes.where((n) => n.category == cat).toList(),
+                game: game,
+              )),
+        ],
+      ),
+    );
+
+    if (embedded) return body;
+
     return Scaffold(
-      backgroundColor: const Color(0xFF0a0e27),
+      backgroundColor: const Color(0xFF1B1A17),
       appBar: AppBar(
-        backgroundColor: const Color(0xFF1a1f3a),
-        title: Text('PRESTIGE', style: AppTheme.pixelHeading(fontSize: 13, letterSpacing: 2)),
+        backgroundColor: const Color(0xFF2A2623),
+        title: Text('PRESTIGE', style: AppTheme.pixelHeading(fontSize: 14, letterSpacing: 2)),
         actions: [
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -21,28 +56,42 @@ class PrestigeScreen extends StatelessWidget {
           ),
         ],
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _RebirthPanel(game: game),
-            const SizedBox(height: 20),
-            _BonusPanel(game: game),
-            const SizedBox(height: 20),
-            Text('SOUL SHOP',
-                style: AppTheme.pixelHeading(fontSize: 10, letterSpacing: 2)),
-            const SizedBox(height: 4),
-            Text('Spend souls on permanent upgrades that persist across all future runs.',
-                style: const TextStyle(fontSize: 11, color: AppTheme.textMuted)),
-            const SizedBox(height: 10),
-            ...kPrestigeNodes.map((node) => Padding(
+      body: body,
+    );
+  }
+}
+
+// ── Category section ──────────────────────────────────────────────────────────
+
+class _CategorySection extends StatelessWidget {
+  const _CategorySection({
+    required this.cat,
+    required this.nodes,
+    required this.game,
+  });
+  final PrestigeCategory cat;
+  final List<PrestigeNode> nodes;
+  final GameState game;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(children: [
+          Text('${cat.icon}  ${cat.label}',
+              style: AppTheme.pixelHeading(
+                  fontSize: 11, letterSpacing: 1.5, color: AppTheme.textMuted)),
+          const SizedBox(width: 8),
+          Expanded(child: Divider(color: AppTheme.cardBorder, height: 1)),
+        ]),
+        const SizedBox(height: 8),
+        ...nodes.map((node) => Padding(
               padding: const EdgeInsets.only(bottom: 8),
               child: _ShopNode(node: node, game: game),
             )),
-          ],
-        ),
-      ),
+        const SizedBox(height: 12),
+      ],
     );
   }
 }
@@ -55,13 +104,21 @@ class _RebirthPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final canPrestige = game.canPrestige;
-    final soulsPreview = (game.campaignStageIndex / 5).floor().clamp(1, 50);
+    final canPrestige  = game.canPrestige;
+    final soulsPreview = (game.campaignStageIndex / 5).floor().clamp(1, 200)
+        + game.prestigeSoulConduit;
+    final stage        = game.campaignStageIndex + 1;
+
+    // Find next rebirth gate
+    final nextGate = [25, 50, 75, 100].firstWhere(
+      (g) => game.campaignStageIndex < g,
+      orElse: () => 100,
+    );
 
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: const Color(0xFF0e1225),
+        color: const Color(0xFF231F1B),
         border: Border.all(
           color: canPrestige ? const Color(0xFFcc8844) : AppTheme.cardBorder,
           width: canPrestige ? 1.5 : 1,
@@ -72,32 +129,37 @@ class _RebirthPanel extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(children: [
-            Text('REBIRTH', style: AppTheme.pixelHeading(fontSize: 11, letterSpacing: 2,
-                color: const Color(0xFFcc8844))),
+            Text('REBIRTH',
+                style: AppTheme.pixelHeading(
+                    fontSize: 12, letterSpacing: 2, color: const Color(0xFFcc8844))),
             const Spacer(),
             if (game.prestigeLevel > 0)
               _SoulBadge(souls: game.prestigeLevel, large: false, label: 'LEVEL'),
           ]),
           const SizedBox(height: 10),
-          // Resets / Keeps table
           _ResetRow(label: 'Resets', items: const ['Hero level', 'Gold', 'Items', 'Subclass']),
           const SizedBox(height: 4),
-          _ResetRow(label: 'Keeps', items: const ['Shards', 'Essence', 'Abilities', 'Passive tree', 'Cosmetics'],
-              keepColor: true),
+          _ResetRow(
+            label: 'Keeps',
+            items: const ['Shards', 'Essence', 'Abilities', 'Passive tree', 'Cosmetics'],
+            keepColor: true,
+          ),
           const SizedBox(height: 12),
           if (canPrestige) ...[
             Container(
               padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
-                color: const Color(0xFF1a1f3a),
+                color: const Color(0xFF2A2623),
                 border: Border.all(color: const Color(0xFFaacc44)),
                 borderRadius: BorderRadius.circular(3),
               ),
               child: Row(children: [
                 const Icon(Icons.auto_awesome, color: Color(0xFFaacc44), size: 16),
                 const SizedBox(width: 8),
-                Text('Ready to Rebirth! You will earn $soulsPreview soul${soulsPreview == 1 ? '' : 's'}.',
-                    style: const TextStyle(fontSize: 12, color: Color(0xFFaacc44))),
+                Text(
+                  'Ready to Rebirth! You will earn $soulsPreview soul${soulsPreview == 1 ? '' : 's'}.',
+                  style: const TextStyle(fontSize: 13, color: Color(0xFFaacc44)),
+                ),
               ]),
             ),
             const SizedBox(height: 12),
@@ -112,25 +174,27 @@ class _RebirthPanel extends StatelessWidget {
                   padding: const EdgeInsets.symmetric(vertical: 14),
                 ),
                 child: Text('✦  REBIRTH  ✦',
-                    style: AppTheme.pixelHeading(fontSize: 13, letterSpacing: 2,
-                        color: const Color(0xFFcc8844))),
+                    style: AppTheme.pixelHeading(
+                        fontSize: 14, letterSpacing: 2, color: const Color(0xFFcc8844))),
               ),
             ),
           ] else ...[
             Container(
               padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
-                color: const Color(0xFF0a0c18),
+                color: const Color(0xFF17150E),
                 border: Border.all(color: AppTheme.cardBorder),
                 borderRadius: BorderRadius.circular(3),
               ),
               child: Row(children: [
                 const Icon(Icons.lock_outline, color: AppTheme.textMuted, size: 16),
                 const SizedBox(width: 8),
-                Text(
-                  'Reach Campaign Stage 25 to unlock Rebirth.\n'
-                  '(Stage ${game.campaignStageIndex + 1} / 25)',
-                  style: const TextStyle(fontSize: 12, color: AppTheme.textMuted),
+                Expanded(
+                  child: Text(
+                    'Next Rebirth at Stage $nextGate.  '
+                    '(Stage $stage / $nextGate)',
+                    style: const TextStyle(fontSize: 13, color: AppTheme.textMuted),
+                  ),
                 ),
               ]),
             ),
@@ -144,26 +208,27 @@ class _RebirthPanel extends StatelessWidget {
     showDialog<void>(
       context: context,
       builder: (_) => AlertDialog(
-        backgroundColor: const Color(0xFF1a1f3a),
+        backgroundColor: const Color(0xFF2A2623),
         title: Text('Confirm Rebirth?',
-            style: AppTheme.pixelHeading(fontSize: 13, color: const Color(0xFFcc8844))),
+            style: AppTheme.pixelHeading(fontSize: 14, color: const Color(0xFFcc8844))),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text(
               'Your hero will be reborn. Hero level, gold, items, and subclass will reset.',
-              style: TextStyle(fontSize: 12, color: AppTheme.textLight),
+              style: TextStyle(fontSize: 13, color: AppTheme.textLight),
             ),
             const SizedBox(height: 10),
             Text(
               'You will earn $soulsPreview soul${soulsPreview == 1 ? '' : 's'} to spend in the Soul Shop.',
-              style: const TextStyle(fontSize: 13, color: Color(0xFFaacc44), fontWeight: FontWeight.bold),
+              style: const TextStyle(
+                  fontSize: 14, color: Color(0xFFaacc44), fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 10),
-            Text(
+            const Text(
               'Gold income, XP, and idle rate will increase permanently.',
-              style: const TextStyle(fontSize: 12, color: AppTheme.textMuted),
+              style: TextStyle(fontSize: 13, color: AppTheme.textMuted),
             ),
           ],
         ),
@@ -171,16 +236,15 @@ class _RebirthPanel extends StatelessWidget {
           TextButton(
             onPressed: () => Navigator.pop(context),
             child: Text('CANCEL',
-                style: AppTheme.pixelHeading(fontSize: 10, color: AppTheme.textMuted)),
+                style: AppTheme.pixelHeading(fontSize: 11, color: AppTheme.textMuted)),
           ),
           TextButton(
             onPressed: () {
               Navigator.pop(context);
               game.prestige();
-              Navigator.pop(context);
             },
             child: Text('REBIRTH',
-                style: AppTheme.pixelHeading(fontSize: 10, color: const Color(0xFFcc8844))),
+                style: AppTheme.pixelHeading(fontSize: 11, color: const Color(0xFFcc8844))),
           ),
         ],
       ),
@@ -203,21 +267,23 @@ class _ResetRow extends StatelessWidget {
         SizedBox(
           width: 50,
           child: Text(label,
-              style: TextStyle(fontSize: 10, color: color, fontWeight: FontWeight.bold)),
+              style: TextStyle(fontSize: 11, color: color, fontWeight: FontWeight.bold)),
         ),
         Expanded(
           child: Wrap(
             spacing: 6,
             runSpacing: 4,
-            children: items.map((item) => Container(
-              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-              decoration: BoxDecoration(
-                color: color.withValues(alpha: 0.08),
-                border: Border.all(color: color.withValues(alpha: 0.4)),
-                borderRadius: BorderRadius.circular(3),
-              ),
-              child: Text(item, style: TextStyle(fontSize: 10, color: color)),
-            )).toList(),
+            children: items
+                .map((item) => Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: color.withValues(alpha: 0.08),
+                        border: Border.all(color: color.withValues(alpha: 0.4)),
+                        borderRadius: BorderRadius.circular(3),
+                      ),
+                      child: Text(item, style: TextStyle(fontSize: 11, color: color)),
+                    ))
+                .toList(),
           ),
         ),
       ],
@@ -233,11 +299,39 @@ class _BonusPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (game.prestigeLevel == 0) return const SizedBox.shrink();
+    if (game.prestigeLevel == 0 && game.prestigeShop.ownedNodes.isEmpty) {
+      return const SizedBox.shrink();
+    }
+    final chips = <String>[];
+    if (game.prestigeLevel > 0) {
+      chips.add('+${((game.prestigeGoldMult - 1) * 100).round()}% Gold income');
+      chips.add('+${((game.prestigeXpMult - 1) * 100).round()}% XP');
+      chips.add('+${((game.prestigeIdleMult - 1) * 100).round()}% Idle');
+    }
+    final s = game.prestigeShop;
+    if (s.isUnlocked('iron_resolve'))   chips.add('+20% Max HP');
+    if (s.isUnlocked('blood_drinker'))  chips.add('3% HP on kill');
+    if (s.isUnlocked('killing_blow'))   chips.add('+5% Crit');
+    if (s.isUnlocked('deaths_edge'))    chips.add('+60% Crit DMG');
+    if (s.isUnlocked('start_gold'))     chips.add('+600 Start Gold');
+    if (s.isUnlocked('war_spoils'))     chips.add('+2500 Start Gold');
+    if (s.isUnlocked('carrion_picker')) chips.add('+35% Shards');
+    if (s.isUnlocked('essence_bonus'))  chips.add('+35% Essence');
+    if (s.isUnlocked('treasure_sense')) chips.add('+25% Battle Gold');
+    if (s.isUnlocked('swift_learner'))  chips.add('+20% XP');
+    if (s.isUnlocked('head_start'))     chips.add('Start Stage 6');
+    if (s.isUnlocked('head_start_2'))   chips.add('Start Stage 16');
+    if (s.isUnlocked('ability_disc'))   chips.add('-25% Ability Cost');
+    if (s.isUnlocked('idle_bonus'))     chips.add('+10 Idle Rate');
+    if (s.isUnlocked('forge_bonus'))    chips.add('Forge: 2 items');
+    if (s.isUnlocked('soul_conduit'))   chips.add('+3 Souls/Rebirth');
+
+    if (chips.isEmpty) return const SizedBox.shrink();
+
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: const Color(0xFF0e1225),
+        color: const Color(0xFF231F1B),
         border: Border.all(color: AppTheme.cardBorder),
         borderRadius: BorderRadius.circular(4),
       ),
@@ -245,25 +339,13 @@ class _BonusPanel extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text('ACTIVE BONUSES',
-              style: AppTheme.pixelHeading(fontSize: 9, letterSpacing: 2, color: AppTheme.textMuted)),
+              style: AppTheme.pixelHeading(
+                  fontSize: 10, letterSpacing: 2, color: AppTheme.textMuted)),
           const SizedBox(height: 8),
           Wrap(
             spacing: 8,
             runSpacing: 6,
-            children: [
-              _BonusChip('+${((game.prestigeGoldMult - 1) * 100).round()}% Gold'),
-              _BonusChip('+${((game.prestigeXpMult - 1) * 100).round()}% XP'),
-              _BonusChip('+${((game.prestigeIdleMult - 1) * 100).round()}% Idle'),
-              if (game.prestigeShop.isUnlocked('shard_bonus'))  _BonusChip('+30% Shards'),
-              if (game.prestigeShop.isUnlocked('essence_bonus')) _BonusChip('+30% Essence'),
-              if (game.prestigeShop.isUnlocked('idle_bonus'))   _BonusChip('+5 Idle Rate'),
-              if (game.prestigeShop.isUnlocked('ability_disc')) _BonusChip('-25% Ability Cost'),
-              if (game.prestigeShop.isUnlocked('start_gold'))   _BonusChip('+500 Start Gold'),
-              if (game.prestigeShop.isUnlocked('start_gold_2')) _BonusChip('+1500 Start Gold'),
-              if (game.prestigeShop.isUnlocked('head_start'))   _BonusChip('Start Stage 6'),
-              if (game.prestigeShop.isUnlocked('head_start_2')) _BonusChip('Start Stage 11'),
-              if (game.prestigeShop.isUnlocked('forge_bonus'))  _BonusChip('Forge: 2 items'),
-            ],
+            children: chips.map(_BonusChip.new).toList(),
           ),
         ],
       ),
@@ -284,7 +366,7 @@ class _BonusChip extends StatelessWidget {
         border: Border.all(color: const Color(0xFF44cc88).withValues(alpha: 0.5)),
         borderRadius: BorderRadius.circular(3),
       ),
-      child: Text(label, style: const TextStyle(fontSize: 10, color: Color(0xFF44cc88))),
+      child: Text(label, style: const TextStyle(fontSize: 11, color: Color(0xFF44cc88))),
     );
   }
 }
@@ -298,11 +380,11 @@ class _ShopNode extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final owned   = game.prestigeShop.isUnlocked(node.id);
-    final prereqMet = node.prerequisiteId == null ||
+    final owned      = game.prestigeShop.isUnlocked(node.id);
+    final prereqMet  = node.prerequisiteId == null ||
         game.prestigeShop.isUnlocked(node.prerequisiteId!);
-    final canAfford = game.prestigeSouls >= node.soulCost;
-    final canBuy = !owned && prereqMet && canAfford;
+    final canAfford  = game.prestigeSouls >= node.soulCost;
+    final canBuy     = !owned && prereqMet && canAfford;
     final borderColor = owned
         ? const Color(0xFFcc8844)
         : (!prereqMet || !canAfford)
@@ -312,7 +394,7 @@ class _ShopNode extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: const Color(0xFF0e1225),
+        color: const Color(0xFF231F1B),
         border: Border.all(color: borderColor, width: owned ? 1.5 : 1),
         borderRadius: BorderRadius.circular(4),
       ),
@@ -325,7 +407,7 @@ class _ShopNode extends StatelessWidget {
                 Row(children: [
                   Text(node.name,
                       style: TextStyle(
-                          fontSize: 13,
+                          fontSize: 14,
                           fontWeight: FontWeight.bold,
                           color: owned ? const Color(0xFFcc8844) : AppTheme.textLight)),
                   if (owned) ...[
@@ -338,19 +420,24 @@ class _ShopNode extends StatelessWidget {
                         borderRadius: BorderRadius.circular(3),
                       ),
                       child: Text('OWNED',
-                          style: AppTheme.pixelHeading(fontSize: 8, color: const Color(0xFFcc8844))),
+                          style: AppTheme.pixelHeading(
+                              fontSize: 9, color: const Color(0xFFcc8844))),
                     ),
                   ],
                 ]),
                 const SizedBox(height: 3),
                 Text(node.description,
                     style: TextStyle(
-                        fontSize: 11,
-                        color: (!prereqMet || owned) ? AppTheme.textMuted : AppTheme.textLight)),
+                        fontSize: 12,
+                        color: (!prereqMet || owned)
+                            ? AppTheme.textMuted
+                            : AppTheme.textLight)),
                 if (!prereqMet) ...[
                   const SizedBox(height: 4),
-                  Text('Requires: ${node.prerequisiteId}',
-                      style: const TextStyle(fontSize: 10, color: Color(0xFFcc4444))),
+                  Text(
+                    'Requires: ${kPrestigeNodes.firstWhere((n) => n.id == node.prerequisiteId, orElse: () => node).name}',
+                    style: const TextStyle(fontSize: 11, color: Color(0xFFcc4444)),
+                  ),
                 ],
               ],
             ),
@@ -359,23 +446,34 @@ class _ShopNode extends StatelessWidget {
           if (!owned)
             Column(
               children: [
-                _SoulBadge(souls: node.soulCost, large: false,
+                _SoulBadge(
+                    souls: node.soulCost,
+                    large: false,
                     dim: !canAfford || !prereqMet),
                 const SizedBox(height: 6),
                 TextButton(
-                  onPressed: canBuy ? () => game.purchasePrestigeNode(node.id) : null,
+                  onPressed: canBuy
+                      ? () => game.purchasePrestigeNode(node.id)
+                      : null,
                   style: TextButton.styleFrom(
                     foregroundColor: const Color(0xFFcc8844),
                     disabledForegroundColor: AppTheme.cardBorder,
                     side: BorderSide(
-                        color: canBuy ? const Color(0xFFcc8844) : AppTheme.cardBorder),
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                        color: canBuy
+                            ? const Color(0xFFcc8844)
+                            : AppTheme.cardBorder),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                     minimumSize: Size.zero,
                     tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                   ),
                   child: Text('BUY',
-                      style: AppTheme.pixelHeading(fontSize: 10, letterSpacing: 1,
-                          color: canBuy ? const Color(0xFFcc8844) : AppTheme.cardBorder)),
+                      style: AppTheme.pixelHeading(
+                          fontSize: 11,
+                          letterSpacing: 1,
+                          color: canBuy
+                              ? const Color(0xFFcc8844)
+                              : AppTheme.cardBorder)),
                 ),
               ],
             ),
@@ -388,7 +486,12 @@ class _ShopNode extends StatelessWidget {
 // ── Shared widget ─────────────────────────────────────────────────────────────
 
 class _SoulBadge extends StatelessWidget {
-  const _SoulBadge({required this.souls, required this.large, this.label = 'SOULS', this.dim = false});
+  const _SoulBadge({
+    required this.souls,
+    required this.large,
+    this.label = 'SOULS',
+    this.dim = false,
+  });
   final int souls;
   final bool large;
   final String label;
@@ -398,7 +501,8 @@ class _SoulBadge extends StatelessWidget {
   Widget build(BuildContext context) {
     final color = dim ? AppTheme.textMuted : const Color(0xFFcc8844);
     return Container(
-      padding: EdgeInsets.symmetric(horizontal: large ? 14 : 8, vertical: large ? 8 : 4),
+      padding:
+          EdgeInsets.symmetric(horizontal: large ? 14 : 8, vertical: large ? 8 : 4),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.08),
         border: Border.all(color: color.withValues(alpha: dim ? 0.3 : 0.7)),
@@ -419,7 +523,9 @@ class _SoulBadge extends StatelessWidget {
                       fontWeight: FontWeight.bold,
                       color: color)),
               Text(label,
-                  style: TextStyle(fontSize: large ? 9 : 8, color: color.withValues(alpha: 0.7))),
+                  style: TextStyle(
+                      fontSize: large ? 9 : 8,
+                      color: color.withValues(alpha: 0.7))),
             ],
           ),
         ],

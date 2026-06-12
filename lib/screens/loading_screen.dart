@@ -1,4 +1,4 @@
-import 'dart:math';
+﻿import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../models/dnd_class.dart';
@@ -117,7 +117,7 @@ class _LoadingScreenState extends State<LoadingScreen>
     return PopScope(
       canPop: false,
       child: Scaffold(
-        backgroundColor: const Color(0xFF0a0e27),
+        backgroundColor: const Color(0xFF1B1A17),
         body: AnimatedBuilder(
           animation: Listenable.merge([_progressCtrl, _walkCtrl]),
           builder: (_, __) {
@@ -153,7 +153,7 @@ class _LoadingScreenState extends State<LoadingScreen>
         Text(
           'ZETA IDLE',
           style: GoogleFonts.pixelifySans(
-            fontSize: 40,
+            fontSize: 41,
             fontWeight: FontWeight.bold,
             color: AppTheme2.gold,
             letterSpacing: 8,
@@ -169,7 +169,7 @@ class _LoadingScreenState extends State<LoadingScreen>
         Text(
           '— THE CURSED REALM —',
           style: GoogleFonts.pixelifySans(
-            fontSize: 11,
+            fontSize: 12,
             color: const Color(0xFF555577),
             letterSpacing: 3,
           ),
@@ -245,7 +245,7 @@ class _LoadingScreenState extends State<LoadingScreen>
         Text(
           _flavorText,
           style: GoogleFonts.pixelifySans(
-            fontSize: 11,
+            fontSize: 12,
             color: const Color(0xFF4a4a66),
             letterSpacing: 1,
           ),
@@ -254,7 +254,7 @@ class _LoadingScreenState extends State<LoadingScreen>
         Text(
           '${(progress * 100).toInt()}%',
           style: GoogleFonts.pixelifySans(
-            fontSize: 10,
+            fontSize: 11,
             color: const Color(0xFF3a3a55),
             letterSpacing: 2,
           ),
@@ -344,7 +344,7 @@ class _StonePathPainter extends CustomPainter {
   // Cold stone (unfilled)
   static const _coldBase   = Color(0xFF3a3a48);
   static const _coldHi     = Color(0xFF4c4c5e);
-  static const _coldShadow = Color(0xFF252530);
+  static const _coldShadow = Color(0xFF26221E);
 
   // Warm stone (filled, far from hero)
   static const _warmFar    = Color(0xFF4a3416);
@@ -450,7 +450,7 @@ class _StonePathPainter extends CustomPainter {
       Paint()
         ..color = warm
             ? const Color(0xFF1a0e04).withValues(alpha: 0.5)
-            : const Color(0xFF13131f).withValues(alpha: 0.5)
+            : const Color(0xFF1A1714).withValues(alpha: 0.5)
         ..strokeWidth = 0.8
         ..style = PaintingStyle.stroke
         ..strokeCap = StrokeCap.round,
@@ -480,5 +480,5 @@ class _StonePathPainter extends CustomPainter {
 // ── Minimal theme constants (avoid importing AppTheme to keep this portable) ──
 
 class AppTheme2 {
-  static const gold = Color(0xFFd4af37);
+  static const gold = Color(0xFFC9A35A);
 }

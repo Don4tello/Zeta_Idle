@@ -1,4 +1,6 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
+import '../core/routing/app_router.dart';
 import '../services/game_state.dart';
 import '../theme/app_theme.dart';
 
@@ -15,10 +17,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final game = GameStateProvider.of(context);
 
     return Scaffold(
-      backgroundColor: const Color(0xFF0a0e27),
+      backgroundColor: const Color(0xFF1B1A17),
       appBar: AppBar(
-        backgroundColor: const Color(0xFF1a1f3a),
-        title: Text('SETTINGS', style: AppTheme.pixelHeading(fontSize: 13, letterSpacing: 2)),
+        backgroundColor: const Color(0xFF2A2623),
+        title: Text('SETTINGS', style: AppTheme.pixelHeading(fontSize: 14, letterSpacing: 2)),
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
@@ -35,7 +37,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ? (game.authService.userEmail ?? 'Signed in')
                   : 'Sync saves across devices',
               trailing: TextButton(
-                onPressed: () => Navigator.pushNamed(context, '/account'),
+                onPressed: () => context.push(Routes.account),
                 child: const Text('MANAGE',
                     style: TextStyle(color: Color(0xFF66aaff))),
               ),
@@ -68,7 +70,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
                       content: Text('Cloud save complete.'),
                       duration: Duration(seconds: 2),
-                      backgroundColor: Color(0xFF1a1f3a),
+                      backgroundColor: Color(0xFF2A2623),
                     ));
                   }
                 },
@@ -76,10 +78,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   foregroundColor: const Color(0xFF6699ff),
                   side: const BorderSide(color: Color(0xFF6699ff)),
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  minimumSize: Size.zero,
-                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  minimumSize: const Size(64, 44),
                 ),
-                child: Text('SAVE', style: AppTheme.pixelHeading(fontSize: 9,
+                child: Text('SAVE', style: AppTheme.pixelHeading(fontSize: 10,
                     color: const Color(0xFF6699ff))),
               ),
             ),
@@ -92,10 +93,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   foregroundColor: AppTheme.textMuted,
                   side: const BorderSide(color: AppTheme.cardBorder),
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  minimumSize: Size.zero,
-                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  minimumSize: const Size(64, 44),
                 ),
-                child: Text('LOAD', style: AppTheme.pixelHeading(fontSize: 9,
+                child: Text('LOAD', style: AppTheme.pixelHeading(fontSize: 10,
                     color: AppTheme.textMuted)),
               ),
             ),
@@ -112,10 +112,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   foregroundColor: const Color(0xFFcc4444),
                   side: const BorderSide(color: Color(0xFFcc4444)),
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  minimumSize: Size.zero,
-                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  minimumSize: const Size(64, 44),
                 ),
-                child: Text('RESET', style: AppTheme.pixelHeading(fontSize: 9,
+                child: Text('RESET', style: AppTheme.pixelHeading(fontSize: 10,
                     color: const Color(0xFFcc4444))),
               ),
             ),
@@ -127,16 +126,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
               title: 'Knowledge Base',
               subtitle: 'Keywords, systems, currencies explained',
               trailing: TextButton(
-                onPressed: () => Navigator.pushNamed(context, '/knowledge-base'),
+                onPressed: () => context.push(Routes.knowledgeBase),
                 style: TextButton.styleFrom(
                   foregroundColor: AppTheme.accentGold,
                   side: const BorderSide(color: AppTheme.accentGold),
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  minimumSize: Size.zero,
-                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  minimumSize: const Size(64, 44),
                 ),
                 child: Text('OPEN', style: AppTheme.pixelHeading(
-                    fontSize: 9, color: AppTheme.accentGold)),
+                    fontSize: 10, color: AppTheme.accentGold)),
               ),
             ),
             const SizedBox(height: 16),
@@ -147,7 +145,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               width: double.infinity,
               padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
-                color: const Color(0xFF0e1225),
+                color: const Color(0xFF231F1B),
                 border: Border.all(color: AppTheme.cardBorder),
                 borderRadius: BorderRadius.circular(4),
               ),
@@ -155,11 +153,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text('ZETA IDLE',
-                      style: AppTheme.pixelHeading(fontSize: 14, letterSpacing: 2,
+                      style: AppTheme.pixelHeading(fontSize: 15, letterSpacing: 2,
                           color: AppTheme.accentGold)),
                   const SizedBox(height: 6),
                   const Text('A dark medieval idle RPG.',
-                      style: TextStyle(fontSize: 12, color: AppTheme.textMuted,
+                      style: TextStyle(fontSize: 14, color: AppTheme.textMuted,
                           fontStyle: FontStyle.italic)),
                   const SizedBox(height: 10),
                   const Divider(color: AppTheme.cardBorder, height: 1),
@@ -182,22 +180,22 @@ class _SettingsScreenState extends State<SettingsScreen> {
     showDialog<void>(
       context: context,
       builder: (_) => AlertDialog(
-        backgroundColor: const Color(0xFF1a1f3a),
+        backgroundColor: const Color(0xFF2A2623),
         title: Text('Load from Cloud?',
-            style: AppTheme.pixelHeading(fontSize: 13, color: AppTheme.accentGold)),
+            style: AppTheme.pixelHeading(fontSize: 14, color: AppTheme.accentGold)),
         content: const Text(
           'This will overwrite your local save with cloud data. Local progress not yet synced will be lost.',
-          style: TextStyle(fontSize: 12, color: AppTheme.textLight),
+          style: TextStyle(fontSize: 15, color: AppTheme.textLight),
         ),
         actions: [
           TextButton(onPressed: () => Navigator.pop(context),
-              child: Text('CANCEL', style: AppTheme.pixelHeading(fontSize: 10, color: AppTheme.textMuted))),
+              child: Text('CANCEL', style: AppTheme.pixelHeading(fontSize: 14, color: AppTheme.textMuted))),
           TextButton(
             onPressed: () async {
               Navigator.pop(context);
               await game.loadFromCloud();
             },
-            child: Text('LOAD', style: AppTheme.pixelHeading(fontSize: 10, color: AppTheme.accentGold)),
+            child: Text('LOAD', style: AppTheme.pixelHeading(fontSize: 14, color: AppTheme.accentGold)),
           ),
         ],
       ),
@@ -209,31 +207,31 @@ class _SettingsScreenState extends State<SettingsScreen> {
     showDialog<void>(
       context: context,
       builder: (_) => AlertDialog(
-        backgroundColor: const Color(0xFF1a1f3a),
+        backgroundColor: const Color(0xFF2A2623),
         title: Text('Reset all progress?',
-            style: AppTheme.pixelHeading(fontSize: 13, color: const Color(0xFFcc4444))),
+            style: AppTheme.pixelHeading(fontSize: 14, color: const Color(0xFFcc4444))),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text(
               'All progress, gold, items, prestige levels, and achievements will be permanently deleted. This cannot be undone.',
-              style: TextStyle(fontSize: 12, color: AppTheme.textLight),
+              style: TextStyle(fontSize: 15, color: AppTheme.textLight),
             ),
             const SizedBox(height: 14),
-            const Text('New hero name:', style: TextStyle(fontSize: 11, color: AppTheme.textMuted)),
+            const Text('New hero name:', style: TextStyle(fontSize: 14, color: AppTheme.textMuted)),
             const SizedBox(height: 6),
             TextField(
               controller: nameController,
               maxLength: 20,
-              style: const TextStyle(fontSize: 13, color: AppTheme.textLight),
+              style: const TextStyle(fontSize: 16, color: AppTheme.textLight),
               decoration: const InputDecoration(
-                counterStyle: TextStyle(color: AppTheme.textMuted, fontSize: 10),
+                counterStyle: TextStyle(color: AppTheme.textMuted, fontSize: 12),
                 enabledBorder: OutlineInputBorder(borderSide: BorderSide(color: AppTheme.cardBorder)),
                 focusedBorder: OutlineInputBorder(borderSide: BorderSide(color: AppTheme.accentGold)),
                 filled: true,
-                fillColor: Color(0xFF0a0e27),
-                contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                fillColor: Color(0xFF1B1A17),
+                contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 14),
               ),
             ),
           ],
@@ -241,7 +239,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         actions: [
           TextButton(
             onPressed: () { nameController.dispose(); Navigator.pop(context); },
-            child: Text('CANCEL', style: AppTheme.pixelHeading(fontSize: 10, color: AppTheme.textMuted)),
+            child: Text('CANCEL', style: AppTheme.pixelHeading(fontSize: 14, color: AppTheme.textMuted)),
           ),
           TextButton(
             onPressed: () {
@@ -251,7 +249,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               Navigator.pop(context);
               game.loadSlot(0, newName: name);
             },
-            child: Text('RESET', style: AppTheme.pixelHeading(fontSize: 10, color: const Color(0xFFcc4444))),
+            child: Text('RESET', style: AppTheme.pixelHeading(fontSize: 14, color: const Color(0xFFcc4444))),
           ),
         ],
       ),
@@ -269,7 +267,7 @@ class _SectionHeader extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
       child: Text(title,
-          style: TextStyle(fontSize: 10, color: color,
+          style: TextStyle(fontSize: 14, color: color,
               fontWeight: FontWeight.bold, letterSpacing: 2)),
     );
   }
@@ -287,7 +285,7 @@ class _SettingsTile extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 6),
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
-        color: const Color(0xFF0e1225),
+        color: const Color(0xFF231F1B),
         border: Border.all(color: AppTheme.cardBorder),
         borderRadius: BorderRadius.circular(4),
       ),
@@ -298,11 +296,11 @@ class _SettingsTile extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(title,
-                    style: const TextStyle(fontSize: 13, color: AppTheme.textLight,
+                    style: const TextStyle(fontSize: 16, color: AppTheme.textLight,
                         fontWeight: FontWeight.bold)),
                 const SizedBox(height: 2),
                 Text(subtitle,
-                    style: const TextStyle(fontSize: 11, color: AppTheme.textMuted)),
+                    style: const TextStyle(fontSize: 14, color: AppTheme.textMuted)),
               ],
             ),
           ),
@@ -328,10 +326,10 @@ class _AboutRow extends StatelessWidget {
           SizedBox(
             width: 110,
             child: Text(label,
-                style: const TextStyle(fontSize: 11, color: AppTheme.textMuted)),
+                style: const TextStyle(fontSize: 14, color: AppTheme.textMuted)),
           ),
           Text(value,
-              style: const TextStyle(fontSize: 11, color: AppTheme.textLight,
+              style: const TextStyle(fontSize: 14, color: AppTheme.textLight,
                   fontWeight: FontWeight.bold)),
         ],
       ),

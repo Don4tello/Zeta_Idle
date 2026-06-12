@@ -31,6 +31,7 @@ enum PassiveEffect {
   abilityDamage, // +N% to ability damage
   healBoost,     // +N% to heal abilities
   essenceGain,   // +N% essence from kills
+  allPenetration,// +N% elemental resistance penetration
 }
 
 class PassiveNode {
@@ -107,6 +108,10 @@ const kPassiveNodes = <PassiveNode>[
     branch: PassiveBranch.slayer,   tier: 5, essenceCost: 250,
     effect: PassiveEffect.damageFlat,    value: 6,
     description: '+6 flat damage per rank'),
+  PassiveNode(id: 'slayer_6', name: 'Veil Ripper',   emoji: '🔥',
+    branch: PassiveBranch.slayer,   tier: 6, essenceCost: 400,
+    effect: PassiveEffect.allPenetration, value: 4,
+    description: '+4% elemental penetration per rank'),
 
   // ── 🛡 GUARDIAN — Defense ─────────────────────────────────────────────────
   PassiveNode(id: 'guardian_0', name: 'Iron Skin',       emoji: '🛡',

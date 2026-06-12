@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:math';
+import 'debug_logger.dart';
 import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/widgets.dart';
 import '../data/ability_data.dart';
@@ -15,6 +16,7 @@ import '../models/hero_ability.dart';
 import '../models/passive_tree.dart';
 import '../models/daily_challenge.dart';
 import '../data/daily_challenge_generator.dart';
+import '../models/damage_type.dart';
 import '../models/enemy.dart';
 import '../models/endless_upgrades.dart';
 import '../models/hero_model.dart';
@@ -27,6 +29,8 @@ import '../models/achievement.dart';
 import '../models/dungeon.dart';
 import '../models/prestige_shop.dart';
 import '../models/gem.dart';
+import '../damage/damage_pipeline.dart';
+import '../damage/hero_damage_builder.dart';
 import '../models/expedition.dart';
 import '../models/class_mastery.dart';
 import '../data/class_mastery_data.dart';
@@ -321,17 +325,28 @@ class GameState extends ChangeNotifier {
     return kPetCatalog.where((p) => p.id == equippedPetId).firstOrNull;
   }
 
-  int get _petBonus => _evolvedPetBonus(equippedPet?.bonusValue ?? 0, equippedPet?.id);
-  bool _hasPetBonus(PetBonusType t) => equippedPet?.bonusType == t;
+  // Sums the bonus of a given type across every owned pet (passive on all, not just equipped).
+  int _sumOwnedPetBonus(PetBonusType type) {
+    var total = 0;
+    for (final id in ownedPetIds) {
+      final p = kPetCatalog.where((p) => p.id == id).firstOrNull;
+      if (p != null && p.bonusType == type) {
+        total += _evolvedPetBonus(p.bonusValue, p.id);
+      }
+    }
+    return total;
+  }
 
-  int get petGoldPct     => _hasPetBonus(PetBonusType.goldPct)     ? _petBonus : 0;
-  int get petXpPct       => _hasPetBonus(PetBonusType.xpPct)       ? _petBonus : 0;
-  int get petHpRegen     => _hasPetBonus(PetBonusType.hpRegen)     ? _petBonus : 0;
-  int get petIdleRate    => _hasPetBonus(PetBonusType.idleRate)     ? _petBonus : 0;
-  int get petAttackBonus => _hasPetBonus(PetBonusType.attackBonus) ? _petBonus : 0;
-  int get petArmor       => _hasPetBonus(PetBonusType.armor)       ? _petBonus : 0;
-  int get petDamage      => _hasPetBonus(PetBonusType.damage)      ? _petBonus : 0;
-  int get petShards      => _hasPetBonus(PetBonusType.shardBonus)  ? _petBonus : 0;
+  int get petGoldPct     => _sumOwnedPetBonus(PetBonusType.goldPct);
+  int get petXpPct       => _sumOwnedPetBonus(PetBonusType.xpPct);
+  int get petHpRegen     => _sumOwnedPetBonus(PetBonusType.hpRegen);
+  int get petIdleRate    => _sumOwnedPetBonus(PetBonusType.idleRate);
+  int get petAttackBonus => _sumOwnedPetBonus(PetBonusType.attackBonus);
+  int get petArmor       => _sumOwnedPetBonus(PetBonusType.armor);
+  int get petDamage      => _sumOwnedPetBonus(PetBonusType.damage);
+  int get petShards      => _sumOwnedPetBonus(PetBonusType.shardBonus);
+  int get petDodgeChance => _sumOwnedPetBonus(PetBonusType.dodgeChance);
+  int get petEssenceGain => _sumOwnedPetBonus(PetBonusType.essenceGain);
 
   bool purchasePet(String petId) {
     final pet = kPetCatalog.where((p) => p.id == petId).firstOrNull;
@@ -627,10 +642,11 @@ class GameState extends ChangeNotifier {
     if (c.claimed) return;
     if (getDailyProgress(c.type) < c.target) return;
     c.claimed = true;
-    gold    += c.rewardGold;
-    shards  += c.rewardShards;
-    essence += c.rewardEssence;
-    _setLastAction('Claimed: ${c.title}! +${c.rewardGold}g +${c.rewardShards}◆ +${c.rewardEssence} essence');
+    gold     += c.rewardGold;
+    shards   += c.rewardShards;
+    essence  += c.rewardEssence;
+    crystals += c.rewardCrystals;
+    _setLastAction('Claimed: ${c.title}! +${c.rewardGold}g +${c.rewardShards}◆ +${c.rewardEssence} essence +${c.rewardCrystals}💎');
     notifyListeners();
     saveToLocal();
   }
@@ -650,9 +666,29 @@ class GameState extends ChangeNotifier {
   int bestiaryKillCount(String enemyId) => bestiaryKills[enemyId] ?? 0;
   bool bestiaryDiscovered(String enemyId) => (bestiaryKills[enemyId] ?? 0) > 0;
 
-  // Weakness attack bonus: +10% ATK if this enemy has a bestiary entry and has been discovered
-  double bestiaryWeaknessBonus(String enemyId) =>
-      bestiaryDiscovered(enemyId) && bestiaryFor(enemyId) != null ? 1.10 : 1.0;
+  // Weakness attack bonus: 0% at 0 kills → +10% at 100 kills (+1% per 10 kills)
+  double bestiaryWeaknessBonus(String enemyId) {
+    if (bestiaryFor(enemyId) == null) return 1.0;
+    return weaknessBonusMult(enemyId, bestiaryKillCount(enemyId));
+  }
+
+  // Hero elemental resistance derived from core stats (includes equipment bonuses).
+  // STR→Physical, DEX→Lightning, CON→Poison, INT→Void, WIS→Cold, CHA→Fire.
+  // Scales linearly: 0% at stat 10, 25% at stat 100 (kStatCap) from base stats alone.
+  // Items/passives/rebirth bonuses add to tot() and can push the total up to ±75%.
+  int heroResistancePct(DamageType type) {
+    int tot(int base, ItemStat stat) =>
+        base + inventory.totalOf(stat) + _setTotal(stat) + _gemTotal(stat);
+    final raw = switch (type) {
+      DamageType.physical  => (tot(hero.strength,      ItemStat.strength)     - 10) * 25 ~/ 90,
+      DamageType.lightning => (tot(hero.dexterity,     ItemStat.dexterity)    - 10) * 25 ~/ 90,
+      DamageType.poison    => (tot(hero.constitution,  ItemStat.constitution) - 10) * 25 ~/ 90,
+      DamageType.void_     => (tot(hero.intelligence,  ItemStat.intelligence) - 10) * 25 ~/ 90,
+      DamageType.cold      => (tot(hero.wisdom,        ItemStat.wisdom)       - 10) * 25 ~/ 90,
+      DamageType.fire      => (tot(hero.charisma,      ItemStat.charisma)     - 10) * 25 ~/ 90,
+    };
+    return raw.clamp(-75, 75);
+  }
 
   // Chapter completion: all 5 enemies in a category killed ≥1 time
   bool isBestiaryChapterComplete(String category) {
@@ -660,14 +696,14 @@ class GameState extends ChangeNotifier {
     return entries.every((e) => bestiaryDiscovered(e.enemyId));
   }
 
-  // Permanent ATK bonus from completed bestiary chapters (+1 per chapter)
+  // Permanent ATK bonus: +1 per unique enemy discovered in the bestiary
   int get bestiaryChapterBonus {
-    final categories = kBestiaryEntries.map((e) => e.category).toSet();
-    return categories.where(isBestiaryChapterComplete).length;
+    return kBestiaryEntries.where((e) => bestiaryDiscovered(e.enemyId)).length;
   }
 
-  // Boss Rush best score — persisted across sessions
-  int bossRushBestScore = 0;
+  // Boss Rush best score and highest tier cleared — persisted across sessions
+  int bossRushBestScore   = 0;
+  int bossRushHighestTier = 0;
 
   // ── Waystones — consumable offline income boosters ─────────────────────────
   int basicWaystoneCount = 0;
@@ -772,17 +808,14 @@ class GameState extends ChangeNotifier {
   // ── Artifacts & Mythril ─────────────────────────────────────────────────────
   int mythril = 0;
 
-  // Owned artifact ids (can equip one per slot)
+  // Owned artifact ids
   final Set<String> ownedArtifacts = {};
-  // slot -> equipped artifact id
-  final Map<ArtifactSlot, String?> equippedArtifacts = {
-    ArtifactSlot.ring:    null,
-    ArtifactSlot.amulet:  null,
-    ArtifactSlot.trinket: null,
-  };
+  // 9×9 artifact grid: cell index (0–80) → artifact id (only filled cells stored)
+  final Map<int, String> artifactGrid = {};
+  int _unlockedArtifactCells = 9;
+  int get unlockedArtifactCells => _unlockedArtifactCells;
 
-  Artifact? equippedArtifact(ArtifactSlot slot) =>
-      Artifact.byId(equippedArtifacts[slot]);
+  bool isArtifactEquipped(String id) => artifactGrid.containsValue(id);
 
   bool buyArtifact(Artifact artifact) {
     if (ownedArtifacts.contains(artifact.id)) return false;
@@ -794,19 +827,37 @@ class GameState extends ChangeNotifier {
     return true;
   }
 
-  void equipArtifact(Artifact artifact) {
-    if (!ownedArtifacts.contains(artifact.id)) return;
-    equippedArtifacts[artifact.slot] = artifact.id;
+  void placeArtifact(int cell, String artifactId) {
+    if (cell < 0 || cell >= _unlockedArtifactCells) return;
+    if (!ownedArtifacts.contains(artifactId)) return;
+    // Remove the artifact from any existing cell first
+    artifactGrid.removeWhere((_, v) => v == artifactId);
+    artifactGrid[cell] = artifactId;
     _syncHeroHpPct();
     notifyListeners();
     saveToLocal();
   }
 
-  void unequipArtifact(ArtifactSlot slot) {
-    equippedArtifacts[slot] = null;
+  void removeArtifactFromGrid(int cell) {
+    artifactGrid.remove(cell);
     _syncHeroHpPct();
     notifyListeners();
     saveToLocal();
+  }
+
+  void buyUnlockArtifactCell() {
+    if (_unlockedArtifactCells >= 81) return;
+    final cost = 5 + (_unlockedArtifactCells ~/ 3) * 3;
+    if (mythril < cost) return;
+    mythril -= cost;
+    _unlockedArtifactCells++;
+    notifyListeners();
+    saveToLocal();
+  }
+
+  int get artifactCellUnlockCost {
+    if (_unlockedArtifactCells >= 81) return -1;
+    return 5 + (_unlockedArtifactCells ~/ 3) * 3;
   }
 
   // Aggregate artifact stat bonuses
@@ -819,7 +870,7 @@ class GameState extends ChangeNotifier {
   int get artifactXpPct        => _sumArtifacts((a) => a.xpPct);
 
   int _sumArtifacts(int Function(Artifact) f) =>
-      equippedArtifacts.values
+      artifactGrid.values
           .map((id) => Artifact.byId(id))
           .whereType<Artifact>()
           .fold(0, (sum, a) => sum + f(a));
@@ -890,8 +941,9 @@ class GameState extends ChangeNotifier {
     notifyListeners();
   }
 
-  void recordBossRushComplete() {
+  void recordBossRushComplete({int tier = 1}) {
     _bossRushClears++;
+    if (tier > bossRushHighestTier) bossRushHighestTier = tier;
     _trackBountyProgress(BountyType.winBossRush, 1);
     checkAllyMilestones();
     saveToLocal();
@@ -1296,29 +1348,40 @@ class GameState extends ChangeNotifier {
   int prestigeSouls = 0;
   final PrestigeShop prestigeShop = PrestigeShop();
 
-  bool get canPrestige => campaignStageIndex >= 25;
+  // Rebirth gates: every 25 stages (25, 50, 75, 100). Must be exactly AT the gate.
+  bool get canPrestige => campaignStageIndex >= 25 && campaignStageIndex % 25 == 0;
 
   double get prestigeGoldMult    => (1.0 + prestigeLevel * 0.10) * ascGoldMult * ascPrestigeMult;
-  double get prestigeXpMult      => (1.0 + prestigeLevel * 0.05) * ascXpMult * ascPrestigeMult;
+  double get prestigeXpMult      => (1.0 + prestigeLevel * 0.05)
+      * (prestigeShop.isUnlocked('swift_learner') ? 1.20 : 1.0)
+      * ascXpMult * ascPrestigeMult;
   double get prestigeIdleMult    => (1.0 + prestigeLevel * 0.05) * ascIdleMult * ascPrestigeMult;
-  double get prestigeShardMult   => (prestigeShop.isUnlocked('shard_bonus') ? 1.30 : 1.0) * ascShardMult;
-  double get prestigeEssenceMult => (prestigeShop.isUnlocked('essence_bonus') ? 1.30 : 1.0) * ascEssenceMult;
-  int    get prestigeIdleBonus => prestigeShop.isUnlocked('idle_bonus')    ? 5 : 0;
+  double get prestigeShardMult   => (prestigeShop.isUnlocked('carrion_picker') ? 1.35 : 1.0) * ascShardMult;
+  double get prestigeEssenceMult => (prestigeShop.isUnlocked('essence_bonus')  ? 1.35 : 1.0) * ascEssenceMult;
+  int    get prestigeIdleBonus   => prestigeShop.isUnlocked('idle_bonus') ? 10 : 0;
   int    get prestigeStartGold {
     var g = 0;
-    if (prestigeShop.isUnlocked('start_gold'))   g += 500;
-    if (prestigeShop.isUnlocked('start_gold_2')) g += 1500;
+    if (prestigeShop.isUnlocked('start_gold'))  g += 600;
+    if (prestigeShop.isUnlocked('war_spoils'))  g += 2500;
     return g;
   }
   int get prestigeHeadStart {
-    if (prestigeShop.isUnlocked('head_start_2')) return 10;
-    if (prestigeShop.isUnlocked('head_start'))   return 5;
+    if (prestigeShop.isUnlocked('head_start_2')) return 15; // Stage 16
+    if (prestigeShop.isUnlocked('head_start'))   return 5;  // Stage 6
     return 0;
   }
   double get prestigeAbilityDiscount =>
       prestigeShop.isUnlocked('ability_disc') ? 0.75 : 1.0;
   int get forgeCommonToRareCount =>
       prestigeShop.isUnlocked('forge_bonus') ? 2 : 3;
+
+  // ── New prestige effect getters ────────────────────────────────────────────
+  int    get prestigeHpPct          => prestigeShop.isUnlocked('iron_resolve')  ? 20 : 0;
+  bool   get prestigeHealOnKill     => prestigeShop.isUnlocked('blood_drinker');
+  int    get prestigeCritBonus      => prestigeShop.isUnlocked('killing_blow')  ? 5  : 0;
+  double get prestigeCritDamageMult => prestigeShop.isUnlocked('deaths_edge')   ? 1.6: 1.0;
+  double get prestigeGoldBattleMult => prestigeShop.isUnlocked('treasure_sense')? 1.25: 1.0;
+  int    get prestigeSoulConduit    => prestigeShop.isUnlocked('soul_conduit')  ? 3  : 0;
 
   bool purchasePrestigeNode(String nodeId) {
     final node = kPrestigeNodes.firstWhere((n) => n.id == nodeId,
@@ -1338,16 +1401,22 @@ class GameState extends ChangeNotifier {
     final savedShards       = shards;
     final savedRanks        = Map<String, int>.from(_abilityRanks);
     final savedBranches     = Map<String, String>.from(abilityBranches);
+    final savedMilestones   = Map<String, String>.from(_milestoneChoices);
     final savedEssence      = essence;
     final savedTree         = Map<String, dynamic>.from(passiveTree.toJson());
     final savedQuests       = Map<String, bool>.from(questsClaimed);
     final savedTitle        = heroTitle;
     final savedAbilityUses  = _totalAbilityUses;
-    final soulsEarned  = (campaignStageIndex / 5).floor().clamp(1, 50);
+    // Scale souls: 1 per 5 stages cleared, up to 200 for a full run; soul_conduit adds +3
+    final soulsEarned = (campaignStageIndex / 5).floor().clamp(1, 200) + prestigeSoulConduit;
+    final savedPrestigeLvl = prestigeLevel + 1;
+    final savedSouls       = prestigeSouls + soulsEarned;
+    final savedShopOwned   = Map<String, bool>.from(prestigeShop.ownedNodes);
     mythril += 10; // prestige reward
-    prestigeLevel++;
-    prestigeSouls += soulsEarned;
     _resetToDefaults(savedName, savedClass);
+    prestigeLevel  = savedPrestigeLvl;
+    prestigeSouls  = savedSouls;
+    prestigeShop.restoreOwned(savedShopOwned);
     shards = savedShards;
     essence = savedEssence;
     _abilityRanks
@@ -1356,6 +1425,9 @@ class GameState extends ChangeNotifier {
     abilityBranches
       ..clear()
       ..addAll(savedBranches);
+    _milestoneChoices
+      ..clear()
+      ..addAll(savedMilestones);
     passiveTree.loadFromJson(savedTree);
     questsClaimed
       ..clear()
@@ -1370,6 +1442,8 @@ class GameState extends ChangeNotifier {
       'Idle +${(prestigeIdleMult * 100 - 100).round()}%',
     ];
     checkAllyMilestones();
+    DebugLogger.log('prestige',
+        'level=$prestigeLevel souls_total=$prestigeSouls souls_earned=${savedSouls - prestigeSouls} hero=${hero.name}');
     notifyListeners();
     saveToLocal();
   }
@@ -1404,7 +1478,8 @@ class GameState extends ChangeNotifier {
     final savedNodes         = Map<String, int>.from(_ascensionNodes);
     final savedMythril       = mythril;
     final savedArtifacts     = Set<String>.from(ownedArtifacts);
-    final savedEquip         = Map<ArtifactSlot, String?>.from(equippedArtifacts);
+    final savedArtifactGrid  = Map<int, String>.from(artifactGrid);
+    final savedUnlocked      = _unlockedArtifactCells;
     // Full reset (includes zeroing prestige + ascension)
     _resetToDefaults(savedName, savedClass);
     // Restore ascension-permanent data
@@ -1413,9 +1488,8 @@ class GameState extends ChangeNotifier {
     _ascensionNodes.addAll(savedNodes);
     mythril = savedMythril;
     ownedArtifacts.addAll(savedArtifacts);
-    for (final e in savedEquip.entries) {
-      equippedArtifacts[e.key] = e.value;
-    }
+    artifactGrid.addAll(savedArtifactGrid);
+    _unlockedArtifactCells = savedUnlocked;
     battleLog = [
       '✦ ASCENSION Lv$ascensionLevel ✦ $savedName transcends the mortal coil.',
       '+$ap Ascension Points granted.',
@@ -1526,7 +1600,7 @@ class GameState extends ChangeNotifier {
   bool _bossEnraged = false;
   bool get isBossEnraged => _bossEnraged;
   bool get isBossStage =>
-      (campaignStageIndex % 5 == 4 && campaignStageIndex < 25) ||
+      (campaignStageIndex % 5 == 4 && campaignStageIndex < CampaignData.stages.length) ||
       (_endlessMode && endlessStageIndex % 5 == 4);
 
   // Mercy Token — activates after 3 consecutive losses
@@ -1542,8 +1616,19 @@ class GameState extends ChangeNotifier {
   int _tempAcBonusRounds = 0;
   int _dotDmg = 0;
   int _dotRoundsLeft = 0;
+  DamageType _dotDamageType = DamageType.physical;
+
+  // Floating number events to display this turn (cleared by battle_screen)
+  final List<({int value, bool isHeal, DamageType type})> pendingFloats = [];
+  void clearPendingFloats() => pendingFloats.clear();
   int _enemyStunRounds = 0;
   bool _dodgeNextHit = false;
+  int _auraHealPerRound = 0;
+  int _auraRoundsLeft = 0;
+  int _enemyWeakenPct = 0;
+  int _enemyWeakenRounds = 0;
+  int _enemyVulnerablePct = 0;
+  int _enemyVulnerableRounds = 0;
 
   // Public read — used by battle UI to show active affixes
   List<ZoneAffix> get activeAffixes => List.unmodifiable(_activeAffixes);
@@ -1563,8 +1648,15 @@ class GameState extends ChangeNotifier {
     _tempAcBonusRounds    = 0;
     _dotDmg               = 0;
     _dotRoundsLeft        = 0;
+    _dotDamageType        = DamageType.physical;
     _enemyStunRounds      = 0;
     _dodgeNextHit         = false;
+    _auraHealPerRound     = 0;
+    _auraRoundsLeft       = 0;
+    _enemyWeakenPct       = 0;
+    _enemyWeakenRounds    = 0;
+    _enemyVulnerablePct   = 0;
+    _enemyVulnerableRounds = 0;
   }
 
   // ── Active ability helpers ──────────────────────────────────────────────────
@@ -1591,12 +1683,6 @@ class GameState extends ChangeNotifier {
     notifyListeners();
     saveToLocal();
     return true;
-  }
-
-  AbilityBranch? _activeBranch(HeroAbility ability) {
-    final choice = abilityBranches[ability.id];
-    if (choice == null) return null;
-    return choice == 'a' ? ability.branchA : ability.branchB;
   }
 
   // ── Class questlines ──────────────────────────────────────────────────────
@@ -1652,11 +1738,46 @@ class GameState extends ChangeNotifier {
   int get questACBonus       => _questStatBonus((r) => r.permanentACBonus);
   int get questDamageBonus   => _questStatBonus((r) => r.permanentDamageBonus);
 
-  static const _abilityUpgradeCosts = [15, 35, 75]; // rank 0→1, 1→2, 2→3
+  // ── Milestone choices ─────────────────────────────────────────────────────
+
+  final Map<String, String> _milestoneChoices = {};
+
+  String? milestoneChoice(String abilityId, int rank) =>
+      _milestoneChoices['${abilityId}_m$rank'];
+
+  void setMilestoneChoice(String abilityId, int rank, String choice) {
+    _milestoneChoices['${abilityId}_m$rank'] = choice;
+    notifyListeners();
+    saveToLocal();
+  }
+
+  /// Returns the effective DamageType for the ability, considering any
+  /// milestone choice that overrides the elemental type.
+  DamageType abilityEffectiveDamageType(HeroAbility ability) {
+    DamageType result = hero.activeDamageType;
+    for (final milestone in ability.milestones) {
+      final choiceId = _milestoneChoices['${ability.id}_m${milestone.rank}'];
+      if (choiceId == null) continue;
+      final choice = choiceId == 'a' ? milestone.a : milestone.b;
+      if (choice.overrideDamageType != null) result = choice.overrideDamageType!;
+    }
+    return result;
+  }
+
+  // ── Rank / cost ───────────────────────────────────────────────────────────
+
+  // Costs for ranks 1–15 (index = target rank − 1)
+  // Ranks 1–10 stay accessible early/mid-game.
+  // Ranks 11–15 are a steep late-game (stage 50+) investment.
+  static const _abilityUpgradeCosts = [
+    10,  20,  35,   55,   80,    // ranks  1– 5  (subtotal 200)
+    110, 145, 185,  230,  280,   // ranks  6–10  (subtotal 950)
+    500, 800, 1200, 1800, 2500,  // ranks 11–15  (subtotal 6800)
+  ];
 
   int abilityUpgradeCost(String id) {
     final rank = abilityRank(id);
-    if (rank >= 3) return 0;
+    if (rank >= 15) return 0;
     return (_abilityUpgradeCosts[rank] * prestigeAbilityDiscount).round().clamp(1, 99999);
   }
 
@@ -1673,7 +1794,7 @@ class GameState extends ChangeNotifier {
   int scaledAbilityValue(HeroAbility ability) {
     final rank = abilityRank(ability.id);
     if (rank == 0 || ability.value == 0) return ability.value;
-    return ability.value + rank * max(1, ability.value ~/ 4);
+    return ability.value + rank * max(1, ability.value ~/ 8);
   }
 
   int scaledAbilityCooldown(HeroAbility ability) {
@@ -1690,8 +1811,14 @@ class GameState extends ChangeNotifier {
   int get buffAcRounds     => _tempAcBonusRounds;
   int get dotDmg           => _dotDmg;
   int get dotRoundsLeft    => _dotRoundsLeft;
-  int get enemyStunRounds  => _enemyStunRounds;
-  bool get dodgeNextHit    => _dodgeNextHit;
+  int get enemyStunRounds      => _enemyStunRounds;
+  bool get dodgeNextHit        => _dodgeNextHit;
+  int get auraHealPerRound     => _auraHealPerRound;
+  int get auraRoundsLeft       => _auraRoundsLeft;
+  int get enemyWeakenPct       => _enemyWeakenPct;
+  int get enemyWeakenRounds    => _enemyWeakenRounds;
+  int get enemyVulnerablePct   => _enemyVulnerablePct;
+  int get enemyVulnerableRounds => _enemyVulnerableRounds;
 
   void _fireAbility(HeroAbility ability) {
     final enemy = currentEnemy;
@@ -1699,9 +1826,8 @@ class GameState extends ChangeNotifier {
     _dailyAbilityUses++;
     _totalAbilityUses++;
     audioService.playAbility();
-    final branch = _activeBranch(ability);
-    final sv = scaledAbilityValue(ability) + (branch?.valueDelta ?? 0);
-    final effectiveDuration = ability.duration + (branch?.durationDelta ?? 0);
+    final sv = scaledAbilityValue(ability);
+    final effectiveDuration = ability.duration;
     final subclassAbilityBonus = switch (subclassEffect) {
       SubclassEffect.loreKeeper  => 0.20,
       SubclassEffect.greatOldOne => 0.25,
@@ -1714,20 +1840,48 @@ class GameState extends ChangeNotifier {
       SubclassEffect.devotion   => 0.0,
       _ => 0.0,
     };
-    final abilityDmgMult = 1.0 + passiveTree.totalOf(PassiveEffect.abilityDamage) / 100.0
-        + subclassAbilityBonus;
     final healBoostMult  = 1.0 + passiveTree.totalOf(PassiveEffect.healBoost) / 100.0
         + subclassHealBonus;
     if (subclassEffect == SubclassEffect.valorSurge) _valorSurgeReady = true;
+
+    // Shared context params for damage abilities
+    final _abilityExploitMult = (endlessUpgrades.exploitWeakness && enemy.armorClass <= 14) ? 1.15 : 1.0;
+    final _abilityWeakMult    = bestiaryWeaknessBonus(enemy.id);
+    final _basePenPct = passiveTree.totalOf(PassiveEffect.allPenetration)
+        + inventory.totalOf(ItemStat.elemPenetration);
+    Map<DamageType, double> _abilityPenMap(int extra) {
+      final total = _basePenPct + extra;
+      return total > 0
+          ? <DamageType, double>{hero.activeDamageType: total / 100.0}
+          : const <DamageType, double>{};
+    }
+
     switch (ability.effect) {
       case AbilityEffect.bonusDamage:
-        final dmg = ((_rng.nextInt(sv) + 1 + hero.damageMod) * abilityDmgMult).round().clamp(1, 9999);
+        final baseDmg = _rng.nextInt(sv) + 1 + hero.damageMod;
+        final ctx = buildAbilityAttackContext(
+          baseDmg:              baseDmg,
+          heroType:             hero.activeDamageType,
+          allDamagePct:         passiveTree.totalOf(PassiveEffect.allDamage).toDouble(),
+          abilityDamagePct:     passiveTree.totalOf(PassiveEffect.abilityDamage).toDouble(),
+          subclassAbilityBonus: subclassAbilityBonus,
+          endlessDmgMult:       endlessUpgrades.damageMultiplier,
+          exploitMult:          _abilityExploitMult,
+          comboStacks:          _comboStacks,
+          bestiaryWeakMult:     _abilityWeakMult,
+          isDot:                false,
+          enemyResistances:     enemy.resistances,
+          penetration:          _abilityPenMap(ability.penetration),
+        );
+        final dmg = calculateDamage(ctx, rng: _rng).total.round().clamp(1, 9999);
         enemy.takeDamage(dmg);
+        pendingFloats.add((value: dmg, isHeal: false, type: hero.activeDamageType));
         battleLog.add('${ability.name}! +$dmg bonus damage.');
       case AbilityEffect.heal:
-        var hp = (hero.maxHealth * sv / 100 * healBoostMult).round().clamp(1, 9999);
+        var hp = (hero.maxHealth * sv / 100 * healBoostMult * 0.5).round().clamp(1, 9999);
         if (_activeAffixes.contains(ZoneAffix.voidCurse)) hp = (hp / 2).round().clamp(1, 9999);
         hero.currentHealth = (hero.currentHealth + hp).clamp(0, hero.maxHealth);
+        pendingFloats.add((value: hp, isHeal: true, type: DamageType.physical));
         battleLog.add('${ability.name}! +$hp HP restored.');
       case AbilityEffect.attackBonus:
         _tempAttackBonus = max(_tempAttackBonus, sv);
@@ -1742,53 +1896,40 @@ class GameState extends ChangeNotifier {
         _enemyStunRounds = stunDur;
         battleLog.add('${ability.name}! ${enemy.name} is stunned for $stunDur turn(s)!');
       case AbilityEffect.dot:
-        final dotMult = subclassEffect == SubclassEffect.sporeCircle ? abilityDmgMult * 1.5 : abilityDmgMult;
-        _dotDmg = (sv * dotMult).round().clamp(1, 9999);
+        final sporeBonus = subclassEffect == SubclassEffect.sporeCircle ? 0.50 : 0.0;
+        final dotCtx = buildAbilityAttackContext(
+          baseDmg:              sv,
+          heroType:             hero.activeDamageType,
+          allDamagePct:         passiveTree.totalOf(PassiveEffect.allDamage).toDouble(),
+          abilityDamagePct:     passiveTree.totalOf(PassiveEffect.abilityDamage).toDouble() + sporeBonus * 100,
+          subclassAbilityBonus: subclassAbilityBonus,
+          endlessDmgMult:       endlessUpgrades.damageMultiplier,
+          exploitMult:          _abilityExploitMult,
+          comboStacks:          _comboStacks,
+          bestiaryWeakMult:     _abilityWeakMult,
+          isDot:                true,
+          enemyResistances:     enemy.resistances,
+          penetration:          _abilityPenMap(ability.penetration),
+        );
+        _dotDmg = calculateDamage(dotCtx, rng: _rng).total.round().clamp(1, 9999);
         _dotRoundsLeft = effectiveDuration;
+        _dotDamageType = hero.activeDamageType;
         battleLog.add('${ability.name}! ${enemy.name} takes $_dotDmg dmg/round for $effectiveDuration rounds.');
       case AbilityEffect.dodge:
         _dodgeNextHit = true;
         battleLog.add('${ability.name}! ${hero.name} will dodge the next attack.');
-    }
-    if (branch?.secondaryEffect != null) {
-      _applyBranchSecondary(branch!, ability.name, abilityDmgMult, healBoostMult, enemy);
-    }
-  }
-
-  void _applyBranchSecondary(AbilityBranch branch, String abilityName,
-      double dmgMult, double healMult, Enemy enemy) {
-    final se = branch.secondaryEffect!;
-    final sv = branch.secondaryValue;
-    final sd = branch.secondaryDuration;
-    switch (se) {
-      case AbilityEffect.bonusDamage:
-        if (sv <= 0) return;
-        final dmg = ((_rng.nextInt(sv) + 1 + hero.damageMod) * dmgMult).round().clamp(1, 9999);
-        enemy.takeDamage(dmg);
-        battleLog.add('  ↳ $abilityName: +$dmg secondary damage.');
-      case AbilityEffect.heal:
-        var hp = (hero.maxHealth * sv / 100 * healMult).round().clamp(1, 9999);
-        if (_activeAffixes.contains(ZoneAffix.voidCurse)) hp = (hp / 2).round().clamp(1, 9999);
-        hero.currentHealth = (hero.currentHealth + hp).clamp(0, hero.maxHealth);
-        battleLog.add('  ↳ $abilityName: +$hp HP.');
-      case AbilityEffect.attackBonus:
-        _tempAttackBonus = max(_tempAttackBonus, sv);
-        _tempAttackBonusRounds = max(_tempAttackBonusRounds, sd);
-        battleLog.add('  ↳ $abilityName: +$sv ATK for ${sd}r.');
-      case AbilityEffect.acBonus:
-        _tempAcBonus = max(_tempAcBonus, sv);
-        _tempAcBonusRounds = max(_tempAcBonusRounds, sd);
-        battleLog.add('  ↳ $abilityName: +$sv AC for ${sd}r.');
-      case AbilityEffect.stun:
-        _enemyStunRounds = max(_enemyStunRounds, sd);
-        battleLog.add('  ↳ $abilityName: ${enemy.name} stunned ${sd}r!');
-      case AbilityEffect.dot:
-        _dotDmg = max(_dotDmg, (sv * dmgMult).round().clamp(1, 9999));
-        _dotRoundsLeft = max(_dotRoundsLeft, sd);
-        battleLog.add('  ↳ $abilityName: DoT $sv/r for ${sd}r.');
-      case AbilityEffect.dodge:
-        _dodgeNextHit = true;
-        battleLog.add('  ↳ $abilityName: next attack dodged.');
+      case AbilityEffect.aura:
+        _auraHealPerRound = (sv * 0.5).round().clamp(1, 9999);
+        _auraRoundsLeft   = effectiveDuration;
+        battleLog.add('${ability.name}! ${hero.name} regenerates $_auraHealPerRound HP/round for $effectiveDuration rounds.');
+      case AbilityEffect.debuffWeaken:
+        _enemyWeakenPct    = sv;
+        _enemyWeakenRounds = effectiveDuration;
+        battleLog.add('${ability.name}! ${enemy.name} ATK reduced by $sv% for $effectiveDuration rounds.');
+      case AbilityEffect.debuffVulnerable:
+        _enemyVulnerablePct    = sv;
+        _enemyVulnerableRounds = effectiveDuration;
+        battleLog.add('${ability.name}! ${enemy.name} takes $sv% more damage for $effectiveDuration rounds.');
     }
   }
 
@@ -1845,12 +1986,18 @@ class GameState extends ChangeNotifier {
   // Exposed so DungeonScreen can display the item that dropped
   EquipmentItem? dungeonLastDrop;
 
-  /// Auto-resolves the current combat/boss room. Returns gold earned.
+  /// Auto-resolves the current combat / elite / ambush / boss room. Returns gold earned.
   int resolveDungeonCombat() {
     final run = activeDungeon;
     final room = run?.currentRoom;
     if (run == null || room == null) return 0;
-    if (room.type != DungeonRoomType.combat && room.type != DungeonRoomType.boss) return 0;
+    final combatTypes = {
+      DungeonRoomType.combat,
+      DungeonRoomType.elite,
+      DungeonRoomType.ambush,
+      DungeonRoomType.boss,
+    };
+    if (!combatTypes.contains(room.type)) return 0;
 
     final earnedGold = run.resolveCombat(
       room,
@@ -1865,18 +2012,22 @@ class GameState extends ChangeNotifier {
       gold += earnedGold;
       _totalGoldEarned += earnedGold;
     }
-    // Boss rooms always drop an item (rare or epic)
-    if (!run.isDead && room.type == DungeonRoomType.boss) {
-      final rarity = _rng.nextInt(100) < 30 ? ItemRarity.epic : ItemRarity.rare;
-      final drop = ItemLootTable.craftAt(
-        ItemSlot.values[_rng.nextInt(ItemSlot.values.length)],
-        rarity,
-        hero.level,
-        _rng,
-      );
-      dungeonLastDrop = drop;
-      room.hasItemDrop = true;
-      inventory.addToBag(drop);
+    // Boss rooms: always drop rare/epic item; elite rooms: 60% chance
+    if (!run.isDead) {
+      final isBoss  = room.type == DungeonRoomType.boss;
+      final isElite = room.type == DungeonRoomType.elite;
+      if (isBoss || (isElite && _rng.nextInt(100) < 60)) {
+        final rarity = _rng.nextInt(100) < (isBoss ? 30 : 15) ? ItemRarity.epic : ItemRarity.rare;
+        final drop = ItemLootTable.craftAt(
+          ItemSlot.values[_rng.nextInt(ItemSlot.values.length)],
+          rarity,
+          hero.level,
+          _rng,
+        );
+        dungeonLastDrop = drop;
+        room.hasItemDrop = true;
+        inventory.addToBag(drop);
+      }
     }
     if (run.isDead) {
       _finishDungeon(run);
@@ -1916,6 +2067,15 @@ class GameState extends ChangeNotifier {
     run.resolveTrap(room);
     room.resolved = true;
     if (run.isDead) _finishDungeon(run);
+    notifyListeners();
+  }
+
+  void resolveDungeonRestSite() {
+    final run = activeDungeon;
+    final room = run?.currentRoom;
+    if (run == null || room == null || room.type != DungeonRoomType.restSite) return;
+    run.resolveRestSite(room);
+    room.resolved = true;
     notifyListeners();
   }
 
@@ -1994,8 +2154,11 @@ class GameState extends ChangeNotifier {
     // If Google-signed-in, check if cloud save is newer and load it automatically.
     // Wrapped in try-catch so any Firebase error (e.g. SDK not configured yet)
     // never blocks character creation from completing.
+    // Skip cloud load when creating a brand-new character (newName != null means
+    // the caller just reset defaults — pulling the cloud save would overwrite it).
+    final isNewCharacter = newName != null;
     try {
-      if (authService.isGoogleSignedIn) {
+      if (!isNewCharacter && authService.isGoogleSignedIn) {
         final uid = authService.currentUser!.uid;
         final cloudTs = await cloudSaveService.fetchLastSyncTime(uid);
         if (cloudTs != null) {
@@ -2030,7 +2193,7 @@ class GameState extends ChangeNotifier {
   }
 
   void _syncHeroHpPct() {
-    hero.extraHpPct = traitHpPct + artifactHpPct + runeHpPct + allyHpPct;
+    hero.extraHpPct = traitHpPct + artifactHpPct + runeHpPct + allyHpPct + prestigeHpPct;
     hero.currentHealth = hero.currentHealth.clamp(1, hero.maxHealth);
   }
 
@@ -2121,6 +2284,7 @@ class GameState extends ChangeNotifier {
     activeExpedition = null;
     masteryLevels.clear();
     abilityBranches.clear();
+    _milestoneChoices.clear();
     questsClaimed.clear();
     heroTitle = null;
     _totalAbilityUses = 0;
@@ -2129,8 +2293,9 @@ class GameState extends ChangeNotifier {
     hero.extraHpPct = 0;
     activeModifierId = null;
     bestiaryKills.clear();
-    bossRushBestScore = 0;
-    basicWaystoneCount = 0;
+    bossRushBestScore   = 0;
+    bossRushHighestTier = 0;
+    basicWaystoneCount  = 0;
     grandWaystoneCount = 0;
     waystoneExpiresAtMs = 0;
     _activeWaystoneMult = 1.0;
@@ -2139,9 +2304,8 @@ class GameState extends ChangeNotifier {
     equippedAttackEffectId = null;
     mythril = 0;
     ownedArtifacts.clear();
-    equippedArtifacts[ArtifactSlot.ring]    = null;
-    equippedArtifacts[ArtifactSlot.amulet]  = null;
-    equippedArtifacts[ArtifactSlot.trinket] = null;
+    artifactGrid.clear();
+    _unlockedArtifactCells = 9;
     _dailyBounties = [];
     _bountyDaySeed = 0;
     _refreshBountiesIfNeeded();
@@ -2206,8 +2370,8 @@ class GameState extends ChangeNotifier {
     gold     += 1000;
     shards   += 75;
     essence  += 50;
-    crystals += 50;
-    _setLastAction('Daily Chest claimed! +1000g +75◆ +50 essence +50 crystals');
+    crystals += 150;
+    _setLastAction('Daily Chest claimed! +1000g +75◆ +50 essence +150 crystals');
     notifyListeners();
     saveToLocal();
   }
@@ -2220,6 +2384,8 @@ class GameState extends ChangeNotifier {
   int lastHeroDamage  = 0;
   bool lastHeroCrit   = false;
   int lastEnemyDamage = 0;
+  DamageType lastHeroDamageType  = DamageType.physical;
+  DamageType lastEnemyDamageType = DamageType.physical;
 
   // Combo streak — consecutive hits without missing or taking damage
   int _comboStacks = 0;
@@ -2332,6 +2498,23 @@ class GameState extends ChangeNotifier {
       );
       battleLog.add('⚠ BOSS BATTLE! ${enemy.name} — 2× HP, +25% ATK, Enrages at 30% HP!');
     }
+    // Prestige difficulty scaling: each rebirth makes campaign enemies tougher
+    if (prestigeLevel > 0) {
+      final hpMult  = 1.0 + prestigeLevel * 0.15;
+      final atkMult = 1.0 + prestigeLevel * 0.08;
+      final acBonus = prestigeLevel ~/ 2;
+      enemy = Enemy(
+        id: enemy.id,
+        name: enemy.name,
+        description: enemy.description,
+        maxHealth: (enemy.maxHealth * hpMult).round().clamp(1, 9999999),
+        attack: (enemy.attack * atkMult).round().clamp(1, 9999),
+        level: enemy.level,
+        armorClass: enemy.armorClass + acBonus,
+        attackType: enemy.attackType,
+        resistances: enemy.resistances,
+      );
+    }
     // Apply challenge modifier to enemy and hero
     final mod = activeModifier;
     if (mod != null) {
@@ -2439,7 +2622,7 @@ class GameState extends ChangeNotifier {
     final pierce = passiveTree.totalOf(PassiveEffect.pierce) + subclassPierce
         + _masteryTotal(MasteryEffect.piercePerHit);
     final effectiveEnemyAC = max(1, enemy.armorClass - pierce);
-    final critChancePct = passiveTree.totalOf(PassiveEffect.critChance);
+    final critChancePct = passiveTree.totalOf(PassiveEffect.critChance) + prestigeCritBonus;
     final crit = roll == 20
         || (endlessUpgrades.keenEdge && roll == 19)
         || (subclassEffect == SubclassEffect.champion && roll >= 18)
@@ -2458,7 +2641,8 @@ class GameState extends ChangeNotifier {
       final dmgDie = subclassEffect == SubclassEffect.openHand
           ? _rng.nextInt(10) + 1
           : _rng.nextInt(8) + 1;
-      final critMult = (subclassEffect == SubclassEffect.assassin || _hasKeyword(ItemKeyword.criticalFury)) ? 3 : 2;
+      final baseCritMult = (subclassEffect == SubclassEffect.assassin || _hasKeyword(ItemKeyword.criticalFury)) ? 3 : 2;
+      final critMult = (baseCritMult * prestigeCritDamageMult).round();
       var baseDmg = ((crit ? dmgDie * critMult : dmgDie) + hero.damageMod
           + passiveTree.totalOf(PassiveEffect.damageFlat)
           + inventory.totalOf(ItemStat.damageBonus)
@@ -2484,54 +2668,64 @@ class GameState extends ChangeNotifier {
         baseDmg = (baseDmg + ((hero.maxHealth - hero.currentHealth) * 0.20).round()).clamp(1, 9999);
       }
 
-      // Trait: Glass Cannon +30% dmg
-      if (traitDmgPct != 0) {
-        baseDmg = (baseDmg * (100 + traitDmgPct) / 100).round().clamp(1, 9999);
-      }
-
-      // Bestiary weakness: +10% dmg vs discovered enemy types
-      final weakMult = bestiaryWeaknessBonus(enemy.id);
-      if (weakMult > 1.0) {
-        baseDmg = (baseDmg * weakMult).round().clamp(1, 9999);
-      }
-
-      // Iron Skin affix: reduce hero damage by 2 (min 1)
+      // Flat affix reductions applied before pipeline (not % — keep inline)
       if (_activeAffixes.contains(ZoneAffix.ironSkin)) {
         baseDmg = (baseDmg - 2).clamp(1, 9999);
       }
-      // Diamond Hide affix (T2 Iron Skin mutation): scales with enemy HP ratio
       if (_activeAffixes.contains(ZoneAffix.diamondHide)) {
         final ratio = enemy.currentHealth / enemy.maxHealth;
         final reduction = (2 + (ratio * 6).floor()).clamp(2, 8);
         baseDmg = (baseDmg - reduction).clamp(1, 9999);
       }
 
-      // Berserk: +25% damage below 50% HP
-      if (subclassEffect == SubclassEffect.berserk && hero.currentHealth * 2 < hero.maxHealth) {
-        baseDmg = (baseDmg * 1.25).round().clamp(1, 9999);
-      }
-
-      // INT Lv10 — Exploit Weakness: +15% damage vs AC ≤ 14
-      final exploitMult = (endlessUpgrades.exploitWeakness && enemy.armorClass <= 14)
-          ? 1.15 : 1.0;
+      // ── Damage pipeline ───────────────────────────────────────────────────
+      final heroType      = hero.activeDamageType;
+      final exploitMult   = (endlessUpgrades.exploitWeakness && enemy.armorClass <= 14) ? 1.15 : 1.0;
       final subclassDmgMult = switch (subclassEffect) {
-        SubclassEffect.hunter   => 1.20,
+        SubclassEffect.hunter    => 1.20,
         SubclassEffect.vengeance => 1.10,
         _ => 1.0,
       };
-      final comboMult    = 1.0 + _comboStacks * 0.05;
-      final allDmgMult   = 1.0 + passiveTree.totalOf(PassiveEffect.allDamage) / 100.0;
-      var damage = (baseDmg * endlessUpgrades.damageMultiplier * exploitMult * subclassDmgMult * comboMult * allDmgMult)
-          .round()
-          .clamp(1, 9999);
+      final weakMult = bestiaryWeaknessBonus(enemy.id);
 
-      // Wild Magic: 15% chance triple damage
+      final _penPct = passiveTree.totalOf(PassiveEffect.allPenetration)
+          + inventory.totalOf(ItemStat.elemPenetration);
+      final _penMap = _penPct > 0
+          ? <DamageType, double>{heroType: _penPct / 100.0}
+          : const <DamageType, double>{};
+
+      final _dmgCtx = buildWeaponAttackContext(
+        baseDmg:          baseDmg,
+        heroType:         heroType,
+        allDamagePct:     passiveTree.totalOf(PassiveEffect.allDamage).toDouble(),
+        endlessDmgMult:   endlessUpgrades.damageMultiplier,
+        exploitMult:      exploitMult,
+        subclassDmgMult:  subclassDmgMult,
+        comboStacks:      _comboStacks,
+        bestiaryWeakMult: weakMult,
+        traitDmgMult:     traitDmgPct != 0 ? (100 + traitDmgPct) / 100.0 : 1.0,
+        isBerserk:        subclassEffect == SubclassEffect.berserk &&
+                              hero.currentHealth * 2 < hero.maxHealth,
+        enemyResistances: enemy.resistances,
+        penetration:      _penMap,
+      );
+      var damage = calculateDamage(_dmgCtx, rng: _rng).total.round().clamp(1, 9999);
+
+      // Log resistance/vulnerability (value already applied by pipeline; res capped at 75)
+      final resistance = (enemy.resistances[heroType] ?? 0).clamp(-200, 75);
+      if (resistance > 0) {
+        battleLog.add('${enemy.name} resists ${heroType.label} (${resistance}% resist)!');
+      } else if (resistance < 0) {
+        battleLog.add('${enemy.name} is vulnerable to ${heroType.label}! (${-resistance}% extra)');
+      }
+
+      // Wild Magic: 15% chance triple damage (post-pipeline random event)
       if (subclassEffect == SubclassEffect.wildMagic && _rng.nextInt(100) < 15) {
         damage = (damage * 3).clamp(1, 9999);
         battleLog.add('Wild Magic surge!  $damage damage!');
       }
 
-      // Soul Rip keyword: 8% chance to instakill enemy below 25% HP
+      // Soul Rip keyword: 8% instakill below 25% HP
       if (_hasKeyword(ItemKeyword.soulRip) &&
           enemy.currentHealth / enemy.maxHealth < 0.25 &&
           _rng.nextInt(100) < 8) {
@@ -2539,9 +2733,15 @@ class GameState extends ChangeNotifier {
         battleLog.add('Soul Rip! ${enemy.name}\'s soul is torn free!');
       }
 
+      // Vulnerable debuff: enemy takes extra % damage
+      if (_enemyVulnerablePct > 0) {
+        damage = (damage * (1.0 + _enemyVulnerablePct / 100.0)).round().clamp(1, 9999);
+      }
+
       enemy.takeDamage(damage);
-      lastHeroDamage = damage;
-      lastHeroCrit   = crit;
+      lastHeroDamage     = damage;
+      lastHeroDamageType = heroType;
+      lastHeroCrit       = crit;
       _comboStacks = (_comboStacks + 1).clamp(0, maxComboStacks);
       _dailyDamageDealt += damage;
       _totalDamageDealt  += damage;
@@ -2577,7 +2777,7 @@ class GameState extends ChangeNotifier {
       if (!_bossEnraged && isBossStage &&
           enemy.currentHealth / enemy.maxHealth < 0.3) {
         _bossEnraged = true;
-        battleLog.add('⚠ ${enemy.name} ENRAGES! +50% damage!');
+        battleLog.add('⚠ ${enemy.name} ENRAGES! +200% damage!');
       }
 
       // DEX Lv10 — Blade Flicker: 12% chance to strike a second time
@@ -2685,6 +2885,7 @@ class GameState extends ChangeNotifier {
     if (_dotRoundsLeft > 0) {
       _dotRoundsLeft--;
       enemy.takeDamage(_dotDmg);
+      pendingFloats.add((value: _dotDmg, isHeal: false, type: _dotDamageType));
       battleLog.add('Ongoing damage: ${enemy.name} takes $_dotDmg dmg ($_dotRoundsLeft rounds left).');
       if (enemy.isDefeated) {
         _battleVictory(enemy);
@@ -2772,7 +2973,9 @@ class GameState extends ChangeNotifier {
     if (total >= effectiveAC) {
       var rawDamage = (_rng.nextInt(enemy.attack) + 1).clamp(1, 9999);
       // Boss enrage: +50% damage
-      if (_bossEnraged) rawDamage = (rawDamage * 1.5).round().clamp(1, 9999);
+      if (_bossEnraged) rawDamage = (rawDamage * 3.0).round().clamp(1, 9999);
+      // Weaken debuff: reduce enemy ATK
+      if (_enemyWeakenPct > 0) rawDamage = (rawDamage * (1.0 - _enemyWeakenPct / 100.0)).round().clamp(1, 9999);
       // Iron Will trait: crits (natural 20) deal normal damage, not double
       if (traitCritImmune && roll == 20) rawDamage = rawDamage ~/ 2;
       // CON Lv5 — Thick Hide + Iron Will keyword: reduce incoming damage
@@ -2782,15 +2985,26 @@ class GameState extends ChangeNotifier {
           : (rawDamage - ironWillReduction).clamp(0, 9999);
 
       if (damage > 0) {
-        hero.takeDamage(damage);
-        lastEnemyDamage = damage;
+        // Apply hero's stat-based elemental resistance
+        final heroRes  = heroResistancePct(enemy.attackType);
+        final finalDmg = heroRes != 0
+            ? (damage * (1.0 - heroRes / 100.0)).round().clamp(0, 9999)
+            : damage;
+
+        hero.takeDamage(finalDmg);
+        lastEnemyDamage     = finalDmg;
+        lastEnemyDamageType = enemy.attackType;
         _comboStacks = 0; // taking damage breaks combo
         audioService.playPlayerHit();
-        battleLog.add('${enemy.name} hits! $damage dmg.');
+        final typeTag = enemy.attackType == DamageType.physical
+            ? '' : ' (${enemy.attackType.label})';
+        final resTag = heroRes > 0 ? ' [${heroRes}% res]'
+            : heroRes < 0 ? ' [${-heroRes}% vuln]' : '';
+        battleLog.add('${enemy.name} hits!$typeTag$resTag $finalDmg dmg.');
 
         // Thorn Wall keyword: return 30% of incoming damage to attacker
         if (_hasKeyword(ItemKeyword.thornWall)) {
-          final thorn = (damage * 0.30).round().clamp(1, 9999);
+          final thorn = (finalDmg * 0.30).round().clamp(1, 9999);
           enemy.takeDamage(thorn);
           battleLog.add('Thorn Wall reflects $thorn dmg!');
           if (enemy.isDefeated) { _battleVictory(enemy); return; }
@@ -2798,7 +3012,7 @@ class GameState extends ChangeNotifier {
 
         // Soul Siphon affix: enemy heals 15% of damage dealt
         if (_activeAffixes.contains(ZoneAffix.soulSiphon)) {
-          final siphon = (damage * 0.15).round().clamp(1, 9999);
+          final siphon = (finalDmg * 0.15).round().clamp(1, 9999);
           enemy.currentHealth = (enemy.currentHealth + siphon).clamp(0, enemy.maxHealth);
         }
 
@@ -2845,6 +3059,21 @@ class GameState extends ChangeNotifier {
       _tempAcBonusRounds--;
       if (_tempAcBonusRounds == 0) _tempAcBonus = 0;
     }
+    if (_auraRoundsLeft > 0) {
+      _auraRoundsLeft--;
+      hero.currentHealth = (hero.currentHealth + _auraHealPerRound).clamp(0, hero.maxHealth);
+      pendingFloats.add((value: _auraHealPerRound, isHeal: true, type: DamageType.physical));
+      battleLog.add('Aura: ${hero.name} regenerates $_auraHealPerRound HP ($_auraRoundsLeft rounds left).');
+      if (_auraRoundsLeft == 0) _auraHealPerRound = 0;
+    }
+    if (_enemyWeakenRounds > 0) {
+      _enemyWeakenRounds--;
+      if (_enemyWeakenRounds == 0) _enemyWeakenPct = 0;
+    }
+    if (_enemyVulnerableRounds > 0) {
+      _enemyVulnerableRounds--;
+      if (_enemyVulnerableRounds == 0) _enemyVulnerablePct = 0;
+    }
   }
 
   void enemyAttack() {
@@ -2852,6 +3081,13 @@ class GameState extends ChangeNotifier {
     if (enemy == null) return;
     _enemyTurn(enemy);
     notifyListeners();
+  }
+
+  /// Cycle the hero's active damage type to the next available option.
+  void cycleDamageType() {
+    hero.cycleNextDamageType();
+    notifyListeners();
+    saveToLocal();
   }
 
   void _battleVictory(Enemy enemy) {
@@ -2866,7 +3102,7 @@ class GameState extends ChangeNotifier {
     final goldSenseMult = _hasKeyword(ItemKeyword.goldSense) ? 1.15 : 1.0;
     final petGoldMult = 1.0 + (petGoldPct + skinGoldPct + auraGoldPct + artifactGoldPct + runeGoldPct + traitGoldPct) / 100.0;
     final rewardGold =
-        ((enemy.level * 50 + 100) * endlessUpgrades.goldMultiplier * arcaneBonus * prestigeGoldMult * passiveGoldMult * itemIntMult * goldSenseMult * petGoldMult * allyGoldMult)
+        ((enemy.level * 50 + 100) * endlessUpgrades.goldMultiplier * arcaneBonus * prestigeGoldMult * prestigeGoldBattleMult * passiveGoldMult * itemIntMult * goldSenseMult * petGoldMult * allyGoldMult)
             .round();
 
     // CHA Lv10 — Rally Cry: +20% XP from every kill; passive XP bonus
@@ -2879,7 +3115,7 @@ class GameState extends ChangeNotifier {
     final itemChaMult = 1.0 + inventory.totalOf(ItemStat.charisma) * 0.02;
     final petXpMult = 1.0 + (petXpPct + skinXpPct + auraXpPct + artifactXpPct + runeXpPct + traitXpPct) / 100.0;
     final rewardExp =
-        (((enemy.level * 35 + 90) *
+        (((enemy.level * 28 + 75) *
                 hero.xpMultiplier *
                 endlessUpgrades.xpMultiplier *
                 rallyCryBonus *
@@ -2898,6 +3134,13 @@ class GameState extends ChangeNotifier {
     if (hero.level > prevLevel) audioService.playLevelUp();
     lastRewardGold = rewardGold;
     lastRewardExp  = rewardExp;
+    lastItemDrop   = null;
+
+    // Blood Drinker: restore 3% max HP on kill
+    if (prestigeHealOnKill) {
+      final healAmt = (hero.maxHealth * 0.03).round().clamp(1, 9999);
+      hero.currentHealth = (hero.currentHealth + healAmt).clamp(0, hero.maxHealth);
+    }
 
     // Bestiary: record kill for this enemy type
     bestiaryKills[enemy.id] = (bestiaryKills[enemy.id] ?? 0) + 1;
@@ -2937,6 +3180,7 @@ class GameState extends ChangeNotifier {
       lastItemDrop = drop;
       inventory.addToBag(drop);
       battleLog.add('Item dropped: ${drop.name} (${drop.rarityLabel})!');
+      DebugLogger.log('item_drop', '${drop.rarityLabel} ${drop.name} stage=$campaignStageIndex hero_lv=${hero.level}');
     }
     // Legendary drop: 1% chance on boss kills
     if (isBossStage) {
@@ -2945,6 +3189,7 @@ class GameState extends ChangeNotifier {
         lastItemDrop = legDrop;
         inventory.addToBag(legDrop);
         battleLog.add('✦ LEGENDARY DROP: ${legDrop.name}!');
+        DebugLogger.log('item_drop', 'LEGENDARY ${legDrop.name} stage=$campaignStageIndex hero_lv=${hero.level}');
       }
       // Set item drop: 0.3% chance on boss kills — extremely rare
       final setDrop = ItemLootTable.tryDropSet(hero.level, _rng);
@@ -2952,6 +3197,7 @@ class GameState extends ChangeNotifier {
         lastItemDrop = setDrop;
         inventory.addToBag(setDrop);
         battleLog.add('◈ SET ITEM DROP: ${setDrop.name}!');
+        DebugLogger.log('item_drop', 'SET ${setDrop.name} stage=$campaignStageIndex hero_lv=${hero.level}');
       }
     }
 
@@ -2993,8 +3239,8 @@ class GameState extends ChangeNotifier {
     if (endlessUpgrades.savageMomentum) _hasMomentum = true;
 
     // Post-battle HP recovery: CON-based partial heal instead of full restore.
-    // Base = (10 + conMod * 5)% of max HP, so CON 10 → 10%, CON 16 → 25%, CON 20 → 35%.
-    final conHealPct = (10 + hero.conMod * 5).clamp(5, 100);
+    // Base = (8 + conMod * 4)% of max HP, so CON 10 → 8%, CON 16 → 20%, CON 20 → 28%.
+    final conHealPct = (8 + hero.conMod * 4).clamp(4, 75);
     var conRegen = (hero.maxHealth * conHealPct / 100).round();
     // Endless upgrade: bonus fraction on top of CON base
     conRegen += (hero.maxHealth * endlessUpgrades.hpRecoveryFraction).round();
@@ -3036,6 +3282,8 @@ class GameState extends ChangeNotifier {
     // Victory resets mercy / loss streak
     _consecutiveLosses = 0;
     _mercyTokenActive  = false;
+    DebugLogger.log('battle_win',
+        'stage=$campaignStageIndex boss=$isBossStage gold=$rewardGold xp=$rewardExp prestige=$prestigeLevel hero_hp=${hero.currentHealth}/${hero.maxHealth}');
 
     if (_endlessMode) {
       battleLog.add('The enemy stirs again in the endless dark...');
@@ -3051,7 +3299,7 @@ class GameState extends ChangeNotifier {
     lastBattleWasFinalVictory = false;
 
     if (wasFinalBoss) {
-      battleLog.add('The Dark Lord falls... but the abyss yawns deeper.');
+      battleLog.add('The Omega falls. The curse is ended. A new age begins.');
     } else {
       battleLog.add('${hero.name} advances to stage ${campaignStageIndex + 1}.');
     }
@@ -3186,6 +3434,7 @@ class GameState extends ChangeNotifier {
       'endlessUpgrades': endlessUpgrades.toJson(),
       'abilityRanks': Map<String, int>.from(_abilityRanks),
       'abilityBranches': Map<String, String>.from(abilityBranches),
+      'abilityMilestoneChoices': Map<String, String>.from(_milestoneChoices),
       'prestigeLevel': prestigeLevel,
       'prestigeSouls': prestigeSouls,
       'prestigeShop': prestigeShop.toJson(),
@@ -3252,7 +3501,8 @@ class GameState extends ChangeNotifier {
       // Bestiary
       'bestiaryKills': Map<String, int>.from(bestiaryKills),
       // Boss Rush
-      'bossRushBestScore': bossRushBestScore,
+      'bossRushBestScore':   bossRushBestScore,
+      'bossRushHighestTier': bossRushHighestTier,
       // Waystones
       'basicWaystoneCount': basicWaystoneCount,
       'grandWaystoneCount': grandWaystoneCount,
@@ -3268,7 +3518,8 @@ class GameState extends ChangeNotifier {
       // Artifacts & mythril
       'mythril': mythril,
       'ownedArtifacts': ownedArtifacts.toList(),
-      'equippedArtifacts': equippedArtifacts.map((k, v) => MapEntry(k.name, v)),
+      'artifactGrid': artifactGrid.map((k, v) => MapEntry(k.toString(), v)),
+      'unlockedArtifactCells': _unlockedArtifactCells,
       // World Event
       'eventTokens':         eventTokens,
       'eventWeekSeed':       _eventWeekSeed,
@@ -3347,6 +3598,12 @@ class GameState extends ChangeNotifier {
     if (json['abilityBranches'] != null) {
       (json['abilityBranches'] as Map<String, dynamic>).forEach((k, v) {
         abilityBranches[k] = v as String;
+      });
+    }
+    _milestoneChoices.clear();
+    if (json['abilityMilestoneChoices'] != null) {
+      (json['abilityMilestoneChoices'] as Map<String, dynamic>).forEach((k, v) {
+        _milestoneChoices[k] = v as String;
       });
     }
     prestigeLevel = (json['prestigeLevel'] as int?) ?? 0;
@@ -3437,7 +3694,8 @@ class GameState extends ChangeNotifier {
         bestiaryKills[k] = v as int;
       });
     }
-    bossRushBestScore = (json['bossRushBestScore'] as int?) ?? 0;
+    bossRushBestScore   = (json['bossRushBestScore']   as int?) ?? 0;
+    bossRushHighestTier = (json['bossRushHighestTier'] as int?) ?? 0;
     basicWaystoneCount  = (json['basicWaystoneCount'] as int?) ?? 0;
     grandWaystoneCount  = (json['grandWaystoneCount'] as int?) ?? 0;
     waystoneExpiresAtMs = (json['waystoneExpiresAtMs'] as int?) ?? 0;
@@ -3461,12 +3719,24 @@ class GameState extends ChangeNotifier {
       ownedArtifacts.addAll(
           (json['ownedArtifacts'] as List<dynamic>).map((e) => e as String));
     }
-    if (json['equippedArtifacts'] != null) {
+    artifactGrid.clear();
+    if (json['artifactGrid'] != null) {
+      final raw = json['artifactGrid'] as Map<String, dynamic>;
+      for (final e in raw.entries) {
+        if (e.value != null) artifactGrid[int.parse(e.key)] = e.value as String;
+      }
+    } else if (json['equippedArtifacts'] != null) {
+      // Migrate from old ring/amulet/trinket slot system
       final raw = json['equippedArtifacts'] as Map<String, dynamic>;
+      int cell = 0;
       for (final slot in ArtifactSlot.values) {
-        equippedArtifacts[slot] = raw[slot.name] as String?;
+        final id = raw[slot.name] as String?;
+        if (id != null && ownedArtifacts.contains(id)) {
+          artifactGrid[cell++] = id;
+        }
       }
     }
+    _unlockedArtifactCells = (json['unlockedArtifactCells'] as int?) ?? 9;
     final raceIdStr = json['heroRaceId'] as String?;
     if (raceIdStr != null) {
       heroRace = HeroRace.values.where((r) => r.name == raceIdStr).firstOrNull;

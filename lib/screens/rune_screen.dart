@@ -1,50 +1,78 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import '../models/rune.dart';
 import '../services/game_state.dart';
 import '../theme/app_theme.dart';
 
 class RuneScreen extends StatelessWidget {
-  const RuneScreen({super.key});
+  const RuneScreen({super.key, this.embedded = false});
+  final bool embedded;
 
   @override
   Widget build(BuildContext context) {
     final game = GameStateProvider.of(context);
 
+    final tabBar = TabBar(
+      indicatorColor: AppTheme.accentGold,
+      labelColor: AppTheme.accentGold,
+      unselectedLabelColor: AppTheme.textMuted,
+      tabs: RuneSlot.values.map((s) => Tab(
+        child: Text('${s.icon} ${s.label.toUpperCase()}',
+            style: const TextStyle(fontSize: 10)),
+      )).toList(),
+    );
+
+    final body = Column(
+      children: [
+        _ActiveRuneBar(game: game),
+        Expanded(
+          child: TabBarView(
+            children: RuneSlot.values
+                .map((slot) => _SlotTab(game: game, slot: slot))
+                .toList(),
+          ),
+        ),
+      ],
+    );
+
+    if (embedded) {
+      return DefaultTabController(
+        length: RuneSlot.values.length,
+        child: Container(
+          color: const Color(0xFF1B1A17),
+          child: Column(children: [
+            Container(
+              color: const Color(0xFF2A2623),
+              child: Row(children: [
+                Expanded(child: tabBar),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  child: _DustBadge(dust: game.runeDust),
+                ),
+              ]),
+            ),
+            Expanded(child: body),
+          ]),
+        ),
+      );
+    }
+
     return DefaultTabController(
       length: RuneSlot.values.length,
       child: Scaffold(
-        backgroundColor: const Color(0xFF0a0e27),
+        backgroundColor: const Color(0xFF1B1A17),
         appBar: AppBar(
-          backgroundColor: const Color(0xFF1a1f3a),
+          backgroundColor: const Color(0xFF2A2623),
           title: Text('RUNE FORGE',
-              style: AppTheme.pixelHeading(fontSize: 13, letterSpacing: 2)),
+              style: AppTheme.pixelHeading(fontSize: 14, letterSpacing: 2)),
           actions: [
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
               child: _DustBadge(dust: game.runeDust),
             ),
           ],
-          bottom: TabBar(
-            indicatorColor: AppTheme.accentGold,
-            labelColor: AppTheme.accentGold,
-            unselectedLabelColor: AppTheme.textMuted,
-            tabs: RuneSlot.values.map((s) => Tab(
-              child: Text('${s.icon} ${s.label.toUpperCase()}',
-                  style: const TextStyle(fontSize: 9)),
-            )).toList(),
-          ),
+          bottom: tabBar,
         ),
-        body: Column(
-          children: [
-            _ActiveRuneBar(game: game),
-            Expanded(
-              child: TabBarView(
-                children: RuneSlot.values.map((slot) =>
-                    _SlotTab(game: game, slot: slot)).toList(),
-              ),
-            ),
-          ],
-        ),
+        body: body,
       ),
     );
   }
@@ -64,11 +92,11 @@ class _DustBadge extends StatelessWidget {
         borderRadius: BorderRadius.circular(3),
       ),
       child: Row(mainAxisSize: MainAxisSize.min, children: [
-        const Text('✦', style: TextStyle(fontSize: 10, color: Color(0xFFcc8844))),
+        const Text('✦', style: TextStyle(fontSize: 11, color: Color(0xFFcc8844))),
         const SizedBox(width: 4),
         Text('$dust Dust',
             style: AppTheme.pixelHeading(
-                fontSize: 11, color: const Color(0xFFcc8844))),
+                fontSize: 12, color: const Color(0xFFcc8844))),
       ]),
     );
   }
@@ -81,7 +109,7 @@ class _ActiveRuneBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      color: const Color(0xFF0e1225),
+      color: const Color(0xFF231F1B),
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
@@ -104,21 +132,21 @@ class _ActiveRuneBar extends StatelessWidget {
               ),
               child: Column(mainAxisSize: MainAxisSize.min, children: [
                 Text(slot.icon,
-                    style: const TextStyle(fontSize: 14)),
+                    style: const TextStyle(fontSize: 15)),
                 const SizedBox(height: 2),
                 if (def != null && active != null) ...[
                   Text(def.name,
-                      style: TextStyle(fontSize: 7, color: def.color),
+                      style: TextStyle(fontSize: 8, color: def.color),
                       textAlign: TextAlign.center,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis),
                   Text('${active.minutesLeft}m',
                       style: const TextStyle(
-                          fontSize: 8, color: Colors.white54)),
+                          fontSize: 9, color: Colors.white54)),
                 ] else
                   Text('Empty',
                       style: const TextStyle(
-                          fontSize: 8, color: AppTheme.textMuted)),
+                          fontSize: 9, color: AppTheme.textMuted)),
               ]),
             ),
           );
@@ -152,7 +180,7 @@ class _SlotTab extends StatelessWidget {
             'Common items. Each rune activates for a limited time — '
             'only one rune per slot can be active.',
             style: TextStyle(
-                fontSize: 10, color: AppTheme.textMuted, height: 1.5),
+                fontSize: 11, color: AppTheme.textMuted, height: 1.5),
           ),
         ),
         ...runes.map((r) => Padding(
@@ -181,7 +209,7 @@ class _RuneCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: isActive
             ? def.color.withValues(alpha: 0.06)
-            : const Color(0xFF0e1225),
+            : const Color(0xFF231F1B),
         border: Border.all(
           color: isActive
               ? def.color.withValues(alpha: 0.7)
@@ -194,7 +222,7 @@ class _RuneCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(children: [
-            Text(def.icon, style: const TextStyle(fontSize: 20)),
+            Text(def.icon, style: const TextStyle(fontSize: 21)),
             const SizedBox(width: 10),
             Expanded(
               child: Column(
@@ -202,12 +230,12 @@ class _RuneCard extends StatelessWidget {
                 children: [
                   Text(def.name,
                       style: TextStyle(
-                          fontSize: 13,
+                          fontSize: 14,
                           fontWeight: FontWeight.bold,
                           color: isActive ? def.color : Colors.white70)),
                   Text(def.description,
                       style: const TextStyle(
-                          fontSize: 10, color: AppTheme.textMuted)),
+                          fontSize: 11, color: AppTheme.textMuted)),
                 ],
               ),
             ),
@@ -223,7 +251,7 @@ class _RuneCard extends StatelessWidget {
                 ),
                 child: Text('×$stockpile',
                     style: TextStyle(
-                        fontSize: 10,
+                        fontSize: 11,
                         color: def.color,
                         fontWeight: FontWeight.bold)),
               ),
@@ -248,7 +276,7 @@ class _RuneCard extends StatelessWidget {
               const SizedBox(width: 4),
               Text('${active.minutesLeft}m left',
                   style: TextStyle(
-                      fontSize: 10, color: def.color)),
+                      fontSize: 11, color: def.color)),
             ],
           ]),
         ],
@@ -277,7 +305,7 @@ class _RuneBtn extends StatelessWidget {
       ),
       child: Text(label,
           style: AppTheme.pixelHeading(
-              fontSize: 10,
+              fontSize: 11,
               letterSpacing: 1,
               color: onTap != null ? color : AppTheme.cardBorder)),
     );

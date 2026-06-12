@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../models/passive_tree.dart';
 import '../services/game_state.dart';
@@ -46,16 +46,16 @@ class PassiveTreeScreen extends StatelessWidget {
           '${game.essence}',
           style: GoogleFonts.pixelifySans(
             color: const Color(0xFFaaff88),
-            fontSize: 14,
+            fontSize: 15,
             fontWeight: FontWeight.bold,
           ),
         ),
         const SizedBox(width: 4),
-        const Text('essence', style: TextStyle(color: Colors.white38, fontSize: 11)),
+        const Text('essence', style: TextStyle(color: Colors.white38, fontSize: 12)),
         const Spacer(),
         Text(
           '${game.passiveTree.unlockedCount} nodes unlocked',
-          style: const TextStyle(color: Colors.white30, fontSize: 10),
+          style: const TextStyle(color: Colors.white30, fontSize: 11),
         ),
       ]),
     );
@@ -95,7 +95,7 @@ class PassiveTreeScreen extends StatelessWidget {
                 ),
                 child: Row(children: [
                   Text(_branchEmojis[branch]!, style: TextStyle(
-                    fontSize: 16,
+                    fontSize: 17,
                     color: locked ? Colors.white30 : Colors.white,
                   )),
                   const SizedBox(width: 8),
@@ -103,7 +103,7 @@ class PassiveTreeScreen extends StatelessWidget {
                     _branchNames[branch]!,
                     style: TextStyle(
                       color: locked ? Colors.white30 : color,
-                      fontSize: 11,
+                      fontSize: 12,
                       fontWeight: FontWeight.bold,
                       letterSpacing: 1.5,
                     ),
@@ -115,17 +115,17 @@ class PassiveTreeScreen extends StatelessWidget {
                       const SizedBox(width: 4),
                       Text(
                         '$otherCount / 4 nodes needed',
-                        style: const TextStyle(color: Colors.white30, fontSize: 9),
+                        style: const TextStyle(color: Colors.white30, fontSize: 10),
                       ),
                     ])
                   else ...[
                     Text(
                       '$totalRanks',
-                      style: TextStyle(color: color, fontSize: 11, fontWeight: FontWeight.bold),
+                      style: TextStyle(color: color, fontSize: 12, fontWeight: FontWeight.bold),
                     ),
                     Text(
                       '/$maxRanks',
-                      style: const TextStyle(color: Colors.white30, fontSize: 10),
+                      style: const TextStyle(color: Colors.white30, fontSize: 11),
                     ),
                   ],
                 ]),
@@ -184,12 +184,12 @@ class PassiveTreeScreen extends StatelessWidget {
                 '${game.essence}',
                 style: GoogleFonts.pixelifySans(
                   color: const Color(0xFFaaff88),
-                  fontSize: 16,
+                  fontSize: 17,
                   fontWeight: FontWeight.bold,
                 ),
               ),
               const SizedBox(width: 4),
-              const Text('essence', style: TextStyle(color: Colors.white38, fontSize: 11)),
+              const Text('essence', style: TextStyle(color: Colors.white38, fontSize: 12)),
             ]),
           ),
         ],
@@ -241,14 +241,14 @@ class _NodeCard extends StatelessWidget {
     final canAfford  = canUpgrade && game.essence >= cost;
 
     final borderColor = locked
-        ? const Color(0xFF1a1e2f)
+        ? const Color(0xFF211E1A)
         : isMax
             ? color
             : canAfford
                 ? color.withOpacity(0.55)
                 : rank > 0
                     ? color.withOpacity(0.28)
-                    : const Color(0xFF2a2e3f);
+                    : const Color(0xFF2E2A26);
 
     return GestureDetector(
       onTap: canAfford ? () => game.upgradePassive(node.id) : null,
@@ -271,7 +271,7 @@ class _NodeCard extends StatelessWidget {
             Text(
               node.emoji,
               style: TextStyle(
-                fontSize: 18,
+                fontSize: 19,
                 color: locked ? Colors.white24 : Colors.white,
               ),
             ),
@@ -285,7 +285,7 @@ class _NodeCard extends StatelessWidget {
                     : rank > 0
                         ? color
                         : Colors.white54,
-                fontSize: 9,
+                fontSize: 10,
                 fontWeight: FontWeight.bold,
               ),
               maxLines: 2,
@@ -297,7 +297,7 @@ class _NodeCard extends StatelessWidget {
               textAlign: TextAlign.center,
               style: TextStyle(
                 color: locked ? Colors.white12 : Colors.white38,
-                fontSize: 7,
+                fontSize: 8,
               ),
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
@@ -311,7 +311,7 @@ class _NodeCard extends StatelessWidget {
                 child: Text(
                   i < rank ? '●' : '○',
                   style: TextStyle(
-                    fontSize: 7,
+                    fontSize: 8,
                     color: i < rank ? color : color.withOpacity(locked ? 0.08 : 0.22),
                   ),
                 ),
@@ -323,7 +323,7 @@ class _NodeCard extends StatelessWidget {
                 'MAX',
                 style: TextStyle(
                   color: color,
-                  fontSize: 8,
+                  fontSize: 9,
                   fontWeight: FontWeight.bold,
                   letterSpacing: 1,
                 ),
@@ -342,7 +342,7 @@ class _NodeCard extends StatelessWidget {
                     canUpgrade ? '$cost' : '—',
                     style: TextStyle(
                       color: canAfford ? const Color(0xFFaaff88) : Colors.white24,
-                      fontSize: 8,
+                      fontSize: 9,
                       fontWeight: FontWeight.bold,
                     ),
                   ),

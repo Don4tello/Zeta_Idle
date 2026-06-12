@@ -1,86 +1,16 @@
-import 'dart:async';
-import 'dart:math';
+﻿import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
+import '../core/routing/app_router.dart';
 import '../models/equipment.dart';
 import '../services/game_state.dart';
-import '../widgets/item_drop_badge.dart';
-import '../screens/main_shell.dart';
 import '../widgets/affix_chip_row.dart';
-import '../widgets/attack_effect.dart';
-import '../widgets/ability_bar.dart';
+import '../widgets/battle_arena.dart';
 import '../widgets/battle_sprites.dart';
-import '../widgets/buff_hud.dart';
-import '../widgets/battle_backgrounds.dart';
-import '../widgets/pixel_health_bar.dart';
+import '../widgets/item_drop_badge.dart';
+import '../models/hero_ability.dart';
+import '../widgets/pet_battle_sprite.dart';
 import '../theme/app_theme.dart';
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Floating damage number entry — one per attack hit
-// ─────────────────────────────────────────────────────────────────────────────
-
-class _FloatEntry {
-  _FloatEntry({
-    required this.ctrl,
-    required this.text,
-    required this.isCrit,
-    required this.onEnemy, // true = hits over enemy, false = hits over hero
-  });
-
-  final AnimationController ctrl;
-  final String text;
-  final bool isCrit;
-  final bool onEnemy;
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Enemy death burst painter — 12 pixel fragments flying outward
-// ─────────────────────────────────────────────────────────────────────────────
-
-class _DeathBurstPainter extends CustomPainter {
-  const _DeathBurstPainter(this.t, this.cx, this.cy);
-
-  final double t;  // 0 → 1
-  final double cx; // center x in arena coordinates
-  final double cy; // center y in arena coordinates
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final rng = Random(1337);
-    const count = 14;
-    final paint = Paint()..style = PaintingStyle.fill;
-
-    for (int i = 0; i < count; i++) {
-      final angle = rng.nextDouble() * pi * 2;
-      final speed = 60 + rng.nextDouble() * 80;
-      final startR = 8 + rng.nextDouble() * 12;
-      final dist = startR + t * speed;
-      final px = cx + cos(angle) * dist;
-      final py = cy + sin(angle) * dist;
-      final sz = (1 - t) * (4 + rng.nextDouble() * 6);
-      final alpha = (1 - t * t).clamp(0.0, 1.0);
-      final colors = [0xFFffcc44, 0xFFff8820, 0xFFee3030, 0xFFffffff, 0xFFdd60ff];
-      paint.color = Color(colors[i % colors.length]).withValues(alpha: alpha);
-      canvas.drawRect(Rect.fromCenter(center: Offset(px, py), width: sz, height: sz), paint);
-    }
-
-    // Central flash ring
-    final ringAlpha = ((1 - t * 1.5).clamp(0.0, 1.0));
-    if (ringAlpha > 0) {
-      paint
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 3 * (1 - t)
-        ..color = const Color(0xFFffdd88).withValues(alpha: ringAlpha);
-      canvas.drawCircle(Offset(cx, cy), 12 + t * 50, paint);
-    }
-  }
-
-  @override
-  bool shouldRepaint(_DeathBurstPainter old) => old.t != t;
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// BattleScreen
-// ─────────────────────────────────────────────────────────────────────────────
 
 class BattleScreen extends StatefulWidget {
   const BattleScreen({super.key});
@@ -89,88 +19,18 @@ class BattleScreen extends StatefulWidget {
   State<BattleScreen> createState() => _BattleScreenState();
 }
 
-class _BattleScreenState extends State<BattleScreen>
-    with TickerProviderStateMixin {
-  final _heroKey   = GlobalKey<BattleSpriteState>();
-  final _enemyKey  = GlobalKey<BattleSpriteState>();
-  final _effectKey = GlobalKey<AttackEffectState>();
+class _BattleScreenState extends State<BattleScreen> {
+  final _arenaKey = GlobalKey<BattleArenaState>();
 
   bool _busy = false;
   bool _autoRunning = false;
+  bool _fastMode = false;
   bool _showingReward = false;
   int _rewardGold   = 0;
   int _rewardExp    = 0;
   int _rewardShards = 0;
   EquipmentItem? _rewardItem;
-
-  // ── Animation controllers ────────────────────────────────────────────────
-  late final AnimationController _shakeCtrl = AnimationController(
-    vsync: this,
-    duration: const Duration(milliseconds: 280),
-  );
-
-  late final AnimationController _burstCtrl = AnimationController(
-    vsync: this,
-    duration: const Duration(milliseconds: 420),
-  );
-
-  final List<_FloatEntry> _floaters = [];
-
-  // ── Arena size cache (set by LayoutBuilder) ───────────────────────────────
-  Size _arenaSize = Size.zero;
-
-  @override
-  void dispose() {
-    _shakeCtrl.dispose();
-    _burstCtrl.dispose();
-    for (final f in _floaters) {
-      f.ctrl.dispose();
-    }
-    super.dispose();
-  }
-
-  // ── Shake helpers ─────────────────────────────────────────────────────────
-
-  void _triggerShake() {
-    _shakeCtrl.forward(from: 0);
-  }
-
-  Offset _shakeOffset() {
-    if (!_shakeCtrl.isAnimating && _shakeCtrl.value == 0) return Offset.zero;
-    final v = _shakeCtrl.value;
-    final intensity = (1 - v) * 7.0;
-    return Offset(
-      sin(v * pi * 7) * intensity,
-      sin(v * pi * 5 + 1.2) * intensity * 0.6,
-    );
-  }
-
-  // ── Floating damage helpers ───────────────────────────────────────────────
-
-  void _spawnFloat(int damage, {required bool isCrit, required bool onEnemy}) {
-    if (damage <= 0) return;
-    final ctrl = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 900),
-    );
-    final entry = _FloatEntry(
-      ctrl: ctrl,
-      text: isCrit ? '$damage!' : '$damage',
-      isCrit: isCrit,
-      onEnemy: onEnemy,
-    );
-    setState(() => _floaters.add(entry));
-    ctrl.forward().then((_) {
-      if (mounted) setState(() { _floaters.remove(entry); entry.ctrl.dispose(); });
-    });
-  }
-
-  // ── Death burst ───────────────────────────────────────────────────────────
-
-  void _triggerDeathBurst() {
-    _burstCtrl.forward(from: 0);
-    _triggerShake();
-  }
+  Completer<void>? _rewardCompleter;
 
   // ── Auto attack loop ──────────────────────────────────────────────────────
 
@@ -182,7 +42,8 @@ class _BattleScreenState extends State<BattleScreen>
       while (mounted && game.currentEnemy != null) {
         if (!_busy) await _doAttack(game);
         if (mounted && game.currentEnemy != null) {
-          await Future.delayed(const Duration(milliseconds: 600));
+          await Future.delayed(
+              Duration(milliseconds: _fastMode ? 400 : 600));
         }
       }
 
@@ -191,11 +52,12 @@ class _BattleScreenState extends State<BattleScreen>
       if (game.heroDefeated) {
         game.heroDefeated = false;
         await _showDefeatDialog(game.hero.name);
-        if (mounted) Navigator.pushNamedAndRemoveUntil(context, '/', (_) => false);
+        if (mounted) context.go(Routes.shell);
         break;
       }
 
       if (mounted) {
+        _rewardCompleter = Completer<void>();
         setState(() {
           _showingReward = true;
           _rewardGold    = game.lastRewardGold;
@@ -204,7 +66,11 @@ class _BattleScreenState extends State<BattleScreen>
           _rewardItem    = game.lastItemDrop;
         });
       }
-      await Future.delayed(Duration(seconds: game.lastItemDrop != null ? 3 : 2));
+      await Future.any([
+        Future.delayed(const Duration(seconds: 5)),
+        _rewardCompleter!.future,
+      ]);
+      _rewardCompleter = null;
       if (!mounted) break;
       setState(() { _showingReward = false; _rewardItem = null; });
 
@@ -242,39 +108,40 @@ class _BattleScreenState extends State<BattleScreen>
     if (mounted) setState(() => _busy = true);
 
     // ── Hero attacks ────────────────────────────────────────────────────────
-    final enemyAliveBeforeHero = game.currentEnemy != null;
+    game.clearPendingFloats();
     game.heroAttack();
-    _heroKey.currentState?.playAttack();
-    _effectKey.currentState?.trigger(game.hero.heroClass);
-
-    if (enemyAliveBeforeHero && game.lastHeroDamage > 0) {
-      _spawnFloat(game.lastHeroDamage, isCrit: game.lastHeroCrit, onEnemy: true);
+    await (_arenaKey.currentState?.playHeroAttack(
+          game.lastHeroDamage,
+          isCrit: game.lastHeroCrit,
+          heroClass: game.hero.heroClass,
+          damageType: game.lastHeroDamageType,
+        ) ??
+        Future.value());
+    // Show ability/heal floats from this round
+    for (final f in game.pendingFloats) {
+      _arenaKey.currentState?.addExtraFloat(f.value, isHeal: f.isHeal, type: f.type);
     }
-
-    await Future.delayed(const Duration(milliseconds: 200));
-    if (mounted) _enemyKey.currentState?.playHit();
 
     // Check for death / boss enrage after hero hits
     if (mounted && game.currentEnemy == null) {
-      // Enemy just died
-      _triggerDeathBurst();
-    } else if (mounted && game.isBossEnraged) {
-      _triggerShake();
+      _arenaKey.currentState?.playEnemyDeath();
     }
 
     // ── Enemy counter-attacks ────────────────────────────────────────────────
     if (mounted && game.currentEnemy != null) {
       await Future.delayed(const Duration(milliseconds: 500));
       if (mounted) {
+        game.clearPendingFloats();
         game.enemyAttack();
-        _enemyKey.currentState?.playAttack();
-        await Future.delayed(const Duration(milliseconds: 200));
-        if (mounted) {
-          _heroKey.currentState?.playHit();
-          if (game.lastEnemyDamage > 0) {
-            _spawnFloat(game.lastEnemyDamage, isCrit: false, onEnemy: false);
-          }
+        // Show DoT tick and aura heal floats
+        for (final f in game.pendingFloats) {
+          _arenaKey.currentState?.addExtraFloat(f.value, isHeal: f.isHeal, type: f.type);
         }
+        await (_arenaKey.currentState?.playEnemyAttack(
+              game.lastEnemyDamage,
+              damageType: game.lastEnemyDamageType,
+            ) ??
+            Future.value());
       }
     }
 
@@ -285,25 +152,64 @@ class _BattleScreenState extends State<BattleScreen>
 
   @override
   Widget build(BuildContext context) {
-    final game = GameStateProvider.of(context);
+    final game  = GameStateProvider.of(context);
     final enemy = game.currentEnemy;
 
     return Scaffold(
       backgroundColor: AppTheme.darkBg,
-      appBar: AppBar(title: const Text('BATTLE')),
+      appBar: AppBar(
+        title: const Text('BATTLE'),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () {
+            game.retreatBattle();
+            Navigator.pop(context);
+          },
+        ),
+        actions: [
+          if (game.prestigeLevel > 0)
+            Padding(
+              padding: const EdgeInsets.only(right: 8),
+              child: GestureDetector(
+                onTap: () => setState(() => _fastMode = !_fastMode),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: _fastMode
+                        ? const Color(0xFF1a3a1a)
+                        : const Color(0xFF1a1a2a),
+                    border: Border.all(
+                      color: _fastMode
+                          ? const Color(0xFF44cc44)
+                          : const Color(0xFF334466),
+                      width: 1.5,
+                    ),
+                    borderRadius: BorderRadius.circular(3),
+                  ),
+                  child: Text(
+                    '1.5×',
+                    style: TextStyle(
+                      color: _fastMode
+                          ? const Color(0xFF44cc44)
+                          : const Color(0xFF667799),
+                      fontSize: 13,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
       body: Column(
         children: [
-          TutorialTip(
-            tutorialKey: 'battle',
-            game: game,
-            text: 'Tap ATTACK to roll a d20 — hit the enemy\'s AC to deal damage. '
-                'Abilities fire automatically when ready.',
-          ),
           Expanded(
             child: Stack(
               fit: StackFit.expand,
               children: [
-                enemy == null ? _buildNoBattle(context) : _buildArena(context, game, enemy),
+                enemy == null
+                    ? _buildNoBattle(context)
+                    : _buildArena(context, game, enemy),
                 if (_showingReward) _buildRewardOverlay(),
               ],
             ),
@@ -314,21 +220,28 @@ class _BattleScreenState extends State<BattleScreen>
   }
 
   Widget _buildNoBattle(BuildContext context) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Text('NO ACTIVE BATTLE',
-                style: TextStyle(fontSize: 18, color: AppTheme.accentGold, letterSpacing: 2)),
-            const SizedBox(height: 20),
-            ElevatedButton(
-                onPressed: () => Navigator.pop(context), child: const Text('RETURN')),
-          ],
-        ),
-      ),
+    return const Center(
+      child: Text('NO ACTIVE BATTLE',
+          style: TextStyle(fontSize: 19, color: AppTheme.accentGold, letterSpacing: 2)),
     );
+  }
+
+  static List<Color> _heroBuffGlows(GameState game) {
+    final glows = <Color>[];
+    if (game.buffAttackBonus > 0)  glows.add(const Color(0xFFffcc00)); // yellow — ATK
+    if (game.buffAcBonus > 0)      glows.add(const Color(0xFF66aaff)); // blue  — AC
+    if (game.dodgeNextHit)         glows.add(const Color(0xFF44ddcc)); // cyan  — dodge
+    if (game.auraRoundsLeft > 0)   glows.add(const Color(0xFF55ee88)); // green — aura heal
+    return glows;
+  }
+
+  static List<Color> _enemyDebuffGlows(GameState game) {
+    final glows = <Color>[];
+    if (game.dotRoundsLeft > 0)          glows.add(const Color(0xFF88dd00)); // lime   — DOT
+    if (game.enemyStunRounds > 0)        glows.add(const Color(0xFFcc44ff)); // purple — stun
+    if (game.enemyWeakenRounds > 0)      glows.add(const Color(0xFFff4488)); // pink   — weaken
+    if (game.enemyVulnerableRounds > 0)  glows.add(const Color(0xFFff8800)); // orange — vulnerable
+    return glows;
   }
 
   Widget _buildArena(BuildContext context, GameState game, enemy) {
@@ -337,10 +250,279 @@ class _BattleScreenState extends State<BattleScreen>
         if (mounted && !_autoRunning) _startAutoAttack(game);
       });
     }
-    return _buildArenaContent(context, game, enemy);
+    return Column(
+      children: [
+        // ── ARENA ─────────────────────────────────────────────────────────
+        Expanded(
+          child: BattleArena(
+            key: _arenaKey,
+            heroName:         game.hero.name,
+            heroLevel:        game.hero.level,
+            heroCurrentHp:    game.hero.currentHealth,
+            heroMaxHp:        game.hero.maxHealth,
+            heroAttack:       game.hero.attack,
+            heroSpriteId:     game.hero.spriteId,
+            heroAuraColor:    game.heroAuraColor,
+            heroAuraIntensity: game.heroAuraIntensity,
+            heroColorFilter:  game.heroSkinFilter,
+            heroPet: game.equippedPet != null
+                ? PetBattleSprite(pet: game.equippedPet!, size: 28)
+                : null,
+            enemyName:    enemy.name,
+            enemyLevel:   enemy.level,
+            enemyCurrentHp: enemy.currentHealth,
+            enemyMaxHp:   enemy.maxHealth,
+            enemyAttack:  enemy.attack,
+            enemyId:      enemy.id,
+            headerLabel:  '⚔  STAGE ${game.campaignStageIndex + 1}  ⚔',
+            isBoss:       game.isBossStage,
+            isBossEnraged: game.isBossEnraged,
+            affixWidget: game.activeAffixes.isNotEmpty
+                ? AffixChipRow(affixes: game.activeAffixes)
+                : null,
+            enemyAuraColor: BattleSprite.auraColorFor(game.activeAffixes),
+            heroDamageType: game.hero.activeDamageType,
+            enemyAttackType: enemy.attackType,
+            enemyResistances: enemy.resistances,
+            heroBuffGlows: _heroBuffGlows(game),
+            enemyDebuffGlows: _enemyDebuffGlows(game),
+          ),
+        ),
+
+        // ── ABILITY PANEL (hero left / enemy right) ───────────────────────
+        _buildSplitAbilityPanel(game),
+
+        // ── BATTLE LOG ────────────────────────────────────────────────────
+        BattleLogBox(log: game.battleLog),
+      ],
+    );
+  }
+
+  static const _effectColors = <AbilityEffect, Color>{
+    AbilityEffect.bonusDamage:      Color(0xFFff6633),
+    AbilityEffect.heal:             Color(0xFF44cc66),
+    AbilityEffect.attackBonus:      Color(0xFFffcc00),
+    AbilityEffect.acBonus:          Color(0xFF66aaff),
+    AbilityEffect.stun:             Color(0xFFcc44ff),
+    AbilityEffect.dot:              Color(0xFF88dd00),
+    AbilityEffect.dodge:            Color(0xFF44ddcc),
+    AbilityEffect.aura:             Color(0xFF55ee88),
+    AbilityEffect.debuffWeaken:     Color(0xFFff4488),
+    AbilityEffect.debuffVulnerable: Color(0xFFff8800),
+  };
+  static const _effectIcons = <AbilityEffect, IconData>{
+    AbilityEffect.bonusDamage:      Icons.local_fire_department,
+    AbilityEffect.heal:             Icons.favorite,
+    AbilityEffect.attackBonus:      Icons.add_circle,
+    AbilityEffect.acBonus:          Icons.shield,
+    AbilityEffect.stun:             Icons.flash_on,
+    AbilityEffect.dot:              Icons.bug_report,
+    AbilityEffect.dodge:            Icons.directions_run,
+    AbilityEffect.aura:             Icons.healing,
+    AbilityEffect.debuffWeaken:     Icons.remove_circle,
+    AbilityEffect.debuffVulnerable: Icons.broken_image,
+  };
+
+  Widget _buildSplitAbilityPanel(GameState game) {
+    final abilities = game.unlockedAbilities;
+
+    // ── Enemy debuff chips ────────────────────────────────────────────────
+    final enemyChips = <Widget>[];
+    void addEnemyChip(IconData icon, Color color, String label, int rounds) {
+      enemyChips.add(Padding(
+        padding: const EdgeInsets.only(bottom: 4),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+          decoration: BoxDecoration(
+            color: color.withValues(alpha: 0.12),
+            border: Border(
+              bottom: BorderSide(color: color, width: 1.5),
+              left:   BorderSide(color: color.withValues(alpha: 0.3), width: 1),
+              right:  BorderSide(color: color.withValues(alpha: 0.3), width: 1),
+              top:    BorderSide(color: color.withValues(alpha: 0.3), width: 1),
+            ),
+          ),
+          child: Row(mainAxisSize: MainAxisSize.min, children: [
+            Icon(icon, color: color, size: 13),
+            const SizedBox(width: 4),
+            Text(label,
+                style: TextStyle(color: color, fontSize: 12,
+                    fontWeight: FontWeight.bold)),
+            const SizedBox(width: 4),
+            Container(
+              width: 16, height: 16,
+              decoration: BoxDecoration(
+                  color: color.withValues(alpha: 0.2), shape: BoxShape.circle),
+              alignment: Alignment.center,
+              child: Text('$rounds',
+                  style: TextStyle(color: color, fontSize: 10,
+                      fontWeight: FontWeight.bold)),
+            ),
+          ]),
+        ),
+      ));
+    }
+
+    // Hero buffs (shown status side)
+    if (game.buffAttackBonus > 0) {
+      addEnemyChip(Icons.add_circle, const Color(0xFFffcc00),
+          '+${game.buffAttackBonus} ATK', game.buffAttackRounds);
+    }
+    if (game.buffAcBonus > 0) {
+      addEnemyChip(Icons.shield, const Color(0xFF66aaff),
+          '+${game.buffAcBonus} AC', game.buffAcRounds);
+    }
+    if (game.dodgeNextHit) {
+      addEnemyChip(Icons.directions_run, const Color(0xFF44ddcc), 'DODGE', 1);
+    }
+    if (game.auraRoundsLeft > 0) {
+      addEnemyChip(Icons.healing, const Color(0xFF55ee88),
+          '+${game.auraHealPerRound} HP/r', game.auraRoundsLeft);
+    }
+    // Enemy debuffs
+    if (game.dotRoundsLeft > 0) {
+      addEnemyChip(Icons.bug_report, const Color(0xFF88dd00),
+          '${game.dotDmg}/rnd', game.dotRoundsLeft);
+    }
+    if (game.enemyStunRounds > 0) {
+      addEnemyChip(Icons.flash_on, const Color(0xFFcc44ff),
+          'STUN', game.enemyStunRounds);
+    }
+    if (game.enemyWeakenRounds > 0) {
+      addEnemyChip(Icons.remove_circle, const Color(0xFFff4488),
+          '-${game.enemyWeakenPct}%ATK', game.enemyWeakenRounds);
+    }
+    if (game.enemyVulnerableRounds > 0) {
+      addEnemyChip(Icons.broken_image, const Color(0xFFff8800),
+          '+${game.enemyVulnerablePct}%DMG', game.enemyVulnerableRounds);
+    }
+
+    if (abilities.isEmpty && enemyChips.isEmpty) return const SizedBox.shrink();
+
+    return Container(
+      color: const Color(0xFF0a0e1f),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+      child: IntrinsicHeight(
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // ── LEFT: hero ability chips ────────────────────────────────
+            Expanded(
+              flex: 6,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text('HERO',
+                      style: TextStyle(color: Color(0xFF7799cc), fontSize: 11,
+                          fontWeight: FontWeight.bold, letterSpacing: 2)),
+                  const SizedBox(height: 4),
+                  if (abilities.isEmpty)
+                    const Text('No abilities unlocked',
+                        style: TextStyle(color: Color(0xFF555577), fontSize: 11))
+                  else
+                    Wrap(
+                      spacing: 4,
+                      runSpacing: 4,
+                      children: abilities.map((a) {
+                        final cd    = game.cooldownRemaining(a.id);
+                        final total = game.scaledAbilityCooldown(a);
+                        final ready = cd == 0;
+                        // Use elemental color for damage/dot abilities
+                        final Color color;
+                        if (a.effect == AbilityEffect.bonusDamage ||
+                            a.effect == AbilityEffect.dot) {
+                          color = game.abilityEffectiveDamageType(a).color;
+                        } else {
+                          color = _effectColors[a.effect] ?? Colors.grey;
+                        }
+                        final icon  = _effectIcons[a.effect] ?? Icons.star;
+                        final progress = ready
+                            ? 1.0
+                            : ((total - cd) / total.clamp(1, 9999))
+                                .clamp(0.0, 1.0);
+                        return SizedBox(
+                          width: 104,
+                          child: Container(
+                            padding: const EdgeInsets.fromLTRB(8, 8, 8, 6),
+                            decoration: BoxDecoration(
+                              color: color.withValues(alpha: ready ? 0.15 : 0.07),
+                              border: Border.all(
+                                  color: color.withValues(alpha: ready ? 0.8 : 0.4),
+                                  width: ready ? 1.5 : 1.0),
+                            ),
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Row(children: [
+                                  Icon(icon, color: color, size: 13),
+                                  const SizedBox(width: 4),
+                                  Expanded(
+                                    child: Text(a.name,
+                                        style: const TextStyle(
+                                            color: Colors.white, fontSize: 12,
+                                            fontWeight: FontWeight.bold),
+                                        overflow: TextOverflow.ellipsis),
+                                  ),
+                                  Text(ready ? 'RDY' : '${cd}r',
+                                      style: TextStyle(
+                                          color: color, fontSize: 12,
+                                          fontWeight: FontWeight.bold)),
+                                ]),
+                                const SizedBox(height: 3),
+                                ClipRRect(
+                                  borderRadius: BorderRadius.circular(1),
+                                  child: LinearProgressIndicator(
+                                    value: progress,
+                                    minHeight: 3,
+                                    backgroundColor:
+                                        Colors.white.withValues(alpha: 0.1),
+                                    valueColor: AlwaysStoppedAnimation<Color>(
+                                        color.withValues(alpha: 0.8)),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      }).toList(),
+                    ),
+                ],
+              ),
+            ),
+            // ── Divider ─────────────────────────────────────────────────
+            Container(
+              width: 1,
+              margin: const EdgeInsets.symmetric(horizontal: 8),
+              color: const Color(0xFF2a2a3a),
+            ),
+            // ── RIGHT: active buffs / enemy debuffs ──────────────────────
+            Expanded(
+              flex: 4,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text('STATUS',
+                      style: TextStyle(color: Color(0xFF7799cc), fontSize: 11,
+                          fontWeight: FontWeight.bold, letterSpacing: 2)),
+                  const SizedBox(height: 4),
+                  if (enemyChips.isEmpty)
+                    const Text('—',
+                        style: TextStyle(color: Color(0xFF555577), fontSize: 12))
+                  else
+                    ...enemyChips,
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   Widget _buildRewardOverlay() {
+
     return Positioned.fill(
       child: Container(
         color: Colors.black.withValues(alpha: 0.75),
@@ -348,7 +530,7 @@ class _BattleScreenState extends State<BattleScreen>
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 36, vertical: 28),
             decoration: BoxDecoration(
-              color: const Color(0xFF1e1030),
+              color: const Color(0xFF241910),
               border: Border.all(color: AppTheme.accentGold, width: 2),
             ),
             child: Column(
@@ -356,21 +538,21 @@ class _BattleScreenState extends State<BattleScreen>
               children: [
                 const Text('VICTORY!',
                     style: TextStyle(
-                        fontSize: 26,
+                        fontSize: 27,
                         fontWeight: FontWeight.bold,
                         color: AppTheme.accentGold,
                         letterSpacing: 4)),
                 const SizedBox(height: 16),
                 Text('+$_rewardGold GOLD',
                     style: const TextStyle(
-                        fontSize: 20,
+                        fontSize: 21,
                         fontWeight: FontWeight.bold,
                         color: Color(0xFFffd700),
                         letterSpacing: 2)),
                 const SizedBox(height: 6),
                 Text('+$_rewardExp XP',
                     style: const TextStyle(
-                        fontSize: 20,
+                        fontSize: 21,
                         fontWeight: FontWeight.bold,
                         color: Color(0xFF4ad46a),
                         letterSpacing: 2)),
@@ -383,7 +565,7 @@ class _BattleScreenState extends State<BattleScreen>
                     const SizedBox(width: 6),
                     Text('+$_rewardShards SHARDS',
                         style: const TextStyle(
-                            fontSize: 16,
+                            fontSize: 17,
                             fontWeight: FontWeight.bold,
                             color: Color(0xFF80d0ff),
                             letterSpacing: 2)),
@@ -394,13 +576,41 @@ class _BattleScreenState extends State<BattleScreen>
                   const Divider(color: Color(0xFF3a2a50), height: 1),
                   const SizedBox(height: 10),
                   ItemDropBadge(item: _rewardItem!),
+                  const SizedBox(height: 6),
+                  const Text('→ Added to Bag',
+                      style: TextStyle(
+                          fontSize: 11,
+                          color: Color(0xFF88cc88),
+                          letterSpacing: 1)),
                 ],
                 const SizedBox(height: 16),
-                const Text('Advancing to next stage...',
-                    style: TextStyle(
-                        fontSize: 11,
-                        color: AppTheme.textMuted,
-                        letterSpacing: 1)),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    OutlinedButton(
+                      onPressed: () {
+                        _rewardCompleter?.complete();
+                        if (mounted) Navigator.pop(context);
+                      },
+                      style: OutlinedButton.styleFrom(
+                        side: const BorderSide(color: AppTheme.accentGold),
+                        foregroundColor: AppTheme.accentGold,
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                      ),
+                      child: const Text('HERO', style: TextStyle(fontSize: 12, letterSpacing: 1)),
+                    ),
+                    const SizedBox(width: 12),
+                    ElevatedButton(
+                      onPressed: () => _rewardCompleter?.complete(),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppTheme.accentGold,
+                        foregroundColor: Colors.black,
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                      ),
+                      child: const Text('CONTINUE', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, letterSpacing: 1)),
+                    ),
+                  ],
+                ),
               ],
             ),
           ),
@@ -408,427 +618,5 @@ class _BattleScreenState extends State<BattleScreen>
       ),
     );
   }
-
-  Widget _buildArenaContent(BuildContext context, GameState game, enemy) {
-    if (enemy == null) return const SizedBox.shrink();
-    return Column(
-      children: [
-        // ── ARENA ───────────────────────────────────────────────────────────
-        Expanded(
-          child: AnimatedBuilder(
-            animation: Listenable.merge([_shakeCtrl, _burstCtrl]),
-            builder: (_, child) {
-              return Transform.translate(
-                offset: _shakeOffset(),
-                child: child,
-              );
-            },
-            child: LayoutBuilder(
-              builder: (_, constraints) {
-                _arenaSize = Size(constraints.maxWidth, constraints.maxHeight);
-                return Stack(
-                  children: [
-                    // Pixel art environment background
-                    Positioned.fill(
-                      child: CustomPaint(painter: battleBackgroundFor(enemy.id)),
-                    ),
-                    // Vignette
-                    Positioned.fill(
-                      child: DecoratedBox(
-                        decoration: BoxDecoration(
-                          gradient: RadialGradient(
-                            center: Alignment.center,
-                            radius: 1.2,
-                            colors: [
-                              Colors.transparent,
-                              Colors.black.withValues(alpha: 0.45),
-                            ],
-                          ),
-                          border: const Border(
-                            bottom: BorderSide(
-                                color: AppTheme.pixelBorderBright, width: 2),
-                          ),
-                        ),
-                      ),
-                    ),
-                    // Arena content
-                    Column(
-                      children: [
-                        const SizedBox(height: 6),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 14, vertical: 4),
-                          decoration: const BoxDecoration(
-                            color: Color(0xFF1e1030),
-                            border: Border.fromBorderSide(
-                              BorderSide(color: AppTheme.accentGold, width: 1),
-                            ),
-                          ),
-                          child: Text(
-                            '⚔  STAGE ${game.campaignStageIndex + 1}  ⚔',
-                            style: const TextStyle(
-                                fontSize: 11,
-                                color: AppTheme.accentGold,
-                                letterSpacing: 2),
-                          ),
-                        ),
-                        if (game.isBossStage) ...[
-                          const SizedBox(height: 6),
-                          Container(
-                            width: double.infinity,
-                            padding: const EdgeInsets.symmetric(vertical: 5),
-                            color: game.isBossEnraged
-                                ? const Color(0xFF5a0000)
-                                : const Color(0xFF2a0040),
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                const Text('☠',
-                                    style: TextStyle(fontSize: 12)),
-                                const SizedBox(width: 8),
-                                Text(
-                                  game.isBossEnraged
-                                      ? 'BOSS ENRAGED!'
-                                      : 'BOSS BATTLE',
-                                  style: TextStyle(
-                                    color: game.isBossEnraged
-                                        ? const Color(0xFFff4444)
-                                        : const Color(0xFFcc44ff),
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.bold,
-                                    letterSpacing: 2,
-                                  ),
-                                ),
-                                const SizedBox(width: 8),
-                                const Text('☠',
-                                    style: TextStyle(fontSize: 12)),
-                              ],
-                            ),
-                          ),
-                        ],
-                        if (game.activeAffixes.isNotEmpty) ...[
-                          const SizedBox(height: 6),
-                          Padding(
-                            padding:
-                                const EdgeInsets.symmetric(horizontal: 12),
-                            child: AffixChipRow(affixes: game.activeAffixes),
-                          ),
-                        ],
-                        const SizedBox(height: 8),
-                        Expanded(
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                            crossAxisAlignment: CrossAxisAlignment.end,
-                            children: [
-                              _CombatantPanel(
-                                name: game.hero.name,
-                                level: game.hero.level,
-                                currentHp: game.hero.currentHealth,
-                                maxHp: game.hero.maxHealth,
-                                attack: game.hero.attack,
-                                sprite: BattleSprite(
-                                  key: _heroKey,
-                                  spriteId: game.hero.spriteId,
-                                  facingLeft: false,
-                                  auraColor: game.heroAuraColor,
-                                  auraIntensity: game.heroAuraIntensity,
-                                  colorFilter: game.heroSkinFilter,
-                                ),
-                                nameColor: const Color(0xFF4ad46a),
-                                alignRight: false,
-                              ),
-                              const Padding(
-                                padding: EdgeInsets.only(bottom: 32),
-                                child: Text('VS',
-                                    style: TextStyle(
-                                        fontSize: 20,
-                                        fontWeight: FontWeight.bold,
-                                        color: AppTheme.accentGold,
-                                        letterSpacing: 2)),
-                              ),
-                              _CombatantPanel(
-                                name: enemy.name,
-                                level: enemy.level,
-                                currentHp: enemy.currentHealth,
-                                maxHp: enemy.maxHealth,
-                                attack: enemy.attack,
-                                sprite: BattleSprite(
-                                  key: _enemyKey,
-                                  spriteId: enemy.id,
-                                  facingLeft: true,
-                                  auraColor: BattleSprite.auraColorFor(
-                                      game.activeAffixes),
-                                ),
-                                nameColor: const Color(0xFFee4040),
-                                alignRight: true,
-                              ),
-                            ],
-                          ),
-                        ),
-                        Container(
-                          height: 4,
-                          margin:
-                              const EdgeInsets.symmetric(horizontal: 16),
-                          color: AppTheme.pixelBorderBright,
-                        ),
-                        const SizedBox(height: 4),
-                      ],
-                    ),
-                    // Attack effect overlay
-                    Positioned.fill(
-                      child: IgnorePointer(
-                        child: AttackEffect(key: _effectKey),
-                      ),
-                    ),
-                    // Death burst overlay
-                    if (_burstCtrl.isAnimating || _burstCtrl.value > 0)
-                      Positioned.fill(
-                        child: IgnorePointer(
-                          child: CustomPaint(
-                            painter: _DeathBurstPainter(
-                              _burstCtrl.value,
-                              _arenaSize.width * 0.72,
-                              _arenaSize.height * 0.60,
-                            ),
-                          ),
-                        ),
-                      ),
-                    // Floating damage numbers
-                    ..._floaters.map((f) => _buildFloat(f)),
-                  ],
-                );
-              },
-            ),
-          ),
-        ),
-
-        // ── BUFF HUD ──────────────────────────────────────────────────────
-        const BuffHud(),
-
-        // ── ABILITY BAR ───────────────────────────────────────────────────
-        const AbilityBar(),
-
-        // ── ACTION BUTTONS ────────────────────────────────────────────────
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-          color: const Color(0xFF0e1228),
-          child: Row(
-            children: [
-              Expanded(
-                flex: 3,
-                child: Container(
-                  padding:
-                      const EdgeInsets.symmetric(vertical: 12, horizontal: 12),
-                  decoration: BoxDecoration(
-                    color: _busy
-                        ? const Color(0xFF5a0000)
-                        : const Color(0xFF8b0000),
-                    border: Border.all(
-                      color: _busy
-                          ? const Color(0xFFff4040)
-                          : const Color(0xFFcc2020),
-                      width: 2,
-                    ),
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(_busy ? Icons.bolt : Icons.autorenew,
-                          color: Colors.white, size: 16),
-                      const SizedBox(width: 6),
-                      Text(
-                        _busy ? 'ATTACKING...' : '⚔ AUTO BATTLE',
-                        style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 12,
-                            fontWeight: FontWeight.bold,
-                            letterSpacing: 1),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: OutlinedButton(
-                  onPressed: () {
-                    game.retreatBattle();
-                    Navigator.pop(context);
-                  },
-                  child: const Text('RUN'),
-                ),
-              ),
-            ],
-          ),
-        ),
-
-        // ── BATTLE LOG ────────────────────────────────────────────────────
-        Container(
-          height: 130,
-          decoration: const BoxDecoration(
-            color: Color(0xFF0a0c18),
-            border: Border(top: BorderSide(color: AppTheme.pixelBorder, width: 2)),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                color: const Color(0xFF141828),
-                child: const Text('BATTLE LOG',
-                    style: TextStyle(
-                        fontSize: 10,
-                        color: AppTheme.accentGold,
-                        letterSpacing: 2)),
-              ),
-              Expanded(
-                child: ListView(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                  reverse: true,
-                  children: game.battleLog.reversed
-                      .take(8)
-                      .map((e) => _LogLine(text: e))
-                      .toList(),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-
-  // ── Floating number widget ─────────────────────────────────────────────────
-
-  Widget _buildFloat(_FloatEntry f) {
-    return AnimatedBuilder(
-      animation: f.ctrl,
-      builder: (_, __) {
-        final t = f.ctrl.value;
-        final alpha = t < 0.7 ? 1.0 : (1 - (t - 0.7) / 0.3);
-        final rise = t * 70.0;
-        final cx = _arenaSize.width * (f.onEnemy ? 0.72 : 0.28);
-        final cy = _arenaSize.height * 0.62 - rise;
-        return Positioned(
-          left: cx - (f.isCrit ? 36 : 24),
-          top: cy - 16,
-          child: IgnorePointer(
-            child: Opacity(
-              opacity: alpha.clamp(0.0, 1.0),
-              child: Text(
-                f.text,
-                style: TextStyle(
-                  fontSize: f.isCrit ? 26 : 18,
-                  fontWeight: FontWeight.bold,
-                  color: f.isCrit
-                      ? const Color(0xFFffdd00)
-                      : f.onEnemy
-                          ? const Color(0xFFff6666)
-                          : const Color(0xFF88ddff),
-                  shadows: const [
-                    Shadow(color: Colors.black, blurRadius: 4, offset: Offset(1, 1)),
-                    Shadow(color: Colors.black, blurRadius: 4, offset: Offset(-1, -1)),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        );
-      },
-    );
-  }
 }
-
-// ─────────────────────────────────────────────────────────────────────────────
-// _CombatantPanel
-// ─────────────────────────────────────────────────────────────────────────────
-
-class _CombatantPanel extends StatelessWidget {
-  const _CombatantPanel({
-    required this.name,
-    required this.level,
-    required this.currentHp,
-    required this.maxHp,
-    required this.attack,
-    required this.sprite,
-    required this.nameColor,
-    required this.alignRight,
-  });
-
-  final String name;
-  final int level;
-  final int currentHp;
-  final int maxHp;
-  final int attack;
-  final Widget sprite;
-  final Color nameColor;
-  final bool alignRight;
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      width: 130,
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.end,
-        crossAxisAlignment:
-            alignRight ? CrossAxisAlignment.end : CrossAxisAlignment.start,
-        children: [
-          Text(
-            name.toUpperCase(),
-            style: TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.bold,
-                color: nameColor,
-                letterSpacing: 1),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
-          Text('LV.$level  ATK:$attack',
-              style:
-                  const TextStyle(fontSize: 9, color: AppTheme.textMuted)),
-          const SizedBox(height: 6),
-          Center(child: sprite),
-          const SizedBox(height: 8),
-          PixelHealthBar(current: currentHp, max: maxHp, height: 12),
-          const SizedBox(height: 3),
-          Text('$currentHp / $maxHp',
-              style:
-                  const TextStyle(fontSize: 9, color: AppTheme.textMuted)),
-          const SizedBox(height: 8),
-        ],
-      ),
-    );
-  }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// _LogLine
-// ─────────────────────────────────────────────────────────────────────────────
-
-class _LogLine extends StatelessWidget {
-  const _LogLine({required this.text});
-  final String text;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 2),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text('▸ ',
-              style: TextStyle(color: AppTheme.accentGold, fontSize: 10)),
-          Expanded(
-            child: Text(text,
-                style: const TextStyle(
-                    fontSize: 10, color: AppTheme.textLight, height: 1.4)),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-
 

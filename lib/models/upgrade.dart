@@ -1,6 +1,7 @@
+import 'dart:math';
 import 'hero_model.dart';
 
-enum UpgradeType { strength, dexterity, constitution, intelligence, wisdom, charisma }
+enum UpgradeType { strength, dexterity, constitution, intelligence, wisdom, charisma, dualMastery }
 
 extension UpgradeTypeLabel on UpgradeType {
   String get label {
@@ -11,6 +12,7 @@ extension UpgradeTypeLabel on UpgradeType {
       case UpgradeType.intelligence:return 'INT';
       case UpgradeType.wisdom:      return 'WIS';
       case UpgradeType.charisma:    return 'CHA';
+      case UpgradeType.dualMastery: return '✨';
     }
   }
 }
@@ -37,7 +39,13 @@ class Upgrade {
   final int maxLevel;
 
   bool get isMaxed => level >= maxLevel;
-  int get cost => (baseCost * (level + 1)).clamp(baseCost, baseCost * maxLevel * 2);
+  // Progressive curve: ×2.0 per level, with an extra ×1.5 per level above 4.
+  // Early ranks are cheap; the final ranks become significantly more expensive.
+  int get cost {
+    final geometric = baseCost * pow(2.0, level);
+    final kicker = level > 4 ? pow(1.5, level - 4) : 1.0;
+    return (geometric * kicker).round().clamp(baseCost, baseCost * 500000);
+  }
 
   void applyTo(HeroModel hero) {
     switch (type) {
@@ -53,6 +61,8 @@ class Upgrade {
         hero.addWisdom(effectAmount);
       case UpgradeType.charisma:
         hero.addCharisma(effectAmount);
+      case UpgradeType.dualMastery:
+        hero.dualMasteryUnlocked = true;
     }
     level = (level + 1).clamp(0, maxLevel);
   }

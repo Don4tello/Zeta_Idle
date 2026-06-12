@@ -1,4 +1,7 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
+import '../core/routing/app_router.dart';
+import '../data/world_zone_data.dart';
 import '../models/world_zone.dart';
 import '../services/game_state.dart';
 import '../theme/app_theme.dart';
@@ -9,16 +12,16 @@ class CampaignScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final game  = GameStateProvider.of(context);
-    final stage = game.currentCampaignStage;
-    final zone  = game.currentZone;
+    final game     = GameStateProvider.of(context);
+    final stage    = game.currentCampaignStage;
+    final zone     = game.currentZone;
     final stageNum = game.campaignStageIndex + 1;
 
     return Scaffold(
-      backgroundColor: const Color(0xFF0a0e27),
+      backgroundColor: const Color(0xFF1B1A17),
       appBar: AppBar(
-        backgroundColor: const Color(0xFF1a1f3a),
-        title: Text('CAMPAIGN', style: AppTheme.pixelHeading(fontSize: 13, letterSpacing: 2)),
+        backgroundColor: const Color(0xFF2A2623),
+        title: Text('CAMPAIGN', style: AppTheme.pixelHeading(fontSize: 14, letterSpacing: 2)),
       ),
       body: ListView(
         padding: const EdgeInsets.all(16),
@@ -27,11 +30,11 @@ class CampaignScreen extends StatelessWidget {
             tutorialKey: 'campaign',
             game: game,
             text: 'Campaign advances stage by stage. Defeat each boss to unlock the next. '
-                'Reach stage 25 to prestige and earn souls for permanent upgrades.',
+                'Reach stage 25, 50, 75, or 100 to Rebirth and earn permanent upgrades.',
           ),
 
-          // Zone banner
-          _ZoneBanner(zone: zone, currentStageIndex: game.campaignStageIndex),
+          // Full campaign map
+          _CampaignMap(game: game),
           const SizedBox(height: 14),
 
           // Current stage card
@@ -51,7 +54,7 @@ class CampaignScreen extends StatelessWidget {
           // Enter battle button
           SizedBox(
             width: double.infinity,
-            height: 48,
+            height: 52,
             child: ElevatedButton(
               style: ElevatedButton.styleFrom(
                 backgroundColor: zone.color.withValues(alpha: 0.2),
@@ -61,10 +64,10 @@ class CampaignScreen extends StatelessWidget {
               ),
               onPressed: () {
                 game.startBattle();
-                Navigator.pushNamed(context, '/battle');
+                context.push(Routes.battle);
               },
               child: Text('⚔  ENTER BATTLE',
-                  style: AppTheme.pixelHeading(fontSize: 12, letterSpacing: 2, color: zone.color)),
+                  style: AppTheme.pixelHeading(fontSize: 13, letterSpacing: 2, color: zone.color)),
             ),
           ),
 
@@ -86,83 +89,236 @@ class CampaignScreen extends StatelessWidget {
   }
 }
 
-// ── Zone banner ───────────────────────────────────────────────────────────────
+// ── Campaign map ──────────────────────────────────────────────────────────────
 
-class _ZoneBanner extends StatelessWidget {
-  const _ZoneBanner({required this.zone, required this.currentStageIndex});
+class _CampaignMap extends StatefulWidget {
+  const _CampaignMap({required this.game});
+  final GameState game;
+
+  @override
+  State<_CampaignMap> createState() => _CampaignMapState();
+}
+
+class _CampaignMapState extends State<_CampaignMap> {
+  final _scroll = ScrollController();
+
+  // Fixed row height — used to compute initial scroll offset
+  static const double _zoneHeaderH = 28.0;
+  static const double _nodesH      = 64.0;
+  static const double _zoneH       = _zoneHeaderH + _nodesH;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToCurrentZone());
+  }
+
+  void _scrollToCurrentZone() {
+    if (!_scroll.hasClients) return;
+    final zoneIdx    = widget.game.campaignStageIndex ~/ 5;
+    final targetOffset = (zoneIdx * _zoneH - 32).clamp(0.0, _scroll.position.maxScrollExtent);
+    _scroll.animateTo(targetOffset,
+        duration: const Duration(milliseconds: 600), curve: Curves.easeOut);
+  }
+
+  @override
+  void dispose() {
+    _scroll.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 300,
+      decoration: BoxDecoration(
+        color: const Color(0xFF181614),
+        border: Border.all(color: AppTheme.cardBorder),
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(4),
+        child: ListView.builder(
+          controller: _scroll,
+          itemCount: kWorldZones.length,
+          itemBuilder: (_, i) => _ZoneRow(
+            zone: kWorldZones[i],
+            currentStageIndex: widget.game.campaignStageIndex,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ── One zone row (header + 5 stage nodes) ────────────────────────────────────
+
+class _ZoneRow extends StatelessWidget {
+  const _ZoneRow({required this.zone, required this.currentStageIndex});
   final WorldZone zone;
   final int currentStageIndex;
 
   @override
   Widget build(BuildContext context) {
-    final progress = zone.progressIn(currentStageIndex);
-    final total    = zone.stageCount;
+    final firstIdx  = zone.firstStage - 1; // 0-based index of zone's stage 1
+    final isRebirth = zone.lastStage % 25 == 0; // gates at 25/50/75/100
 
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: zone.color.withValues(alpha: 0.08),
-        border: Border.all(color: zone.color.withValues(alpha: 0.5), width: 1.5),
-        borderRadius: BorderRadius.circular(4),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
+    return Column(
+      children: [
+        // Zone header
+        Container(
+          height: _CampaignMapState._zoneHeaderH,
+          padding: const EdgeInsets.symmetric(horizontal: 10),
+          color: zone.color.withValues(alpha: isRebirth ? 0.28 : 0.16),
+          child: Row(
             children: [
-              Text(zone.icon, style: const TextStyle(fontSize: 20)),
-              const SizedBox(width: 10),
+              Text(zone.icon, style: const TextStyle(fontSize: 14)),
+              const SizedBox(width: 6),
               Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(zone.name.toUpperCase(),
-                        style: AppTheme.pixelHeading(fontSize: 13, letterSpacing: 2, color: zone.color)),
-                    const SizedBox(height: 2),
-                    Text('Stages ${zone.firstStage}–${zone.lastStage}',
-                        style: TextStyle(fontSize: 10, color: zone.color.withValues(alpha: 0.6))),
-                  ],
-                ),
+                child: Text(zone.name.toUpperCase(),
+                    style: AppTheme.pixelHeading(
+                        fontSize: 9, letterSpacing: 1.5, color: zone.color),
+                    overflow: TextOverflow.ellipsis),
               ),
-              // Stage progress dots
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: List.generate(total, (i) => Container(
-                  width: 9,
-                  height: 9,
-                  margin: const EdgeInsets.only(left: 4),
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: i < progress ? zone.color : Colors.transparent,
-                    border: Border.all(
-                      color: i < progress ? zone.color : zone.color.withValues(alpha: 0.3),
-                      width: 1.5,
-                    ),
-                  ),
-                )),
-              ),
+              Text('${zone.firstStage}–${zone.lastStage}',
+                  style: TextStyle(fontSize: 9, color: zone.color.withValues(alpha: 0.75))),
+              if (isRebirth) ...[
+                const SizedBox(width: 5),
+                Text('✦', style: TextStyle(fontSize: 10, color: zone.color)),
+              ],
             ],
           ),
-          const SizedBox(height: 10),
-          Text(zone.flavor,
-              style: TextStyle(fontSize: 11, color: zone.color.withValues(alpha: 0.75),
-                  height: 1.4)),
-          const SizedBox(height: 10),
-          // Progress bar
-          ClipRRect(
-            borderRadius: BorderRadius.circular(2),
-            child: LinearProgressIndicator(
-              value: progress / total,
-              minHeight: 4,
-              backgroundColor: zone.color.withValues(alpha: 0.15),
-              valueColor: AlwaysStoppedAnimation<Color>(zone.color),
-            ),
+        ),
+        // Stage nodes
+        SizedBox(
+          height: _CampaignMapState._nodesH,
+          child: Row(
+            children: List.generate(5, (i) {
+              final stageIdx = firstIdx + i;
+              final isBoss   = stageIdx % 5 == 4;
+              final isCleared  = stageIdx < currentStageIndex;
+              final isCurrent  = stageIdx == currentStageIndex;
+
+              // Path line before node (except first node)
+              return Expanded(
+                child: Row(
+                  children: [
+                    // Connector line from previous node (skip on first)
+                    if (i > 0)
+                      Expanded(
+                        child: Container(
+                          height: 2,
+                          color: isCleared || isCurrent
+                              ? zone.color.withValues(alpha: 0.55)
+                              : zone.color.withValues(alpha: 0.12),
+                        ),
+                      ),
+                    _StageNode(
+                      stageNum: stageIdx + 1,
+                      isBoss: isBoss,
+                      isCleared: isCleared,
+                      isCurrent: isCurrent,
+                      color: zone.color,
+                    ),
+                    // Connector line after last node in zone
+                    if (i == 4)
+                      const SizedBox.shrink(),
+                  ],
+                ),
+              );
+            }),
           ),
-          const SizedBox(height: 4),
-          Text('$progress / $total stages cleared',
-              style: TextStyle(fontSize: 10, color: zone.color.withValues(alpha: 0.5))),
-        ],
-      ),
+        ),
+        // Divider between zones (thin gold line at rebirth gates)
+        Divider(
+          height: 1,
+          thickness: isRebirth ? 1.5 : 0.5,
+          color: isRebirth
+              ? zone.color.withValues(alpha: 0.5)
+              : Colors.white.withValues(alpha: 0.04),
+        ),
+      ],
+    );
+  }
+}
+
+// ── Individual stage node ─────────────────────────────────────────────────────
+
+class _StageNode extends StatelessWidget {
+  const _StageNode({
+    required this.stageNum,
+    required this.isBoss,
+    required this.isCleared,
+    required this.isCurrent,
+    required this.color,
+  });
+
+  final int stageNum;
+  final bool isBoss, isCleared, isCurrent;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    final size = isBoss ? 38.0 : 30.0;
+
+    final Color bg     = isCleared
+        ? color.withValues(alpha: 0.28)
+        : isCurrent
+            ? color.withValues(alpha: 0.18)
+            : Colors.transparent;
+    final Color border = isCleared || isCurrent
+        ? color
+        : color.withValues(alpha: 0.35);
+    final double bw    = isCurrent ? 2.5 : 1.5;
+
+    Widget child;
+    if (isCleared) {
+      child = Icon(Icons.check, size: isBoss ? 15 : 12, color: color);
+    } else if (isBoss) {
+      child = Text('☠',
+          style: TextStyle(
+              fontSize: 16,
+              color: isCurrent ? Colors.white : color.withValues(alpha: 0.5)));
+    } else {
+      child = Text('$stageNum',
+          style: TextStyle(
+              fontSize: 10,
+              fontWeight: isCurrent ? FontWeight.bold : FontWeight.normal,
+              color: isCurrent ? Colors.white : color.withValues(alpha: 0.65)));
+    }
+
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Container(
+          width: size,
+          height: size,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: bg,
+            border: Border.all(color: border, width: bw),
+            boxShadow: isCurrent
+                ? [BoxShadow(color: color.withValues(alpha: 0.45), blurRadius: 10, spreadRadius: 2)]
+                : null,
+          ),
+          alignment: Alignment.center,
+          child: child,
+        ),
+        const SizedBox(height: 3),
+        Text(
+          isBoss ? 'BOSS' : '$stageNum',
+          style: TextStyle(
+            fontSize: 8,
+            letterSpacing: 0.5,
+            color: isCurrent
+                ? Colors.white
+                : isCleared
+                    ? color.withValues(alpha: 0.7)
+                    : color.withValues(alpha: 0.55),
+            fontWeight: isCurrent ? FontWeight.bold : FontWeight.normal,
+          ),
+        ),
+      ],
     );
   }
 }
@@ -188,7 +344,7 @@ class _StageCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: const Color(0xFF0e1225),
+        color: const Color(0xFF231F1B),
         border: Border.all(color: AppTheme.cardBorder),
         borderRadius: BorderRadius.circular(4),
       ),
@@ -205,14 +361,16 @@ class _StageCard extends StatelessWidget {
                   borderRadius: BorderRadius.circular(3),
                 ),
                 child: Text('STAGE $stageNum',
-                    style: AppTheme.pixelHeading(fontSize: 9, color: zone.color, letterSpacing: 1)),
+                    style: AppTheme.pixelHeading(
+                        fontSize: 10, color: zone.color, letterSpacing: 1)),
               ),
               const Spacer(),
               Row(
                 children: List.generate(
                   difficulty.clamp(1, 10),
                   (i) => Container(
-                    width: 6, height: 6,
+                    width: 6,
+                    height: 6,
                     margin: const EdgeInsets.only(left: 2),
                     decoration: BoxDecoration(
                       color: _diffColor(difficulty),
@@ -225,19 +383,19 @@ class _StageCard extends StatelessWidget {
           ),
           const SizedBox(height: 10),
           Text(title,
-              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold,
-                  color: AppTheme.textLight)),
+              style: const TextStyle(
+                  fontSize: 17, fontWeight: FontWeight.bold, color: AppTheme.textLight)),
           const SizedBox(height: 6),
           Text(description,
-              style: const TextStyle(fontSize: 12, color: AppTheme.textMuted, height: 1.4)),
+              style: const TextStyle(fontSize: 13, color: AppTheme.textMuted, height: 1.4)),
         ],
       ),
     );
   }
 
   Color _diffColor(int d) {
-    if (d <= 4) return const Color(0xFF44cc66);
-    if (d <= 8) return const Color(0xFFffaa33);
+    if (d <= 33) return const Color(0xFF44cc66);
+    if (d <= 66) return const Color(0xFFffaa33);
     return const Color(0xFFff4444);
   }
 }
@@ -253,7 +411,7 @@ class _HeroStatsCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
-        color: const Color(0xFF0e1225),
+        color: const Color(0xFF231F1B),
         border: Border.all(color: AppTheme.cardBorder),
         borderRadius: BorderRadius.circular(4),
       ),
@@ -278,9 +436,10 @@ class _Stat extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Column(children: [
-      Text(label, style: const TextStyle(fontSize: 9, color: AppTheme.textMuted, letterSpacing: 1)),
+      Text(label,
+          style: const TextStyle(fontSize: 10, color: AppTheme.textMuted, letterSpacing: 1)),
       const SizedBox(height: 3),
-      Text(value, style: AppTheme.pixelHeading(fontSize: 13, color: AppTheme.textLight)),
+      Text(value, style: AppTheme.pixelHeading(fontSize: 14, color: AppTheme.textLight)),
     ]);
   }
 }
@@ -305,8 +464,8 @@ class _PrestigeCard extends StatelessWidget {
         '+${((game.prestigeGoldMult - 1) * 100).round()}% gold  •  '
         '+${((game.prestigeXpMult - 1) * 100).round()}% XP  •  '
         '+${((game.prestigeIdleMult - 1) * 100).round()}% idle',
-        style: const TextStyle(color: Color(0xFFcc88ff), fontSize: 12,
-            fontWeight: FontWeight.bold),
+        style: const TextStyle(
+            color: Color(0xFFcc88ff), fontSize: 13, fontWeight: FontWeight.bold),
       ),
     );
   }
@@ -330,30 +489,36 @@ class _PrestigeButton extends StatelessWidget {
         ),
         onPressed: () => _confirmPrestige(context, game),
         child: Text('✦  REBIRTH  (Lv${game.prestigeLevel + 1})',
-            style: AppTheme.pixelHeading(fontSize: 11, letterSpacing: 1,
-                color: const Color(0xFFffaaff))),
+            style: AppTheme.pixelHeading(
+                fontSize: 12, letterSpacing: 1, color: const Color(0xFFffaaff))),
       ),
     );
   }
 
   void _confirmPrestige(BuildContext context, GameState game) {
+    final stage = game.campaignStageIndex + 1;
+    final gate  = stage == 100 ? 'THE OMEGA THRONE'  :
+                  stage == 75  ? 'THE DARK MATTER'   :
+                  stage == 50  ? 'THE ABYSSAL OCEAN' : 'THRONE OF RUIN';
+    final soulsPreview = (game.campaignStageIndex / 5).floor().clamp(1, 200);
     showDialog<void>(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF111525),
-        title: const Text('✦ REBIRTH', style: TextStyle(color: Color(0xFFffaaff))),
+        backgroundColor: const Color(0xFF1B1814),
+        title: Text('✦ REBIRTH — $gate',
+            style: const TextStyle(color: Color(0xFFffaaff))),
         content: Text(
           'Reset your campaign and start anew as Rebirth Lv${game.prestigeLevel + 1}.\n\n'
           'You will KEEP:\n'
           '  • Ability upgrades\n'
-          '  • Shards\n\n'
+          '  • Shards  •  Souls (+$soulsPreview)\n\n'
           'You will LOSE:\n'
           '  • Hero level, gold, upgrades, endless perks\n\n'
           'Rebirth Lv${game.prestigeLevel + 1} bonuses:\n'
           '  +${((game.prestigeGoldMult + 0.10 - 1) * 100).round()}% gold income\n'
           '  +${((game.prestigeXpMult + 0.05 - 1) * 100).round()}% XP gain\n'
           '  +${((game.prestigeIdleMult + 0.05 - 1) * 100).round()}% idle gold',
-          style: const TextStyle(color: Colors.white70, fontSize: 12),
+          style: const TextStyle(color: Colors.white70, fontSize: 13),
         ),
         actions: [
           TextButton(
@@ -365,7 +530,10 @@ class _PrestigeButton extends StatelessWidget {
               backgroundColor: const Color(0xFF4a1060),
               foregroundColor: const Color(0xFFffaaff),
             ),
-            onPressed: () { Navigator.pop(ctx); game.prestige(); },
+            onPressed: () {
+              Navigator.pop(ctx);
+              game.prestige();
+            },
             child: const Text('REBIRTH'),
           ),
         ],
@@ -381,6 +549,6 @@ class _LastActionRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Text('Last action: ${game.lastAction}',
-        style: const TextStyle(fontSize: 11, color: AppTheme.textMuted));
+        style: const TextStyle(fontSize: 12, color: AppTheme.textMuted));
   }
 }

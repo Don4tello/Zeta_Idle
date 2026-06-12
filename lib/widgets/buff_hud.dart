@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import '../services/game_state.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -60,6 +60,24 @@ class BuffHud extends StatelessWidget {
         isHeroBuff: false,
       ));
 
+    if (game.enemyWeakenRounds > 0)
+      chips.add(_BuffChip(
+        icon: Icons.remove_circle,
+        color: const Color(0xFFff4488),
+        label: '-${game.enemyWeakenPct}% ATK',
+        rounds: game.enemyWeakenRounds,
+        isHeroBuff: false,
+      ));
+
+    if (game.enemyVulnerableRounds > 0)
+      chips.add(_BuffChip(
+        icon: Icons.broken_image,
+        color: const Color(0xFFff8800),
+        label: '+${game.enemyVulnerablePct}% DMG',
+        rounds: game.enemyVulnerableRounds,
+        isHeroBuff: false,
+      ));
+
     if (chips.isEmpty) return const SizedBox.shrink();
 
     return Container(
@@ -108,21 +126,21 @@ class _BuffChip extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, color: color, size: 11),
+          Icon(icon, color: color, size: 14),
           const SizedBox(width: 3),
           Text(
             label,
             style: TextStyle(
               color: color,
-              fontSize: 9,
+              fontSize: 12,
               fontWeight: FontWeight.bold,
               letterSpacing: 0.5,
             ),
           ),
           const SizedBox(width: 4),
           Container(
-            width: 16,
-            height: 16,
+            width: 18,
+            height: 18,
             decoration: BoxDecoration(
               color: color.withOpacity(0.2),
               shape: BoxShape.circle,
@@ -132,7 +150,7 @@ class _BuffChip extends StatelessWidget {
               '$rounds',
               style: TextStyle(
                 color: color,
-                fontSize: 8,
+                fontSize: 11,
                 fontWeight: FontWeight.bold,
               ),
             ),

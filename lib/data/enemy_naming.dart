@@ -16,7 +16,7 @@ import '../models/zone_affix.dart';
 // ─────────────────────────────────────────────────────────────────────────────
 
 /// Number of hand-crafted campaign enemies.  Abyss begins at this stage index.
-const kCampaignLength = 25;
+const kCampaignLength = 100;
 
 enum CreatureTier {
   minion,      // T1 — depth   0–24   (no suffix)

@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import '../data/bestiary_data.dart';
 import '../models/bestiary_entry.dart';
 import '../services/game_state.dart';
@@ -26,52 +26,50 @@ class BestiaryScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final game = GameStateProvider.of(context);
-    final categories = kBestiaryEntries.map((e) => e.category).toSet().toList();
+    final zones = kBestiaryEntries.map((e) => e.category).toSet().toList();
 
     final totalDiscovered = kBestiaryEntries
         .where((e) => game.bestiaryDiscovered(e.enemyId))
         .length;
-    final completedChapters = categories
-        .where((c) => game.isBestiaryChapterComplete(c))
-        .length;
+    final totalEntries = kBestiaryEntries.length;
+    final atkBonus = game.bestiaryChapterBonus;
 
     return Scaffold(
-      backgroundColor: const Color(0xFF0a0e27),
+      backgroundColor: const Color(0xFF1B1A17),
       appBar: AppBar(
-        backgroundColor: const Color(0xFF1a1f3a),
+        backgroundColor: const Color(0xFF2A2623),
         title: Text('BESTIARY',
-            style: AppTheme.pixelHeading(fontSize: 13, letterSpacing: 2)),
+            style: AppTheme.pixelHeading(fontSize: 14, letterSpacing: 2)),
       ),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          // Summary header
+          // ── Summary header ────────────────────────────────────────────────
           Container(
             padding: const EdgeInsets.all(14),
-            margin: const EdgeInsets.only(bottom: 16),
+            margin: const EdgeInsets.only(bottom: 12),
             decoration: BoxDecoration(
-              color: const Color(0xFF0e1225),
-              border: Border.all(
-                  color: AppTheme.accentGold.withValues(alpha: 0.4)),
+              color: const Color(0xFF231F1B),
+              border: Border.all(color: AppTheme.accentGold.withValues(alpha: 0.4)),
               borderRadius: BorderRadius.circular(4),
             ),
             child: Row(children: [
               Expanded(child: _Stat(
                   'DISCOVERED',
-                  '$totalDiscovered / ${kBestiaryEntries.length}',
+                  '$totalDiscovered / $totalEntries',
                   AppTheme.accentGold)),
               Expanded(child: _Stat(
-                  'CHAPTERS',
-                  '$completedChapters / ${categories.length}',
+                  'ZONES',
+                  '${zones.where((z) => game.isBestiaryChapterComplete(z)).length} / ${zones.length}',
                   const Color(0xFF66aaff))),
               Expanded(child: _Stat(
                   'ATK BONUS',
-                  '+${game.bestiaryChapterBonus}',
+                  '+$atkBonus',
                   const Color(0xFFff6633))),
             ]),
           ),
 
-          // Bonus explanation
+          // ── Bonus explanation ─────────────────────────────────────────────
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             margin: const EdgeInsets.only(bottom: 16),
@@ -80,26 +78,26 @@ class BestiaryScreen extends StatelessWidget {
               border: Border.all(color: AppTheme.cardBorder),
               borderRadius: BorderRadius.circular(4),
             ),
-            child: Text(
-              'Discovering an enemy grants +10% damage against its type. '
-              'Completing all 5 entries in a chapter grants +1 permanent ATK.',
-              style: const TextStyle(
-                  fontSize: 10, color: AppTheme.textMuted, height: 1.5),
+            child: const Text(
+              'Each discovered enemy grants +1 permanent ATK.\n'
+              'Kill count increases your damage bonus against that enemy: '
+              '+1% per 10 kills, up to +10% at 100 kills.',
+              style: TextStyle(fontSize: 11, color: AppTheme.textMuted, height: 1.5),
             ),
           ),
 
-          // Category sections
-          for (final cat in categories) ...[
-            _CategoryHeader(
-              category: cat,
-              complete: game.isBestiaryChapterComplete(cat),
+          // ── Zone sections ─────────────────────────────────────────────────
+          for (final zone in zones) ...[
+            _ZoneHeader(
+              zone: zone,
+              complete: game.isBestiaryChapterComplete(zone),
               discovered: kBestiaryEntries
-                  .where((e) => e.category == cat && game.bestiaryDiscovered(e.enemyId))
+                  .where((e) => e.category == zone && game.bestiaryDiscovered(e.enemyId))
                   .length,
-              total: kBestiaryEntries.where((e) => e.category == cat).length,
+              total: kBestiaryEntries.where((e) => e.category == zone).length,
             ),
             ...kBestiaryEntries
-                .where((e) => e.category == cat)
+                .where((e) => e.category == zone)
                 .map((entry) => _BestiaryCard(
                       entry: entry,
                       kills: game.bestiaryKillCount(entry.enemyId),
@@ -126,23 +124,23 @@ class _Stat extends StatelessWidget {
       children: [
         Text(label,
             style: AppTheme.pixelHeading(
-                fontSize: 9, color: AppTheme.textMuted, letterSpacing: 1)),
+                fontSize: 10, color: AppTheme.textMuted, letterSpacing: 1)),
         const SizedBox(height: 4),
         Text(value,
-            style: AppTheme.pixelHeading(fontSize: 14, color: color)),
+            style: AppTheme.pixelHeading(fontSize: 15, color: color)),
       ],
     );
   }
 }
 
-class _CategoryHeader extends StatelessWidget {
-  const _CategoryHeader({
-    required this.category,
+class _ZoneHeader extends StatelessWidget {
+  const _ZoneHeader({
+    required this.zone,
     required this.complete,
     required this.discovered,
     required this.total,
   });
-  final String category;
+  final String zone;
   final bool complete;
   final int discovered, total;
 
@@ -162,27 +160,34 @@ class _CategoryHeader extends StatelessWidget {
         borderRadius: BorderRadius.circular(3),
       ),
       child: Row(children: [
-        Text(category.toUpperCase(),
-            style: AppTheme.pixelHeading(
-                fontSize: 11,
-                color: complete
-                    ? const Color(0xFF44cc66)
-                    : AppTheme.accentGold,
-                letterSpacing: 2)),
-        const Spacer(),
+        Expanded(
+          child: Text(zone.toUpperCase(),
+              style: AppTheme.pixelHeading(
+                  fontSize: 11,
+                  color: complete ? const Color(0xFF44cc66) : AppTheme.accentGold,
+                  letterSpacing: 2)),
+        ),
+        // Per-zone ATK contribution
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+          decoration: BoxDecoration(
+            color: const Color(0xFFff6633).withValues(alpha: 0.10),
+            border: Border.all(color: const Color(0xFFff6633).withValues(alpha: 0.4)),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Text(
+            '+$discovered ATK',
+            style: AppTheme.pixelHeading(fontSize: 9, color: const Color(0xFFff6633)),
+          ),
+        ),
+        const SizedBox(width: 8),
         Text('$discovered/$total',
             style: TextStyle(
-                fontSize: 11,
-                color: complete
-                    ? const Color(0xFF44cc66)
-                    : AppTheme.textMuted)),
+                fontSize: 12,
+                color: complete ? const Color(0xFF44cc66) : AppTheme.textMuted)),
         if (complete) ...[
           const SizedBox(width: 6),
           const Icon(Icons.star, color: Color(0xFF44cc66), size: 14),
-          const SizedBox(width: 2),
-          Text('+1 ATK',
-              style: AppTheme.pixelHeading(
-                  fontSize: 9, color: const Color(0xFF44cc66))),
         ],
       ]),
     );
@@ -204,15 +209,16 @@ class _BestiaryCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final discovered = kills > 0;
+    final dmgPct = discovered ? (kills ~/ 10).clamp(0, 10) : 0;
+    final nextThreshold = discovered ? ((kills ~/ 10) + 1) * 10 : 10;
+    final maxed = dmgPct >= 10;
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
       child: Container(
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: discovered
-              ? const Color(0xFF0e1225)
-              : const Color(0xFF080a18),
+          color: discovered ? const Color(0xFF231F1B) : const Color(0xFF080a18),
           border: Border.all(
               color: discovered
                   ? AppTheme.cardBorder
@@ -228,16 +234,14 @@ class _BestiaryCard extends StatelessWidget {
             decoration: BoxDecoration(
               color: weaknessColor.withValues(alpha: discovered ? 0.12 : 0.04),
               border: Border.all(
-                  color: weaknessColor.withValues(
-                      alpha: discovered ? 0.6 : 0.2)),
+                  color: weaknessColor.withValues(alpha: discovered ? 0.6 : 0.2)),
               borderRadius: BorderRadius.circular(4),
             ),
             child: Text(
               discovered ? weaknessIcon : '?',
               style: TextStyle(
-                  fontSize: 18,
-                  color: weaknessColor.withValues(
-                      alpha: discovered ? 1.0 : 0.3)),
+                  fontSize: 19,
+                  color: weaknessColor.withValues(alpha: discovered ? 1.0 : 0.3)),
             ),
           ),
           const SizedBox(width: 12),
@@ -245,11 +249,12 @@ class _BestiaryCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                // Name row
                 Row(children: [
                   Text(
                     discovered ? entry.name : '???',
                     style: TextStyle(
-                      fontSize: 13,
+                      fontSize: 14,
                       fontWeight: FontWeight.bold,
                       color: discovered ? Colors.white : Colors.white24,
                     ),
@@ -257,66 +262,118 @@ class _BestiaryCard extends StatelessWidget {
                   if (discovered) ...[
                     const SizedBox(width: 8),
                     Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 5, vertical: 1),
+                      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
                       decoration: BoxDecoration(
                         color: weaknessColor.withValues(alpha: 0.12),
-                        border: Border.all(
-                            color: weaknessColor.withValues(alpha: 0.5)),
+                        border: Border.all(color: weaknessColor.withValues(alpha: 0.5)),
                         borderRadius: BorderRadius.circular(3),
                       ),
                       child: Text(
                         entry.weakness.displayName,
                         style: TextStyle(
-                            fontSize: 8,
+                            fontSize: 9,
                             color: weaknessColor,
                             fontWeight: FontWeight.bold),
                       ),
                     ),
                     const SizedBox(width: 4),
-                    Text('+10% dmg',
-                        style: TextStyle(
-                            fontSize: 8,
-                            color: weaknessColor.withValues(alpha: 0.7))),
+                    Text(
+                      maxed ? '+10% dmg ✓' : '+$dmgPct% dmg',
+                      style: TextStyle(
+                          fontSize: 9,
+                          color: maxed
+                              ? const Color(0xFFffcc44)
+                              : weaknessColor.withValues(alpha: 0.7)),
+                    ),
                   ],
                 ]),
                 const SizedBox(height: 4),
+                // Flavor text
                 Text(
                   discovered
                       ? entry.flavorText
                       : 'Kill this creature to reveal its secrets.',
                   style: TextStyle(
-                    fontSize: 10,
-                    color: discovered
-                        ? AppTheme.textMuted
-                        : Colors.white24,
-                    fontStyle: discovered
-                        ? FontStyle.italic
-                        : FontStyle.normal,
+                    fontSize: 11,
+                    color: discovered ? AppTheme.textMuted : Colors.white24,
+                    fontStyle: discovered ? FontStyle.italic : FontStyle.normal,
                     height: 1.4,
                   ),
                 ),
+                // Kill progress bar (only when discovered and not maxed)
+                if (discovered && !maxed) ...[
+                  const SizedBox(height: 6),
+                  _KillProgress(kills: kills, nextAt: nextThreshold, color: weaknessColor),
+                ],
               ],
             ),
           ),
           const SizedBox(width: 8),
+          // Kill count
           Column(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
               Text(
                 discovered ? '×$kills' : '×0',
                 style: TextStyle(
-                    fontSize: 12,
+                    fontSize: 13,
                     fontWeight: FontWeight.bold,
                     color: discovered ? AppTheme.accentGold : Colors.white24),
               ),
               Text('killed',
-                  style: const TextStyle(
-                      fontSize: 8, color: AppTheme.textMuted)),
+                  style: const TextStyle(fontSize: 9, color: AppTheme.textMuted)),
+              if (discovered) ...[
+                const SizedBox(height: 2),
+                Text(
+                  maxed ? '⭐ MAX' : '→$nextThreshold',
+                  style: TextStyle(
+                      fontSize: 9,
+                      color: maxed
+                          ? const Color(0xFFffcc44)
+                          : AppTheme.textMuted.withValues(alpha: 0.6)),
+                ),
+              ],
             ],
           ),
         ]),
       ),
+    );
+  }
+}
+
+class _KillProgress extends StatelessWidget {
+  const _KillProgress({required this.kills, required this.nextAt, required this.color});
+  final int kills;
+  final int nextAt;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    final prevThreshold = (kills ~/ 10) * 10;
+    final progress = (kills - prevThreshold) / 10.0;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text('next +1% dmg at $nextAt kills',
+                style: TextStyle(fontSize: 9, color: color.withValues(alpha: 0.5))),
+            Text('${kills % 10}/10',
+                style: TextStyle(fontSize: 9, color: color.withValues(alpha: 0.5))),
+          ],
+        ),
+        const SizedBox(height: 2),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(2),
+          child: LinearProgressIndicator(
+            value: progress,
+            minHeight: 3,
+            backgroundColor: color.withValues(alpha: 0.12),
+            valueColor: AlwaysStoppedAnimation<Color>(color.withValues(alpha: 0.5)),
+          ),
+        ),
+      ],
     );
   }
 }

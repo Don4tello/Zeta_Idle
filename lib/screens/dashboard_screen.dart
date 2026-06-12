@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../theme/app_theme.dart';
 import '../widgets/combat_log_panel.dart';
@@ -51,7 +51,7 @@ class DashboardScreen extends StatelessWidget {
               child: Text(
                 'CHANGE CHARACTER',
                 style: AppTheme.pixelHeading(
-                    fontSize: 9,
+                    fontSize: 10,
                     color: AppTheme.textMuted,
                     letterSpacing: 1),
               ),
