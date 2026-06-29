@@ -582,9 +582,8 @@ class _ClassCard extends StatelessWidget {
                 Expanded(child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Row(mainAxisSize: MainAxisSize.min, children: [
+                    Wrap(spacing: 4, runSpacing: 2, children: [
                       _DmgPill(pair[0]),
-                      const SizedBox(width: 4),
                       _DmgPill(pair[1]),
                     ]),
                     const SizedBox(height: 6),

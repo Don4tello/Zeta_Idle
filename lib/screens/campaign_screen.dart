@@ -171,6 +171,7 @@ class _CampaignMap extends StatefulWidget {
 class _CampaignMapState extends State<_CampaignMap> {
   final _scroll = ScrollController();
   int? _selectedReplayStage;
+  int _lastStageIndex = -1;
 
   // Fixed row height — used to compute initial scroll offset
   static const double _zoneHeaderH = 28.0;
@@ -180,7 +181,18 @@ class _CampaignMapState extends State<_CampaignMap> {
   @override
   void initState() {
     super.initState();
+    _lastStageIndex = widget.game.campaignStageIndex;
     WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToCurrentZone());
+  }
+
+  @override
+  void didUpdateWidget(covariant _CampaignMap oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.game.campaignStageIndex != _lastStageIndex) {
+      _lastStageIndex = widget.game.campaignStageIndex;
+      _selectedReplayStage = null;
+      WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToCurrentZone());
+    }
   }
 
   void _scrollToCurrentZone() {
@@ -211,17 +223,20 @@ class _CampaignMapState extends State<_CampaignMap> {
           ),
           child: ClipRRect(
             borderRadius: BorderRadius.circular(4),
-            child: ListView.builder(
-              controller: _scroll,
-              itemCount: kWorldZones.length,
-              itemBuilder: (_, i) => _ZoneRow(
-                zone: kWorldZones[i],
-                currentStageIndex: widget.game.campaignStageIndex,
-                selectedReplay: _selectedReplayStage,
-                onReplayTap: (stageIdx) => setState(() =>
-                    _selectedReplayStage = _selectedReplayStage == stageIdx ? null : stageIdx),
-              ),
-            ),
+            child: Builder(builder: (ctx) {
+              final currentStage = GameStateProvider.of(ctx).campaignStageIndex;
+              return ListView.builder(
+                controller: _scroll,
+                itemCount: kWorldZones.length,
+                itemBuilder: (_, i) => _ZoneRow(
+                  zone: kWorldZones[i],
+                  currentStageIndex: currentStage,
+                  selectedReplay: _selectedReplayStage,
+                  onReplayTap: (stageIdx) => setState(() =>
+                      _selectedReplayStage = _selectedReplayStage == stageIdx ? null : stageIdx),
+                ),
+              );
+            }),
           ),
         ),
         if (_selectedReplayStage != null)
@@ -255,6 +270,14 @@ class _CampaignMapState extends State<_CampaignMap> {
                   onPressed: () {
                     if (isCurrent) {
                       widget.game.startBattle();
+                      if (widget.game.currentEnemy == null) {
+                        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                          content: Text('Not enough energy!'),
+                          duration: Duration(seconds: 2),
+                          backgroundColor: Color(0xFF442222),
+                        ));
+                        return;
+                      }
                     } else {
                       widget.game.startEndlessBattleAtStage(stageIdx);
                     }

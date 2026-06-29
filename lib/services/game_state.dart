@@ -5681,6 +5681,9 @@ class GameState extends ChangeNotifier {
     final wasFinalBoss = campaignStageIndex == CampaignData.stages.length - 1;
     final wasFirstKill = campaignStageIndex == 0;
     checkBattleStars(campaignStageIndex, _battleTurnCount);
+    final firstClearCrystals = isBossStage ? 5 : 1;
+    crystals += firstClearCrystals;
+    battleLog.add('First clear bonus: +$firstClearCrystals 💎');
     campaignStageIndex += 1;
     addSeasonXp(5);
     advanceWeekly('w_stages', 1);

@@ -109,7 +109,7 @@ class _SmartNextActionPanel extends StatelessWidget {
       return ('🎯', 'Daily challenge ready to claim!',
           const Color(0xFFffaa44), null);
     }
-    if (game.achievementsClaimable > 0 && game.campaignStageIndex >= 2) {
+    if (game.achievementsClaimable > 0 && game.campaignStageIndex >= 5) {
       return ('🏆',
           '${game.achievementsClaimable} achievement${game.achievementsClaimable > 1 ? 's' : ''} ready to claim!',
           const Color(0xFFffcc44), 2);
