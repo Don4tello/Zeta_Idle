@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/dnd_class.dart';
+import '../models/hero_model.dart' show HeroGender;
 
 class CharacterSummary {
   const CharacterSummary({
@@ -9,12 +10,14 @@ class CharacterSummary {
     required this.level,
     this.heroClass,
     this.prestigeLevel = 0,
+    this.gender,
   });
   final int slot;
   final String name;
   final int level;
   final DndClass? heroClass;
   final int prestigeLevel;
+  final HeroGender? gender;
 }
 
 class SaveService {
@@ -70,6 +73,7 @@ class SaveService {
           level: hero['level'] as int,
           heroClass: DndClass.tryParse(hero['heroClass'] as String?),
           prestigeLevel: (data['prestigeLevel'] as int?) ?? 0,
+          gender: HeroGender.tryParse(hero['gender'] as String?),
         );
       } catch (_) {
         return null;

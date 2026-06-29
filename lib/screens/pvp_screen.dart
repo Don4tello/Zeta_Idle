@@ -7,6 +7,11 @@ import '../services/auth_service.dart';
 import '../services/game_state.dart';
 import '../services/pvp_service.dart';
 import '../theme/app_theme.dart';
+import '../widgets/battle_arena.dart';
+import '../widgets/battle_sprites.dart';
+import '../widgets/empty_state.dart';
+import '../widgets/battle_split_panel.dart' show BattleIconBar;
+import 'pvp_sim_screen.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // PvpScreen
@@ -28,6 +33,7 @@ class _PvpScreenState extends State<PvpScreen> {
   final _authService = AuthService();
 
   List<PvpSnapshot>? _board;
+  List<PvpSnapshot>  _devOpponents = [];
   bool _boardLoading = true;
   bool _matchBusy    = false;
   Timer? _ticker;
@@ -36,8 +42,11 @@ class _PvpScreenState extends State<PvpScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      GameStateProvider.of(context).tickPvpStamina();
+      final game = GameStateProvider.of(context);
+      game.tickPvpStamina();
       _loadBoard();
+      setState(() => _devOpponents =
+          generateDevOpponents(game.hero.level, game.pvpRating));
     });
     _ticker = Timer.periodic(const Duration(seconds: 15), (_) {
       if (!mounted) return;
@@ -58,8 +67,20 @@ class _PvpScreenState extends State<PvpScreen> {
       final data = await _pvpService.fetchLeaderboard();
       if (mounted) setState(() { _board = data; _boardLoading = false; });
     } catch (_) {
-      if (mounted) setState(() { _board = []; _boardLoading = false; });
+      // Firestore unavailable — build local board from dev opponents + player
+      if (mounted) {
+        final game = GameStateProvider.of(context);
+        _buildLocalBoard(game);
+      }
     }
+  }
+
+  void _buildLocalBoard(GameState game) {
+    final mySnap = game.buildPvpSnapshot(
+        _authService.currentUser?.uid ?? 'local_player');
+    final board = <PvpSnapshot>[mySnap, ..._devOpponents];
+    board.sort((a, b) => b.rating.compareTo(a.rating));
+    setState(() { _board = board; _boardLoading = false; });
   }
 
   Future<void> _startMatch(BuildContext context, GameState game) async {
@@ -115,6 +136,26 @@ class _PvpScreenState extends State<PvpScreen> {
     }
   }
 
+  Future<void> _fightDevOpponent(
+      BuildContext ctx, GameState game, PvpSnapshot opponent) async {
+    if (!game.spendPvpStamina()) {
+      if (ctx.mounted) {
+        ScaffoldMessenger.of(ctx).showSnackBar(
+          const SnackBar(content: Text('No stamina! Recharges 1 every 45 minutes.'), duration: Duration(seconds: 2)),
+        );
+      }
+      return;
+    }
+    final mySnap = game.buildPvpSnapshot(
+        _authService.currentUser?.uid ?? 'local_dev');
+    final (won, log) = simulatePvpBattle(mySnap, opponent, Random());
+    game.recordPvpResult(won);
+    // Regenerate opponents with fresh level/rating after the result.
+    _devOpponents = generateDevOpponents(game.hero.level, game.pvpRating);
+    _buildLocalBoard(game);
+    if (mounted) await _showResult(ctx, game, won, opponent, log);
+  }
+
   Future<void> _showResult(
     BuildContext context,
     GameState game,
@@ -122,73 +163,15 @@ class _PvpScreenState extends State<PvpScreen> {
     PvpSnapshot opponent,
     List<String> log,
   ) async {
-    final ratingDelta = won ? '+${PvpService.winDelta}' : '-${PvpService.lossDelta}';
-    final color = won ? const Color(0xFF44dd88) : const Color(0xFFcc4444);
-
-    await showDialog<void>(
-      context: context,
-      builder: (_) => AlertDialog(
-        backgroundColor: const Color(0xFF2A2623),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              won ? '⚔ VICTORY!' : '💀 DEFEATED',
-              style: AppTheme.pixelHeading(fontSize: 17, color: color),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              'vs ${opponent.heroName} (${opponent.heroClass[0].toUpperCase()}${opponent.heroClass.substring(1)}  Lv${opponent.level}  ★${opponent.rating})',
-              style: const TextStyle(fontSize: 12, color: AppTheme.textMuted),
-            ),
-          ],
+    await Navigator.push<void>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => _PvpBattleFullScreen(
+          game: game,
+          won: won,
+          opponent: opponent,
+          log: log,
         ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: color.withValues(alpha: 0.08),
-                border: Border.all(color: color.withValues(alpha: 0.4)),
-                borderRadius: BorderRadius.circular(4),
-              ),
-              child: Text(
-                'Rating: ${game.pvpRating}  ($ratingDelta)',
-                style: AppTheme.pixelHeading(fontSize: 14, color: color),
-                textAlign: TextAlign.center,
-              ),
-            ),
-            const SizedBox(height: 12),
-            Text('BATTLE LOG',
-                style: AppTheme.pixelHeading(
-                    fontSize: 10, color: AppTheme.textMuted, letterSpacing: 2)),
-            const SizedBox(height: 6),
-            ...log.map((line) => Padding(
-                  padding: const EdgeInsets.only(bottom: 3),
-                  child: Text(line,
-                      style: TextStyle(
-                          fontSize: 12,
-                          color: line.startsWith('⚔')
-                              ? const Color(0xFF44dd88)
-                              : line.startsWith('💀')
-                                  ? const Color(0xFFcc4444)
-                                  : AppTheme.textMuted)),
-                )),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text('CLOSE',
-                style: AppTheme.pixelHeading(
-                    fontSize: 12, color: AppTheme.accentGold)),
-          ),
-        ],
       ),
     );
   }
@@ -205,6 +188,12 @@ class _PvpScreenState extends State<PvpScreen> {
                 fontSize: 14, letterSpacing: 2, color: AppTheme.accentGold)),
         actions: [
           IconButton(
+            icon: const Icon(Icons.science, size: 18, color: AppTheme.textMuted),
+            tooltip: 'Sim Lab',
+            onPressed: () => Navigator.push(context,
+                MaterialPageRoute(builder: (_) => const PvpSimScreen())),
+          ),
+          IconButton(
             icon: const Icon(Icons.refresh, size: 18, color: AppTheme.textMuted),
             tooltip: 'Refresh leaderboard',
             onPressed: _boardLoading ? null : _loadBoard,
@@ -215,6 +204,11 @@ class _PvpScreenState extends State<PvpScreen> {
         children: [
           _StaminaBar(game: game),
           _RatingCard(game: game),
+          if (_devOpponents.isNotEmpty)
+            _BotPanel(
+              opponents: _devOpponents,
+              onFight: (opp) => _fightDevOpponent(context, game, opp),
+            ),
           const Padding(
             padding: EdgeInsets.symmetric(horizontal: 16, vertical: 6),
             child: Row(children: [
@@ -231,19 +225,105 @@ class _PvpScreenState extends State<PvpScreen> {
               Expanded(child: Divider(color: AppTheme.cardBorder)),
             ]),
           ),
+          // Daily rank card
+          Container(
+            margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            decoration: BoxDecoration(
+              color: game.pvpDailyRank > 0
+                  ? const Color(0xFF1a2a1a)
+                  : const Color(0xFF231F1B),
+              border: Border.all(color: game.pvpDailyRank > 0
+                  ? const Color(0xFF44cc88).withValues(alpha: 0.5)
+                  : AppTheme.cardBorder),
+              borderRadius: BorderRadius.circular(4),
+            ),
+            child: Row(children: [
+              Expanded(child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('TODAY: ${game.pvpDailyRankLabel}',
+                      style: AppTheme.pixelHeading(fontSize: 11, letterSpacing: 1,
+                          color: game.pvpDailyRank > 0 ? const Color(0xFF44cc88) : AppTheme.textMuted)),
+                  Text('${game.pvpDailyWins} wins today  •  ${game.pvpDailyDamage} total dmg',
+                      style: const TextStyle(fontSize: 10, color: AppTheme.textMuted)),
+                ],
+              )),
+              if (game.pvpDailyRank > 0 && !game.pvpDailyRewardClaimed)
+                GestureDetector(
+                  onTap: () { game.claimPvpDailyReward(); setState(() {}); },
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF44cc88).withValues(alpha: 0.12),
+                      border: Border.all(color: const Color(0xFF44cc88)),
+                      borderRadius: BorderRadius.circular(3),
+                    ),
+                    child: Text('CLAIM', style: AppTheme.pixelHeading(
+                        fontSize: 10, color: const Color(0xFF44cc88))),
+                  ),
+                )
+              else if (game.pvpDailyRewardClaimed)
+                Text('✓ CLAIMED', style: AppTheme.pixelHeading(
+                    fontSize: 10, color: const Color(0xFF44cc88))),
+            ]),
+          ),
+
           Expanded(child: _buildBoard(game)),
           Padding(
             padding: const EdgeInsets.all(16),
-            child: _MatchButton(
-              busy: _matchBusy,
-              stamina: game.pvpStamina,
-              onTap: () => _startMatch(context, game),
-            ),
+            child: Column(children: [
+              _MatchButton(
+                busy: _matchBusy,
+                stamina: game.pvpStamina,
+                onTap: () => _startMatch(context, game),
+              ),
+              if (game.pvpStamina <= 0 && game.pvpRefillCost != null) ...[
+                const SizedBox(height: 10),
+                SizedBox(
+                  width: double.infinity,
+                  height: 48,
+                  child: ElevatedButton(
+                    onPressed: game.crystals >= game.pvpRefillCost!
+                        ? () { game.buyPvpStamina(); setState(() {}); }
+                        : null,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF2a1040),
+                      foregroundColor: const Color(0xFFcc88ff),
+                      side: BorderSide(color: game.crystals >= game.pvpRefillCost!
+                          ? const Color(0xFFcc88ff) : AppTheme.cardBorder),
+                    ),
+                    child: Text(
+                      '💎 BUY +5 STAMINA  (${game.pvpRefillCost} Crystals)',
+                      style: AppTheme.pixelHeading(fontSize: 12, letterSpacing: 1,
+                          color: game.crystals >= game.pvpRefillCost!
+                              ? const Color(0xFFcc88ff) : AppTheme.textMuted),
+                    ),
+                  ),
+                ),
+              ],
+            ]),
           ),
         ],
       ),
     );
   }
+
+  static Color _classColor(String cls) => switch (cls) {
+    'fighter'     => const Color(0xFF888888),
+    'barbarian'   => const Color(0xFFcc4444),
+    'rogue'       => const Color(0xFF44cc88),
+    'ranger'      => const Color(0xFF66aa44),
+    'paladin'     => const Color(0xFFffcc33),
+    'cleric'      => const Color(0xFFffffaa),
+    'wizard'      => const Color(0xFF6688ff),
+    'sorcerer'    => const Color(0xFFcc44ff),
+    'warlock'     => const Color(0xFF9944cc),
+    'bard'        => const Color(0xFFff88cc),
+    'monk'        => const Color(0xFF88ddff),
+    'druid'       => const Color(0xFF44aa66),
+    _             => const Color(0xFF888888),
+  };
 
   Widget _buildBoard(GameState game) {
     if (_boardLoading) {
@@ -252,12 +332,10 @@ class _PvpScreenState extends State<PvpScreen> {
     }
     final board = _board ?? [];
     if (board.isEmpty) {
-      return const Center(
-        child: Text(
-          'No players found yet.\nBe the first to fight!',
-          textAlign: TextAlign.center,
-          style: TextStyle(color: AppTheme.textMuted, fontSize: 13),
-        ),
+      return const EmptyState(
+        icon: '⚔',
+        title: 'NO CHALLENGERS YET',
+        subtitle: 'Fight a match to join the leaderboard\nand see how you stack up.',
       );
     }
     return ListView.builder(
@@ -268,60 +346,69 @@ class _PvpScreenState extends State<PvpScreen> {
         final isMe  = p.userId == (_authService.currentUser?.uid ?? '');
         final rank  = i + 1;
         final medal = rank == 1 ? '🥇' : rank == 2 ? '🥈' : rank == 3 ? '🥉' : '#$rank';
+        final classColor = _classColor(p.heroClass);
         return Container(
           margin: const EdgeInsets.only(bottom: 6),
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
           decoration: BoxDecoration(
-            color: isMe
-                ? AppTheme.accentGold.withValues(alpha: 0.07)
-                : const Color(0xFF231F1B),
+            gradient: LinearGradient(
+              colors: [
+                classColor.withValues(alpha: isMe ? 0.15 : 0.08),
+                const Color(0xFF231F1B),
+              ],
+            ),
             border: Border.all(
-              color: isMe ? AppTheme.accentGold : AppTheme.cardBorder,
+              color: isMe ? AppTheme.accentGold : classColor.withValues(alpha: 0.4),
             ),
             borderRadius: BorderRadius.circular(4),
           ),
-          child: Row(
-            children: [
-              SizedBox(
-                width: 32,
-                child: Text(medal,
-                    style: TextStyle(
-                        fontSize: rank <= 3 ? 16 : 12,
-                        color: AppTheme.textMuted)),
-              ),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+            child: Row(
+              children: [
+                SizedBox(
+                  width: 28,
+                  child: Text(medal,
+                      style: TextStyle(
+                          fontSize: rank <= 3 ? 16 : 12,
+                          color: AppTheme.textMuted)),
+                ),
+                SizedBox(width: 30, height: 34,
+                    child: StaticEnemySprite(spriteId: 'hero_${p.heroClass}', size: 30)),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(p.heroName,
+                          style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.bold,
+                              color: isMe ? AppTheme.accentGold : Colors.white)),
+                      Text(
+                        '${p.heroClass[0].toUpperCase()}${p.heroClass.substring(1)}  '
+                        'Lv${p.level}  '
+                        '${p.wins}W / ${p.losses}L',
+                        style: const TextStyle(
+                            fontSize: 11, color: AppTheme.textMuted),
+                      ),
+                    ],
+                  ),
+                ),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
-                    Text(p.heroName,
-                        style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.bold,
-                            color: isMe ? AppTheme.accentGold : Colors.white)),
-                    Text(
-                      '${p.heroClass[0].toUpperCase()}${p.heroClass.substring(1)}  '
-                      'Lv${p.level}  '
-                      '${p.wins}W / ${p.losses}L',
-                      style: const TextStyle(
-                          fontSize: 11, color: AppTheme.textMuted),
-                    ),
+                    Text('★${p.rating}',
+                        style: GoogleFonts.pixelifySans(
+                            fontSize: 15,
+                            color: AppTheme.accentGold,
+                            fontWeight: FontWeight.bold)),
+                    Text('HP:${p.maxHp}  ARM:${p.armorClass}',
+                        style: const TextStyle(
+                            fontSize: 10, color: AppTheme.textMuted)),
                   ],
                 ),
-              ),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Text('★${p.rating}',
-                      style: GoogleFonts.pixelifySans(
-                          fontSize: 15,
-                          color: AppTheme.accentGold,
-                          fontWeight: FontWeight.bold)),
-                  Text('HP:${p.maxHp}  AC:${p.armorClass}',
-                      style: const TextStyle(
-                          fontSize: 10, color: AppTheme.textMuted)),
-                ],
-              ),
-            ],
+              ],
+            ),
           ),
         );
       },
@@ -369,11 +456,14 @@ class _StaminaBar extends StatelessWidget {
             ),
           ),
           const Spacer(),
-          Text(
-            game.pvpStamina >= GameState.pvpMaxStamina
-                ? 'FULL'
-                : 'Next in $countdownLabel',
-            style: const TextStyle(fontSize: 11, color: AppTheme.textMuted),
+          Tooltip(
+            message: 'Stamina recovers 1 heart every 45 minutes.',
+            child: Text(
+              game.pvpStamina >= GameState.pvpMaxStamina
+                  ? 'FULL'
+                  : 'Next ❤ in $countdownLabel',
+              style: const TextStyle(fontSize: 11, color: AppTheme.textMuted),
+            ),
           ),
         ],
       ),
@@ -437,6 +527,129 @@ class _Stat extends StatelessWidget {
       );
 }
 
+// ─── Bot challengers panel ────────────────────────────────────────────────────
+
+class _BotPanel extends StatelessWidget {
+  const _BotPanel({required this.opponents, required this.onFight});
+  final List<PvpSnapshot> opponents;
+  final void Function(PvpSnapshot) onFight;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: const Color(0xFF1E1C14),
+        border: Border(
+          top:    BorderSide(color: AppTheme.accentGold.withValues(alpha: 0.3)),
+          bottom: BorderSide(color: AppTheme.accentGold.withValues(alpha: 0.3)),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(14, 8, 14, 4),
+            child: Row(children: [
+              const Text('⚔', style: TextStyle(fontSize: 12)),
+              const SizedBox(width: 6),
+              Text('CHALLENGERS',
+                  style: AppTheme.pixelHeading(
+                      fontSize: 10,
+                      letterSpacing: 2,
+                      color: AppTheme.accentGold)),
+            ]),
+          ),
+          SizedBox(
+            height: 104,
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
+              itemCount: opponents.length,
+              separatorBuilder: (_, __) => const SizedBox(width: 8),
+              itemBuilder: (_, i) => _BotCard(
+                snap: opponents[i],
+                onFight: () => onFight(opponents[i]),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _BotCard extends StatelessWidget {
+  const _BotCard({required this.snap, required this.onFight});
+  final PvpSnapshot snap;
+  final VoidCallback onFight;
+
+  @override
+  Widget build(BuildContext context) {
+    // heroName format: "ClassName · icon TraitName"
+    final parts     = snap.heroName.split(' · ');
+    final className = parts.first;
+    final traitLabel = parts.length > 1 ? parts[1] : '';
+    final cls = snap.heroClass[0].toUpperCase() + snap.heroClass.substring(1);
+    return Container(
+      width: 148,
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: const Color(0xFF252318),
+        border: Border.all(color: AppTheme.accentGold.withValues(alpha: 0.35)),
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              SizedBox(width: 36, height: 40,
+                  child: StaticEnemySprite(spriteId: 'hero_${snap.heroClass}', size: 36)),
+              const SizedBox(width: 6),
+              Expanded(child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(className,
+                      style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                          color: AppTheme.textLight),
+                      overflow: TextOverflow.ellipsis),
+                  Text(traitLabel,
+                      style: const TextStyle(fontSize: 10, color: AppTheme.textMuted),
+                      overflow: TextOverflow.ellipsis),
+                  Text(
+                    'Lv${snap.level}  HP:${snap.maxHp}  ARM:${snap.armorClass}',
+                    style: const TextStyle(fontSize: 9, color: AppTheme.textMuted),
+                  ),
+                ],
+              )),
+            ],
+          ),
+          SizedBox(
+            width: double.infinity,
+            height: 24,
+            child: ElevatedButton(
+              onPressed: onFight,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF2E2A18),
+                side: BorderSide(color: AppTheme.accentGold.withValues(alpha: 0.6), width: 1),
+                padding: EdgeInsets.zero,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(3)),
+              ),
+              child: Text('FIGHT $cls',
+                  style: AppTheme.pixelHeading(
+                      fontSize: 9, color: AppTheme.accentGold)),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 // ─── Match button ─────────────────────────────────────────────────────────────
 
 class _MatchButton extends StatelessWidget {
@@ -469,21 +682,223 @@ class _MatchButton extends StatelessWidget {
         child: Center(
           child: busy
               ? const SizedBox(
-                  width: 18,
-                  height: 18,
-                  child: CircularProgressIndicator(
-                      color: Colors.white, strokeWidth: 2),
+                  width: 18, height: 18,
+                  child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
                 )
               : Text(
-                  stamina > 0
-                      ? '⚔  FIND MATCH  (−1 ♥)'
-                      : 'NO STAMINA — WAIT FOR RECHARGE',
+                  stamina > 0 ? '⚔  FIND MATCH  (−1 ♥)' : 'NO STAMINA',
                   style: AppTheme.pixelHeading(
                       fontSize: 13,
                       color: canFight ? Colors.white : AppTheme.textMuted,
                       letterSpacing: 1),
                 ),
         ),
+      ),
+    );
+  }
+}
+
+// ── Full-screen PvP Battle ───────────────────────────────────────────────────
+
+class _PvpBattleFullScreen extends StatefulWidget {
+  const _PvpBattleFullScreen({
+    required this.game,
+    required this.won,
+    required this.opponent,
+    required this.log,
+  });
+  final GameState game;
+  final bool won;
+  final PvpSnapshot opponent;
+  final List<String> log;
+  @override
+  State<_PvpBattleFullScreen> createState() => _PvpBattleFullScreenState();
+}
+
+class _PvpBattleFullScreenState extends State<_PvpBattleFullScreen>
+    with TickerProviderStateMixin {
+  final _arenaKey = GlobalKey<BattleArenaState>();
+  bool _showResult = false;
+  bool _fighting = true;
+  bool _autoRunning = false;
+
+  @override
+  void initState() {
+    super.initState();
+    final game = widget.game;
+    game.startPvpBattle(widget.opponent);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted && !_autoRunning) _startAutoAttack(game);
+    });
+  }
+
+  Future<void> _startAutoAttack(GameState game) async {
+    if (_autoRunning) return;
+    _autoRunning = true;
+
+    // Wait for arena to mount
+    await Future.delayed(const Duration(milliseconds: 600));
+    await WidgetsBinding.instance.endOfFrame;
+
+    while (mounted && _fighting) {
+      if (game.currentEnemy == null || game.heroDefeated) break;
+
+      game.clearPendingFloats();
+      game.heroAttack();
+
+      await (_arenaKey.currentState?.playHeroAttack(
+            game.lastHeroDamage,
+            isCrit: game.lastHeroCrit,
+            heroClass: game.hero.heroClass,
+            damageType: game.lastHeroDamageType,
+          ) ?? Future.value());
+
+      for (final f in game.pendingFloats) {
+        _arenaKey.currentState?.addExtraFloat(f.value, isHeal: f.isHeal, type: f.type);
+      }
+
+      if (game.currentEnemy == null) {
+        _arenaKey.currentState?.playEnemyDeath();
+        break;
+      }
+
+      await Future.delayed(const Duration(milliseconds: 500));
+      if (!mounted || !_fighting) break;
+
+      game.clearPendingFloats();
+      game.enemyAttack();
+      for (final f in game.pendingFloats) {
+        _arenaKey.currentState?.addExtraFloat(f.value, isHeal: f.isHeal, type: f.type);
+      }
+      await (_arenaKey.currentState?.playEnemyAttack(
+            game.lastEnemyDamage,
+            damageType: game.lastEnemyDamageType,
+          ) ?? Future.value());
+
+      if (game.heroDefeated) break;
+
+      if (mounted) setState(() {});
+      await Future.delayed(const Duration(milliseconds: 500));
+    }
+
+    _autoRunning = false;
+    if (!mounted) return;
+
+    await Future.delayed(const Duration(milliseconds: 600));
+    if (mounted) setState(() { _showResult = true; _fighting = false; });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final opp = widget.opponent;
+    final oppSprite = 'hero_${opp.heroClass}';
+    final color = widget.won ? const Color(0xFF44dd88) : const Color(0xFFcc4444);
+    final ratingDelta = widget.won ? '+${PvpService.winDelta}' : '-${PvpService.lossDelta}';
+
+    return Scaffold(
+      backgroundColor: AppTheme.darkBg,
+      appBar: AppBar(
+        title: Text('PVP  —  ${widget.game.hero.name} vs ${opp.heroName}',
+            style: AppTheme.pixelHeading(fontSize: 11, letterSpacing: 1)),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () {
+            _fighting = false;
+            _autoRunning = false;
+            widget.game.currentEnemy = null;
+            widget.game.hero.healToFull();
+            Navigator.pop(context);
+          },
+        ),
+      ),
+      body: Column(
+        children: [
+          // Arena — same as campaign
+          Expanded(
+            child: BattleArena(
+              key: _arenaKey,
+              heroName:      widget.game.hero.name,
+              heroLevel:     widget.game.hero.level,
+              heroCurrentHp: widget.game.hero.currentHealth,
+              heroMaxHp:     widget.game.hero.maxHealth,
+              heroAttack:    widget.game.hero.attack,
+              heroSpriteId:  widget.game.hero.spriteId,
+              heroGender:    widget.game.hero.gender,
+              heroColorFilter: widget.game.heroSkinFilter,
+              heroDamageType: widget.game.hero.activeDamageType,
+              enemyName:     opp.heroName,
+              enemyLevel:    opp.level,
+              enemyCurrentHp: widget.game.currentEnemy?.currentHealth ?? 0,
+              enemyMaxHp:    opp.maxHp,
+              enemyAttack:   opp.attackBonus,
+              enemyId:       oppSprite,
+              headerLabel:   '⚔  PVP ARENA  ⚔',
+            ),
+          ),
+
+          // Ability icon bar
+          if (_fighting) const BattleIconBar(),
+
+          // Result overlay
+          if (_showResult)
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+              color: color.withValues(alpha: 0.08),
+              child: Column(
+                children: [
+                  Text(
+                    widget.won ? '⚔ VICTORY!' : '💀 DEFEATED',
+                    style: AppTheme.pixelHeading(fontSize: 21, color: color, letterSpacing: 2),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    'vs ${opp.heroName} (${opp.heroClass[0].toUpperCase()}${opp.heroClass.substring(1)}  Lv${opp.level}  ★${opp.rating})',
+                    style: const TextStyle(fontSize: 12, color: AppTheme.textMuted),
+                  ),
+                  const SizedBox(height: 10),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                    decoration: BoxDecoration(
+                      color: color.withValues(alpha: 0.10),
+                      border: Border.all(color: color.withValues(alpha: 0.5)),
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: Text(
+                      'Rating: ${widget.game.pvpRating}  ($ratingDelta)',
+                      style: AppTheme.pixelHeading(fontSize: 15, color: color),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: () => Navigator.pop(context),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: color.withValues(alpha: 0.15),
+                        foregroundColor: color,
+                        side: BorderSide(color: color),
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                      ),
+                      child: Text('RETURN TO ARENA',
+                          style: AppTheme.pixelHeading(fontSize: 13, letterSpacing: 1, color: color)),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+          // Fighting indicator
+          if (_fighting)
+            Container(
+              padding: const EdgeInsets.symmetric(vertical: 10),
+              color: const Color(0xFF0a0e1f),
+              child: Center(
+                child: const Text('Fighting...',
+                    style: const TextStyle(fontSize: 11, color: AppTheme.textMuted, letterSpacing: 1)),
+              ),
+            ),
+        ],
       ),
     );
   }

@@ -42,7 +42,7 @@ class AscensionNode {
     AscensionNode(
       id: 'atk_bonus',
       label: 'Veteran Arms',
-      description: '+1 attack roll per level',
+      description: '+1 critical damage per level',
       maxLevel: 3,
       costPerLevel: 2,
       icon: '⚔',

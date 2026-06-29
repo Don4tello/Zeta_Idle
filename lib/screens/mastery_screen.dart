@@ -376,15 +376,10 @@ class _GoldBadge extends StatelessWidget {
       child: Row(mainAxisSize: MainAxisSize.min, children: [
         const Text('💰', style: TextStyle(fontSize: 14)),
         const SizedBox(width: 5),
-        Text(_fmt(gold),
+        Text(AppTheme.fmtNumber(gold),
             style: AppTheme.pixelHeading(fontSize: 13, letterSpacing: 0, color: AppTheme.accentGold)),
       ]),
     );
   }
 
-  String _fmt(int n) {
-    if (n >= 1000000) return '${(n / 1000000).toStringAsFixed(1)}M';
-    if (n >= 1000) return '${(n / 1000).toStringAsFixed(1)}K';
-    return '$n';
-  }
 }

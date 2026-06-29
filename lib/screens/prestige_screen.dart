@@ -2,6 +2,7 @@
 import '../models/prestige_shop.dart';
 import '../services/game_state.dart';
 import '../theme/app_theme.dart';
+import 'main_shell.dart' show TutorialTip;
 
 class PrestigeScreen extends StatelessWidget {
   const PrestigeScreen({super.key, this.embedded = false});
@@ -16,6 +17,12 @@ class PrestigeScreen extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          if (!embedded)
+            TutorialTip(
+              tutorialKey: 'prestige',
+              game: game,
+              text: 'Prestige resets your hero but grants permanent multipliers and Souls for the Prestige Shop. Available at Rebirth Gates (stages 25, 50, 75, 100).',
+            ),
           _RebirthPanel(game: game),
           const SizedBox(height: 20),
           _BonusPanel(game: game),
@@ -48,7 +55,7 @@ class PrestigeScreen extends StatelessWidget {
       backgroundColor: const Color(0xFF1B1A17),
       appBar: AppBar(
         backgroundColor: const Color(0xFF2A2623),
-        title: Text('PRESTIGE', style: AppTheme.pixelHeading(fontSize: 14, letterSpacing: 2)),
+        title: Text('REBIRTH', style: AppTheme.pixelHeading(fontSize: 14, letterSpacing: 2)),
         actions: [
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -136,14 +143,46 @@ class _RebirthPanel extends StatelessWidget {
             if (game.prestigeLevel > 0)
               _SoulBadge(souls: game.prestigeLevel, large: false, label: 'LEVEL'),
           ]),
+          const SizedBox(height: 8),
+          const Text(
+            'Start over as a stronger hero. Reset your progress in exchange for '
+            'permanent power — each Rebirth makes every future run faster and more powerful.',
+            style: TextStyle(fontSize: 12, color: AppTheme.textMuted, height: 1.5),
+          ),
           const SizedBox(height: 10),
           _ResetRow(label: 'Resets', items: const ['Hero level', 'Gold', 'Items', 'Subclass']),
           const SizedBox(height: 4),
           _ResetRow(
             label: 'Keeps',
-            items: const ['Shards', 'Essence', 'Abilities', 'Passive tree', 'Cosmetics'],
+            items: const ['Shards', 'Echoes', 'Essence', 'Abilities', 'Passive tree', 'Cosmetics'],
             keepColor: true,
           ),
+          const SizedBox(height: 8),
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: const Color(0xFF1a2a1a),
+              border: Border.all(color: const Color(0xFF44cc88).withValues(alpha: 0.4)),
+              borderRadius: BorderRadius.circular(4),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('YOU WILL GAIN', style: AppTheme.pixelHeading(
+                    fontSize: 10, letterSpacing: 2, color: const Color(0xFF44cc88))),
+                const SizedBox(height: 6),
+                Text('☠ ${(game.campaignStageIndex / 5).floor().clamp(1, 200)} Souls',
+                    style: const TextStyle(fontSize: 12, color: Color(0xFFcc8844), fontWeight: FontWeight.bold)),
+                Text('+5% Gold multiplier  •  +5% XP multiplier  •  +5% Idle multiplier',
+                    style: const TextStyle(fontSize: 10, color: AppTheme.textMuted)),
+                Text('⬡ +10 Mythril',
+                    style: const TextStyle(fontSize: 11, color: Color(0xFF9966ff))),
+              ],
+            ),
+          ),
+          const SizedBox(height: 12),
+          // Milestone title track
+          _MilestoneTitleTrack(prestigeLevel: game.prestigeLevel),
           const SizedBox(height: 12),
           if (canPrestige) ...[
             Container(
@@ -153,14 +192,26 @@ class _RebirthPanel extends StatelessWidget {
                 border: Border.all(color: const Color(0xFFaacc44)),
                 borderRadius: BorderRadius.circular(3),
               ),
-              child: Row(children: [
-                const Icon(Icons.auto_awesome, color: Color(0xFFaacc44), size: 16),
-                const SizedBox(width: 8),
-                Text(
-                  'Ready to Rebirth! You will earn $soulsPreview soul${soulsPreview == 1 ? '' : 's'}.',
-                  style: const TextStyle(fontSize: 13, color: Color(0xFFaacc44)),
-                ),
-              ]),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(children: [
+                    const Icon(Icons.auto_awesome, color: Color(0xFFaacc44), size: 16),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Ready to Rebirth!  +$soulsPreview soul${soulsPreview == 1 ? '' : 's'}  •  +10 Mythril',
+                      style: const TextStyle(fontSize: 13, color: Color(0xFFaacc44)),
+                    ),
+                  ]),
+                  const SizedBox(height: 6),
+                  Text(
+                    'After rebirth:  Gold +${((game.prestigeGoldMult * 1.10 - 1) * 100).round()}%  •  '
+                    'XP +${((game.prestigeXpMult * 1.05 - 1) * 100).round()}%  •  '
+                    'Idle +${((game.prestigeIdleMult * 1.05 - 1) * 100).round()}%',
+                    style: const TextStyle(fontSize: 11, color: Color(0xFF88aa55)),
+                  ),
+                ],
+              ),
             ),
             const SizedBox(height: 12),
             SizedBox(
@@ -367,6 +418,104 @@ class _BonusChip extends StatelessWidget {
         borderRadius: BorderRadius.circular(3),
       ),
       child: Text(label, style: const TextStyle(fontSize: 11, color: Color(0xFF44cc88))),
+    );
+  }
+}
+
+// ── Milestone title track ─────────────────────────────────────────────────────
+
+class _MilestoneTitleTrack extends StatelessWidget {
+  const _MilestoneTitleTrack({required this.prestigeLevel});
+  final int prestigeLevel;
+
+  static const _milestones = <int, (String, String)>{
+    1:  ('Reborn',       '🔥'),
+    2:  ('Twice-Forged', '⚒'),
+    3:  ('Veteran',      '🛡'),
+    5:  ('Champion',     '⚔'),
+    7:  ('Warlord',      '🗡'),
+    10: ('Legend',       '💀'),
+    15: ('Mythic',       '✦'),
+    20: ('Arcane Lord',  '🔮'),
+    25: ('Eternal',      '♾'),
+    50: ('Transcendent', '🌟'),
+  };
+
+  @override
+  Widget build(BuildContext context) {
+    // Show up to the next 4 unlocked/upcoming milestones
+    final keys = _milestones.keys.toList()..sort();
+    final visible = keys.where((k) => k <= prestigeLevel + 5 || prestigeLevel < 5).take(6).toList();
+    if (visible.isEmpty) return const SizedBox.shrink();
+
+    return Container(
+      padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
+      decoration: BoxDecoration(
+        color: const Color(0xFF1a1410),
+        border: Border.all(color: const Color(0xFF3a2a18)),
+        borderRadius: BorderRadius.circular(3),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('MILESTONE TITLES',
+              style: AppTheme.pixelHeading(
+                  fontSize: 9, letterSpacing: 2, color: const Color(0xFFcc8844))),
+          const SizedBox(height: 10),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: visible.map((k) {
+              final (title, emoji) = _milestones[k]!;
+              final earned = prestigeLevel >= k;
+              return Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+                decoration: BoxDecoration(
+                  color: earned
+                      ? const Color(0xFFcc8844).withValues(alpha: 0.15)
+                      : const Color(0xFF17130E),
+                  border: Border.all(
+                    color: earned
+                        ? const Color(0xFFcc8844).withValues(alpha: 0.7)
+                        : const Color(0xFF3a2a18),
+                  ),
+                  borderRadius: BorderRadius.circular(3),
+                ),
+                child: Row(mainAxisSize: MainAxisSize.min, children: [
+                  Text(emoji,
+                      style: TextStyle(
+                          fontSize: 13,
+                          color: earned ? null : const Color(0xFF443320))),
+                  const SizedBox(width: 5),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(title,
+                          style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
+                              color: earned
+                                  ? const Color(0xFFddaa55)
+                                  : const Color(0xFF554433))),
+                      Text('LV $k',
+                          style: TextStyle(
+                              fontSize: 9,
+                              color: earned
+                                  ? const Color(0xFF997744)
+                                  : const Color(0xFF3a2a18))),
+                    ],
+                  ),
+                  if (earned) ...[
+                    const SizedBox(width: 4),
+                    const Icon(Icons.check_circle, size: 11, color: Color(0xFFcc8844)),
+                  ],
+                ]),
+              );
+            }).toList(),
+          ),
+        ],
+      ),
     );
   }
 }

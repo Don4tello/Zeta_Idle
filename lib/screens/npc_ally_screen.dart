@@ -1,16 +1,55 @@
-﻿import 'package:flutter/material.dart';
+import 'dart:math';
+import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import '../models/npc_ally.dart';
 import '../services/game_state.dart';
 import '../theme/app_theme.dart';
+import 'main_shell.dart' show TutorialTip;
 
 class NpcAllyScreen extends StatelessWidget {
-  const NpcAllyScreen({super.key});
+  const NpcAllyScreen({super.key, this.embedded = false});
+  final bool embedded;
 
   @override
   Widget build(BuildContext context) {
     final game = GameStateProvider.of(context);
     final allies = NpcAllyDef.all;
     final unlockedCount = allies.where((a) => game.allyUnlocked(a.id)).length;
+
+    final body = ListView(
+      padding: const EdgeInsets.all(16),
+      children: [
+        if (!embedded)
+          TutorialTip(
+            tutorialKey: 'mercs',
+            game: game,
+            text: 'Recruit mercenaries by completing milestones. Mercs provide passive battle bonuses and can be sent on Expeditions for gold, shards, and more.',
+          ),
+        _ActiveBonusBar(game: game),
+        const SizedBox(height: 16),
+        Text('ROSTER',
+            style: AppTheme.pixelHeading(
+                fontSize: 11, letterSpacing: 2, color: AppTheme.textMuted)),
+        const SizedBox(height: 10),
+        ...List.generate(allies.length, (i) {
+          return _AllyCard(def: allies[i], game: game)
+              .animate(delay: Duration(milliseconds: 40 * i))
+              .fadeIn(duration: 280.ms)
+              .slideY(begin: 0.04, duration: 280.ms, curve: Curves.easeOut);
+        }),
+        const SizedBox(height: 8),
+        Text('SYNERGIES',
+            style: AppTheme.pixelHeading(
+                fontSize: 11, letterSpacing: 2, color: AppTheme.textMuted)),
+        const SizedBox(height: 10),
+        ...SynergyDef.all.map((s) => _SynergyCard(syn: s, game: game)),
+        const SizedBox(height: 8),
+      ],
+    );
+
+    if (embedded) {
+      return Container(color: const Color(0xFF1B1A17), child: body);
+    }
 
     return Scaffold(
       backgroundColor: const Color(0xFF1B1A17),
@@ -29,25 +68,7 @@ class NpcAllyScreen extends StatelessWidget {
           ),
         ],
       ),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          _ActiveBonusBar(game: game),
-          const SizedBox(height: 16),
-          Text('ROSTER',
-              style: AppTheme.pixelHeading(
-                  fontSize: 11, letterSpacing: 2, color: AppTheme.textMuted)),
-          const SizedBox(height: 10),
-          ...allies.map((a) => _AllyCard(def: a, game: game)),
-          const SizedBox(height: 8),
-          Text('SYNERGIES',
-              style: AppTheme.pixelHeading(
-                  fontSize: 11, letterSpacing: 2, color: AppTheme.textMuted)),
-          const SizedBox(height: 10),
-          ...SynergyDef.all.map((s) => _SynergyCard(syn: s, game: game)),
-          const SizedBox(height: 8),
-        ],
-      ),
+      body: body,
     );
   }
 }
@@ -62,10 +83,9 @@ class _ActiveBonusBar extends StatelessWidget {
   Widget build(BuildContext context) {
     final chips = <_Chip>[];
 
-    if (game.allyAtkBonus > 0)
-      chips.add(_Chip('+${game.allyAtkBonus} ATK', const Color(0xFFff9944)));
-    if (game.allyDmgBonus > 0)
-      chips.add(_Chip('+${game.allyDmgBonus} DMG', const Color(0xFFff5555)));
+    final allyPower = game.allyAtkBonus + game.allyDmgBonus;
+    if (allyPower > 0)
+      chips.add(_Chip('+$allyPower Power', const Color(0xFFff6644)));
     if (game.allyAcBonus > 0)
       chips.add(_Chip('+${game.allyAcBonus} AC', const Color(0xFF66aaff)));
     if (game.allyGoldMult > 1.0)
@@ -138,6 +158,170 @@ class _Chip {
   final Color color;
 }
 
+// ── Portrait medallion ────────────────────────────────────────────────────────
+
+class _MercPortrait extends StatefulWidget {
+  const _MercPortrait({
+    required this.icon,
+    required this.unlocked,
+    required this.level,
+  });
+  final String icon;
+  final bool unlocked;
+  final int level;
+  static const double size = 54;
+
+  @override
+  State<_MercPortrait> createState() => _MercPortraitState();
+}
+
+class _MercPortraitState extends State<_MercPortrait>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _ctrl;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = AnimationController(
+            vsync: this, duration: const Duration(seconds: 4))
+        ..repeat();
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final s = _MercPortrait.size;
+
+    if (!widget.unlocked) {
+      return SizedBox(
+        width: s,
+        height: s,
+        child: Stack(alignment: Alignment.center, children: [
+          Container(
+            width: s,
+            height: s,
+            decoration: const BoxDecoration(
+              shape: BoxShape.circle,
+              color: Color(0xFF15121e),
+            ),
+          ),
+          // Faint border ring
+          Container(
+            width: s,
+            height: s,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              border: Border.all(
+                  color: const Color(0xFF2a2535), width: 2),
+            ),
+          ),
+          // Very faint silhouette
+          Opacity(
+            opacity: 0.12,
+            child: Text(widget.icon,
+                style: TextStyle(fontSize: s * 0.50)),
+          ),
+          // Question mark
+          Text('?',
+              style: TextStyle(
+                  fontSize: s * 0.38,
+                  color: const Color(0xFF3a3248),
+                  fontWeight: FontWeight.w900)),
+        ]),
+      );
+    }
+
+    // Unlocked: glowing rotating ring
+    final ringColor = widget.level >= NpcAllyDef.maxLevel
+        ? const Color(0xFFffcc44)  // gold when maxed
+        : const Color(0xFF44cc88); // green otherwise
+
+    return SizedBox(
+      width: s,
+      height: s,
+      child: Stack(alignment: Alignment.center, children: [
+        // Rotating shimmer ring
+        AnimatedBuilder(
+          animation: _ctrl,
+          builder: (_, __) => CustomPaint(
+            size: Size(s, s),
+            painter: _RingPainter(_ctrl.value, ringColor),
+          ),
+        ),
+        // Inner circle background
+        Container(
+          width: s - 10,
+          height: s - 10,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: ringColor.withValues(alpha: 0.08),
+          ),
+        ),
+        // Emoji
+        Text(widget.icon, style: TextStyle(fontSize: s * 0.46)),
+      ]),
+    );
+  }
+}
+
+class _RingPainter extends CustomPainter {
+  _RingPainter(this.t, this.color);
+  final double t;
+  final Color color;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final center = Offset(size.width / 2, size.height / 2);
+    final radius = size.width / 2 - 2;
+
+    // Dim base ring
+    canvas.drawCircle(
+        center,
+        radius,
+        Paint()
+          ..color = color.withValues(alpha: 0.25)
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 2);
+
+    // Rotating bright arc (sweep ~90°)
+    final sweepGrad = SweepGradient(
+      colors: [
+        Colors.transparent,
+        color.withValues(alpha: 0.9),
+        color.withValues(alpha: 0.4),
+        Colors.transparent,
+      ],
+      stops: const [0.0, 0.4, 0.7, 1.0],
+      transform: GradientRotation(t * pi * 2 - pi / 4),
+    );
+
+    canvas.drawCircle(
+        center,
+        radius,
+        Paint()
+          ..shader = sweepGrad.createShader(
+              Rect.fromCircle(center: center, radius: radius))
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 2.5
+          ..strokeCap = StrokeCap.round);
+
+    // Tiny bright dot at arc tip
+    final tipAngle = t * pi * 2;
+    final tipX = center.dx + cos(tipAngle) * radius;
+    final tipY = center.dy + sin(tipAngle) * radius;
+    canvas.drawCircle(
+        Offset(tipX, tipY), 3, Paint()..color = color.withValues(alpha: 0.9));
+  }
+
+  @override
+  bool shouldRepaint(_RingPainter old) => old.t != t;
+}
+
 // ── Ally Card ─────────────────────────────────────────────────────────────────
 
 class _AllyCard extends StatelessWidget {
@@ -152,154 +336,485 @@ class _AllyCard extends StatelessWidget {
     final maxed    = level >= NpcAllyDef.maxLevel;
     final progress = game.allyMilestoneProgress(def);
     final lockPct  = (progress / def.milestoneTarget).clamp(0.0, 1.0);
+    final milestoneReady = !unlocked && lockPct >= 1.0;
 
     final (costS, costC) = unlocked && !maxed
         ? NpcAllyDef.levelUpCost(level + 1)
         : (0, 0);
     final canAfford = costS <= game.shards && costC <= game.crystals;
 
+    final borderColor = milestoneReady
+        ? const Color(0xFF44cc88)
+        : unlocked
+            ? const Color(0xFF3a7a50).withValues(alpha: 0.7)
+            : AppTheme.cardBorder;
+    final bgColor = unlocked
+        ? const Color(0xFF0d1e14)
+        : milestoneReady
+            ? const Color(0xFF0d1e14).withValues(alpha: 0.5)
+            : const Color(0xFF231F1B);
+
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
-      child: Container(
-        padding: const EdgeInsets.all(14),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 500),
+        curve: Curves.easeOut,
         decoration: BoxDecoration(
-          color: unlocked
-              ? const Color(0xFF0d1e14)
-              : const Color(0xFF231F1B),
+          color: bgColor,
           border: Border.all(
-            color: unlocked
-                ? const Color(0xFF3a7a50).withValues(alpha: 0.7)
-                : AppTheme.cardBorder,
+            color: borderColor,
+            width: milestoneReady ? 1.5 : 1,
           ),
           borderRadius: BorderRadius.circular(4),
         ),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          // ── Header row ─────────────────────────────────────────────────────
-          Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(def.icon,
-                style: TextStyle(
-                    fontSize: 27,
-                    color: unlocked ? null : Colors.white24)),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(children: [
-                    Text(def.name,
-                        style: TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.bold,
-                            color: unlocked
-                                ? const Color(0xFF77dd99)
-                                : Colors.white38)),
-                    const SizedBox(width: 8),
-                    if (unlocked) _LevelBadge(level: level),
-                  ]),
-                  Text(def.title,
-                      style: TextStyle(
-                          fontSize: 11,
-                          color: unlocked
-                              ? AppTheme.textMuted
-                              : AppTheme.textMuted.withValues(alpha: 0.4),
-                          fontStyle: FontStyle.italic)),
-                ],
-              ),
+        child: AnimatedSwitcher(
+          duration: const Duration(milliseconds: 400),
+          switchInCurve: Curves.easeOut,
+          transitionBuilder: (child, anim) => FadeTransition(
+            opacity: anim,
+            child: SlideTransition(
+              position: Tween(
+                begin: const Offset(0, 0.03),
+                end: Offset.zero,
+              ).animate(anim),
+              child: child,
             ),
-            // Bonus at current level
-            if (unlocked)
-              _BonusTag(def: def, level: level),
-          ]),
+          ),
+          child: _CardContent(
+            key: ValueKey('${def.id}_${unlocked}_$level'),
+            def: def,
+            game: game,
+            level: level,
+            unlocked: unlocked,
+            maxed: maxed,
+            lockPct: lockPct,
+            milestoneReady: milestoneReady,
+            costS: costS,
+            costC: costC,
+            canAfford: canAfford,
+          ),
+        ),
+      ),
+    );
+  }
+}
 
-          const SizedBox(height: 10),
+class _CardContent extends StatelessWidget {
+  const _CardContent({
+    super.key,
+    required this.def,
+    required this.game,
+    required this.level,
+    required this.unlocked,
+    required this.maxed,
+    required this.lockPct,
+    required this.milestoneReady,
+    required this.costS,
+    required this.costC,
+    required this.canAfford,
+  });
 
-          // ── Lore ───────────────────────────────────────────────────────────
-          Text(def.lore,
-              style: TextStyle(
-                  fontSize: 11,
-                  color: unlocked ? Colors.white54 : Colors.white24,
-                  height: 1.4)),
+  final NpcAllyDef def;
+  final GameState game;
+  final int level;
+  final bool unlocked;
+  final bool maxed;
+  final double lockPct;
+  final bool milestoneReady;
+  final int costS;
+  final int costC;
+  final bool canAfford;
 
-          const SizedBox(height: 10),
+  AllyTalentDef? _talentDef(int talentLevel) =>
+      talentLevel == 3 ? def.talent3 : def.talent5;
 
-          // ── Locked: milestone progress ────────────────────────────────────
-          if (!unlocked) ...[
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.all(14),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        // ── Header row ────────────────────────────────────────────────────────
+        Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          _MercPortrait(icon: def.icon, unlocked: unlocked, level: level),
+          const SizedBox(width: 13),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(children: [
+                  Expanded(
+                    child: Text(
+                      unlocked ? def.name : '??? ???',
+                      style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.bold,
+                          color: unlocked
+                              ? const Color(0xFF77dd99)
+                              : Colors.white24),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  if (unlocked) ...[
+                    const SizedBox(width: 6),
+                    _LevelBadge(level: level, maxed: maxed),
+                  ],
+                ]),
+                const SizedBox(height: 2),
+                Text(
+                  unlocked ? def.title : 'Unknown Mercenary',
+                  style: TextStyle(
+                      fontSize: 11,
+                      color: unlocked
+                          ? AppTheme.textMuted
+                          : AppTheme.textMuted.withValues(alpha: 0.35),
+                      fontStyle: FontStyle.italic),
+                ),
+                if (unlocked) ...[
+                  const SizedBox(height: 5),
+                  _BonusTag(def: def, level: level),
+                ],
+              ],
+            ),
+          ),
+        ]),
+
+        const SizedBox(height: 10),
+
+        // ── Lore ─────────────────────────────────────────────────────────────
+        Text(
+          unlocked ? def.lore : 'Fulfill the milestone below to reveal this mercenary.',
+          style: TextStyle(
+              fontSize: 11,
+              color: unlocked ? Colors.white54 : Colors.white24,
+              height: 1.4),
+        ),
+
+        // ── Active ability ────────────────────────────────────────────────────
+        if (unlocked && def.activeAbility != null) ...[
+          const SizedBox(height: 8),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+            decoration: BoxDecoration(
+              color: const Color(0xFF1a1028),
+              border: Border.all(
+                color: const Color(0xFF7744bb).withValues(alpha: 0.5),
+              ),
+              borderRadius: BorderRadius.circular(3),
+            ),
+            child: Row(children: [
+              Text(def.activeAbility!.icon,
+                  style: const TextStyle(fontSize: 14)),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('BATTLE ABILITY: ${def.activeAbility!.name}',
+                        style: AppTheme.pixelHeading(
+                            fontSize: 9, color: const Color(0xFFaa77ff))),
+                    const SizedBox(height: 2),
+                    Text(def.activeAbility!.description,
+                        style: const TextStyle(
+                            fontSize: 10, height: 1.3, color: Colors.white54)),
+                  ],
+                ),
+              ),
+            ]),
+          ),
+        ],
+
+        // ── Talent branches ───────────────────────────────────────────────────
+        if (unlocked) ...[
+          for (final talentLevel in [3, 5])
+            if (_talentDef(talentLevel) != null && level >= talentLevel) ...[
+              const SizedBox(height: 8),
+              _TalentSection(
+                def: def,
+                talentDef: _talentDef(talentLevel)!,
+                chosen: game.allyChosenTalent(def.id, talentLevel),
+                onChoose: (optId) =>
+                    game.chooseAllyTalent(def.id, talentLevel, optId),
+              ),
+            ],
+        ],
+
+        const SizedBox(height: 10),
+
+        // ── Bottom row ────────────────────────────────────────────────────────
+        if (!unlocked) ...[
+          // Milestone progress
+          if (milestoneReady)
+            _MilestoneReadyBanner()
+          else ...[
             Row(children: [
               Expanded(
                 child: Text('Unlock: ${def.milestoneLabel}',
                     style: const TextStyle(
                         fontSize: 11, color: AppTheme.textMuted)),
               ),
-              Text('$progress / ${def.milestoneTarget}',
+              Text('${game.allyMilestoneProgress(def)} / ${def.milestoneTarget}',
                   style: const TextStyle(
                       fontSize: 11, color: Colors.white38)),
             ]),
             const SizedBox(height: 6),
-            ClipRRect(
-              borderRadius: BorderRadius.circular(2),
-              child: LinearProgressIndicator(
-                value: lockPct,
-                minHeight: 5,
-                backgroundColor:
-                    const Color(0xFF44aa66).withValues(alpha: 0.12),
-                valueColor: const AlwaysStoppedAnimation<Color>(
-                    Color(0xFF44aa66)),
-              ),
-            ),
-          ]
-
-          // ── Unlocked: level pips + upgrade button ─────────────────────────
-          else ...[
-            Row(children: [
-              _LevelPips(current: level, max: NpcAllyDef.maxLevel),
-              const Spacer(),
-              if (maxed)
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 10, vertical: 5),
-                  decoration: BoxDecoration(
-                    color: AppTheme.accentGold.withValues(alpha: 0.10),
-                    border: Border.all(
-                        color: AppTheme.accentGold.withValues(alpha: 0.4)),
-                    borderRadius: BorderRadius.circular(3),
-                  ),
-                  child: Text('MAX',
-                      style: AppTheme.pixelHeading(
-                          fontSize: 10, color: AppTheme.accentGold)),
-                )
-              else
-                _UpgradeButton(
-                  costShards:   costS,
-                  costCrystals: costC,
-                  canAfford:    canAfford,
-                  onTap:        () => game.upgradeAlly(def.id),
-                ),
-            ]),
+            _MilestoneBar(value: lockPct),
           ],
-        ]),
+        ] else ...[
+          Row(children: [
+            _LevelPips(current: level, max: NpcAllyDef.maxLevel),
+            const Spacer(),
+            if (maxed)
+              _MaxBadge()
+            else
+              _UpgradeButton(
+                costShards:   costS,
+                costCrystals: costC,
+                canAfford:    canAfford,
+                onTap:        () => game.upgradeAlly(def.id),
+              ),
+          ]),
+        ],
+      ]),
+    );
+  }
+}
+
+// ── Talent branch selector ────────────────────────────────────────────────────
+
+class _TalentSection extends StatelessWidget {
+  const _TalentSection({
+    required this.def,
+    required this.talentDef,
+    required this.chosen,
+    required this.onChoose,
+  });
+
+  final NpcAllyDef def;
+  final AllyTalentDef talentDef;
+  final AllyTalentOption? chosen;
+  final void Function(String optId) onChoose;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(10, 8, 10, 10),
+      decoration: BoxDecoration(
+        color: const Color(0xFF0e1a24),
+        border: Border.all(color: const Color(0xFF2a4060)),
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(children: [
+            const Text('⚡', style: TextStyle(fontSize: 11)),
+            const SizedBox(width: 5),
+            Text('LV ${talentDef.unlocksAtLevel} TALENT',
+                style: AppTheme.pixelHeading(
+                    fontSize: 9, letterSpacing: 2, color: const Color(0xFF6699cc))),
+            if (chosen != null) ...[
+              const SizedBox(width: 6),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF44aaff).withValues(alpha: 0.15),
+                  border: Border.all(color: const Color(0xFF44aaff).withValues(alpha: 0.5)),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+                child: Text('CHOSEN: ${chosen!.name}',
+                    style: AppTheme.pixelHeading(
+                        fontSize: 8, color: const Color(0xFF44aaff))),
+              ),
+            ],
+          ]),
+          const SizedBox(height: 8),
+          Row(children: [
+            Expanded(child: _TalentOption(
+              option: talentDef.optionA,
+              isChosen: chosen?.id == 'a',
+              onTap: () => onChoose('a'),
+            )),
+            const SizedBox(width: 6),
+            Expanded(child: _TalentOption(
+              option: talentDef.optionB,
+              isChosen: chosen?.id == 'b',
+              onTap: () => onChoose('b'),
+            )),
+          ]),
+        ],
       ),
     );
   }
 }
 
-class _LevelBadge extends StatelessWidget {
-  const _LevelBadge({required this.level});
-  final int level;
+class _TalentOption extends StatelessWidget {
+  const _TalentOption({
+    required this.option,
+    required this.isChosen,
+    required this.onTap,
+  });
+
+  final AllyTalentOption option;
+  final bool isChosen;
+  final VoidCallback onTap;
 
   @override
-  Widget build(BuildContext context) => Container(
-        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+  Widget build(BuildContext context) {
+    const chosen = Color(0xFF44aaff);
+    const idle   = Color(0xFF2a3a50);
+    final border = isChosen ? chosen : idle;
+    final bg     = isChosen
+        ? chosen.withValues(alpha: 0.12)
+        : const Color(0xFF0a1422);
+
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        padding: const EdgeInsets.all(8),
         decoration: BoxDecoration(
-          color: AppTheme.accentGold.withValues(alpha: 0.12),
-          border:
-              Border.all(color: AppTheme.accentGold.withValues(alpha: 0.5)),
+          color: bg,
+          border: Border.all(color: border, width: isChosen ? 1.5 : 1.0),
           borderRadius: BorderRadius.circular(3),
         ),
-        child: Text('LV $level',
-            style: AppTheme.pixelHeading(
-                fontSize: 10, color: AppTheme.accentGold)),
-      );
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(children: [
+              Text(option.icon, style: const TextStyle(fontSize: 13)),
+              const SizedBox(width: 5),
+              Expanded(
+                child: Text(option.name,
+                    style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                        color: isChosen ? chosen : Colors.white70)),
+              ),
+              if (isChosen)
+                const Icon(Icons.check_circle_rounded,
+                    size: 12, color: chosen),
+            ]),
+            const SizedBox(height: 4),
+            Text(option.statSummary,
+                style: TextStyle(
+                    fontSize: 10,
+                    color: isChosen
+                        ? chosen.withValues(alpha: 0.9)
+                        : const Color(0xFF6688aa))),
+            const SizedBox(height: 2),
+            Text(option.description,
+                style: const TextStyle(
+                    fontSize: 9, height: 1.3, color: Colors.white38)),
+          ],
+        ),
+      ),
+    );
+  }
 }
+
+// ── Milestone bar with pulse when complete ────────────────────────────────────
+
+class _MilestoneBar extends StatelessWidget {
+  const _MilestoneBar({required this.value});
+  final double value;
+
+  @override
+  Widget build(BuildContext context) {
+    final bar = ClipRRect(
+      borderRadius: BorderRadius.circular(2),
+      child: LinearProgressIndicator(
+        value: value,
+        minHeight: 5,
+        backgroundColor: const Color(0xFF44aa66).withValues(alpha: 0.12),
+        valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF44aa66)),
+      ),
+    );
+
+    if (value >= 1.0) {
+      return bar
+          .animate(onPlay: (c) => c.repeat(reverse: true))
+          .shimmer(
+              duration: 900.ms,
+              color: const Color(0xFF66dd99).withValues(alpha: 0.6));
+    }
+    return bar;
+  }
+}
+
+class _MilestoneReadyBanner extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+          decoration: BoxDecoration(
+            color: const Color(0xFF44cc88).withValues(alpha: 0.10),
+            border: Border.all(color: const Color(0xFF44cc88).withValues(alpha: 0.6)),
+            borderRadius: BorderRadius.circular(3),
+          ),
+          child: Row(children: [
+            const Icon(Icons.lock_open_rounded,
+                color: Color(0xFF44cc88), size: 14),
+            const SizedBox(width: 8),
+            Text('MILESTONE COMPLETE — RECRUITING...',
+                style: AppTheme.pixelHeading(
+                    fontSize: 9,
+                    color: const Color(0xFF44cc88),
+                    letterSpacing: 1)),
+          ]),
+        )
+        .animate(onPlay: (c) => c.repeat(reverse: true))
+        .shimmer(
+            duration: 800.ms,
+            color: const Color(0xFF44cc88).withValues(alpha: 0.3));
+  }
+}
+
+// ── Level badge ───────────────────────────────────────────────────────────────
+
+class _LevelBadge extends StatelessWidget {
+  const _LevelBadge({required this.level, required this.maxed});
+  final int level;
+  final bool maxed;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = maxed ? AppTheme.accentGold : const Color(0xFF77dd99);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.12),
+        border: Border.all(color: color.withValues(alpha: 0.5)),
+        borderRadius: BorderRadius.circular(3),
+      ),
+      child: Text(
+        maxed ? '★ MAX' : 'LV $level',
+        style: AppTheme.pixelHeading(fontSize: 9, color: color),
+      ),
+    );
+  }
+}
+
+class _MaxBadge extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+          decoration: BoxDecoration(
+            color: AppTheme.accentGold.withValues(alpha: 0.10),
+            border: Border.all(
+                color: AppTheme.accentGold.withValues(alpha: 0.4)),
+            borderRadius: BorderRadius.circular(3),
+          ),
+          child: Text('★ MAX',
+              style: AppTheme.pixelHeading(
+                  fontSize: 10, color: AppTheme.accentGold)),
+        )
+        .animate(onPlay: (c) => c.repeat(reverse: true))
+        .shimmer(duration: 2000.ms, color: AppTheme.accentGold.withValues(alpha: 0.4));
+  }
+}
+
+// ── Level pips ────────────────────────────────────────────────────────────────
 
 class _LevelPips extends StatelessWidget {
   const _LevelPips({required this.current, required this.max});
@@ -330,14 +845,16 @@ class _LevelPips extends StatelessWidget {
   }
 }
 
+// ── Bonus tag ─────────────────────────────────────────────────────────────────
+
 class _BonusTag extends StatelessWidget {
   const _BonusTag({required this.def, required this.level});
   final NpcAllyDef def;
   final int level;
 
   String get _label {
-    if (def.atkBonus > 0)      return '+${def.atkBonus * level} ATK';
-    if (def.dmgBonus > 0)      return '+${def.dmgBonus * level} DMG';
+    final power = (def.atkBonus + def.dmgBonus) * level;
+    if (power > 0) return '+$power Power';
     if (def.acBonus > 0)       return '+${def.acBonus * level} AC';
     if (def.goldPctBonus > 0)  return '+${(def.goldPctBonus * level * 100).round()}% Gold';
     if (def.xpPctBonus > 0)    return '+${(def.xpPctBonus * level * 100).round()}% XP';
@@ -351,7 +868,7 @@ class _BonusTag extends StatelessWidget {
   Widget build(BuildContext context) {
     const c = Color(0xFF66aaff);
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(
         color: c.withValues(alpha: 0.10),
         border: Border.all(color: c.withValues(alpha: 0.5)),
@@ -364,7 +881,9 @@ class _BonusTag extends StatelessWidget {
   }
 }
 
-class _UpgradeButton extends StatelessWidget {
+// ── Upgrade button ────────────────────────────────────────────────────────────
+
+class _UpgradeButton extends StatefulWidget {
   const _UpgradeButton({
     required this.costShards,
     required this.costCrystals,
@@ -377,37 +896,70 @@ class _UpgradeButton extends StatelessWidget {
   final VoidCallback onTap;
 
   @override
+  State<_UpgradeButton> createState() => _UpgradeButtonState();
+}
+
+class _UpgradeButtonState extends State<_UpgradeButton> {
+  bool _pressed = false;
+
+  @override
   Widget build(BuildContext context) {
-    final color =
-        canAfford ? AppTheme.accentGold : AppTheme.cardBorder;
+    final color = widget.canAfford ? AppTheme.accentGold : AppTheme.cardBorder;
+
     return GestureDetector(
-      onTap: canAfford ? onTap : null,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-        decoration: BoxDecoration(
-          color: canAfford
-              ? AppTheme.accentGold.withValues(alpha: 0.10)
-              : Colors.transparent,
-          border: Border.all(color: color),
-          borderRadius: BorderRadius.circular(3),
+      onTapDown: widget.canAfford ? (_) => setState(() => _pressed = true) : null,
+      onTapUp: widget.canAfford
+          ? (_) {
+              setState(() => _pressed = false);
+              widget.onTap();
+            }
+          : null,
+      onTapCancel: () => setState(() => _pressed = false),
+      child: AnimatedScale(
+        scale: _pressed ? 0.93 : 1.0,
+        duration: const Duration(milliseconds: 80),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          decoration: BoxDecoration(
+            color: widget.canAfford
+                ? AppTheme.accentGold.withValues(alpha: 0.10)
+                : Colors.transparent,
+            border: Border.all(color: color),
+            borderRadius: BorderRadius.circular(3),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Row(mainAxisSize: MainAxisSize.min, children: [
+                Text('UPGRADE  ',
+                    style: AppTheme.pixelHeading(fontSize: 10, color: color)),
+                Text('◆${widget.costShards}',
+                    style: TextStyle(
+                        fontSize: 10,
+                        color: color,
+                        fontWeight: FontWeight.bold)),
+                if (widget.costCrystals > 0) ...[
+                  const SizedBox(width: 6),
+                  Text('💎${widget.costCrystals}',
+                      style: TextStyle(
+                          fontSize: 10,
+                          color: color,
+                          fontWeight: FontWeight.bold)),
+                ],
+              ]),
+              if (!widget.canAfford) Builder(builder: (ctx) {
+                final g = GameStateProvider.of(ctx);
+                return Padding(
+                  padding: const EdgeInsets.only(top: 3),
+                  child: Text(
+                    'Have: ◆${g.shards}${widget.costCrystals > 0 ? "  💎${g.crystals}" : ""}',
+                    style: const TextStyle(fontSize: 8, color: Color(0xFFcc4444)),
+                  ),
+                );
+              }),
+            ],
+          ),
         ),
-        child: Row(mainAxisSize: MainAxisSize.min, children: [
-          Text('UPGRADE  ',
-              style: AppTheme.pixelHeading(fontSize: 10, color: color)),
-          Text('🔷$costShards',
-              style: TextStyle(
-                  fontSize: 10,
-                  color: color,
-                  fontWeight: FontWeight.bold)),
-          if (costCrystals > 0) ...[
-            const SizedBox(width: 4),
-            Text('💎$costCrystals',
-                style: TextStyle(
-                    fontSize: 10,
-                    color: color,
-                    fontWeight: FontWeight.bold)),
-          ],
-        ]),
       ),
     );
   }
@@ -435,13 +987,14 @@ class _SynergyCard extends StatelessWidget {
         ? const Color(0xFF150e25)
         : const Color(0xFF1A1714);
 
-    return Padding(
+    final card = Padding(
       padding: const EdgeInsets.only(bottom: 10),
-      child: Container(
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 600),
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
           color: bgColor,
-          border: Border.all(color: borderColor),
+          border: Border.all(color: borderColor, width: active ? 1.5 : 1),
           borderRadius: BorderRadius.circular(4),
         ),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -456,7 +1009,9 @@ class _SynergyCard extends StatelessWidget {
             const Spacer(),
             if (active)
               const Icon(Icons.auto_awesome,
-                  color: Color(0xFFcc99ff), size: 14),
+                  color: Color(0xFFcc99ff), size: 14)
+                  .animate(onPlay: (c) => c.repeat(reverse: true))
+                  .shimmer(duration: 1200.ms, color: const Color(0xFFcc99ff)),
           ]),
           const SizedBox(height: 4),
           Text(syn.description,
@@ -465,7 +1020,6 @@ class _SynergyCard extends StatelessWidget {
                   color: active ? Colors.white54 : Colors.white24,
                   height: 1.4)),
           const SizedBox(height: 8),
-          // Partner display
           Row(children: [
             _PartnerChip(
               icon: ally1.icon,
@@ -488,10 +1042,8 @@ class _SynergyCard extends StatelessWidget {
               needed: syn.minLevel,
             ),
             const Spacer(),
-            // Bonus label
             Container(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
               decoration: BoxDecoration(
                 color: active
                     ? const Color(0xFFcc99ff).withValues(alpha: 0.10)
@@ -525,6 +1077,13 @@ class _SynergyCard extends StatelessWidget {
         ]),
       ),
     );
+
+    if (active) {
+      return card
+          .animate(key: ValueKey('syn_${syn.id}_active'))
+          .shimmer(duration: 600.ms, color: const Color(0xFFcc99ff).withValues(alpha: 0.2));
+    }
+    return card;
   }
 }
 

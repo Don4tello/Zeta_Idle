@@ -4,8 +4,9 @@ class GauntletResult {
     required this.totalEnemies,
     required this.cleared,
     required this.score,
-    required this.shardsEarned,
+    required this.essenceEarned,
     required this.crystalsEarned,
+    required this.echoesEarned,
     required this.modifierIds,
   });
 
@@ -13,7 +14,8 @@ class GauntletResult {
   final int totalEnemies;
   final bool cleared;
   final int score;
-  final int shardsEarned;
+  final int essenceEarned;
   final int crystalsEarned;
+  final int echoesEarned;
   final List<String> modifierIds;
 }

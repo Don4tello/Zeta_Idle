@@ -3,6 +3,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../core/routing/app_router.dart';
+import '../models/login_streak.dart';
 import '../services/game_state.dart';
 import '../screens/endless_upgrade_screen.dart';
 import '../widgets/battle_sprites.dart';
@@ -16,7 +17,35 @@ class HomeScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final game = GameStateProvider.of(context);
+    final game  = GameStateProvider.of(context);
+    final stage = game.campaignStageIndex;
+
+    // Returns null (hidden) when stage < unlock; adds ✨ badge for first 3 stages after unlock.
+    Widget? btn(String label, int unlock, VoidCallback onTap, {bool badge = false}) {
+      if (stage < unlock) return null;
+      final isNew = stage < unlock + 3;
+      return _buildModeButtonBadged(
+        context, isNew ? '$label  ✨' : label, onTap, badge: badge || isNew);
+    }
+
+    // Renders a section with header only when at least one child is visible.
+    Widget sec(String icon, String label, Color color, List<Widget?> items) {
+      final visible = items.whereType<Widget>().toList();
+      if (visible.isEmpty) return const SizedBox.shrink();
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _SectionHeader(icon: icon, label: label, color: color),
+          const SizedBox(height: 10),
+          for (int i = 0; i < visible.length; i++) ...[
+            visible[i],
+            if (i < visible.length - 1) const SizedBox(height: 8),
+          ],
+          const SizedBox(height: 20),
+        ],
+      );
+    }
+
     return Scaffold(
       backgroundColor: const Color(0xFF1B1A17),
       appBar: AppBar(
@@ -60,6 +89,7 @@ class HomeScreen extends StatelessWidget {
                         child: Center(
                           child: BattleSprite(
                             spriteId: game.hero.spriteId,
+                            gender: game.hero.gender,
                             auraColor: game.heroAuraColor,
                             auraIntensity: game.heroAuraIntensity,
                             colorFilter: game.heroSkinFilter,
@@ -179,30 +209,42 @@ class HomeScreen extends StatelessWidget {
                 Row(children: [
                   Expanded(
                       child: _buildResourceBox(
-                          '💰', 'GOLD', _fmt(game.gold))),
+                          '💰', 'GOLD', AppTheme.fmtNumber(game.gold),
+                          accent: AppTheme.accentGold,
+                          tooltip: 'Gold\nEarned from battles and idle income.\nSpend in Upgrades and the Shop.')),
                   const SizedBox(width: 8),
                   Expanded(
                       child: _buildResourceBox(
-                          '◆', 'SHARDS', _fmtShards(game.shards))),
+                          '◆', 'SHARDS', AppTheme.fmtNumber(game.shards),
+                          accent: const Color(0xFF44CCDD),
+                          tooltip: 'Shards\nEarned in Endless mode, Gauntlet runs, and achievements.\nSpend in the Forge to reforge and craft items.')),
                   const SizedBox(width: 8),
                   Expanded(
                       child: _buildResourceBox(
-                          '💎', 'CRYSTALS', '${game.crystals}')),
+                          '💎', 'CRYSTALS', '${game.crystals}',
+                          accent: const Color(0xFFAA66FF),
+                          tooltip: 'Crystals\nEarned from achievements and daily chests.\nSpend in the Aura Shop for skins, pets, and auras.')),
                 ]),
                 const SizedBox(height: 8),
                 Row(children: [
                   Expanded(
                       child: _buildResourceBox(
-                          '⚗', 'ESSENCE', _fmt(game.essence))),
+                          '⚗', 'ESSENCE', AppTheme.fmtNumber(game.essence),
+                          accent: const Color(0xFF44CC88),
+                          tooltip: 'Essence\nEarned from campaign kills, Gauntlet runs, and daily rewards.\nSpend in the Passive Tree to unlock permanent abilities.')),
                   const SizedBox(width: 8),
                   Expanded(
                       child: _buildResourceBox(
-                          '🔩', 'MYTHRIL', '${game.mythril}')),
+                          '🔩', 'MYTHRIL', '${game.mythril}',
+                          accent: const Color(0xFF7799CC),
+                          tooltip: 'Mythril\nEarned from Rebirth (10 per rebirth).\nSpend in the Prestige Shop for permanent upgrades that survive resets.')),
                   const SizedBox(width: 8),
                   Expanded(
                       child: _buildResourceBox(
                           '⚡', 'IDLE/min',
-                          '${game.idleGoldPerMinute}')),
+                          '${game.idleGoldPerMinute}',
+                          accent: const Color(0xFFFFAA44),
+                          tooltip: 'Idle Gold / min\nGold earned automatically every minute while offline.\nIncreases with hero level, passive upgrades, and pets.')),
                 ]),
               ]),
             )
@@ -273,150 +315,95 @@ class HomeScreen extends StatelessWidget {
                     curve: Curves.easeOut),
             const SizedBox(height: 20),
 
-            // ── Combat section ────────────────────────────────────────────────
-            _SectionHeader(icon: '⚔', label: 'COMBAT',
-                color: const Color(0xFFff6644)),
-            const SizedBox(height: 10),
-            _buildModeButton(context, '📜  CAMPAIGN',
-                () => context.push(Routes.campaign)),
-            const SizedBox(height: 8),
-            _buildModeButton(context, '⚔️  QUICK BATTLE', () {
-              game.startBattle();
-              context.push(Routes.battle);
-            }),
-            const SizedBox(height: 8),
-            _buildModeButton(context, '♾️  ENDLESS MODE',
-                () => context.push(Routes.endless)),
-            const SizedBox(height: 8),
-            _buildModeButton(context, '🎯  DAILY CHALLENGES',
-                () => context.push(Routes.daily)),
-            const SizedBox(height: 8),
-            _buildModeButton(context, '☠  BOSS RUSH',
-                () => context.push(Routes.bossRush)),
-            const SizedBox(height: 8),
-            _buildModeButton(context, '⚔  CHALLENGE GAUNTLET',
-                () => context.push(Routes.gauntlet)),
-            const SizedBox(height: 8),
-            _buildModeButton(context, '🏰  DUNGEON',
-                () => context.push(Routes.dungeon)),
-            const SizedBox(height: 20),
+            // ── Getting Started (visible until Stage 5) ───────────────────────
+            if (stage < 5) ...[
+              _GettingStartedCard(game: game)
+                  .animate(delay: 240.ms)
+                  .fadeIn(duration: 350.ms)
+                  .slideY(begin: 0.04, duration: 350.ms, curve: Curves.easeOut),
+              const SizedBox(height: 20),
+            ],
 
-            // ── Character section ─────────────────────────────────────────────
-            _SectionHeader(icon: '🧙', label: 'CHARACTER',
-                color: const Color(0xFF66aaff)),
-            const SizedBox(height: 10),
-            _buildModeButton(context, '📋  CHARACTER SHEET',
-                () => context.go(Routes.shell)),
-            const SizedBox(height: 8),
-            _buildModeButton(context, '⬆  UPGRADES',
-                () => Navigator.push(context,
-                    MaterialPageRoute(
-                        builder: (_) => const EndlessUpgradeScreen()))),
-            const SizedBox(height: 8),
-            _buildModeButton(context, '⚡  ABILITIES',
-                () => context.push(Routes.abilityUpgrades)),
-            const SizedBox(height: 8),
-            _buildModeButton(context, '🌿  PASSIVES',
-                () => context.push(Routes.passiveTree)),
-            const SizedBox(height: 8),
-            _buildModeButton(context, '⚔  MASTERIES',
-                () => context.push(Routes.mastery)),
-            const SizedBox(height: 8),
-            _buildModeButtonBadged(
-              context,
-              game.subclassAvailable
-                  ? '✨  SUBCLASS  (READY)'
-                  : '✨  SUBCLASS',
-              () => context.push(Routes.subclass),
-              badge: game.subclassAvailable,
-            ),
-            const SizedBox(height: 20),
+            // ── Combat ────────────────────────────────────────────────────────
+            sec('⚔', 'COMBAT', const Color(0xFFff6644), [
+              btn('📜  CAMPAIGN',          0,  () => context.push(Routes.campaign)),
+              btn('⚔️  QUICK BATTLE',     2,  () { game.startBattle(); context.push(Routes.battle); }),
+              btn('♾️  ENDLESS MODE',     5,  () => context.push(Routes.endless)),
+              btn('🎯  DAILY CHALLENGES', 5,  () => context.push(Routes.daily), badge: game.hasClaimableDaily),
+              stage >= 8 ? _LoginStreakButton() : null,
+              btn('🏰  DUNGEON',          5,  () => context.push(Routes.dungeon),
+                  badge: game.dungeonAttemptsRemaining > 0),
+              btn('⚔  CHALLENGE GAUNTLET', 10, () => context.push(Routes.gauntlet)),
+              btn('☠  BOSS RUSH',         15, () => context.push(Routes.bossRush),
+                  badge: game.bossRushAttemptsRemaining > 0),
+            ]),
 
-            // ── Progression section ───────────────────────────────────────────
-            _SectionHeader(icon: '⬆', label: 'PROGRESSION',
-                color: const Color(0xFFaa88ff)),
-            const SizedBox(height: 10),
-            _buildModeButton(context, '✦  PRESTIGE',
-                () => context.push(Routes.prestige)),
-            const SizedBox(height: 8),
-            _buildModeButton(context, '✦  ASCENSION',
-                () => context.push(Routes.ascension)),
-            const SizedBox(height: 8),
-            _buildModeButtonBadged(
-              context,
-              '🏆  ACHIEVEMENTS',
-              () => context.push(Routes.achievements),
-              badge: game.achievementsClaimable > 0,
-            ),
-            const SizedBox(height: 20),
+            // ── Character ─────────────────────────────────────────────────────
+            sec('🧙', 'CHARACTER', const Color(0xFF66aaff), [
+              btn('📋  CHARACTER SHEET', 0, () => context.go(Routes.shell)),
+              btn('⚡  ABILITIES',       2, () => context.push(Routes.abilityUpgrades),
+                  badge: game.hasAffordableAbilityUpgrade),
+              if (game.echoes > 0 || stage >= 10)
+                btn('⬆  UPGRADES',      10, () => Navigator.push(context,
+                    MaterialPageRoute(builder: (_) => const EndlessUpgradeScreen()))),
+              btn('🌿  PASSIVES',        5, () => context.push(Routes.passiveTree)),
+              btn('⚔  MASTERIES',       12, () => context.push(Routes.mastery)),
+              if (stage >= 18)
+                _buildModeButtonBadged(
+                  context,
+                  game.subclassAvailable ? '✨  SUBCLASS  (READY)' : '✨  SUBCLASS',
+                  () => context.push(Routes.subclass),
+                  badge: game.subclassAvailable,
+                ),
+            ]),
 
-            // ── Economy section ───────────────────────────────────────────────
-            _SectionHeader(icon: '💰', label: 'ECONOMY & CRAFTING',
-                color: const Color(0xFFffdd44)),
-            const SizedBox(height: 10),
-            _buildModeButton(context, '🎒  INVENTORY',
-                () => context.push(Routes.inventory)),
-            const SizedBox(height: 8),
-            _buildModeButton(context, '🔨  FORGE',
-                () => context.push(Routes.forge)),
-            const SizedBox(height: 8),
-            _buildModeButton(context, '⬡  ARTIFACT FORGE',
-                () => context.push(Routes.artifacts)),
-            const SizedBox(height: 8),
-            _buildModeButton(context, '✦  RUNE FORGE',
-                () => context.push(Routes.runeForge)),
-            const SizedBox(height: 8),
-            _buildModeButton(context, '🛒  MERCHANT',
-                () => context.push(Routes.shop)),
-            const SizedBox(height: 8),
-            _buildModeButton(context, '🗺  EXPEDITIONS',
-                () => context.push(Routes.expedition)),
-            const SizedBox(height: 20),
+            // ── Progression ───────────────────────────────────────────────────
+            sec('⬆', 'PROGRESSION', const Color(0xFFaa88ff), [
+              if (stage >= 5)
+                _buildModeButtonBadged(
+                  context, '🏆  ACHIEVEMENTS',
+                  () => context.push(Routes.achievements),
+                  badge: game.achievementsClaimable > 0,
+                ),
+              btn('✦  PRESTIGE',   20, () => context.push(Routes.prestige)),
+              btn('✦  ASCENSION',  45, () => context.push(Routes.ascension)),
+            ]),
 
-            // ── Events section ────────────────────────────────────────────────
-            _SectionHeader(icon: '📅', label: 'EVENTS',
-                color: const Color(0xFF44ccaa)),
-            const SizedBox(height: 10),
-            _buildModeButton(context, '📋  BOUNTY BOARD',
-                () => context.push(Routes.bounties)),
-            const SizedBox(height: 8),
-            _buildModeButton(context, '🌐  WORLD EVENT',
-                () => context.push(Routes.worldEvent)),
-            const SizedBox(height: 8),
-            _LoginStreakButton(),
-            const SizedBox(height: 8),
-            _buildModeButton(context, '🏆  LEADERBOARD',
-                () => context.push(Routes.leaderboard)),
-            const SizedBox(height: 20),
+            // ── Economy & Crafting ────────────────────────────────────────────
+            sec('💰', 'ECONOMY & CRAFTING', const Color(0xFFffdd44), [
+              btn('🎒  INVENTORY',     0,  () => context.push(Routes.inventory)),
+              btn('🛒  MERCHANT',      3,  () => context.push(Routes.shop)),
+              btn('🔨  FORGE',         5,  () => context.push(Routes.forge)),
+              btn('🗺  EXPEDITIONS',  15, () => context.push(Routes.expedition)),
+              btn('✦  RUNE FORGE',    15, () => context.push(Routes.runeForge)),
+              btn('⬡  ARTIFACT FORGE', 22, () => context.push(Routes.artifacts)),
+            ]),
 
-            // ── Lore & More section ───────────────────────────────────────────
-            _SectionHeader(icon: '📚', label: 'LORE & MORE',
-                color: const Color(0xFF88aacc)),
-            const SizedBox(height: 10),
-            _buildModeButton(context, '📖  BESTIARY',
-                () => context.push(Routes.bestiary)),
-            const SizedBox(height: 8),
-            _buildModeButtonBadged(
-              context,
-              game.questsClaimable > 0
-                  ? '📜  QUESTLINES  (${game.questsClaimable} ready)'
-                  : '📜  QUESTLINES',
-              () => context.push(Routes.quests),
-              badge: game.questsClaimable > 0,
-            ),
-            const SizedBox(height: 8),
-            _buildModeButton(context, '🤝  MERCENARIES',
-                () => context.push(Routes.npcAllies)),
-            const SizedBox(height: 8),
-            _buildModeButton(context, '⚠  CHALLENGE MODIFIERS',
-                () => context.push(Routes.challengeMods)),
-            const SizedBox(height: 8),
-            _buildModeButton(context, '💎  COSMETICS',
-                () => context.push(Routes.auraShop)),
-            const SizedBox(height: 8),
-            _buildModeButton(context, '❓  KNOWLEDGE BASE',
-                () => context.push(Routes.knowledgeBase)),
-            const SizedBox(height: 20),
+            // ── Social ───────────────────────────────────────────────────────
+            sec('🏰', 'SOCIAL', const Color(0xFF44ccaa), [
+              btn('⚔  GUILD',         15, () => context.push(Routes.guild)),
+              btn('📋  BOUNTY BOARD', 8,  () => context.push(Routes.bounties)),
+              btn('🌐  WORLD EVENT',  12, () => context.push(Routes.worldEvent)),
+              btn('🏆  LEADERBOARD',  15, () => context.push(Routes.leaderboard)),
+            ]),
+
+            // ── Lore & More ───────────────────────────────────────────────────
+            sec('📚', 'LORE & MORE', const Color(0xFF88aacc), [
+              btn('📖  BESTIARY', 3, () => context.push(Routes.bestiary)),
+              if (stage >= 3)
+                _buildModeButtonBadged(
+                  context,
+                  game.questsClaimable > 0
+                      ? '📜  QUESTLINES  (${game.questsClaimable} ready)'
+                      : '📜  QUESTLINES',
+                  () => context.push(Routes.quests),
+                  badge: game.questsClaimable > 0,
+                ),
+              btn('💎  COSMETICS',          8,  () => context.push(Routes.auraShop)),
+              btn('❓  KNOWLEDGE BASE',     5,  () => context.push(Routes.knowledgeBase)),
+              btn('🤝  MERCENARIES',        15, () => context.push(Routes.npcAllies)),
+              btn('⚠  CHALLENGE MODIFIERS', 25, () => context.push(Routes.challengeMods)),
+            ]),
 
             // ── Last action bar ───────────────────────────────────────────────
             Container(
@@ -576,19 +563,27 @@ class HomeScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildResourceBox(String emoji, String label, String value) {
-    return Container(
+  Widget _buildResourceBox(String emoji, String label, String value,
+      {Color? accent, String? tooltip}) {
+    final c = accent ?? AppTheme.accentGold;
+    final box = Container(
       padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 6),
       decoration: BoxDecoration(
-        color: AppTheme.darkBg,
-        border: Border.all(color: AppTheme.cardBorder, width: 1),
+        color: Color.lerp(AppTheme.darkBg, c, 0.04),
+        border: Border(
+          top:    BorderSide(color: c.withValues(alpha: 0.65), width: 2),
+          left:   BorderSide(color: AppTheme.cardBorder, width: 1),
+          right:  BorderSide(color: AppTheme.cardBorder, width: 1),
+          bottom: BorderSide(color: AppTheme.cardBorder, width: 1),
+        ),
         borderRadius: BorderRadius.circular(4),
       ),
       child: Column(children: [
         Text(emoji, style: const TextStyle(fontSize: 19)),
         const SizedBox(height: 4),
         Text(label,
-            style: AppTheme.pixelHeading(fontSize: 9, letterSpacing: 0.5)),
+            style: AppTheme.pixelHeading(
+                fontSize: 9, letterSpacing: 0.5, color: c.withValues(alpha: 0.85))),
         const SizedBox(height: 3),
         Text(value,
             style: GoogleFonts.pixelifySans(
@@ -597,30 +592,21 @@ class HomeScreen extends StatelessWidget {
                 color: AppTheme.textLight)),
       ]),
     );
+    if (tooltip == null) return box;
+    return Tooltip(
+      message: tooltip,
+      triggerMode: TooltipTriggerMode.tap,
+      preferBelow: true,
+      waitDuration: Duration.zero,
+      child: box,
+    );
   }
 
-  static String _fmt(int n) {
-    if (n >= 1000000) return '${(n / 1000000).toStringAsFixed(1)}M';
-    if (n >= 1000) return '${(n / 1000).toStringAsFixed(1)}K';
-    return '$n';
-  }
 
-  static String _fmtShards(int n) {
-    if (n >= 1000000) return '${(n / 1000000).toStringAsFixed(1)}M';
-    if (n >= 1000) return '${(n / 1000).toStringAsFixed(1)}K';
-    return '$n';
-  }
-
-  Widget _buildModeButton(
-          BuildContext context, String label, VoidCallback onPressed) =>
-      _buildModeButtonBadged(context, label, onPressed, badge: false);
 
   Widget _buildModeButtonBadged(BuildContext context, String label,
       VoidCallback onPressed, {required bool badge}) {
-    final borderColor =
-        badge ? const Color(0xFFaacc44) : AppTheme.accentGold;
-    final labelColor =
-        badge ? const Color(0xFFaacc44) : AppTheme.accentGold;
+    final accent = badge ? const Color(0xFFaacc44) : AppTheme.accentGold;
     return Material(
       color: Colors.transparent,
       child: InkWell(
@@ -629,10 +615,21 @@ class HomeScreen extends StatelessWidget {
         child: Container(
           padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
           decoration: BoxDecoration(
-            color: badge
-                ? const Color(0xFFaacc44).withValues(alpha: 0.06)
-                : null,
-            border: Border.all(color: borderColor, width: badge ? 1.5 : 1),
+            gradient: LinearGradient(
+              colors: [
+                accent.withValues(alpha: badge ? 0.10 : 0.06),
+                Colors.transparent,
+              ],
+              stops: const [0.0, 0.35],
+              begin: Alignment.centerLeft,
+              end: Alignment.centerRight,
+            ),
+            border: Border(
+              left:   BorderSide(color: accent, width: 3),
+              top:    BorderSide(color: accent.withValues(alpha: 0.25), width: 1),
+              right:  BorderSide(color: AppTheme.cardBorder, width: 1),
+              bottom: BorderSide(color: AppTheme.cardBorder, width: 1),
+            ),
             borderRadius: BorderRadius.circular(4),
           ),
           child: Row(children: [
@@ -641,9 +638,9 @@ class HomeScreen extends StatelessWidget {
                   style: AppTheme.pixelHeading(
                       fontSize: 12,
                       letterSpacing: 1,
-                      color: labelColor)),
+                      color: accent)),
             ),
-            Icon(Icons.arrow_forward_ios, color: borderColor, size: 14),
+            Icon(Icons.arrow_forward_ios, color: accent.withValues(alpha: 0.6), size: 14),
           ]),
         ),
       ),
@@ -654,9 +651,10 @@ class HomeScreen extends StatelessWidget {
 // ── Quick Access Grid ─────────────────────────────────────────────────────────
 
 class _QuickItem {
-  const _QuickItem(this.emoji, this.label, this.onTap);
+  const _QuickItem(this.emoji, this.label, this.unlock, this.onTap);
   final String emoji;
   final String label;
+  final int unlock;
   final VoidCallback onTap;
 }
 
@@ -666,14 +664,16 @@ class _QuickAccessGrid extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final items = [
-      _QuickItem('📜', 'CAMPAIGN',   () => context.push(Routes.campaign)),
-      _QuickItem('⚔️', 'BATTLE',    () { game.startBattle(); context.push(Routes.battle); }),
-      _QuickItem('♾️', 'ENDLESS',   () => context.push(Routes.endless)),
-      _QuickItem('🎒', 'INVENTORY', () => context.push(Routes.inventory)),
-      _QuickItem('🔨', 'FORGE',     () => context.push(Routes.forge)),
-      _QuickItem('📋', 'CHARACTER', () => context.go(Routes.shell)),
+    final stage = game.campaignStageIndex;
+    final all = [
+      _QuickItem('📜', 'CAMPAIGN',   0, () => context.push(Routes.campaign)),
+      _QuickItem('📋', 'CHARACTER',  0, () => context.go(Routes.shell)),
+      _QuickItem('⚔️', 'BATTLE',    2, () { game.startBattle(); context.push(Routes.battle); }),
+      _QuickItem('🎒', 'INVENTORY',  3, () => context.push(Routes.inventory)),
+      _QuickItem('🔨', 'FORGE',      5, () => context.push(Routes.forge)),
+      _QuickItem('♾️', 'ENDLESS',   5, () => context.push(Routes.endless)),
     ];
+    final items = all.where((i) => stage >= i.unlock).toList();
 
     Widget row(List<_QuickItem> rowItems) => Row(
       children: rowItems.asMap().entries.map((e) {
@@ -687,14 +687,20 @@ class _QuickAccessGrid extends StatelessWidget {
       }).toList(),
     );
 
+    final rows = <List<_QuickItem>>[];
+    for (int i = 0; i < items.length; i += 3) {
+      rows.add(items.sublist(i, (i + 3).clamp(0, items.length)));
+    }
+
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       Text('QUICK ACCESS',
           style: AppTheme.pixelHeading(
               fontSize: 10, letterSpacing: 2, color: AppTheme.textMuted)),
       const SizedBox(height: 8),
-      row(items.sublist(0, 3)),
-      const SizedBox(height: 8),
-      row(items.sublist(3, 6)),
+      for (int i = 0; i < rows.length; i++) ...[
+        row(rows[i]),
+        if (i < rows.length - 1) const SizedBox(height: 8),
+      ],
     ]);
   }
 }
@@ -713,9 +719,17 @@ class _QuickTile extends StatelessWidget {
         child: Container(
           padding: const EdgeInsets.symmetric(vertical: 14),
           decoration: BoxDecoration(
-            color: const Color(0xFF231F1B),
-            border: Border.all(
-                color: AppTheme.accentGold.withValues(alpha: 0.35)),
+            gradient: const LinearGradient(
+              colors: [Color(0xFF2A2520), Color(0xFF1E1B18)],
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+            ),
+            border: Border(
+              top:    BorderSide(color: AppTheme.accentGold.withValues(alpha: 0.55), width: 1),
+              left:   BorderSide(color: AppTheme.accentGold.withValues(alpha: 0.25), width: 1),
+              right:  BorderSide(color: AppTheme.accentGold.withValues(alpha: 0.25), width: 1),
+              bottom: BorderSide(color: AppTheme.accentGold.withValues(alpha: 0.25), width: 1),
+            ),
             borderRadius: BorderRadius.circular(6),
           ),
           child: Column(
@@ -763,6 +777,105 @@ class _SectionHeader extends StatelessWidget {
         child: Container(height: 1, color: color.withValues(alpha: 0.25)),
       ),
     ]);
+  }
+}
+
+// ── Getting Started Tutorial Card ────────────────────────────────────────────
+
+class _GettingStartedCard extends StatelessWidget {
+  const _GettingStartedCard({required this.game});
+  final GameState game;
+
+  @override
+  Widget build(BuildContext context) {
+    final stage = game.campaignStageIndex;
+    return Container(
+      padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
+      decoration: BoxDecoration(
+        color: const Color(0xFF13110D),
+        border: Border.all(color: AppTheme.accentGold.withValues(alpha: 0.35)),
+        borderRadius: BorderRadius.circular(3),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(children: [
+            const Text('🎯', style: TextStyle(fontSize: 13)),
+            const SizedBox(width: 6),
+            Text('GETTING STARTED',
+                style: AppTheme.pixelHeading(
+                    fontSize: 9, letterSpacing: 2, color: AppTheme.accentGold)),
+          ]),
+          const SizedBox(height: 10),
+          _StepRow(
+            done: stage > 0,
+            label: 'Win your first Campaign battle',
+            onTap: () => context.push(Routes.campaign),
+          ),
+          _StepRow(
+            done: game.hero.level >= 2,
+            label: 'Level up your hero — visit Character Sheet',
+            onTap: () => context.go(Routes.shell),
+          ),
+          _StepRow(
+            done: stage >= 2,
+            label: 'Unlock Quick Battle (reach Stage 2)',
+            onTap: stage >= 2
+                ? () { game.startBattle(); context.push(Routes.battle); }
+                : null,
+          ),
+          _StepRow(
+            done: stage >= 5,
+            label: 'Reach Stage 5 — new modes and features unlock!',
+            onTap: stage >= 5 ? null : () => context.push(Routes.campaign),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _StepRow extends StatelessWidget {
+  const _StepRow({required this.done, required this.label, this.onTap});
+  final bool done;
+  final String label;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 7),
+      child: GestureDetector(
+        onTap: onTap,
+        child: Row(
+          children: [
+            Icon(
+              done ? Icons.check_circle_rounded : Icons.radio_button_unchecked,
+              size: 14,
+              color: done ? const Color(0xFF55cc88) : AppTheme.textMuted,
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                label,
+                style: TextStyle(
+                  fontSize: 12,
+                  color: done
+                      ? const Color(0xFF55cc88).withValues(alpha: 0.7)
+                      : AppTheme.textLight,
+                  decoration: done ? TextDecoration.lineThrough : null,
+                  decorationColor:
+                      const Color(0xFF55cc88).withValues(alpha: 0.5),
+                ),
+              ),
+            ),
+            if (onTap != null && !done)
+              const Icon(Icons.arrow_forward_ios,
+                  size: 9, color: AppTheme.textMuted),
+          ],
+        ),
+      ),
+    );
   }
 }
 
@@ -830,6 +943,22 @@ class _LoginStreakButton extends StatelessWidget {
               ),
             ),
           ),
+        if (game.loginTodayClaimed) ...[
+          Positioned(
+            bottom: 4,
+            left: 16,
+            right: 40,
+            child: Builder(builder: (_) {
+              final nextDay = ((game.loginStreak) % LoginReward.cycle.length) + 1;
+              final next = LoginReward.forDay(nextDay);
+              return Text(
+                'Tomorrow: ${next.icon} ${next.label}',
+                style: const TextStyle(fontSize: 8, color: AppTheme.textMuted),
+                overflow: TextOverflow.ellipsis,
+              );
+            }),
+          ),
+        ],
       ],
     );
   }

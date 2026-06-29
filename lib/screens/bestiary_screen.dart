@@ -3,6 +3,7 @@ import '../data/bestiary_data.dart';
 import '../models/bestiary_entry.dart';
 import '../services/game_state.dart';
 import '../theme/app_theme.dart';
+import 'main_shell.dart' show TutorialTip;
 
 class BestiaryScreen extends StatelessWidget {
   const BestiaryScreen({super.key});
@@ -44,6 +45,11 @@ class BestiaryScreen extends StatelessWidget {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
+          TutorialTip(
+            tutorialKey: 'bestiary',
+            game: game,
+            text: 'Every enemy you defeat is recorded here. Kill milestones at 10, 50, and 100 grant gold rewards. Complete a full chapter for bonus loot!',
+          ),
           // ── Summary header ────────────────────────────────────────────────
           Container(
             padding: const EdgeInsets.all(14),
@@ -91,6 +97,8 @@ class BestiaryScreen extends StatelessWidget {
             _ZoneHeader(
               zone: zone,
               complete: game.isBestiaryChapterComplete(zone),
+              canClaim: game.canClaimChapterReward(zone),
+              onClaim: () => game.claimBestiaryChapterReward(zone),
               discovered: kBestiaryEntries
                   .where((e) => e.category == zone && game.bestiaryDiscovered(e.enemyId))
                   .length,
@@ -139,9 +147,13 @@ class _ZoneHeader extends StatelessWidget {
     required this.complete,
     required this.discovered,
     required this.total,
+    this.canClaim = false,
+    this.onClaim,
   });
   final String zone;
   final bool complete;
+  final bool canClaim;
+  final VoidCallback? onClaim;
   final int discovered, total;
 
   @override
@@ -150,46 +162,76 @@ class _ZoneHeader extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       margin: const EdgeInsets.only(bottom: 8),
       decoration: BoxDecoration(
-        color: complete
-            ? const Color(0xFF44cc66).withValues(alpha: 0.08)
-            : const Color(0xFF0d1020),
+        color: canClaim
+            ? const Color(0xFFffcc33).withValues(alpha: 0.10)
+            : complete
+                ? const Color(0xFF44cc66).withValues(alpha: 0.08)
+                : const Color(0xFF0d1020),
         border: Border.all(
-            color: complete
-                ? const Color(0xFF44cc66).withValues(alpha: 0.4)
-                : AppTheme.cardBorder),
+            color: canClaim
+                ? const Color(0xFFffcc33).withValues(alpha: 0.6)
+                : complete
+                    ? const Color(0xFF44cc66).withValues(alpha: 0.4)
+                    : AppTheme.cardBorder),
         borderRadius: BorderRadius.circular(3),
       ),
-      child: Row(children: [
-        Expanded(
-          child: Text(zone.toUpperCase(),
-              style: AppTheme.pixelHeading(
-                  fontSize: 11,
-                  color: complete ? const Color(0xFF44cc66) : AppTheme.accentGold,
-                  letterSpacing: 2)),
-        ),
-        // Per-zone ATK contribution
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-          decoration: BoxDecoration(
-            color: const Color(0xFFff6633).withValues(alpha: 0.10),
-            border: Border.all(color: const Color(0xFFff6633).withValues(alpha: 0.4)),
-            borderRadius: BorderRadius.circular(10),
-          ),
-          child: Text(
-            '+$discovered ATK',
-            style: AppTheme.pixelHeading(fontSize: 9, color: const Color(0xFFff6633)),
-          ),
-        ),
-        const SizedBox(width: 8),
-        Text('$discovered/$total',
-            style: TextStyle(
-                fontSize: 12,
-                color: complete ? const Color(0xFF44cc66) : AppTheme.textMuted)),
-        if (complete) ...[
-          const SizedBox(width: 6),
-          const Icon(Icons.star, color: Color(0xFF44cc66), size: 14),
+      child: Column(
+        children: [
+          Row(children: [
+            Expanded(
+              child: Text(zone.toUpperCase(),
+                  style: AppTheme.pixelHeading(
+                      fontSize: 11,
+                      color: complete ? const Color(0xFF44cc66) : AppTheme.accentGold,
+                      letterSpacing: 2)),
+            ),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              decoration: BoxDecoration(
+                color: const Color(0xFFff6633).withValues(alpha: 0.10),
+                border: Border.all(color: const Color(0xFFff6633).withValues(alpha: 0.4)),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Text(
+                '+$discovered ATK',
+                style: AppTheme.pixelHeading(fontSize: 9, color: const Color(0xFFff6633)),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Text('$discovered/$total',
+                style: TextStyle(
+                    fontSize: 12,
+                    color: complete ? const Color(0xFF44cc66) : AppTheme.textMuted)),
+            if (complete && !canClaim) ...[
+              const SizedBox(width: 6),
+              const Icon(Icons.star, color: Color(0xFF44cc66), size: 14),
+            ],
+          ]),
+          if (canClaim) ...[
+            const SizedBox(height: 6),
+            GestureDetector(
+              onTap: onClaim,
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(vertical: 6),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFffcc33).withValues(alpha: 0.15),
+                  border: Border.all(color: const Color(0xFFffcc33).withValues(alpha: 0.6)),
+                  borderRadius: BorderRadius.circular(3),
+                ),
+                child: const Text(
+                  'CLAIM REWARD  •  +500g  +15✦  +5💎',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 10, fontWeight: FontWeight.bold,
+                    color: Color(0xFFffcc33), letterSpacing: 1,
+                  ),
+                ),
+              ),
+            ),
+          ],
         ],
-      ]),
+      ),
     );
   }
 }
@@ -304,6 +346,52 @@ class _BestiaryCard extends StatelessWidget {
                 if (discovered && !maxed) ...[
                   const SizedBox(height: 6),
                   _KillProgress(kills: kills, nextAt: nextThreshold, color: weaknessColor),
+                ],
+                // Kill milestones
+                if (discovered) ...[
+                  const SizedBox(height: 4),
+                  Builder(builder: (ctx) {
+                    final game = GameStateProvider.of(ctx);
+                    return Row(
+                      children: GameState.bestiaryMilestones.map((m) {
+                        final reached = kills >= m;
+                        final claimed = game.isBestiaryMilestoneClaimed(entry.enemyId, m);
+                        final canClaim = reached && !claimed;
+                        return GestureDetector(
+                          onTap: canClaim ? () => game.claimBestiaryMilestone(entry.enemyId, m) : null,
+                          child: Container(
+                            margin: const EdgeInsets.only(right: 4),
+                            padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: canClaim
+                                  ? const Color(0xFFffcc33).withValues(alpha: 0.15)
+                                  : reached
+                                      ? weaknessColor.withValues(alpha: 0.08)
+                                      : Colors.transparent,
+                              border: Border.all(
+                                color: canClaim
+                                    ? const Color(0xFFffcc33).withValues(alpha: 0.7)
+                                    : reached
+                                        ? weaknessColor.withValues(alpha: 0.3)
+                                        : Colors.white12,
+                              ),
+                              borderRadius: BorderRadius.circular(3),
+                            ),
+                            child: Text(
+                              canClaim ? '$m ★' : claimed ? '$m ✓' : '$m',
+                              style: TextStyle(
+                                fontSize: 8,
+                                fontWeight: canClaim ? FontWeight.bold : FontWeight.normal,
+                                color: canClaim
+                                    ? const Color(0xFFffcc33)
+                                    : reached ? weaknessColor : Colors.white24,
+                              ),
+                            ),
+                          ),
+                        );
+                      }).toList(),
+                    );
+                  }),
                 ],
               ],
             ),

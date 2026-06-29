@@ -3,70 +3,69 @@ import '../models/upgrade.dart';
 class GameData {
   // ── Stat Upgrades ──────────────────────────────────────────────────────────
   //
-  // Each upgrade grants a flat bonus to one D&D attribute.
-  // Modifiers are calculated as (stat − 10) ÷ 2 (integer division).
-  //
-  // STR/DEX/CON give +4 per level → +2 to mod per level (clean step).
-  // INT/WIS/CHA give +3 per level → +1 or +2 to mod per level (alternating).
+  // Each upgrade grants +1 to one D&D attribute (effectAmount: 1).
+  // Damage bonus = stat * 25 / 100 → 0–25% at stat 0–100 (linear).
+  // Resistance follows the same formula (capped at 75% total with items).
+  // maxLevel: 92 allows any class to upgrade any stat up to the 100 cap
+  // (worst-case base is 8, so 8 + 92 = 100).
   //
   // Cost scaling is exponential (×1.75 per level — see Upgrade.cost).
-  // This makes early upgrades accessible and late upgrades a real commitment.
   // ──────────────────────────────────────────────────────────────────────────
 
   static final upgrades = [
     Upgrade(
       id: 'str_1',
       name: 'Might Training',
-      description: '+4 STR per level. Every +2 STR above 10 adds +1 to attack rolls and damage dealt.',
+      description: '+1 Strength per level. Adds Physical Damage % (stat÷4, max 25%). Scales Physical resistance.',
       baseCost: 200,
       type: UpgradeType.strength,
-      effectAmount: 4,
-      maxLevel: 8,
+      effectAmount: 1,
+      maxLevel: 92,
     ),
     Upgrade(
       id: 'dex_1',
       name: 'Swift Reflexes',
-      description: '+4 DEX per level. Every +2 DEX above 10 raises Armor Class by 1.',
+      description: '+1 Dexterity per level. Adds Lightning Damage % (stat÷4, max 25%). Scales Lightning resistance.',
       baseCost: 200,
       type: UpgradeType.dexterity,
-      effectAmount: 4,
-      maxLevel: 8,
+      effectAmount: 1,
+      maxLevel: 92,
     ),
     Upgrade(
       id: 'con_1',
       name: 'Endurance Drill',
-      description: '+4 CON per level. Expands max HP and the HP recovered between battles.',
+      description: '+1 Constitution per level. Adds Poison Damage % (stat÷4, max 25%). Scales Poison resistance.',
       baseCost: 220,
       type: UpgradeType.constitution,
-      effectAmount: 4,
-      maxLevel: 8,
+      effectAmount: 1,
+      maxLevel: 92,
     ),
     Upgrade(
       id: 'int_1',
       name: "Scholar's Study",
-      description: '+3 INT per level. Every +2 INT above 10 multiplies gold earned from victories.',
+      description: '+1 Intelligence per level. Adds Void Damage % (stat÷4, max 25%). Scales Void resistance.',
       baseCost: 190,
       type: UpgradeType.intelligence,
-      effectAmount: 3,
-      maxLevel: 6,
+      effectAmount: 1,
+      maxLevel: 92,
     ),
     Upgrade(
       id: 'wis_1',
       name: 'Meditative Focus',
-      description: '+3 WIS per level. Raises idle income — higher WIS means gold flows even while resting.',
+      description: '+1 Wisdom per level. Adds Cold Damage % (stat÷4, max 25%). Scales Cold resistance.',
       baseCost: 210,
       type: UpgradeType.wisdom,
-      effectAmount: 3,
-      maxLevel: 6,
+      effectAmount: 1,
+      maxLevel: 92,
     ),
     Upgrade(
       id: 'cha_1',
       name: 'Silver Presence',
-      description: '+3 CHA per level. Every +2 CHA above 10 boosts XP gained and crit chance.',
+      description: '+1 Charisma per level. Adds Fire Damage % (stat÷4, max 25%). Scales Fire resistance.',
       baseCost: 175,
       type: UpgradeType.charisma,
-      effectAmount: 3,
-      maxLevel: 6,
+      effectAmount: 1,
+      maxLevel: 92,
     ),
     Upgrade(
       id: 'dual_mastery',

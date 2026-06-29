@@ -35,9 +35,9 @@ enum DamageType {
     DamageType.void_     => const Color(0xFF9966FF),
   };
 
-  /// Short tag shown on floating damage numbers.
+  /// Short tag appended to combat log hit entries.
   String get shortTag => switch (this) {
-    DamageType.physical  => '',
+    DamageType.physical  => ' 🗡',
     DamageType.fire      => ' 🔥',
     DamageType.cold      => ' ❄',
     DamageType.lightning => ' ⚡',

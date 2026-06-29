@@ -1,13 +1,15 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'gem.dart';
+import 'dnd_class.dart';
+import 'hero_ability.dart';
 
 enum ItemSlot { weapon, offHand, helmet, armor, gloves, pants, boots, ring, ring2, amulet, relic }
 enum ItemRarity { common, rare, epic, legendary, set }
 enum ItemStat {
   strength, dexterity, constitution, intelligence, wisdom, charisma,
   attackBonus, damageBonus, armorClass, maxHpPct, goldPct, xpPct,
-  elemPenetration,
+  elemPenetration, hitChance, damagePercent,
 }
 
 extension ItemStatInfo on ItemStat {
@@ -25,6 +27,8 @@ extension ItemStatInfo on ItemStat {
     ItemStat.goldPct         => '%G',
     ItemStat.xpPct           => '%XP',
     ItemStat.elemPenetration => 'PEN',
+    ItemStat.hitChance       => 'HIT',
+    ItemStat.damagePercent   => '%DMG',
   };
 }
 
@@ -214,20 +218,46 @@ class EquipmentItem {
     required this.rarity,
     required this.bonuses,
     required this.levelRequired,
+    this.baseDamage = 0,
+    this.rebirthRequired = 0,
     this.keyword,
     this.setId,
     this.gem,
+    this.socketedRuneId,
+    this.requiredClass,
+    this.uniqueAbilityId,
+    this.abilityValueMult = 1.0,
+    this.abilityCooldownFlat = 0,
+    this.abilityExtraEffect,
+    this.abilityExtraValue = 0,
+    this.abilityExtraDuration = 0,
+    this.abilityDurationAdd = 0,
   });
 
   final String id;
-  final String name;
+  String name;
   final ItemSlot slot;
   final ItemRarity rarity;
-  final List<StatBonus> bonuses;
+  List<StatBonus> bonuses;
   final int levelRequired;
+  int baseDamage;
+  final int rebirthRequired;
+  int upgradeTier = 0; // 0-10
   final ItemKeyword? keyword;
   final String? setId;
   Gem? gem; // mutable socket — 1 gem per item
+  String? socketedRuneId; // ability rune — only for rings/amulets
+  bool locked = false; // locked items can't be disenchanted
+
+  // ── Unique legendary class-restricted fields ───────────────────────────────
+  final DndClass? requiredClass;    // null = equippable by all classes
+  final String? uniqueAbilityId;   // ability ID this item modifies
+  final double abilityValueMult;   // multiplier for ability's main value
+  final int abilityCooldownFlat;   // flat cooldown reduction
+  final AbilityEffect? abilityExtraEffect; // bonus effect applied on cast
+  final int abilityExtraValue;     // value for the bonus effect
+  final int abilityExtraDuration;  // duration for the bonus effect
+  final int abilityDurationAdd;    // added to ability's effectiveDuration
 
   ItemSet? get itemSet => setId == null
       ? null
@@ -240,6 +270,53 @@ class EquipmentItem {
     ItemRarity.legendary => 'Legendary',
     ItemRarity.set       => 'Set',
   };
+
+  // ── Upgrade system (tier 0-10) ──────────────────────────────────────────────
+  static const maxUpgradeTier = 10;
+
+  int get upgradeGoldCost => (200 + levelRequired * 30) * (upgradeTier + 1);
+  int get upgradeShardCost => (5 + levelRequired ~/ 2) * (upgradeTier + 1);
+
+  bool get canUpgrade => upgradeTier < maxUpgradeTier;
+
+  static const _prefixes = {
+    5:  ['Refined', 'Honed', 'Tempered', 'Polished', 'Hardened'],
+    10: ['Masterwork', 'Exalted', 'Perfected', 'Ascendant', 'Mythforged'],
+  };
+
+  void applyUpgrade() {
+    if (!canUpgrade) return;
+    upgradeTier++;
+
+    // Each tier: +8% to all stat bonuses + weapon base damage
+    for (int i = 0; i < bonuses.length; i++) {
+      final b = bonuses[i];
+      bonuses[i] = StatBonus(b.stat, b.value + (b.value * 0.08).ceil().clamp(1, 999));
+    }
+    if (baseDamage > 0) {
+      baseDamage = (baseDamage * 1.08).round();
+    }
+
+    // Milestone prefixes at tier 5 and 10
+    if (_prefixes.containsKey(upgradeTier)) {
+      final options = _prefixes[upgradeTier]!;
+      final prefix = options[name.hashCode.abs() % options.length];
+      if (!name.startsWith(prefix)) {
+        name = '$prefix $name';
+      }
+    }
+  }
+
+  String get upgradeTierLabel => upgradeTier > 0 ? '+$upgradeTier' : '';
+
+  bool get canSocketRune =>
+      socketedRuneId == null &&
+      (slot == ItemSlot.ring || slot == ItemSlot.ring2 || slot == ItemSlot.amulet);
+
+  String get requirementLabel {
+    if (rebirthRequired > 0) return 'Lv$levelRequired  ✦RB$rebirthRequired';
+    return 'Lv$levelRequired';
+  }
 
   Color get rarityColor => switch (rarity) {
     ItemRarity.common    => const Color(0xFFaaaaaa),
@@ -256,6 +333,11 @@ class EquipmentItem {
     'rarity': rarity.name,
     'bonuses': bonuses.map((b) => {'stat': b.stat.name, 'value': b.value}).toList(),
     'levelRequired': levelRequired,
+    if (baseDamage > 0) 'baseDamage': baseDamage,
+    if (upgradeTier > 0) 'upgradeTier': upgradeTier,
+    if (socketedRuneId != null) 'socketedRuneId': socketedRuneId,
+    if (rebirthRequired > 0) 'rebirthRequired': rebirthRequired,
+    if (locked) 'locked': true,
     if (keyword != null) 'keyword': keyword!.name,
     if (setId  != null) 'setId': setId,
     if (gem    != null) 'gem': gem!.toJson(),
@@ -281,6 +363,8 @@ class EquipmentItem {
         );
       }).toList(),
       levelRequired: json['levelRequired'] as int,
+      baseDamage: (json['baseDamage'] as int?) ?? 0,
+      rebirthRequired: (json['rebirthRequired'] as int?) ?? 0,
       keyword: kwStr != null
           ? ItemKeyword.values.firstWhere((k) => k.name == kwStr,
               orElse: () => ItemKeyword.lifeSteal)
@@ -289,7 +373,9 @@ class EquipmentItem {
       gem: json['gem'] != null
           ? Gem.fromJson(json['gem'] as Map<String, dynamic>)
           : null,
-    );
+    )..locked = (json['locked'] as bool?) ?? false
+     ..upgradeTier = (json['upgradeTier'] as int?) ?? 0
+     ..socketedRuneId = json['socketedRuneId'] as String?;
   }
 }
 
@@ -311,14 +397,14 @@ class ItemLootTable {
   static const _relicNames   = ['Eye of Fate', 'Bone Fragment', 'Shadow Shard', 'Cursed Rune', 'Ancient Token', 'Void Crystal', 'Hex Ember', 'Death Spark'];
 
   // ── Stat pools per slot ────────────────────────────────────────────────────
-  static const _weaponStats   = [ItemStat.attackBonus, ItemStat.damageBonus, ItemStat.strength, ItemStat.elemPenetration];
+  static const _weaponStats   = [ItemStat.attackBonus, ItemStat.damageBonus, ItemStat.strength, ItemStat.elemPenetration, ItemStat.hitChance, ItemStat.damagePercent];
   static const _offHandStats  = [ItemStat.armorClass, ItemStat.attackBonus, ItemStat.constitution];
   static const _helmetStats   = [ItemStat.armorClass, ItemStat.constitution, ItemStat.wisdom];
   static const _armorStats    = [ItemStat.armorClass, ItemStat.constitution, ItemStat.maxHpPct];
   static const _glovesStats   = [ItemStat.attackBonus, ItemStat.damageBonus, ItemStat.dexterity];
   static const _pantsStats    = [ItemStat.armorClass, ItemStat.constitution, ItemStat.dexterity];
   static const _bootsStats    = [ItemStat.dexterity, ItemStat.armorClass, ItemStat.wisdom];
-  static const _accessoryStats = [ItemStat.goldPct, ItemStat.xpPct, ItemStat.wisdom, ItemStat.intelligence, ItemStat.charisma, ItemStat.dexterity, ItemStat.attackBonus, ItemStat.elemPenetration];
+  static const _accessoryStats = [ItemStat.goldPct, ItemStat.xpPct, ItemStat.wisdom, ItemStat.intelligence, ItemStat.charisma, ItemStat.dexterity, ItemStat.attackBonus, ItemStat.elemPenetration, ItemStat.hitChance, ItemStat.damagePercent];
   static const _relicStats    = [ItemStat.goldPct, ItemStat.xpPct, ItemStat.wisdom, ItemStat.intelligence, ItemStat.charisma, ItemStat.elemPenetration];
 
   // ── Affix prefix/suffix tables (common, rare, epic) ───────────────────────
@@ -328,6 +414,8 @@ class ItemLootTable {
     ItemStat.intelligence:    'Arcane',    ItemStat.wisdom:       'Sage',        ItemStat.charisma:        'Bold',
     ItemStat.maxHpPct:        'Hearty',    ItemStat.goldPct:      'Lucky',       ItemStat.xpPct:           'Learned',
     ItemStat.elemPenetration: 'Seeping',
+    ItemStat.hitChance:       'Unerring',
+    ItemStat.damagePercent:   'Vicious',
   };
   static const _prefixRare = {
     ItemStat.attackBonus:     'Keen',       ItemStat.damageBonus:  'Savage',     ItemStat.armorClass:      'Stalwart',
@@ -335,6 +423,8 @@ class ItemLootTable {
     ItemStat.intelligence:    'Mystic',     ItemStat.wisdom:       'Ancient',    ItemStat.charisma:        'Commanding',
     ItemStat.maxHpPct:        'Vital',      ItemStat.goldPct:      'Prosperous', ItemStat.xpPct:           "Veteran's",
     ItemStat.elemPenetration: 'Piercing',
+    ItemStat.hitChance:       'Trueshot',
+    ItemStat.damagePercent:   'Savage',
   };
   static const _prefixEpic = {
     ItemStat.attackBonus:     'Deadly',     ItemStat.damageBonus:  'Brutal',     ItemStat.armorClass:      'Fortified',
@@ -342,6 +432,8 @@ class ItemLootTable {
     ItemStat.intelligence:    'Elder',       ItemStat.wisdom:       'Eternal',   ItemStat.charisma:        'Glorious',
     ItemStat.maxHpPct:        'Ironhide',   ItemStat.goldPct:      "Fortune's",  ItemStat.xpPct:           'Enlightened',
     ItemStat.elemPenetration: 'Veilbreaker',
+    ItemStat.hitChance:       'Deadeye',
+    ItemStat.damagePercent:   'Ruinous',
   };
   static const _suffixRare = {
     ItemStat.attackBonus:     'Striking',   ItemStat.damageBonus:  'Ruin',       ItemStat.armorClass:      'Warding',
@@ -349,6 +441,8 @@ class ItemLootTable {
     ItemStat.intelligence:    'Arcana',     ItemStat.wisdom:       'Foresight',  ItemStat.charisma:        'Command',
     ItemStat.maxHpPct:        'Vitality',   ItemStat.goldPct:      'Fortune',    ItemStat.xpPct:           'Wisdom',
     ItemStat.elemPenetration: 'Penetration',
+    ItemStat.hitChance:       'Accuracy',
+    ItemStat.damagePercent:   'Carnage',
   };
   static const _suffixEpic = {
     ItemStat.attackBonus:     'Slaughter',  ItemStat.damageBonus:  'Destruction',ItemStat.armorClass:      'the Bastion',
@@ -356,6 +450,8 @@ class ItemLootTable {
     ItemStat.intelligence:    'the Abyss',  ItemStat.wisdom:       'the Ages',   ItemStat.charisma:        'Legend',
     ItemStat.maxHpPct:        'the Colossus',ItemStat.goldPct:     'Avarice',    ItemStat.xpPct:           'Transcendence',
     ItemStat.elemPenetration: 'the Rift',
+    ItemStat.hitChance:       'the Sure Strike',
+    ItemStat.damagePercent:   'Devastation',
   };
   static const _keywordTitle = {
     ItemKeyword.lifeSteal:    'Blooddrinker', ItemKeyword.riposte:     'Retaliator',
@@ -481,26 +577,34 @@ class ItemLootTable {
   }
 
   // ── craftAt: forge / shop / dungeon-chest ─────────────────────────────────
-  static EquipmentItem craftAt(ItemSlot slot, ItemRarity rarity, int heroLevel, Random rng) {
+  static EquipmentItem craftAt(ItemSlot slot, ItemRarity rarity, int heroLevel, Random rng,
+      {int rebirthLevel = 0}) {
     final pool     = _statsFor(slot);
     final baseName = _namesFor(slot)[rng.nextInt(_namesFor(slot).length)];
-    final count = switch (rarity) {
-      ItemRarity.legendary => min(3, pool.length),
+    // Base bonus count from rarity + extra from rebirth
+    final baseCount = switch (rarity) {
+      ItemRarity.legendary => 3,
       ItemRarity.epic      => 2,
       ItemRarity.rare      => 2,
       ItemRarity.common    => 1,
       ItemRarity.set       => 2,
     };
+    final count = min(baseCount + rebirthLevel, pool.length);
     ItemKeyword? keyword;
     if (rarity == ItemRarity.legendary) {
       keyword = ItemKeyword.values[rng.nextInt(ItemKeyword.values.length)];
     }
     final bonuses = _pickBonuses(pool, count, rarity, heroLevel, rng);
+    final isWeapon = slot == ItemSlot.weapon || slot == ItemSlot.offHand;
+    final weaponDmg = isWeapon ? _calcBaseDamage(slot, rarity, heroLevel, rebirthLevel) : 0;
     return EquipmentItem(
       id: '${slot.name}_forged_${rng.nextInt(999999)}',
       name: _buildName(bonuses, rarity, baseName, keyword),
       slot: slot, rarity: rarity, bonuses: bonuses,
-      levelRequired: max(1, heroLevel - 2), keyword: keyword,
+      baseDamage: weaponDmg,
+      levelRequired: max(1, heroLevel),
+      rebirthRequired: rebirthLevel,
+      keyword: keyword,
     );
   }
 
@@ -521,6 +625,24 @@ class ItemLootTable {
     return bonuses;
   }
 
+  static int _calcBaseDamage(ItemSlot slot, ItemRarity rarity, int level, int rebirthLevel) {
+    // Base: 3-8 at level 1, scales +1.5 per level
+    // Offhand = 60% of main hand
+    // Rarity multiplier: common 1.0, rare 1.2, epic 1.5, legendary 2.0
+    // Rebirth adds +10% per rebirth level
+    final rarityMult = switch (rarity) {
+      ItemRarity.common    => 1.0,
+      ItemRarity.rare      => 1.2,
+      ItemRarity.epic      => 1.5,
+      ItemRarity.legendary => 2.0,
+      ItemRarity.set       => 1.6,
+    };
+    final base = 5.0 + level * 1.5;
+    final slotMult = slot == ItemSlot.offHand ? 0.6 : 1.0;
+    final rebirthMult = 1.0 + rebirthLevel * 0.10;
+    return (base * rarityMult * slotMult * rebirthMult).round().clamp(1, 99999);
+  }
+
   static int _baseValue(ItemStat stat, ItemRarity rarity, int level, Random rng) {
     final m = switch (rarity) {
       ItemRarity.legendary => 3,
@@ -529,21 +651,24 @@ class ItemLootTable {
       ItemRarity.rare      => 1,
       ItemRarity.common    => 0,
     };
-    return switch (stat) {
+    // Level scaling: stats grow with item level
+    final lvScale = 1.0 + (level - 1) * 0.08;
+    final isPct = stat == ItemStat.maxHpPct || stat == ItemStat.goldPct ||
+        stat == ItemStat.xpPct || stat == ItemStat.elemPenetration ||
+        stat == ItemStat.hitChance || stat == ItemStat.damagePercent;
+    if (isPct) {
+      final base = switch (stat) {
+        ItemStat.hitChance => 3 + m * 3,
+        _ => 5 + m * 5,
+      };
+      return (base * lvScale).round().clamp(1, 999);
+    }
+    final flat = switch (stat) {
       ItemStat.attackBonus  => 1 + m + rng.nextInt(2),
       ItemStat.damageBonus  => 1 + m + rng.nextInt(2),
-      ItemStat.armorClass   => 1 + m,
-      ItemStat.strength     => 1 + m,
-      ItemStat.dexterity    => 1 + m,
-      ItemStat.constitution => 1 + m,
-      ItemStat.intelligence => 1 + m,
-      ItemStat.wisdom       => 1 + m,
-      ItemStat.charisma     => 1 + m,
-      ItemStat.maxHpPct        => 5 + m * 5,
-      ItemStat.goldPct         => 5 + m * 5,
-      ItemStat.xpPct           => 5 + m * 5,
-      ItemStat.elemPenetration => 5 + m * 5,
+      _ => 1 + m,
     };
+    return (flat * lvScale).round().clamp(1, 999);
   }
 
   // Reroll all bonus values in-place, keeping the same stats.
@@ -605,6 +730,12 @@ class EquipmentInventory {
         .expand((item) => item.bonuses)
         .where((b) => b.stat == stat)
         .fold(0, (sum, b) => sum + b.value);
+  }
+
+  int get equippedWeaponDamage {
+    final main = equipped[ItemSlot.weapon]?.baseDamage ?? 0;
+    final off = equipped[ItemSlot.offHand]?.baseDamage ?? 0;
+    return main + off;
   }
 
   int setCount(String setId) =>

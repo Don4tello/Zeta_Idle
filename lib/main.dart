@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'firebase_options.dart';
 import 'theme/app_theme.dart';
 import 'models/dnd_class.dart';
+import 'models/hero_model.dart' show HeroGender;
 import 'models/hero_race.dart';
 import 'models/hero_trait.dart';
 import 'screens/loading_screen.dart';
@@ -23,6 +24,10 @@ Future<void> main() async {
       print('Firebase initialization warning: $e');
     }
   }
+  FlutterError.onError = (details) {
+    if (details.toString().contains('_debugDuringDeviceUpdate')) return;
+    FlutterError.presentError(details);
+  };
   runApp(const ZetaIdleApp());
 }
 
@@ -38,24 +43,46 @@ typedef _LoadArgs = ({
   String? name,
   DndClass? heroClass,
   HeroRace? heroRace,
-  HeroTrait? trait
+  HeroTrait? trait,
+  HeroGender? gender,
 });
 
-class _ZetaIdleAppState extends State<ZetaIdleApp> {
+class _ZetaIdleAppState extends State<ZetaIdleApp> with WidgetsBindingObserver {
   late final GameState _gameState = GameState();
   bool _characterSelected = false;
   _LoadArgs? _pendingLoad;
 
   @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    // Start tavern music after the first frame so assets are ready
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _gameState.audioService.startMusic();
+    });
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.paused || state == AppLifecycleState.hidden) {
+      _gameState.audioService.pauseMusic();
+    } else if (state == AppLifecycleState.resumed) {
+      _gameState.audioService.resumeMusic();
+    }
+  }
+
+  @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _gameState.audioService.dispose();
     _gameState.dispose();
     super.dispose();
   }
 
   Future<void> _onCharacterSelected(
-      int slot, String? newName, DndClass? heroClass, HeroRace? heroRace, HeroTrait? trait) async {
+      int slot, String? newName, DndClass? heroClass, HeroRace? heroRace, HeroTrait? trait, HeroGender? gender) async {
     setState(() {
-      _pendingLoad = (slot: slot, name: newName, heroClass: heroClass, heroRace: heroRace, trait: trait);
+      _pendingLoad = (slot: slot, name: newName, heroClass: heroClass, heroRace: heroRace, trait: trait, gender: gender);
     });
   }
 
@@ -108,6 +135,7 @@ class _ZetaIdleAppState extends State<ZetaIdleApp> {
               heroClass: pending.heroClass,
               heroRace: pending.heroRace,
               trait: pending.trait,
+              gender: pending.gender,
             ),
             onComplete: _onLoadComplete,
           ),

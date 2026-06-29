@@ -12,7 +12,7 @@ enum PetBonusType {
   xpPct,       // +N% XP per kill
   hpRegen,     // +N HP restored after each victory
   idleRate,    // +N idle-rate ticks per cycle
-  attackBonus, // +N to attack rolls
+  attackBonus, // +N accuracy
   armor,       // +N AC
   damage,      // +N to damage
   shardBonus,  // +N shards per kill
@@ -54,7 +54,7 @@ class PetDefinition {
       PetBonusType.xpPct       => '+$v% XP per kill',
       PetBonusType.hpRegen     => '+$v HP after each victory',
       PetBonusType.idleRate    => '+$v idle rate',
-      PetBonusType.attackBonus => '+$v to attack rolls',
+      PetBonusType.attackBonus => '+$v critical damage',
       PetBonusType.armor       => '+$v AC',
       PetBonusType.damage      => '+$v damage',
       PetBonusType.shardBonus  => '+$v shard per kill',

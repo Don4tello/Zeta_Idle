@@ -1,4 +1,6 @@
 ﻿import 'dart:async';
+import 'dart:math';
+import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -11,7 +13,10 @@ import '../models/passive_tree.dart';
 import '../services/game_state.dart';
 import '../theme/app_theme.dart';
 import '../widgets/battle_arena.dart';
+import '../widgets/battle_split_panel.dart';
 import '../widgets/pet_battle_sprite.dart';
+import '../widgets/tier_selector.dart';
+import 'main_shell.dart' show TutorialTip;
 
 // The 5 campaign boss stages (0-indexed: every 5th stage starting at 4)
 const _bossStages = [4, 9, 14, 19, 24];
@@ -41,9 +46,12 @@ class _BossRushScreenState extends State<BossRushScreen> {
   final List<String> _log = [];
   Enemy? _currentBoss;
   BossRushResult? _result;
+  bool _bossEnraged = false;
 
   Timer? _timer;
   Timer? _autoAttackTimer;
+  Timer? _autoRestartTimer;
+  bool _autoRepeat = false;
 
   // Keep a copy of game-state bonuses cached for the run
   late int _heroAtk;
@@ -51,7 +59,10 @@ class _BossRushScreenState extends State<BossRushScreen> {
   late int _heroAc;
   late int _heroMaxHpBase;
 
+  GameState? _game;
+
   // Local ability state
+  final _rng = Random();
   int _gAbilityRound = 0;
   final Map<String, int> _gCooldownUntil = {};
   int _tempAtkBonus   = 0;
@@ -59,16 +70,37 @@ class _BossRushScreenState extends State<BossRushScreen> {
   int _tempAcBonus    = 0;
   int _tempAcRounds   = 0;
   bool _enemyStunned  = false;
+  int _enemyWeakenRem = 0;
+  int _enemyVulnRem   = 0;
 
   @override
   void dispose() {
     _timer?.cancel();
     _autoAttackTimer?.cancel();
+    _autoRestartTimer?.cancel();
     super.dispose();
+  }
+
+  void _startAttackTimer() {
+    _autoAttackTimer?.cancel();
+    final ms = _game?.scaledInterval(600) ?? 600;
+    _autoAttackTimer = Timer.periodic(Duration(milliseconds: ms), (_) {
+      if (!_running || _done) return;
+      _doRound();
+    });
+  }
+
+  void _cycleSpeed() {
+    final game = _game;
+    if (game == null) return;
+    final maxTier = kDebugMode ? 4 : (game.speedBoostActive ? 3 : 2);
+    game.setSpeedTier((game.speedTier % maxTier) + 1);
+    _startAttackTimer();
   }
 
   void _startRun() {
     final game = GameStateProvider.of(context);
+    if (!game.consumeBossRushAttempt()) return;
     _heroAtk     = game.hero.attackBonus
         + game.passiveTree.totalOf(PassiveEffect.attackFlat)
         + game.inventory.totalOf(ItemStat.attackBonus)
@@ -89,13 +121,15 @@ class _BossRushScreenState extends State<BossRushScreen> {
         + game.questACBonus;
     _heroMaxHpBase = game.hero.maxHealth;
 
-    _gAbilityRound = 0;
+    _gAbilityRound  = 0;
     _gCooldownUntil.clear();
-    _tempAtkBonus  = 0;
-    _tempAtkRounds = 0;
-    _tempAcBonus   = 0;
-    _tempAcRounds  = 0;
-    _enemyStunned  = false;
+    _tempAtkBonus   = 0;
+    _tempAtkRounds  = 0;
+    _tempAcBonus    = 0;
+    _tempAcRounds   = 0;
+    _enemyStunned   = false;
+    _enemyWeakenRem = 0;
+    _enemyVulnRem   = 0;
 
     setState(() {
       _running    = true;
@@ -114,27 +148,32 @@ class _BossRushScreenState extends State<BossRushScreen> {
       setState(() => _elapsedSec++);
     });
 
-    _autoAttackTimer = Timer.periodic(const Duration(milliseconds: 600), (_) {
-      if (!_running || _done) return;
-      _doRound();
-    });
+    _game = game;
+    _startAttackTimer();
   }
 
   void _spawnBoss() {
-    final stageIdx   = _bossStages[_bossIndex];
-    final base       = EnemyData.enemyForStage(stageIdx);
-    final tierHpMult = 1.0 + (_selectedTier - 1) * 0.15;
-    final tierAtkMult= 1.0 + (_selectedTier - 1) * 0.08;
-    final tierAcBonus= (_selectedTier - 1) ~/ 3;
+    final stageIdx    = _bossStages[_bossIndex];
+    final base        = EnemyData.enemyForStage(stageIdx);
+    final t           = _selectedTier - 1;
+    // Steep per-tier scaling — each tier is a meaningful difficulty jump.
+    final tierHpMult  = 1.0 + t * 0.40;
+    final tierAtkMult = 1.0 + t * 0.25;
+    final tierAcBonus = t ~/ 2;
+    // Boss level scales with tier so its to-hit bonus grows meaningfully.
+    final bossLevel   = base.level + 2 + t;
     final boss = Enemy(
       id:          base.id,
       name:        '☠ ${base.name} (Boss ${_bossIndex + 1})',
       description: base.description,
       maxHealth:   (base.maxHealth * 2 * tierHpMult).round(),
       attack:      (base.attack * 1.25 * tierAtkMult).round(),
-      level:       base.level + 2,
+      level:       bossLevel,
       armorClass:  base.armorClass + 2 + tierAcBonus,
     );
+    _bossEnraged    = false;
+    _enemyWeakenRem = 0;
+    _enemyVulnRem   = 0;
     setState(() {
       _currentBoss  = boss;
       _enemyMaxHp   = boss.maxHealth;
@@ -148,7 +187,6 @@ class _BossRushScreenState extends State<BossRushScreen> {
     final boss = _currentBoss;
     if (boss == null) return;
     final game = GameStateProvider.of(context);
-    final rng  = DateTime.now().microsecondsSinceEpoch;
 
     // ── Tick abilities ────────────────────────────────────────────────────
     _gAbilityRound++;
@@ -161,6 +199,7 @@ class _BossRushScreenState extends State<BossRushScreen> {
         if (_enemyHp <= 0) {
           _enemyHp = 0;
           _log.add('${boss.name} defeated!');
+          _game?.recordExternalKill(isBoss: true, enemyName: boss.name);
           _arenaKey.currentState?.playEnemyDeath();
           _bossIndex++;
           if (_bossIndex >= _bossStages.length) { _endRun(cleared: true); return; }
@@ -177,31 +216,40 @@ class _BossRushScreenState extends State<BossRushScreen> {
 
     // ── Hero attacks ──────────────────────────────────────────────────────
     final effectiveAtk = _heroAtk + _tempAtkBonus;
-    final heroRoll     = rng % 20 + 1;
+    final heroRoll     = _rng.nextInt(20) + 1;
     final crit         = heroRoll == 20;
     final heroHit      = crit || (heroRoll + effectiveAtk) >= boss.armorClass;
 
     if (heroHit) {
-      final dmgDie = rng % 8 + 1;
+      final dmgDie = _rng.nextInt(8) + 1;
       var dmg = (crit ? dmgDie * 2 : dmgDie) + _heroDmgMod;
+      if (_enemyVulnRem > 0) dmg = (dmg * 1.25).round();
       dmg = dmg.clamp(1, 9999);
       _enemyHp -= dmg;
-      _log.add('Roll ${heroRoll + effectiveAtk} — Hit! $dmg dmg${crit ? ' (CRIT!)' : ''}.');
+      _log.add('${crit ? 'CRIT! ' : 'Hit! '}$dmg dmg${_enemyVulnRem > 0 ? ' (vuln)' : ''}.');
       _arenaKey.currentState?.playHeroAttack(dmg,
-          isCrit: crit, heroClass: game.hero.heroClass);
+          isCrit: crit, heroClass: game.hero.heroClass,
+          damageType: game.hero.activeDamageType);
     } else {
-      _log.add('Roll ${heroRoll + effectiveAtk} vs AC ${boss.armorClass} — Miss.');
+      _log.add('Miss!');
     }
 
     if (_enemyHp <= 0) {
       _enemyHp = 0;
       _log.add('${boss.name} defeated!');
+      _game?.recordExternalKill(isBoss: true, enemyName: boss.name);
       _arenaKey.currentState?.playEnemyDeath();
       _bossIndex++;
       if (_bossIndex >= _bossStages.length) { _endRun(cleared: true); return; }
       setState(() {});
       _spawnBoss();
       return;
+    }
+
+    // ── Boss enrage at 30% HP ─────────────────────────────────────────────
+    if (!_bossEnraged && _enemyHp / _enemyMaxHp < 0.30) {
+      _bossEnraged = true;
+      _log.add('⚠ ${boss.name} ENRAGES! +100% damage!');
     }
 
     // ── Enemy attacks back ────────────────────────────────────────────────
@@ -213,14 +261,19 @@ class _BossRushScreenState extends State<BossRushScreen> {
     }
 
     final effectiveAc = _heroAc + _tempAcBonus;
-    final eRoll       = rng ~/ 100 % 20 + 1;
+    final eRoll       = _rng.nextInt(20) + 1;
     final eBonus      = boss.level ~/ 2;
     final eHit        = eRoll == 20 || (eRoll + eBonus) >= effectiveAc;
     if (eHit) {
-      final rawDmg = rng ~/ 1000 % (boss.attack > 0 ? boss.attack : 1) + 1;
-      final dmg    = (eRoll == 20 ? rawDmg * 2 : rawDmg).clamp(1, 9999);
+      final atkMax = _enemyWeakenRem > 0
+          ? max(1, (boss.attack * 0.7).round())
+          : boss.attack;
+      var rawDmg = atkMax > 0 ? _rng.nextInt(atkMax) + 1 : 1;
+      if (_bossEnraged) rawDmg = (rawDmg * 2.0).round().clamp(1, 9999);
+      final dmg = (eRoll == 20 ? rawDmg * 2 : rawDmg).clamp(1, 9999);
       _heroHp -= dmg;
-      _log.add('${boss.name} roll ${eRoll + eBonus} — Hit! $dmg dmg.');
+      _log.add('${boss.name} hits! $dmg dmg'
+          '${_bossEnraged ? ' ☠' : ''}${_enemyWeakenRem > 0 ? ' (weakened)' : ''}.');
       _arenaKey.currentState?.playEnemyAttack(dmg);
     }
 
@@ -230,6 +283,8 @@ class _BossRushScreenState extends State<BossRushScreen> {
       return;
     }
 
+    if (_enemyWeakenRem > 0) _enemyWeakenRem--;
+    if (_enemyVulnRem   > 0) _enemyVulnRem--;
     setState(() {});
   }
 
@@ -240,11 +295,13 @@ class _BossRushScreenState extends State<BossRushScreen> {
         final dmg = (sv * 0.5).round().clamp(1, 9999);
         _enemyHp -= dmg;
         _log.add('✦ ${ability.name}: $dmg ability damage!');
+        _arenaKey.currentState?.addExtraFloat(dmg);
 
       case AbilityEffect.heal:
         final h = sv.clamp(1, 9999);
         setState(() => _heroHp = (_heroHp + h).clamp(0, _heroMaxHp));
         _log.add('✦ ${ability.name}: healed $h HP.');
+        _arenaKey.currentState?.addExtraFloat(h, isHeal: true);
 
       case AbilityEffect.attackBonus:
         _tempAtkBonus  = sv;
@@ -264,6 +321,7 @@ class _BossRushScreenState extends State<BossRushScreen> {
         final dmg = (sv * 0.6).round().clamp(1, 9999);
         _enemyHp -= dmg;
         _log.add('✦ ${ability.name}: $dmg DoT damage!');
+        _arenaKey.currentState?.addExtraFloat(dmg);
 
       case AbilityEffect.dodge:
         _tempAcBonus  = 6;
@@ -274,97 +332,16 @@ class _BossRushScreenState extends State<BossRushScreen> {
         final h = (sv * 0.5).round().clamp(1, 9999);
         setState(() => _heroHp = (_heroHp + h).clamp(0, _heroMaxHp));
         _log.add('✦ ${ability.name}: aura healed $h HP.');
+        _arenaKey.currentState?.addExtraFloat(h, isHeal: true);
 
       case AbilityEffect.debuffWeaken:
-        _log.add('✦ ${ability.name}: boss weakened!');
+        _enemyWeakenRem = 3;
+        _log.add('✦ ${ability.name}: boss weakened for 3 rounds!');
 
       case AbilityEffect.debuffVulnerable:
-        _log.add('✦ ${ability.name}: boss vulnerable!');
+        _enemyVulnRem = 3;
+        _log.add('✦ ${ability.name}: boss vulnerable for 3 rounds!');
     }
-  }
-
-  Widget _buildLocalAbilityBar(GameState game) {
-    final abilities = game.unlockedAbilities;
-    if (abilities.isEmpty) return const SizedBox.shrink();
-
-    const effectColors = <AbilityEffect, Color>{
-      AbilityEffect.bonusDamage:      Color(0xFFff6633),
-      AbilityEffect.heal:             Color(0xFF44cc66),
-      AbilityEffect.attackBonus:      Color(0xFFffcc00),
-      AbilityEffect.acBonus:          Color(0xFF66aaff),
-      AbilityEffect.stun:             Color(0xFFcc44ff),
-      AbilityEffect.dot:              Color(0xFF88dd00),
-      AbilityEffect.dodge:            Color(0xFF44ddcc),
-      AbilityEffect.aura:             Color(0xFF55ee88),
-      AbilityEffect.debuffWeaken:     Color(0xFFff4488),
-      AbilityEffect.debuffVulnerable: Color(0xFFff8800),
-    };
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      color: const Color(0xFF0a0e1f),
-      child: Wrap(
-        spacing: 6,
-        runSpacing: 6,
-        children: abilities.map((a) {
-          final totalCd = game.scaledAbilityCooldown(a);
-          final readyAt = _gCooldownUntil[a.id] ?? 0;
-          final cd      = (readyAt - _gAbilityRound).clamp(0, totalCd);
-          final ready   = cd == 0;
-          final color   = effectColors[a.effect] ?? Colors.grey;
-          final progress = ready ? 1.0
-              : ((totalCd - cd) / totalCd).clamp(0.0, 1.0);
-
-          return SizedBox(
-            width: 100,
-            child: Container(
-              decoration: BoxDecoration(
-                color: color.withValues(alpha: ready ? 0.15 : 0.07),
-                border: Border.all(
-                    color: color.withValues(alpha: ready ? 0.8 : 0.4),
-                    width: ready ? 1.5 : 1.0),
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(6, 7, 6, 4),
-                    child: Row(children: [
-                      Expanded(
-                        child: Text(a.name,
-                            style: TextStyle(
-                                fontSize: 11,
-                                fontWeight: FontWeight.bold,
-                                color: ready ? Colors.white : Colors.white60),
-                            overflow: TextOverflow.ellipsis),
-                      ),
-                      const SizedBox(width: 4),
-                      Text(ready ? 'RDY' : '${cd}r',
-                          style: TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.bold,
-                              color: color)),
-                    ]),
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(4, 0, 4, 5),
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(1),
-                      child: LinearProgressIndicator(
-                        value: progress,
-                        minHeight: 4,
-                        backgroundColor: Colors.white12,
-                        valueColor: AlwaysStoppedAnimation<Color>(color),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          );
-        }).toList(),
-      ),
-    );
   }
 
   void _endRun({required bool cleared}) {
@@ -382,11 +359,13 @@ class _BossRushScreenState extends State<BossRushScreen> {
     final game = GameStateProvider.of(context);
     // Rewards: shards proportional to bosses defeated, extra if cleared
     final shardReward = result.bossesDefeated * 10 + (cleared ? 30 : 0);
+    final echoReward = result.bossesDefeated * 6 + (cleared ? 25 : 0);
     final crystalReward = cleared ? 15 : 0;
     final mythrilReward = switch (result.rank) {
       'S' => 15, 'A' => 10, 'B' => 6, 'C' => 3, _ => 1,
     };
     game.shards   += shardReward;
+    game.echoes   += echoReward;
     game.crystals += crystalReward;
     game.mythril  += mythrilReward;
     if (result.score > (game.bossRushBestScore)) {
@@ -402,10 +381,17 @@ class _BossRushScreenState extends State<BossRushScreen> {
     });
     _log.add('');
     _log.add(cleared ? '★ BOSS RUSH CLEARED!' : '✗ RUN ENDED');
+
+    if (_autoRepeat) {
+      _autoRestartTimer = Timer(const Duration(seconds: 2), () {
+        if (!mounted || !_autoRepeat) return;
+        _startRun();
+      });
+    }
     _log.add(
         'Defeated: ${result.bossesDefeated}/${result.totalBosses}  '
         'Score: ${result.score}  Rank: ${result.rank}');
-    _log.add('Rewards: +$shardReward ◆  +$mythrilReward mythril${crystalReward > 0 ? '  +$crystalReward crystals' : ''}');
+    _log.add('Rewards: +$shardReward ◆  +$echoReward 🔊  +$mythrilReward mythril${crystalReward > 0 ? '  +$crystalReward crystals' : ''}');
   }
 
   String _fmt(int sec) {
@@ -423,6 +409,12 @@ class _BossRushScreenState extends State<BossRushScreen> {
         title: Text('BOSS RUSH',
             style: AppTheme.pixelHeading(fontSize: 14, letterSpacing: 2)),
         actions: [
+          if (_running && _game != null)
+            _InlineSpeedButton(
+              speedTier: _game!.speedTier,
+              isDebug: kDebugMode,
+              onCycle: _cycleSpeed,
+            ),
           if (_running || _done)
             Padding(
               padding: const EdgeInsets.only(right: 16),
@@ -440,33 +432,60 @@ class _BossRushScreenState extends State<BossRushScreen> {
 
   Widget _buildLobby() {
     final game = GameStateProvider.of(context);
-    return Padding(
-      padding: const EdgeInsets.all(20),
+    return SingleChildScrollView(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Hero image
+          Stack(
+            children: [
+              SizedBox(
+                width: double.infinity,
+                height: 220,
+                child: Image.asset('assets/images/boss_rush_bg.png',
+                    fit: BoxFit.cover, alignment: Alignment.center),
+              ),
+              Positioned.fill(
+                child: Container(
+                  decoration: const BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter, end: Alignment.bottomCenter,
+                      colors: [Color(0x00000000), Color(0xDD0a0a0a)],
+                      stops: [0.3, 1.0],
+                    ),
+                  ),
+                ),
+              ),
+              Positioned(
+                left: 16, right: 16, bottom: 12,
+                child: Text(
+                  'Face all 5 bosses back-to-back. No healing between fights.',
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(fontSize: 12, color: Color(0xFFccbbaa), height: 1.4),
+                ),
+              ),
+            ],
+          ),
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+          TutorialTip(
+            tutorialKey: 'bossRush',
+            game: game,
+            text: 'Boss Rush pits you against a gauntlet of bosses in sequence. Each boss is stronger than the last. How far can you go?',
+          ),
           Container(
             padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
-              color: const Color(0xFF231F1B),
-              border: Border.all(
-                  color: AppTheme.accentGold.withValues(alpha: 0.4)),
+              color: const Color(0xFF1a1816),
+              border: Border.all(color: AppTheme.accentGold.withValues(alpha: 0.4)),
               borderRadius: BorderRadius.circular(4),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('BOSS RUSH',
-                    style: AppTheme.pixelHeading(
-                        fontSize: 17, color: AppTheme.accentGold, letterSpacing: 3)),
-                const SizedBox(height: 8),
-                const Text(
-                  'Face all 5 campaign bosses back-to-back with a single HP bar. '
-                  'No healing between fights. Score is based on speed and HP remaining.',
-                  style: TextStyle(
-                      fontSize: 12, color: AppTheme.textMuted, height: 1.5),
-                ),
-                const SizedBox(height: 12),
                 _BossLine('Stage 5',  'Pixie Boss',    '★'),
                 _BossLine('Stage 10', 'Hobgoblin Boss', '★★'),
                 _BossLine('Stage 15', 'Wyvern Boss',   '★★★'),
@@ -491,71 +510,19 @@ class _BossRushScreenState extends State<BossRushScreen> {
             ]),
             const SizedBox(height: 16),
           ],
-          const Spacer(),
-          // ── Tier Selector ───────────────────────────────────────────────
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-            decoration: BoxDecoration(
-              color: const Color(0xFF231F1B),
-              border: Border.all(color: AppTheme.cardBorder),
-              borderRadius: BorderRadius.circular(4),
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text('TIER',
-                    style: AppTheme.pixelHeading(
-                        fontSize: 11, color: AppTheme.textMuted, letterSpacing: 2)),
-                Row(children: [
-                  _TierButton(
-                    icon: Icons.remove,
-                    onTap: _selectedTier > 1
-                        ? () => setState(() => _selectedTier--)
-                        : null,
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 14),
-                    child: Text(
-                      '$_selectedTier',
-                      style: AppTheme.pixelHeading(
-                          fontSize: 23, color: AppTheme.accentGold),
-                    ),
-                  ),
-                  _TierButton(
-                    icon: Icons.add,
-                    onTap: _selectedTier < game.bossRushHighestTier + 1
-                        ? () => setState(() => _selectedTier++)
-                        : null,
-                  ),
-                ]),
-                Text(
-                  game.bossRushHighestTier > 0
-                      ? 'Best: ${game.bossRushHighestTier}'
-                      : 'First run!',
-                  style: AppTheme.pixelHeading(
-                      fontSize: 10, color: AppTheme.textMuted),
-                ),
-              ],
-            ),
+          const SizedBox(height: 16),
+          TierSelector(
+            selectedTier: _selectedTier,
+            maxUnlocked: (game.bossRushHighestTier + 1).clamp(1, 10),
+            highestCleared: game.bossRushHighestTier,
+            onTierChange: (t) => setState(() => _selectedTier = t),
           ),
           const SizedBox(height: 12),
-          SizedBox(
-            width: double.infinity,
-            height: 52,
-            child: ElevatedButton(
-              onPressed: _startRun,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppTheme.accentGold.withValues(alpha: 0.12),
-                foregroundColor: AppTheme.accentGold,
-                side: const BorderSide(color: AppTheme.accentGold),
-                shape: const RoundedRectangleBorder(
-                    borderRadius: BorderRadius.zero),
-              ),
-              child: Text('BEGIN BOSS RUSH  —  TIER $_selectedTier',
-                  style: AppTheme.pixelHeading(
-                      fontSize: 14, color: AppTheme.accentGold, letterSpacing: 2)),
-            ),
+          _BossRushStartSection(
+            tier: _selectedTier,
+            onStart: _startRun,
           ),
+        ])),
         ],
       ),
     );
@@ -583,24 +550,11 @@ class _BossRushScreenState extends State<BossRushScreen> {
                         fontSize: 11, color: AppTheme.textMuted)),
               ],
             ),
-            const SizedBox(height: 6),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: List.generate(5, (i) {
-                Color c;
-                if (i < _bossIndex) {
-                  c = const Color(0xFF44cc66);
-                } else if (i == _bossIndex && _running) {
-                  c = AppTheme.accentGold;
-                } else {
-                  c = AppTheme.cardBorder;
-                }
-                return Container(
-                  width: 28, height: 6,
-                  margin: const EdgeInsets.symmetric(horizontal: 3),
-                  color: c,
-                );
-              }),
+            const SizedBox(height: 10),
+            _BossProgressTrack(
+              bossIndex: _bossIndex,
+              running: _running,
+              done: _done,
             ),
             if (_done && result != null) ...[
               const SizedBox(height: 8),
@@ -620,6 +574,7 @@ class _BossRushScreenState extends State<BossRushScreen> {
               heroMaxHp:        _heroMaxHp,
               heroAttack:       _heroAtk,
               heroSpriteId:     game.hero.spriteId,
+              heroGender:       game.hero.gender,
               heroAuraColor:    game.heroAuraColor,
               heroAuraIntensity: game.heroAuraIntensity,
               heroColorFilter:  game.heroSkinFilter,
@@ -633,12 +588,29 @@ class _BossRushScreenState extends State<BossRushScreen> {
               enemyAttack:   boss.attack,
               enemyId:       boss.id,
               isBoss:        true,
+              heroBuffGlows: [
+                if (_tempAtkBonus > 0) const Color(0xFFffcc00),
+                if (_tempAcBonus  > 0) const Color(0xFF66aaff),
+              ],
+              enemyDebuffGlows: [
+                if (_enemyStunned)       const Color(0xFFcc44ff),
+                if (_enemyWeakenRem > 0) const Color(0xFFff4488),
+                if (_enemyVulnRem   > 0) const Color(0xFFff8800),
+              ],
+              heroDamageType: game.hero.activeDamageType,
             ),
           ),
 
         // Ability bar during active fight
         if (_running && !_done)
-          _buildLocalAbilityBar(game),
+          BattleIconBar(
+            localCooldownResolver: (id) {
+              final totalCd = game.scaledAbilityCooldown(
+                  game.unlockedAbilities.firstWhere((a) => a.id == id));
+              final readyAt = _gCooldownUntil[id] ?? 0;
+              return (readyAt - _gAbilityRound).clamp(0, totalCd);
+            },
+          ),
 
         // Flee button during active fight
         if (_running && !_done)
@@ -685,32 +657,70 @@ class _BossRushScreenState extends State<BossRushScreen> {
           ),
           Padding(
             padding: const EdgeInsets.fromLTRB(14, 14, 14, 6),
-            child: SizedBox(
-              width: double.infinity,
-              height: 48,
-              child: ElevatedButton(
-                onPressed: () => setState(() {
-                  _done = false;
-                  _running = false;
-                  _result = null;
-                  _log.clear();
-                }),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppTheme.accentGold,
-                  foregroundColor: Colors.black,
-                  shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
-                ),
-                child: const Text(
-                  'PLAY AGAIN',
-                  style: TextStyle(
-                    fontSize: 17,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black,
-                    letterSpacing: 2,
+            child: Row(children: [
+              // AUTO toggle
+              Expanded(
+                child: SizedBox(
+                  height: 48,
+                  child: OutlinedButton(
+                    onPressed: () => setState(() {
+                      _autoRepeat = !_autoRepeat;
+                      if (_autoRepeat) {
+                        _autoRestartTimer?.cancel();
+                        _startRun();
+                      } else {
+                        _autoRestartTimer?.cancel();
+                      }
+                    }),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: _autoRepeat
+                          ? const Color(0xFFff4444)
+                          : const Color(0xFF44dd88),
+                      side: BorderSide(
+                          color: _autoRepeat
+                              ? const Color(0xFFff4444)
+                              : const Color(0xFF44dd88)),
+                      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
+                    ),
+                    child: Text(_autoRepeat ? 'STOP AUTO' : 'AUTO',
+                        style: AppTheme.pixelHeading(
+                            fontSize: 13,
+                            letterSpacing: 2,
+                            color: _autoRepeat
+                                ? const Color(0xFFff4444)
+                                : const Color(0xFF44dd88))),
                   ),
                 ),
               ),
-            ),
+              const SizedBox(width: 10),
+              // Play again manually
+              Expanded(
+                child: SizedBox(
+                  height: 48,
+                  child: ElevatedButton(
+                    onPressed: () => setState(() {
+                      _autoRepeat = false;
+                      _autoRestartTimer?.cancel();
+                      _done    = false;
+                      _running = false;
+                      _result  = null;
+                      _log.clear();
+                    }),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppTheme.accentGold,
+                      foregroundColor: Colors.black,
+                      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
+                    ),
+                    child: const Text('PLAY AGAIN',
+                        style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.black,
+                            letterSpacing: 2)),
+                  ),
+                ),
+              ),
+            ]),
           ),
           Padding(
             padding: const EdgeInsets.fromLTRB(14, 0, 14, 14),
@@ -718,7 +728,18 @@ class _BossRushScreenState extends State<BossRushScreen> {
               width: double.infinity,
               height: 48,
               child: OutlinedButton(
-                onPressed: () => context.pop(),
+                onPressed: () {
+                  _autoRepeat = false;
+                  _autoRestartTimer?.cancel();
+                  _autoAttackTimer?.cancel();
+                  setState(() {
+                    _running = false;
+                    _done = false;
+                    _result = null;
+                    _currentBoss = null;
+                    _bossIndex = 0;
+                  });
+                },
                 style: OutlinedButton.styleFrom(
                   foregroundColor: AppTheme.textMuted,
                   side: const BorderSide(color: AppTheme.cardBorder),
@@ -729,8 +750,7 @@ class _BossRushScreenState extends State<BossRushScreen> {
               ),
             ),
           ),
-        ] else
-          BattleLogBox(log: _log, height: 110),
+        ],
       ],
     );
   }
@@ -743,6 +763,153 @@ String _rankFromScore(int s) {
   if (s >= 1500) return 'C';
   return 'D';
 }
+
+// ── Boss Progress Track ───────────────────────────────────────────────────────
+
+class _BossProgressTrack extends StatefulWidget {
+  const _BossProgressTrack({
+    required this.bossIndex,
+    required this.running,
+    required this.done,
+  });
+  final int bossIndex;
+  final bool running;
+  final bool done;
+
+  @override
+  State<_BossProgressTrack> createState() => _BossProgressTrackState();
+}
+
+class _BossProgressTrackState extends State<_BossProgressTrack>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _pulse = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 850),
+  )..repeat(reverse: true);
+
+  static const _icons  = ['🧚', '👺', '🐉', '👁', '🔥'];
+  static const _names  = ['Pixie', 'Hobgoblin', 'Wyvern', 'Eye', 'Phoenix'];
+  static const _total  = 5;
+
+  @override
+  void dispose() { _pulse.dispose(); super.dispose(); }
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        for (int i = 0; i < _total; i++) ...[
+          _BossNode(
+            icon:     _icons[i],
+            name:     _names[i],
+            defeated: i < widget.bossIndex,
+            active:   i == widget.bossIndex && widget.running,
+            pulse:    _pulse,
+          ),
+          if (i < _total - 1)
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.only(top: 18),
+                child: Container(
+                  height: 2,
+                  color: i < widget.bossIndex
+                      ? const Color(0xFF44cc66)
+                      : AppTheme.cardBorder,
+                ),
+              ),
+            ),
+        ],
+      ],
+    );
+  }
+}
+
+class _BossNode extends StatelessWidget {
+  const _BossNode({
+    required this.icon,
+    required this.name,
+    required this.defeated,
+    required this.active,
+    required this.pulse,
+  });
+  final String icon;
+  final String name;
+  final bool defeated;
+  final bool active;
+  final Animation<double> pulse;
+
+  @override
+  Widget build(BuildContext context) {
+    final borderColor = defeated
+        ? const Color(0xFF44cc66)
+        : active ? AppTheme.accentGold : AppTheme.cardBorder;
+    final bgColor = defeated
+        ? const Color(0xFF44cc66).withValues(alpha: 0.10)
+        : active ? AppTheme.accentGold.withValues(alpha: 0.13)
+               : const Color(0xFF151210);
+    final labelColor = defeated
+        ? const Color(0xFF44cc66)
+        : active ? AppTheme.accentGold : AppTheme.textMuted.withValues(alpha: 0.45);
+
+    return SizedBox(
+      width: 46,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          AnimatedBuilder(
+            animation: pulse,
+            builder: (_, __) {
+              final glow = active ? pulse.value * 0.35 : 0.0;
+              return Container(
+                width: 38,
+                height: 38,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: bgColor,
+                  border: Border.all(
+                    color: borderColor,
+                    width: active ? 2 : 1,
+                  ),
+                  borderRadius: BorderRadius.circular(6),
+                  boxShadow: active
+                      ? [BoxShadow(
+                          color: AppTheme.accentGold.withValues(alpha: glow),
+                          blurRadius: 12,
+                          spreadRadius: 2,
+                        )]
+                      : [],
+                ),
+                child: Text(
+                  defeated ? '✓' : icon,
+                  style: TextStyle(
+                    fontSize: defeated ? 17 : 21,
+                    color: defeated ? const Color(0xFF44cc66)
+                        : active ? null
+                        : Colors.white24,
+                  ),
+                ),
+              );
+            },
+          ),
+          const SizedBox(height: 4),
+          Text(
+            name,
+            textAlign: TextAlign.center,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              fontSize: 8,
+              color: labelColor,
+              fontWeight: active ? FontWeight.bold : FontWeight.normal,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 
 class _BossLine extends StatelessWidget {
   const _BossLine(this.stage, this.name, this.stars);
@@ -848,6 +1015,137 @@ class _TierButton extends StatelessWidget {
         child: Icon(icon,
             size: 18,
             color: enabled ? AppTheme.accentGold : AppTheme.textMuted),
+      ),
+    );
+  }
+}
+
+class _BossRushStartSection extends StatelessWidget {
+  const _BossRushStartSection({required this.tier, required this.onStart});
+  final int tier;
+  final VoidCallback onStart;
+
+  @override
+  Widget build(BuildContext context) {
+    final game      = GameStateProvider.of(context);
+    final remaining = game.bossRushAttemptsRemaining;
+    final canAfford = game.crystals >= GameState.kBossRushExtraCost;
+    return Column(children: [
+      Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const Icon(Icons.refresh, size: 14, color: AppTheme.textMuted),
+          const SizedBox(width: 5),
+          Text(
+            'Daily attempts: $remaining / ${GameState.kBossRushMaxAttempts}',
+            style: const TextStyle(fontSize: 12, color: AppTheme.textMuted),
+          ),
+        ],
+      ),
+      const SizedBox(height: 10),
+      SizedBox(
+        width: double.infinity,
+        height: 52,
+        child: ElevatedButton(
+          onPressed: remaining > 0 ? onStart : null,
+          style: ElevatedButton.styleFrom(
+            backgroundColor: remaining > 0
+                ? AppTheme.accentGold.withValues(alpha: 0.12)
+                : const Color(0xFF1a1410),
+            foregroundColor: remaining > 0 ? AppTheme.accentGold : Colors.white24,
+            disabledBackgroundColor: const Color(0xFF1a1410),
+            disabledForegroundColor: Colors.white24,
+            side: BorderSide(
+              color: remaining > 0 ? AppTheme.accentGold : Colors.white24,
+            ),
+            shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
+          ),
+          child: Text(
+            remaining > 0
+                ? 'BEGIN BOSS RUSH  —  TIER $tier'
+                : 'NO ATTEMPTS LEFT',
+            style: AppTheme.pixelHeading(
+              fontSize: 14, letterSpacing: 2,
+              color: remaining > 0 ? AppTheme.accentGold : Colors.white24,
+            ),
+          ),
+        ),
+      ),
+      if (remaining == 0) ...[
+        const SizedBox(height: 8),
+        SizedBox(
+          width: double.infinity,
+          child: OutlinedButton(
+            onPressed: canAfford ? () => game.buyExtraBossRushAttempt() : null,
+            style: OutlinedButton.styleFrom(
+              foregroundColor: const Color(0xFF88ccff),
+              side: BorderSide(
+                color: canAfford
+                    ? const Color(0xFF88ccff).withValues(alpha: 0.6)
+                    : Colors.white24,
+              ),
+              padding: const EdgeInsets.symmetric(vertical: 10),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+            ),
+            child: Text(
+              '💎 ${GameState.kBossRushExtraCost} crystals — Buy 1 extra attempt',
+              style: TextStyle(
+                fontSize: 12,
+                color: canAfford ? const Color(0xFF88ccff) : Colors.white24,
+              ),
+            ),
+          ),
+        ),
+      ],
+    ]);
+  }
+}
+
+class _InlineSpeedButton extends StatelessWidget {
+  const _InlineSpeedButton({
+    required this.speedTier,
+    required this.isDebug,
+    required this.onCycle,
+  });
+
+  final int speedTier;
+  final bool isDebug;
+  final VoidCallback onCycle;
+
+  static const _debugLabels = ['1×', '1.5×', '5×', '10×'];
+  static const _prodLabels  = ['1×', '1.5×', '2×'];
+
+  String get _label => isDebug
+      ? _debugLabels[(speedTier - 1).clamp(0, 3)]
+      : _prodLabels[(speedTier - 1).clamp(0, 2)];
+
+  bool get _active => speedTier > 1;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(right: 8),
+      child: GestureDetector(
+        onTap: onCycle,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+          decoration: BoxDecoration(
+            color: _active ? const Color(0xFF1a3a1a) : const Color(0xFF1a1a2a),
+            border: Border.all(
+              color: _active ? const Color(0xFF44cc44) : const Color(0xFF334466),
+              width: 1.5,
+            ),
+            borderRadius: BorderRadius.circular(3),
+          ),
+          child: Text(
+            _label,
+            style: TextStyle(
+              color: _active ? const Color(0xFF44cc44) : const Color(0xFF667799),
+              fontSize: 13,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ),
       ),
     );
   }

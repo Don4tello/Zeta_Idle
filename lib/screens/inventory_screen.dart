@@ -1,7 +1,7 @@
-﻿import 'dart:math';
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import '../models/equipment.dart';
 import '../models/gem.dart';
+import '../models/hero_ability.dart';
 import '../services/game_state.dart';
 import '../theme/app_theme.dart';
 import '../widgets/item_sprites.dart';
@@ -16,13 +16,13 @@ class InventoryScreen extends StatefulWidget {
 class _InventoryScreenState extends State<InventoryScreen>
     with TickerProviderStateMixin {
   late TabController _outerTabs; // EQUIPMENT | BAG
-  late TabController _tabs;      // stash pages within BAG
+  late TabController _tabs; // stash pages within BAG
 
   @override
   void initState() {
     super.initState();
     _outerTabs = TabController(length: 2, vsync: this);
-    _tabs      = TabController(length: 1, vsync: this);
+    _tabs = TabController(length: 1, vsync: this);
   }
 
   @override
@@ -46,7 +46,8 @@ class _InventoryScreenState extends State<InventoryScreen>
 
   // ── Shared action header ──────────────────────────────────────────────────
 
-  Widget _actionHeader(BuildContext ctx, GameState game, List<dynamic> bag, int cap) {
+  Widget _actionHeader(
+      BuildContext ctx, GameState game, List<dynamic> bag, int cap) {
     return Container(
       color: const Color(0xFF211E1A),
       padding: const EdgeInsets.fromLTRB(12, 6, 12, 6),
@@ -57,35 +58,45 @@ class _InventoryScreenState extends State<InventoryScreen>
         const Spacer(),
         if (game.canBuyStashTab) ...[
           GestureDetector(
-            onTap: () { final ok = game.purchaseStashTab(); if (ok) setState(() {}); },
+            onTap: () {
+              final ok = game.purchaseStashTab();
+              if (ok) setState(() {});
+            },
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 4),
               decoration: BoxDecoration(
                 color: const Color(0xFF44ddcc).withValues(alpha: 0.1),
-                border: Border.all(color: const Color(0xFF44ddcc).withValues(alpha: 0.6)),
+                border: Border.all(
+                    color: const Color(0xFF44ddcc).withValues(alpha: 0.6)),
                 borderRadius: BorderRadius.circular(3),
               ),
               child: Row(mainAxisSize: MainAxisSize.min, children: [
                 const Text('💎', style: TextStyle(fontSize: 11)),
                 const SizedBox(width: 4),
                 Text('+ TAB  ${game.nextStashTabCost}',
-                    style: AppTheme.pixelHeading(fontSize: 9, color: const Color(0xFF44ddcc))),
+                    style: AppTheme.pixelHeading(
+                        fontSize: 9, color: const Color(0xFF44ddcc))),
               ]),
             ),
           ),
           const SizedBox(width: 8),
         ],
         GestureDetector(
-          onTap: () { game.autoEquipBestItems(); setState(() {}); },
+          onTap: () {
+            game.autoEquipBestItems();
+            setState(() {});
+          },
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
             decoration: BoxDecoration(
               color: AppTheme.accentGold.withValues(alpha: 0.08),
-              border: Border.all(color: AppTheme.accentGold.withValues(alpha: 0.5)),
+              border:
+                  Border.all(color: AppTheme.accentGold.withValues(alpha: 0.5)),
               borderRadius: BorderRadius.circular(3),
             ),
             child: Text('AUTO EQUIP',
-                style: AppTheme.pixelHeading(fontSize: 9, color: AppTheme.accentGold)),
+                style: AppTheme.pixelHeading(
+                    fontSize: 9, color: AppTheme.accentGold)),
           ),
         ),
       ]),
@@ -113,7 +124,7 @@ class _InventoryScreenState extends State<InventoryScreen>
             indicatorColor: AppTheme.accentGold,
             tabs: List.generate(tabCount, (i) {
               final start = i * 20;
-              final end   = (start + 20).clamp(0, bag.length);
+              final end = (start + 20).clamp(0, bag.length);
               return Tab(text: 'TAB ${i + 1}  (${end - start})');
             }),
           )
@@ -125,11 +136,13 @@ class _InventoryScreenState extends State<InventoryScreen>
         child: tabCount > 1
             ? TabBarView(
                 controller: _tabs,
-                children: List.generate(tabCount, (i) => _BagGrid(
-                  game: game,
-                  startIndex: i * 20,
-                  endIndex: ((i + 1) * 20).clamp(0, cap),
-                )),
+                children: List.generate(
+                    tabCount,
+                    (i) => _BagGrid(
+                          game: game,
+                          startIndex: i * 20,
+                          endIndex: ((i + 1) * 20).clamp(0, cap),
+                        )),
               )
             : _BagGrid(game: game, startIndex: 0, endIndex: 20),
       ),
@@ -167,11 +180,11 @@ class _InventoryScreenState extends State<InventoryScreen>
 
   @override
   Widget build(BuildContext context) {
-    final game     = GameStateProvider.of(context);
+    final game = GameStateProvider.of(context);
     final tabCount = game.stashTabCount;
     _rebuildTabs(tabCount);
-    final bag   = game.inventory.bag;
-    final cap   = game.inventory.bagCapacity;
+    final bag = game.inventory.bag;
+    final cap = game.inventory.bagCapacity;
 
     if (widget.embedded) {
       return Column(
@@ -187,21 +200,27 @@ class _InventoryScreenState extends State<InventoryScreen>
       backgroundColor: const Color(0xFF1B1A17),
       appBar: AppBar(
         backgroundColor: const Color(0xFF2A2623),
-        title: Text('INVENTORY', style: AppTheme.pixelHeading(fontSize: 15, letterSpacing: 2)),
+        title: Text('INVENTORY',
+            style: AppTheme.pixelHeading(fontSize: 15, letterSpacing: 2)),
         actions: [
           Padding(
             padding: const EdgeInsets.only(right: 6),
             child: GestureDetector(
-              onTap: () { game.autoEquipBestItems(); setState(() {}); },
+              onTap: () {
+                game.autoEquipBestItems();
+                setState(() {});
+              },
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
                 decoration: BoxDecoration(
                   color: AppTheme.accentGold.withValues(alpha: 0.08),
-                  border: Border.all(color: AppTheme.accentGold.withValues(alpha: 0.5)),
+                  border: Border.all(
+                      color: AppTheme.accentGold.withValues(alpha: 0.5)),
                   borderRadius: BorderRadius.circular(3),
                 ),
                 child: Text('AUTO EQUIP',
-                    style: AppTheme.pixelHeading(fontSize: 10, color: AppTheme.accentGold)),
+                    style: AppTheme.pixelHeading(
+                        fontSize: 10, color: AppTheme.accentGold)),
               ),
             ),
           ),
@@ -209,19 +228,25 @@ class _InventoryScreenState extends State<InventoryScreen>
             Padding(
               padding: const EdgeInsets.only(right: 10),
               child: GestureDetector(
-                onTap: () { final ok = game.purchaseStashTab(); if (ok) setState(() {}); },
+                onTap: () {
+                  final ok = game.purchaseStashTab();
+                  if (ok) setState(() {});
+                },
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
                   decoration: BoxDecoration(
                     color: const Color(0xFF44ddcc).withValues(alpha: 0.1),
-                    border: Border.all(color: const Color(0xFF44ddcc).withValues(alpha: 0.6)),
+                    border: Border.all(
+                        color: const Color(0xFF44ddcc).withValues(alpha: 0.6)),
                     borderRadius: BorderRadius.circular(3),
                   ),
                   child: Row(mainAxisSize: MainAxisSize.min, children: [
                     const Text('💎', style: TextStyle(fontSize: 12)),
                     const SizedBox(width: 4),
                     Text('+ TAB  ${game.nextStashTabCost}',
-                        style: AppTheme.pixelHeading(fontSize: 10, color: const Color(0xFF44ddcc))),
+                        style: AppTheme.pixelHeading(
+                            fontSize: 10, color: const Color(0xFF44ddcc))),
                   ]),
                 ),
               ),
@@ -244,43 +269,77 @@ class _EquippedGrid extends StatelessWidget {
   const _EquippedGrid({required this.game});
   final GameState game;
 
-  static const _layout = <ItemSlot?>[
-    null,            ItemSlot.helmet, ItemSlot.amulet,
-    ItemSlot.weapon, ItemSlot.armor,  ItemSlot.offHand,
-    ItemSlot.ring,   ItemSlot.pants,  ItemSlot.ring2,
-    ItemSlot.gloves, ItemSlot.boots,  ItemSlot.relic,
-  ];
+  // Slot positions as fractions of image size (left%, top%, width%, height%)
+  // Row 1: weapon(L), helmet(C), amulet(R)
+  // Row 2: armor(L), [silhouette], offhand(R)
+  // Row 1: weapon(L), helmet(C), amulet(R)
+  // Row 2: armor(L), [silhouette], offhand(R)
+  // Row 3: gloves(L), [silhouette], legs(R)
+  // Row 4: ring1(L), ring2(R)
+  // Row 5: relic(L), shoes(R)
+  static const _slotPositions = <ItemSlot, (double, double, double, double)>{
+    ItemSlot.weapon: (0.10, 0.09, 0.10, 0.10),
+    ItemSlot.helmet: (0.45, 0.094, 0.10, 0.10),
+    ItemSlot.amulet: (0.80, 0.09, 0.10, 0.10),
+    ItemSlot.armor: (0.10, 0.28, 0.10, 0.10),
+    ItemSlot.offHand: (0.80, 0.28, 0.10, 0.10),
+    ItemSlot.gloves: (0.10, 0.47, 0.10, 0.10),
+    ItemSlot.pants: (0.80, 0.47, 0.10, 0.10),
+    ItemSlot.ring: (0.10, 0.615, 0.10, 0.10),
+    ItemSlot.ring2: (0.80, 0.615, 0.10, 0.10),
+    ItemSlot.relic: (0.10, 0.775, 0.10, 0.10),
+    ItemSlot.boots: (0.80, 0.775, 0.10, 0.10),
+  };
 
   @override
   Widget build(BuildContext context) {
-    return GridView.builder(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 3,
-        mainAxisSpacing: 6,
-        crossAxisSpacing: 6,
-        childAspectRatio: 0.95,
-      ),
-      itemCount: _layout.length,
-      itemBuilder: (ctx, i) {
-        final slot = _layout[i];
-        if (slot == null) {
-          return _HeroCell(game: game);
-        }
-        final item = game.inventory.equipped[slot];
-        return _DollSlot(
-          slot: slot,
-          item: item,
-          onTap: item != null
-              ? () => _showEquippedOptions(ctx, slot, item)
-              : null,
+    return AspectRatio(
+      aspectRatio: 1440 / 1514,
+      child: LayoutBuilder(builder: (ctx, constraints) {
+        final w = constraints.maxWidth;
+        final h = constraints.maxHeight;
+        return Stack(
+          children: [
+            // Background image
+            Positioned.fill(
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(6),
+                child: Image.asset('assets/images/equipment_layout.png',
+                    fit: BoxFit.fill,
+                    errorBuilder: (_, __, ___) =>
+                        Container(color: const Color(0xFF1a1816))),
+              ),
+            ),
+            // Slot overlays
+            ..._slotPositions.entries.map((e) {
+              final slot = e.key;
+              final (lf, tf, wf, hf) = e.value;
+              final item = game.inventory.equipped[slot];
+              return Positioned(
+                left: w * lf,
+                top: h * tf,
+                width: w * wf,
+                height: h * hf,
+                child: GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: item != null
+                      ? () => _showEquippedOptions(ctx, slot, item)
+                      : null,
+                  child: _PaperDollSlot(
+                    slot: slot,
+                    item: item,
+                  ),
+                ),
+              );
+            }),
+          ],
         );
-      },
+      }),
     );
   }
 
-  void _showEquippedOptions(BuildContext context, ItemSlot slot, EquipmentItem item) {
+  void _showEquippedOptions(
+      BuildContext context, ItemSlot slot, EquipmentItem item) {
     showModalBottomSheet(
       context: context,
       backgroundColor: const Color(0xFF2A2623),
@@ -303,210 +362,62 @@ class _EquippedGrid extends StatelessWidget {
   }
 }
 
-class _HeroCell extends StatelessWidget {
-  const _HeroCell({required this.game});
-  final GameState game;
-
-  @override
-  Widget build(BuildContext context) {
-    final classInfo = game.hero.heroClass.info;
-    return Container(
-      decoration: BoxDecoration(
-        color: const Color(0xFF0a0d20),
-        border: Border.all(color: AppTheme.accentGold.withValues(alpha: 0.3)),
-        borderRadius: BorderRadius.circular(4),
-      ),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(classInfo.icon, color: AppTheme.accentGold, size: 22),
-          const SizedBox(height: 4),
-          Text(
-            game.hero.name,
-            style: const TextStyle(
-              color: AppTheme.accentGold,
-              fontSize: 10,
-              fontWeight: FontWeight.bold,
-            ),
-            textAlign: TextAlign.center,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
-          const SizedBox(height: 1),
-          Text(
-            'Lv ${game.hero.level}  ${classInfo.displayName}',
-            style: const TextStyle(color: AppTheme.textMuted, fontSize: 8),
-            textAlign: TextAlign.center,
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _DollSlot extends StatelessWidget {
-  const _DollSlot({required this.slot, required this.item, this.onTap});
-
-  final ItemSlot      slot;
+class _PaperDollSlot extends StatelessWidget {
+  const _PaperDollSlot({required this.slot, required this.item});
+  final ItemSlot slot;
   final EquipmentItem? item;
-  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
-    final hasItem     = item != null;
-    final borderColor = hasItem ? item!.rarityColor : const Color(0xFF2E2A26);
-    final bgColor     = hasItem
-        ? item!.rarityColor.withValues(alpha: 0.08)
-        : const Color(0xFF0d1020);
-
-    return GestureDetector(
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 150),
-        padding: const EdgeInsets.all(6),
-        decoration: BoxDecoration(
-          color: bgColor,
-          border: Border.all(color: borderColor, width: hasItem ? 1.5 : 1),
-          borderRadius: BorderRadius.circular(4),
-        ),
-        child: hasItem ? _equippedContent() : _emptyContent(),
-      ),
-    );
-  }
-
-  Widget _equippedContent() {
-    final rarityColor = item!.rarityColor;
-    final isSet       = item!.setId != null;
-    final badge       = isSet ? '◈' : item!.rarityLabel[0];
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        // Icon fills the upper area — scales to cell width
-        Expanded(
-          child: Stack(
-            children: [
-              LayoutBuilder(
-                builder: (ctx, constraints) {
-                  final iconSize = min(constraints.maxWidth, constraints.maxHeight) * 0.82;
-                  return Center(
-                    child: ItemSprite(
-                      slot: slot,
-                      rarity: item!.rarity,
-                      size: iconSize,
-                      setColor: item!.rarity == ItemRarity.set ? item!.rarityColor : null,
+    final hasItem = item != null;
+    return hasItem
+        ? Container(
+            decoration: BoxDecoration(
+              color: const Color(0xFF2a2520),
+              border: Border.all(
+                color: item!.rarityColor.withValues(alpha: 0.7),
+                width: 1,
+              ),
+              borderRadius: BorderRadius.circular(3),
+            ),
+            child: Center(
+              child: FractionallySizedBox(
+                widthFactor: 0.80,
+                heightFactor: 0.80,
+                child: FittedBox(
+                  fit: BoxFit.contain,
+                  child: SizedBox(
+                    width: 32,
+                    height: 32,
+                    child: Center(
+                      child: ItemSprite(
+                        slot: slot,
+                        rarity: item!.rarity,
+                        size: 32,
+                        setColor: item!.rarity == ItemRarity.set
+                            ? item!.rarityColor
+                            : null,
+                      ),
                     ),
-                  );
-                },
-              ),
-              Positioned(
-                top: 0, right: 0,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 1),
-                  color: rarityColor.withValues(alpha: 0.2),
-                  child: Text(badge, style: TextStyle(fontSize: 8, color: rarityColor)),
+                  ),
                 ),
               ),
-            ],
-          ),
-        ),
-        // Stats strip pinned to bottom
-        Container(
-          padding: const EdgeInsets.fromLTRB(2, 4, 2, 2),
-          decoration: BoxDecoration(
-            border: Border(top: BorderSide(color: rarityColor.withValues(alpha: 0.25), width: 0.5)),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                item!.name,
-                style: TextStyle(fontSize: 9, color: rarityColor, fontWeight: FontWeight.bold),
-                textAlign: TextAlign.center,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-              if (item!.bonuses.isNotEmpty) ...[
-                const SizedBox(height: 2),
-                Text(
-                  _bonusSummary(),
-                  style: const TextStyle(fontSize: 8, color: Colors.white54),
-                  textAlign: TextAlign.center,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ],
-            ],
-          ),
-        ),
-      ],
-    );
+            ),
+          )
+        : const SizedBox.expand();
   }
-
-  Widget _emptyContent() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Expanded(
-          child: LayoutBuilder(
-            builder: (ctx, constraints) {
-              final iconSize = min(constraints.maxWidth, constraints.maxHeight) * 0.72;
-              return Center(
-                child: Opacity(
-                  opacity: 0.22,
-                  child: ItemSprite(slot: slot, rarity: null, size: iconSize),
-                ),
-              );
-            },
-          ),
-        ),
-        Padding(
-          padding: const EdgeInsets.fromLTRB(2, 4, 2, 2),
-          child: Text(
-            slot.label.toUpperCase(),
-            style: AppTheme.pixelHeading(fontSize: 8, color: Colors.white24, letterSpacing: 0.5),
-            textAlign: TextAlign.center,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
-        ),
-      ],
-    );
-  }
-
-  String _bonusSummary() {
-    final parts = item!.bonuses.take(2).map((b) => '+${b.value}${_short(b.stat)}').toList();
-    if (item!.gem != null) parts.add(item!.gem!.type.emoji);
-    return parts.join('  ');
-  }
-
-  String _short(ItemStat s) => switch (s) {
-    ItemStat.attackBonus     => 'ATK',
-    ItemStat.damageBonus     => 'DMG',
-    ItemStat.armorClass      => 'AC',
-    ItemStat.maxHpPct        => '%HP',
-    ItemStat.goldPct         => '%G',
-    ItemStat.xpPct           => '%XP',
-    ItemStat.strength        => 'PWR',
-    ItemStat.dexterity       => 'AGI',
-    ItemStat.constitution    => 'VIT',
-    ItemStat.intelligence    => 'ARC',
-    ItemStat.wisdom          => 'FOC',
-    ItemStat.charisma        => 'FOR',
-    ItemStat.elemPenetration => 'PEN',
-  };
 }
 
 class _BagGrid extends StatelessWidget {
-  const _BagGrid({required this.game, required this.startIndex, required this.endIndex});
+  const _BagGrid(
+      {required this.game, required this.startIndex, required this.endIndex});
   final GameState game;
   final int startIndex;
   final int endIndex;
 
   @override
   Widget build(BuildContext context) {
-    final bag   = game.inventory.bag;
+    final bag = game.inventory.bag;
     // Items in this tab's range
     final items = <EquipmentItem?>[];
     for (var i = startIndex; i < endIndex; i++) {
@@ -516,17 +427,18 @@ class _BagGrid extends StatelessWidget {
       return Center(
         child: Padding(
           padding: const EdgeInsets.all(24),
-          child: Text('No items in this tab.', style: const TextStyle(color: AppTheme.textMuted, fontSize: 13)),
+          child: Text('No items in this tab.',
+              style: const TextStyle(color: AppTheme.textMuted, fontSize: 13)),
         ),
       );
     }
     return GridView.builder(
-      padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+      padding: const EdgeInsets.fromLTRB(12, 4, 12, 16),
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 4,
-        mainAxisSpacing: 8,
-        crossAxisSpacing: 8,
-        childAspectRatio: 0.75,
+        crossAxisCount: 5,
+        mainAxisSpacing: 6,
+        crossAxisSpacing: 6,
+        childAspectRatio: 1.0,
       ),
       itemCount: items.length,
       itemBuilder: (context, i) {
@@ -535,7 +447,8 @@ class _BagGrid extends StatelessWidget {
           return Container(
             decoration: BoxDecoration(
               color: const Color(0xFF080c1e),
-              border: Border.all(color: AppTheme.cardBorder.withValues(alpha: 0.3)),
+              border:
+                  Border.all(color: AppTheme.cardBorder.withValues(alpha: 0.3)),
               borderRadius: BorderRadius.circular(4),
             ),
           );
@@ -543,14 +456,61 @@ class _BagGrid extends StatelessWidget {
         final bagIndex = startIndex + i;
         return GestureDetector(
           onTap: () => _showBagOptions(context, game, bagIndex, item),
-          child: _ItemTile(item: item, slotLabel: item.slot.label.toUpperCase()),
+          onLongPress: () async {
+            if (item.locked) return;
+            final confirm = await showDialog<bool>(
+              context: context,
+              builder: (ctx) => AlertDialog(
+                backgroundColor: AppTheme.cardBg,
+                title: Text('Disenchant ${item.name}?',
+                    style: const TextStyle(
+                        color: AppTheme.accentGold, fontSize: 14)),
+                content: Text('This will destroy the item for shards.',
+                    style: const TextStyle(
+                        color: AppTheme.textMuted, fontSize: 12)),
+                actions: [
+                  TextButton(
+                      onPressed: () => Navigator.pop(ctx, false),
+                      child: const Text('CANCEL',
+                          style: TextStyle(color: AppTheme.textMuted))),
+                  TextButton(
+                      onPressed: () => Navigator.pop(ctx, true),
+                      child: const Text('DISENCHANT',
+                          style: TextStyle(color: Color(0xFFff4444)))),
+                ],
+              ),
+            );
+            if (confirm == true) {
+              final shards = game.disenchantItems([item]);
+              if (shards > 0 && context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                  content: Text('Disenchanted ${item.name} → +$shards ◆'),
+                  duration: const Duration(seconds: 2),
+                ));
+              }
+            }
+          },
+          child:
+              _ItemTile(item: item, slotLabel: item.slot.label.toUpperCase()),
         );
       },
     );
   }
 
-  void _showBagOptions(BuildContext context, GameState game, int index, EquipmentItem item) {
+  void _showBagOptions(
+      BuildContext context, GameState game, int index, EquipmentItem item) {
     final equipped = game.inventory.equipped[item.slot];
+
+    final cantEquip = !game.canEquip(item);
+    final reason =
+        item.requiredClass != null && item.requiredClass != game.hero.heroClass
+            ? 'Requires ${item.requiredClass!.displayName}'
+            : game.hero.level < item.levelRequired
+                ? 'Requires Level ${item.levelRequired}'
+                : item.rebirthRequired > 0 &&
+                        game.prestigeLevel < item.rebirthRequired
+                    ? 'Requires Rebirth ${item.rebirthRequired}'
+                    : null;
 
     showModalBottomSheet(
       context: context,
@@ -562,21 +522,34 @@ class _BagGrid extends StatelessWidget {
         compareWith: equipped,
         actions: [
           _SheetAction(
-            label: 'Equip',
-            color: AppTheme.accentGold,
-            onTap: () {
-              game.equipItem(item);
-              Navigator.pop(context);
-            },
+            label: cantEquip ? (reason ?? 'Cannot Equip') : 'Equip',
+            color: cantEquip ? const Color(0xFF884444) : AppTheme.accentGold,
+            onTap: cantEquip
+                ? null
+                : () {
+                    game.equipItem(item);
+                    Navigator.pop(context);
+                  },
           ),
           _SheetAction(
-            label: 'Discard',
-            color: const Color(0xFFcc4444),
+            label: item.locked ? 'Unlock 🔓' : 'Lock 🔒',
+            color:
+                item.locked ? const Color(0xFF44cc88) : const Color(0xFFffaa44),
             onTap: () {
-              game.discardBagItem(index);
+              item.locked = !item.locked;
+              game.saveToLocal();
               Navigator.pop(context);
             },
           ),
+          if (!item.locked)
+            _SheetAction(
+              label: 'Discard',
+              color: const Color(0xFFcc4444),
+              onTap: () {
+                game.discardBagItem(index);
+                Navigator.pop(context);
+              },
+            ),
         ],
       ),
     );
@@ -593,123 +566,90 @@ class _ItemTile extends StatelessWidget {
     final hasItem = item != null;
     final borderColor = hasItem ? item!.rarityColor : AppTheme.cardBorder;
     return Container(
-        padding: const EdgeInsets.all(8),
-        decoration: BoxDecoration(
-          color: const Color(0xFF231F1B),
-          border: Border.all(color: borderColor, width: hasItem ? 1.5 : 1),
-          borderRadius: BorderRadius.circular(4),
-        ),
-        child: hasItem
-            ? Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  // Icon scales to fill the upper area
-                  Expanded(
-                    child: Stack(
-                      children: [
-                        LayoutBuilder(
-                          builder: (ctx, constraints) {
-                            final iconSize = constraints.maxWidth * 0.82;
-                            return Center(
-                              child: ItemSprite(
-                                slot: item!.slot,
-                                rarity: item!.rarity,
-                                size: iconSize,
-                                setColor: item!.rarity == ItemRarity.set
-                                    ? item!.rarityColor
-                                    : null,
-                              ),
-                            );
-                          },
-                        ),
-                        Positioned(
-                          top: 0, right: 0,
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
-                            color: item!.rarityColor.withValues(alpha: 0.2),
-                            child: Text(
-                              item!.setId != null ? '◈' : item!.rarityLabel[0],
-                              style: TextStyle(fontSize: 8, color: item!.rarityColor),
-                            ),
-                          ),
-                        ),
-                      ],
+      decoration: BoxDecoration(
+        color: const Color(0xFF2a2520),
+        border: Border.all(
+            color: borderColor.withValues(alpha: hasItem ? 0.7 : 0.3),
+            width: 1),
+        borderRadius: BorderRadius.circular(3),
+      ),
+      child: hasItem
+          ? Center(
+              child: FractionallySizedBox(
+                widthFactor: 0.80,
+                heightFactor: 0.80,
+                child: FittedBox(
+                  fit: BoxFit.contain,
+                  child: SizedBox(
+                    width: 32,
+                    height: 32,
+                    child: Center(
+                      child: ItemSprite(
+                        slot: item!.slot,
+                        rarity: item!.rarity,
+                        size: 32,
+                        setColor: item!.rarity == ItemRarity.set
+                            ? item!.rarityColor
+                            : null,
+                      ),
                     ),
                   ),
-                  // Stats strip pinned to bottom
-                  Container(
-                    padding: const EdgeInsets.fromLTRB(2, 4, 2, 2),
-                    decoration: BoxDecoration(
-                      border: Border(top: BorderSide(
-                        color: borderColor.withValues(alpha: 0.3), width: 0.5)),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          slotLabel,
-                          style: AppTheme.pixelHeading(fontSize: 8, color: AppTheme.textMuted, letterSpacing: 1),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          item!.name,
-                          style: TextStyle(fontSize: 10, color: item!.rarityColor, fontWeight: FontWeight.bold),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        const SizedBox(height: 2),
-                        ...item!.bonuses.map((b) => Text(
-                          '+${b.value} ${_statLabel(b.stat)}',
-                          style: const TextStyle(fontSize: 9, color: AppTheme.textLight),
-                        )),
-                        if (item!.gem != null)
-                          Text('${item!.gem!.type.emoji} +${item!.gem!.value}',
-                              style: TextStyle(fontSize: 9, color: item!.gem!.color)),
-                      ],
-                    ),
-                  ),
-                ],
-              )
-            : Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Icon(Icons.add, size: 16, color: AppTheme.cardBorder),
-                  const SizedBox(height: 4),
-                  Text(slotLabel, style: AppTheme.pixelHeading(fontSize: 9, color: AppTheme.textMuted, letterSpacing: 1)),
-                ],
+                ),
               ),
+            )
+          : const SizedBox.shrink(),
     );
   }
 
   String _statLabel(ItemStat stat) {
     switch (stat) {
-      case ItemStat.attackBonus:  return 'ATK';
-      case ItemStat.damageBonus:  return 'DMG';
-      case ItemStat.armorClass:   return 'AC';
-      case ItemStat.maxHpPct:     return '% HP';
-      case ItemStat.goldPct:      return '% GOLD';
-      case ItemStat.xpPct:        return '% XP';
-      case ItemStat.strength:     return 'PWR';
-      case ItemStat.dexterity:    return 'AGI';
-      case ItemStat.constitution: return 'VIT';
-      case ItemStat.intelligence: return 'ARC';
-      case ItemStat.wisdom:          return 'FOC';
-      case ItemStat.charisma:        return 'FOR';
-      case ItemStat.elemPenetration: return 'PEN';
+      case ItemStat.attackBonus:
+        return 'ATK';
+      case ItemStat.damageBonus:
+        return 'DMG';
+      case ItemStat.armorClass:
+        return 'AC';
+      case ItemStat.maxHpPct:
+        return '% HP';
+      case ItemStat.goldPct:
+        return '% GOLD';
+      case ItemStat.xpPct:
+        return '% XP';
+      case ItemStat.strength:
+        return 'PWR';
+      case ItemStat.dexterity:
+        return 'AGI';
+      case ItemStat.constitution:
+        return 'VIT';
+      case ItemStat.intelligence:
+        return 'ARC';
+      case ItemStat.wisdom:
+        return 'FOC';
+      case ItemStat.charisma:
+        return 'FOR';
+      case ItemStat.elemPenetration:
+        return 'PEN';
+      case ItemStat.hitChance:
+        return 'HIT%';
+      case ItemStat.damagePercent:
+        return 'DMG%';
     }
   }
 }
 
 class _SheetAction {
-  const _SheetAction({required this.label, required this.color, required this.onTap});
+  const _SheetAction({required this.label, required this.color, this.onTap});
   final String label;
   final Color color;
-  final VoidCallback onTap;
+  final VoidCallback? onTap;
 }
 
 class _ItemDetailSheet extends StatefulWidget {
-  const _ItemDetailSheet({required this.item, required this.actions, required this.game, this.compareWith});
+  const _ItemDetailSheet(
+      {required this.item,
+      required this.actions,
+      required this.game,
+      this.compareWith});
   final EquipmentItem item;
   final List<_SheetAction> actions;
   final GameState game;
@@ -719,24 +659,28 @@ class _ItemDetailSheet extends StatefulWidget {
 }
 
 class _ItemDetailSheetState extends State<_ItemDetailSheet> {
-  EquipmentItem get item       => widget.item;
+  EquipmentItem get item => widget.item;
   List<_SheetAction> get actions => widget.actions;
-  GameState get game            => widget.game;
+  GameState get game => widget.game;
   EquipmentItem? get compareWith => widget.compareWith;
 
   @override
   Widget build(BuildContext context) {
     // Build stat maps for comparison
-    final newStats  = <ItemStat, int>{for (final b in widget.item.bonuses) b.stat: b.value};
-    final equStats  = compareWith != null
+    final newStats = <ItemStat, int>{
+      for (final b in widget.item.bonuses) b.stat: b.value
+    };
+    final equStats = compareWith != null
         ? <ItemStat, int>{for (final b in compareWith!.bonuses) b.stat: b.value}
         : <ItemStat, int>{};
     // All stats mentioned in either item
-    final allStats  = {...newStats.keys, ...equStats.keys}.toList();
+    final allStats = {...newStats.keys, ...equStats.keys}.toList();
 
     return Padding(
       padding: EdgeInsets.only(
-        left: 20, right: 20, top: 20,
+        left: 20,
+        right: 20,
+        top: 20,
         bottom: MediaQuery.of(context).viewInsets.bottom + 20,
       ),
       child: Column(
@@ -769,7 +713,7 @@ class _ItemDetailSheetState extends State<_ItemDetailSheet> {
           ),
           const SizedBox(height: 4),
           Text(
-            '${item.slot.label.toUpperCase()}  ·  Req Lv ${item.levelRequired}',
+            '${item.slot.label.toUpperCase()}  ·  ${item.requirementLabel}',
             style: const TextStyle(fontSize: 12, color: AppTheme.textMuted),
           ),
 
@@ -780,7 +724,8 @@ class _ItemDetailSheetState extends State<_ItemDetailSheet> {
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
               decoration: BoxDecoration(
                 color: item.itemSet!.color.withValues(alpha: 0.08),
-                border: Border.all(color: item.itemSet!.color.withValues(alpha: 0.5)),
+                border: Border.all(
+                    color: item.itemSet!.color.withValues(alpha: 0.5)),
                 borderRadius: BorderRadius.circular(4),
               ),
               child: Column(
@@ -796,9 +741,11 @@ class _ItemDetailSheetState extends State<_ItemDetailSheet> {
                   ),
                   const SizedBox(height: 3),
                   ...item.itemSet!.tiers.map((tier) => Text(
-                    tier.label,
-                    style: TextStyle(fontSize: 11, color: item.itemSet!.color.withValues(alpha: 0.8)),
-                  )),
+                        tier.label,
+                        style: TextStyle(
+                            fontSize: 11,
+                            color: item.itemSet!.color.withValues(alpha: 0.8)),
+                      )),
                 ],
               ),
             ),
@@ -811,7 +758,8 @@ class _ItemDetailSheetState extends State<_ItemDetailSheet> {
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
               decoration: BoxDecoration(
                 color: const Color(0xFFFFD700).withValues(alpha: 0.08),
-                border: Border.all(color: const Color(0xFFFFD700).withValues(alpha: 0.5)),
+                border: Border.all(
+                    color: const Color(0xFFFFD700).withValues(alpha: 0.5)),
                 borderRadius: BorderRadius.circular(4),
               ),
               child: Column(
@@ -828,42 +776,163 @@ class _ItemDetailSheetState extends State<_ItemDetailSheet> {
                   const SizedBox(height: 2),
                   Text(
                     item.keyword!.description,
-                    style: const TextStyle(fontSize: 11, color: AppTheme.textMuted),
+                    style: const TextStyle(
+                        fontSize: 11, color: AppTheme.textMuted),
                   ),
                 ],
               ),
             ),
           ],
 
+          // Unique ability mod badge
+          if (item.uniqueAbilityId != null) ...[
+            const SizedBox(height: 8),
+            Builder(builder: (ctx) {
+              final wrongClass = item.requiredClass != null &&
+                  item.requiredClass != game.hero.heroClass;
+              final badgeColor = wrongClass
+                  ? const Color(0xFFcc4444)
+                  : const Color(0xFFFFD700);
+              final classLabel = item.requiredClass?.displayName ?? 'Any';
+              final modParts = <String>[];
+              if (item.abilityValueMult != 1.0) {
+                modParts.add('${item.abilityValueMult}× value');
+              }
+              if (item.abilityDurationAdd > 0) {
+                modParts.add('+${item.abilityDurationAdd}r duration');
+              }
+              if (item.abilityCooldownFlat > 0) {
+                modParts.add('−${item.abilityCooldownFlat} cooldown');
+              }
+              if (item.abilityExtraEffect != null) {
+                final xe = item.abilityExtraEffect!;
+                final xv = item.abilityExtraValue;
+                final xd = item.abilityExtraDuration;
+                modParts.add(switch (xe) {
+                  AbilityEffect.stun => 'Stun ${xd}r',
+                  AbilityEffect.dot => 'DoT $xv%/r for ${xd}r',
+                  AbilityEffect.attackBonus => '+$xv ATK for ${xd}r',
+                  AbilityEffect.acBonus => '+$xv AC for ${xd}r',
+                  AbilityEffect.aura => 'Aura $xv% HP/r for ${xd}r',
+                  AbilityEffect.debuffWeaken => 'Weaken $xv% for ${xd}r',
+                  AbilityEffect.debuffVulnerable => 'Vuln $xv% for ${xd}r',
+                  AbilityEffect.dodge => 'Dodge next hit',
+                  AbilityEffect.heal => 'Heal $xv% HP',
+                  AbilityEffect.bonusDamage => '+$xv bonus dmg',
+                });
+              }
+              return Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: badgeColor.withValues(alpha: 0.08),
+                  border: Border.all(color: badgeColor.withValues(alpha: 0.5)),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(children: [
+                      Text('★ Unique — $classLabel only',
+                          style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                              color: badgeColor)),
+                      if (wrongClass) ...[
+                        const SizedBox(width: 6),
+                        const Text('(wrong class)',
+                            style: TextStyle(
+                                fontSize: 10, color: Color(0xFFcc4444))),
+                      ],
+                    ]),
+                    const SizedBox(height: 2),
+                    Text(
+                      'Enhances: ${item.uniqueAbilityId!.replaceAll('_', ' ')}',
+                      style: TextStyle(
+                          fontSize: 11,
+                          color: badgeColor.withValues(alpha: 0.8)),
+                    ),
+                    if (modParts.isNotEmpty) ...[
+                      const SizedBox(height: 2),
+                      Text(
+                        modParts.join(' • '),
+                        style: TextStyle(
+                            fontSize: 11,
+                            color: badgeColor.withValues(alpha: 0.8)),
+                      ),
+                    ],
+                  ],
+                ),
+              );
+            }),
+          ],
+
           const SizedBox(height: 12),
 
           // Comparison header if applicable
-          if (compareWith != null)
-            Padding(
-              padding: const EdgeInsets.only(bottom: 6),
+          if (compareWith != null) ...[
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              decoration: BoxDecoration(
+                color: const Color(0xFF1a1612),
+                border: Border.all(color: const Color(0xFF3a3020)),
+                borderRadius: BorderRadius.circular(3),
+              ),
               child: Row(
                 children: [
-                  Expanded(child: Text('STAT', style: AppTheme.pixelHeading(fontSize: 10, color: AppTheme.textMuted, letterSpacing: 1))),
-                  Text('NEW', style: AppTheme.pixelHeading(fontSize: 10, color: AppTheme.textLight, letterSpacing: 1)),
-                  const SizedBox(width: 32),
-                  Text('EQPD', style: AppTheme.pixelHeading(fontSize: 10, color: AppTheme.textMuted, letterSpacing: 1)),
-                  const SizedBox(width: 32),
-                  SizedBox(width: 36, child: Text('DIFF', style: AppTheme.pixelHeading(fontSize: 10, color: AppTheme.textMuted, letterSpacing: 1), textAlign: TextAlign.right)),
+                  Expanded(
+                      child: Text('STAT',
+                          style: AppTheme.pixelHeading(
+                              fontSize: 9,
+                              color: AppTheme.textMuted,
+                              letterSpacing: 1))),
+                  SizedBox(
+                      width: 38,
+                      child: Text('THIS',
+                          style: AppTheme.pixelHeading(
+                              fontSize: 9,
+                              color: item.rarityColor,
+                              letterSpacing: 1),
+                          textAlign: TextAlign.center)),
+                  const SizedBox(width: 6),
+                  SizedBox(
+                      width: 38,
+                      child: Text('EQPD',
+                          style: AppTheme.pixelHeading(
+                              fontSize: 9,
+                              color: AppTheme.textMuted,
+                              letterSpacing: 1),
+                          textAlign: TextAlign.center)),
+                  const SizedBox(width: 6),
+                  SizedBox(
+                      width: 44,
+                      child: Text('DIFF',
+                          style: AppTheme.pixelHeading(
+                              fontSize: 9,
+                              color: AppTheme.textMuted,
+                              letterSpacing: 1),
+                          textAlign: TextAlign.right)),
                 ],
               ),
             ),
+            const SizedBox(height: 6),
+          ],
 
           // Stat rows
           ...allStats.map((stat) {
-            final nv   = newStats[stat] ?? 0;
-            final ev   = equStats[stat] ?? 0;
+            final nv = newStats[stat] ?? 0;
+            final ev = equStats[stat] ?? 0;
             final diff = nv - ev;
             final diffColor = diff > 0
-                ? const Color(0xFF66cc44)
+                ? const Color(0xFF55ee66)
                 : diff < 0
-                    ? const Color(0xFFcc4444)
+                    ? const Color(0xFFee4444)
                     : AppTheme.textMuted;
             final diffStr = diff > 0 ? '+$diff' : '$diff';
+            final diffIcon = diff > 0
+                ? '▲'
+                : diff < 0
+                    ? '▼'
+                    : '=';
 
             if (compareWith == null) {
               return Padding(
@@ -873,39 +942,69 @@ class _ItemDetailSheetState extends State<_ItemDetailSheet> {
                     const Icon(Icons.add, size: 12, color: Color(0xFF88cc44)),
                     const SizedBox(width: 4),
                     Text('+$nv ${_statName(stat)}',
-                        style: const TextStyle(fontSize: 14, color: AppTheme.textLight)),
+                        style: const TextStyle(
+                            fontSize: 14, color: AppTheme.textLight)),
                   ],
                 ),
               );
             }
 
             return Padding(
-              padding: const EdgeInsets.only(bottom: 4),
+              padding: const EdgeInsets.only(bottom: 3),
               child: Row(
                 children: [
                   Expanded(
                     child: Text(_statName(stat),
-                        style: const TextStyle(fontSize: 13, color: AppTheme.textLight)),
+                        style: const TextStyle(
+                            fontSize: 13, color: AppTheme.textLight)),
                   ),
                   SizedBox(
-                    width: 36,
-                    child: Text(nv > 0 ? '+$nv' : (nv == 0 && equStats.containsKey(stat) ? '—' : '+$nv'),
-                        style: const TextStyle(fontSize: 13, color: AppTheme.textLight),
+                    width: 38,
+                    child: Text(
+                        nv > 0
+                            ? '+$nv'
+                            : (nv == 0 && equStats.containsKey(stat)
+                                ? '—'
+                                : '+$nv'),
+                        style: TextStyle(
+                            fontSize: 13,
+                            color: nv > ev
+                                ? const Color(0xFF55ee66)
+                                : AppTheme.textLight,
+                            fontWeight:
+                                nv > ev ? FontWeight.bold : FontWeight.normal),
                         textAlign: TextAlign.center),
                   ),
-                  const SizedBox(width: 8),
+                  const SizedBox(width: 6),
                   SizedBox(
-                    width: 36,
+                    width: 38,
                     child: Text(ev > 0 ? '+$ev' : '—',
-                        style: const TextStyle(fontSize: 13, color: AppTheme.textMuted),
+                        style: TextStyle(
+                            fontSize: 13,
+                            color: ev > nv
+                                ? const Color(0xFF55ee66)
+                                : AppTheme.textMuted),
                         textAlign: TextAlign.center),
                   ),
-                  const SizedBox(width: 8),
-                  SizedBox(
-                    width: 36,
-                    child: Text(diff != 0 ? diffStr : '=',
-                        style: TextStyle(fontSize: 13, color: diffColor, fontWeight: FontWeight.bold),
-                        textAlign: TextAlign.right),
+                  const SizedBox(width: 6),
+                  Container(
+                    width: 44,
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                    decoration: diff != 0
+                        ? BoxDecoration(
+                            color: diffColor.withValues(alpha: 0.12),
+                            borderRadius: BorderRadius.circular(3),
+                          )
+                        : null,
+                    child: Text(diff != 0 ? '$diffIcon $diffStr' : '=',
+                        style: TextStyle(
+                            fontSize: 11,
+                            color: diffColor,
+                            fontWeight: diff != 0
+                                ? FontWeight.bold
+                                : FontWeight.normal),
+                        textAlign: TextAlign.center),
                   ),
                 ],
               ),
@@ -913,7 +1012,8 @@ class _ItemDetailSheetState extends State<_ItemDetailSheet> {
           }),
 
           // Equipped item keyword (shown below if different)
-          if (compareWith?.keyword != null && compareWith!.keyword != item.keyword)
+          if (compareWith?.keyword != null &&
+              compareWith!.keyword != item.keyword)
             Padding(
               padding: const EdgeInsets.only(top: 4, bottom: 4),
               child: Text(
@@ -925,22 +1025,28 @@ class _ItemDetailSheetState extends State<_ItemDetailSheet> {
           const SizedBox(height: 14),
 
           // ── Gem socket ────────────────────────────────────────────────
-          _GemSocketRow(item: item, game: game, onChanged: () => setState(() {})),
+          _GemSocketRow(
+              item: item, game: game, onChanged: () => setState(() {})),
 
           const SizedBox(height: 14),
           Row(
-            children: actions.map((a) => Padding(
-              padding: const EdgeInsets.only(right: 10),
-              child: TextButton(
-                onPressed: a.onTap,
-                style: TextButton.styleFrom(
-                  foregroundColor: a.color,
-                  side: BorderSide(color: a.color),
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-                ),
-                child: Text(a.label, style: AppTheme.pixelHeading(fontSize: 12, color: a.color)),
-              ),
-            )).toList(),
+            children: actions
+                .map((a) => Padding(
+                      padding: const EdgeInsets.only(right: 10),
+                      child: TextButton(
+                        onPressed: a.onTap,
+                        style: TextButton.styleFrom(
+                          foregroundColor: a.color,
+                          side: BorderSide(color: a.color),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 20, vertical: 10),
+                        ),
+                        child: Text(a.label,
+                            style: AppTheme.pixelHeading(
+                                fontSize: 12, color: a.color)),
+                      ),
+                    ))
+                .toList(),
           ),
         ],
       ),
@@ -948,26 +1054,29 @@ class _ItemDetailSheetState extends State<_ItemDetailSheet> {
   }
 
   String _statName(ItemStat s) => switch (s) {
-    ItemStat.strength     => 'PWR',
-    ItemStat.dexterity    => 'AGI',
-    ItemStat.constitution => 'VIT',
-    ItemStat.intelligence => 'ARC',
-    ItemStat.wisdom       => 'FOC',
-    ItemStat.charisma     => 'FOR',
-    ItemStat.attackBonus  => 'ATK',
-    ItemStat.damageBonus  => 'DMG',
-    ItemStat.armorClass   => 'AC',
-    ItemStat.maxHpPct        => 'MaxHP%',
-    ItemStat.goldPct         => 'Gold%',
-    ItemStat.xpPct           => 'XP%',
-    ItemStat.elemPenetration => 'PEN%',
-  };
+        ItemStat.strength => 'PWR',
+        ItemStat.dexterity => 'AGI',
+        ItemStat.constitution => 'VIT',
+        ItemStat.intelligence => 'ARC',
+        ItemStat.wisdom => 'FOC',
+        ItemStat.charisma => 'FOR',
+        ItemStat.attackBonus => 'ATK',
+        ItemStat.damageBonus => 'DMG',
+        ItemStat.armorClass => 'AC',
+        ItemStat.maxHpPct => 'MaxHP%',
+        ItemStat.goldPct => 'Gold%',
+        ItemStat.xpPct => 'XP%',
+        ItemStat.elemPenetration => 'PEN%',
+        ItemStat.hitChance => 'HIT%',
+        ItemStat.damagePercent => 'DMG%',
+      };
 }
 
 // ── Gem socket row ────────────────────────────────────────────────────────────
 
 class _GemSocketRow extends StatelessWidget {
-  const _GemSocketRow({required this.item, required this.game, required this.onChanged});
+  const _GemSocketRow(
+      {required this.item, required this.game, required this.onChanged});
   final EquipmentItem item;
   final GameState game;
   final VoidCallback onChanged;
@@ -979,29 +1088,48 @@ class _GemSocketRow extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
-        color: gem != null ? gem.color.withValues(alpha: 0.05) : const Color(0xFF231F1B),
-        border: Border.all(color: borderColor.withValues(alpha: gem != null ? 0.5 : 0.3)),
+        color: gem != null
+            ? gem.color.withValues(alpha: 0.05)
+            : const Color(0xFF231F1B),
+        border: Border.all(
+            color: borderColor.withValues(alpha: gem != null ? 0.5 : 0.3)),
         borderRadius: BorderRadius.circular(4),
       ),
       child: Row(children: [
         Text(gem != null ? gem.type.emoji : '◯',
-            style: TextStyle(fontSize: gem != null ? 20 : 16, color: gem != null ? null : AppTheme.textMuted)),
+            style: TextStyle(
+                fontSize: gem != null ? 20 : 16,
+                color: gem != null ? null : AppTheme.textMuted)),
         const SizedBox(width: 10),
-        Expanded(child: gem != null
-            ? Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text(gem.name,
-                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: gem.color)),
-                Text('+${gem.value} ${gem.type.statDescription.replaceFirst('+', '').trim()}',
-                    style: const TextStyle(fontSize: 11, color: AppTheme.textMuted)),
-              ])
-            : Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                const Text('Empty Socket',
-                    style: TextStyle(fontSize: 13, color: AppTheme.textMuted, fontWeight: FontWeight.bold)),
-                Text(game.gemBag.isEmpty
-                    ? 'Craft gems in Forge → Gems tab'
-                    : '${game.gemBag.length} gem(s) available to socket',
-                    style: const TextStyle(fontSize: 11, color: AppTheme.textMuted)),
-              ]),
+        Expanded(
+          child: gem != null
+              ? Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text(gem.name,
+                      style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.bold,
+                          color: gem.color)),
+                  Text(gem.bonusLabelFor(item.slot),
+                      style: TextStyle(
+                          fontSize: 11,
+                          color: (item.slot == ItemSlot.weapon ||
+                                  item.slot == ItemSlot.offHand)
+                              ? const Color(0xFFff6644)
+                              : const Color(0xFF66aaff))),
+                ])
+              : Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  const Text('Empty Socket',
+                      style: TextStyle(
+                          fontSize: 13,
+                          color: AppTheme.textMuted,
+                          fontWeight: FontWeight.bold)),
+                  Text(
+                      game.gemBag.isEmpty
+                          ? 'Craft gems in Forge → Gems tab'
+                          : '${game.gemBag.length} gem(s) available to socket',
+                      style: const TextStyle(
+                          fontSize: 11, color: AppTheme.textMuted)),
+                ]),
         ),
         if (gem != null) ...[
           GestureDetector(
@@ -1009,10 +1137,12 @@ class _GemSocketRow extends StatelessWidget {
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
               decoration: BoxDecoration(
-                border: Border.all(color: const Color(0xFFcc4444).withValues(alpha: 0.6)),
+                border: Border.all(
+                    color: const Color(0xFFcc4444).withValues(alpha: 0.6)),
                 borderRadius: BorderRadius.circular(3),
               ),
-              child: const Text('REMOVE', style: TextStyle(fontSize: 10, color: Color(0xFFcc6666))),
+              child: const Text('REMOVE',
+                  style: TextStyle(fontSize: 10, color: Color(0xFFcc6666))),
             ),
           ),
           const SizedBox(width: 6),
@@ -1024,11 +1154,13 @@ class _GemSocketRow extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
               decoration: BoxDecoration(
                 color: AppTheme.accentGold.withValues(alpha: 0.08),
-                border: Border.all(color: AppTheme.accentGold.withValues(alpha: 0.5)),
+                border: Border.all(
+                    color: AppTheme.accentGold.withValues(alpha: 0.5)),
                 borderRadius: BorderRadius.circular(3),
               ),
               child: Text(gem != null ? 'REPLACE' : 'SOCKET',
-                  style: AppTheme.pixelHeading(fontSize: 10, color: AppTheme.accentGold)),
+                  style: AppTheme.pixelHeading(
+                      fontSize: 10, color: AppTheme.accentGold)),
             ),
           ),
       ]),
@@ -1050,8 +1182,10 @@ class _GemSocketRow extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 14, 16, 8),
               child: Row(children: [
-                Expanded(child: Text('Choose a gem to socket into ${item.name}',
-                    style: const TextStyle(fontSize: 13, color: AppTheme.textLight))),
+                Expanded(
+                    child: Text('Choose a gem to socket into ${item.name}',
+                        style: const TextStyle(
+                            fontSize: 13, color: AppTheme.textLight))),
               ]),
             ),
             const Divider(color: AppTheme.cardBorder, height: 1),
@@ -1076,30 +1210,46 @@ class _GemSocketRow extends StatelessWidget {
                       }
                     },
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 10),
                       decoration: BoxDecoration(
                         color: const Color(0xFF231F1B),
-                        border: Border.all(color: gem.color.withValues(alpha: 0.4)),
+                        border:
+                            Border.all(color: gem.color.withValues(alpha: 0.4)),
                         borderRadius: BorderRadius.circular(4),
                       ),
                       child: Row(children: [
-                        Text(gem.type.emoji, style: const TextStyle(fontSize: 21)),
+                        Text(gem.type.emoji,
+                            style: const TextStyle(fontSize: 21)),
                         const SizedBox(width: 10),
-                        Expanded(child: Column(
+                        Expanded(
+                            child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(gem.name, style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: gem.color)),
-                            Text(gem.type.statDescription, style: const TextStyle(fontSize: 11, color: AppTheme.textMuted)),
+                            Text(gem.name,
+                                style: TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.bold,
+                                    color: gem.color)),
+                            Text(gem.type.elementLabel,
+                                style: const TextStyle(
+                                    fontSize: 11, color: AppTheme.textMuted)),
                           ],
                         )),
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 6, vertical: 2),
                           decoration: BoxDecoration(
                             color: gem.tier.color.withValues(alpha: 0.12),
-                            border: Border.all(color: gem.tier.color.withValues(alpha: 0.4)),
+                            border: Border.all(
+                                color: gem.tier.color.withValues(alpha: 0.4)),
                             borderRadius: BorderRadius.circular(3),
                           ),
-                          child: Text('+${gem.value}', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: gem.tier.color)),
+                          child: Text('+${gem.value}',
+                              style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                  color: gem.tier.color)),
                         ),
                       ]),
                     ),
@@ -1119,15 +1269,20 @@ class _GemSocketRow extends StatelessWidget {
       builder: (_) => AlertDialog(
         backgroundColor: const Color(0xFF2A2623),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
-        title: Text('Remove Gem?', style: AppTheme.pixelHeading(fontSize: 14, color: const Color(0xFFcc4444))),
+        title: Text('Remove Gem?',
+            style: AppTheme.pixelHeading(
+                fontSize: 14, color: const Color(0xFFcc4444))),
         content: Text(
           '${item.gem!.name} will be destroyed. Gems cannot be recovered once removed.',
-          style: const TextStyle(fontSize: 13, color: AppTheme.textLight, height: 1.4),
+          style: const TextStyle(
+              fontSize: 13, color: AppTheme.textLight, height: 1.4),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: Text('CANCEL', style: AppTheme.pixelHeading(fontSize: 11, color: AppTheme.textMuted)),
+            child: Text('CANCEL',
+                style: AppTheme.pixelHeading(
+                    fontSize: 11, color: AppTheme.textMuted)),
           ),
           TextButton(
             onPressed: () {
@@ -1135,7 +1290,9 @@ class _GemSocketRow extends StatelessWidget {
               Navigator.pop(context);
               onChanged();
             },
-            child: Text('DESTROY', style: AppTheme.pixelHeading(fontSize: 11, color: const Color(0xFFcc4444))),
+            child: Text('DESTROY',
+                style: AppTheme.pixelHeading(
+                    fontSize: 11, color: const Color(0xFFcc4444))),
           ),
         ],
       ),
@@ -1148,15 +1305,20 @@ class _GemSocketRow extends StatelessWidget {
       builder: (_) => AlertDialog(
         backgroundColor: const Color(0xFF2A2623),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
-        title: Text('Replace Gem?', style: AppTheme.pixelHeading(fontSize: 14, color: AppTheme.accentGold)),
+        title: Text('Replace Gem?',
+            style: AppTheme.pixelHeading(
+                fontSize: 14, color: AppTheme.accentGold)),
         content: Text(
           '${item.gem!.name} will be destroyed and replaced with ${newGem.name}.',
-          style: const TextStyle(fontSize: 13, color: AppTheme.textLight, height: 1.4),
+          style: const TextStyle(
+              fontSize: 13, color: AppTheme.textLight, height: 1.4),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: Text('CANCEL', style: AppTheme.pixelHeading(fontSize: 11, color: AppTheme.textMuted)),
+            child: Text('CANCEL',
+                style: AppTheme.pixelHeading(
+                    fontSize: 11, color: AppTheme.textMuted)),
           ),
           TextButton(
             onPressed: () {
@@ -1164,7 +1326,9 @@ class _GemSocketRow extends StatelessWidget {
               Navigator.pop(context);
               onChanged();
             },
-            child: Text('REPLACE', style: AppTheme.pixelHeading(fontSize: 11, color: const Color(0xFFcc4444))),
+            child: Text('REPLACE',
+                style: AppTheme.pixelHeading(
+                    fontSize: 11, color: const Color(0xFFcc4444))),
           ),
         ],
       ),

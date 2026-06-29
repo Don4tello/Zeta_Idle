@@ -40,13 +40,43 @@ class QuestScreen extends StatelessWidget {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          // Class header
+          // ── Adventure Questline ────────────────────────────────────
           Container(
             padding: const EdgeInsets.all(12),
-            margin: const EdgeInsets.only(bottom: 16),
+            margin: const EdgeInsets.only(bottom: 10),
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                colors: [Color(0xFF1a1a2e), Color(0xFF231F1B)],
+              ),
+              border: Border.all(color: const Color(0xFFcc88ff).withValues(alpha: 0.5)),
+              borderRadius: BorderRadius.circular(4),
+            ),
+            child: Row(children: [
+              const Text('📜', style: TextStyle(fontSize: 20)),
+              const SizedBox(width: 10),
+              Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text('ADVENTURE QUESTLINE',
+                    style: AppTheme.pixelHeading(
+                        fontSize: 12, color: const Color(0xFFcc88ff), letterSpacing: 2)),
+                const SizedBox(height: 2),
+                Text('Learn every game system on the road to stage 100.',
+                    style: const TextStyle(fontSize: 10, color: AppTheme.textMuted)),
+              ])),
+              Text('${AdventureQuest.allQuests.where((q) => game.questsClaimed[q.id] == true).length}/${AdventureQuest.allQuests.length}',
+                  style: AppTheme.pixelHeading(fontSize: 11, color: const Color(0xFFcc88ff))),
+            ]),
+          ),
+          ...AdventureQuest.allQuests.map((q) => _AdventureQuestCard(quest: q, game: game)),
+
+          const SizedBox(height: 20),
+
+          // ── Class Questline ────────────────────────────────────────
+          Container(
+            padding: const EdgeInsets.all(12),
+            margin: const EdgeInsets.only(bottom: 10),
             decoration: BoxDecoration(
               color: const Color(0xFF231F1B),
-              border: Border.all(color: AppTheme.cardBorder),
+              border: Border.all(color: AppTheme.accentGold.withValues(alpha: 0.4)),
               borderRadius: BorderRadius.circular(4),
             ),
             child: Row(children: [
@@ -54,18 +84,150 @@ class QuestScreen extends StatelessWidget {
                   color: AppTheme.accentGold, size: 22),
               const SizedBox(width: 12),
               Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text(game.hero.heroClass.displayName.toUpperCase(),
+                Text('${game.hero.heroClass.displayName.toUpperCase()} QUESTS',
                     style: AppTheme.pixelHeading(
-                        fontSize: 13, color: AppTheme.accentGold, letterSpacing: 2)),
+                        fontSize: 12, color: AppTheme.accentGold, letterSpacing: 2)),
                 const SizedBox(height: 2),
-                Text('Complete quests to earn permanent rewards.',
-                    style: const TextStyle(fontSize: 11, color: AppTheme.textMuted)),
+                Text('Class-specific challenges for permanent bonuses.',
+                    style: const TextStyle(fontSize: 10, color: AppTheme.textMuted)),
               ]),
             ]),
           ),
-
-          // Quest list
           ...quests.map((q) => _QuestCard(quest: q, game: game)),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Adventure quest card ─────────────────────────────────────────────────────
+
+class _AdventureQuestCard extends StatelessWidget {
+  const _AdventureQuestCard({required this.quest, required this.game});
+  final AdventureQuest quest;
+  final GameState game;
+
+  @override
+  Widget build(BuildContext context) {
+    final claimed  = game.questsClaimed[quest.id] == true;
+    final unlocked = game.isAdventureQuestUnlocked(quest);
+    final condMet  = game.isAdventureQuestMet(quest);
+    final progress = game.adventureQuestProgress(quest);
+    final ratio    = quest.target > 0 ? progress / quest.target : 0.0;
+
+    if (!unlocked && !claimed) {
+      // Show locked placeholder
+      return Container(
+        margin: const EdgeInsets.only(bottom: 6),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        decoration: BoxDecoration(
+          color: const Color(0xFF141210),
+          border: Border.all(color: const Color(0xFF222222)),
+          borderRadius: BorderRadius.circular(4),
+        ),
+        child: Row(children: [
+          const Icon(Icons.lock_outline, size: 14, color: Color(0xFF444444)),
+          const SizedBox(width: 10),
+          Text(quest.title, style: const TextStyle(fontSize: 12, color: Color(0xFF444444))),
+        ]),
+      );
+    }
+
+    final accentColor = claimed
+        ? const Color(0xFF44cc88)
+        : condMet
+            ? const Color(0xFFcc88ff)
+            : const Color(0xFF888888);
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 6),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: claimed
+            ? const Color(0xFF112211)
+            : condMet
+                ? const Color(0xFF1a1428)
+                : const Color(0xFF1a1816),
+        border: Border.all(color: accentColor.withValues(alpha: claimed ? 0.5 : 0.3)),
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(children: [
+            if (claimed)
+              const Text('✓ ', style: TextStyle(fontSize: 13, color: Color(0xFF44cc88)))
+            else
+              Text('${quest.questIndex + 1}. ',
+                  style: TextStyle(fontSize: 11, color: accentColor, fontWeight: FontWeight.bold)),
+            Expanded(
+              child: Text(quest.title,
+                  style: TextStyle(
+                    fontSize: 13, fontWeight: FontWeight.bold,
+                    color: claimed ? const Color(0xFF44cc88) : Colors.white,
+                  )),
+            ),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              decoration: BoxDecoration(
+                color: accentColor.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(3),
+              ),
+              child: Text(quest.chapter,
+                  style: TextStyle(fontSize: 8, color: accentColor, fontWeight: FontWeight.bold)),
+            ),
+          ]),
+          const SizedBox(height: 4),
+          Text(quest.description,
+              style: const TextStyle(fontSize: 11, color: AppTheme.textMuted, height: 1.3)),
+          if (!claimed) ...[
+            const SizedBox(height: 3),
+            Text('💡 ${quest.hint}',
+                style: const TextStyle(fontSize: 10, color: Color(0xFF886644), fontStyle: FontStyle.italic)),
+          ],
+          const SizedBox(height: 8),
+          // Progress bar
+          if (!claimed) ...[
+            Row(children: [
+              Expanded(
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(2),
+                  child: LinearProgressIndicator(
+                    value: ratio.clamp(0.0, 1.0),
+                    minHeight: 5,
+                    backgroundColor: const Color(0xFF2a2a2a),
+                    valueColor: AlwaysStoppedAnimation(accentColor),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Text('$progress/${quest.target}',
+                  style: TextStyle(fontSize: 10, color: accentColor)),
+            ]),
+            const SizedBox(height: 6),
+          ],
+          // Reward + claim button
+          Row(children: [
+            Expanded(
+              child: Text(quest.reward.summary,
+                  style: TextStyle(fontSize: 10,
+                      color: claimed ? const Color(0xFF44cc88).withValues(alpha: 0.5) : const Color(0xFFcc88ff))),
+            ),
+            if (condMet && !claimed)
+              GestureDetector(
+                onTap: () => game.claimAdventureQuest(quest),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF2a1a44),
+                    border: Border.all(color: const Color(0xFFcc88ff)),
+                    borderRadius: BorderRadius.circular(3),
+                  ),
+                  child: Text('CLAIM', style: AppTheme.pixelHeading(
+                      fontSize: 10, color: const Color(0xFFcc88ff))),
+                ),
+              ),
+          ]),
         ],
       ),
     );
@@ -80,11 +242,28 @@ class _QuestCard extends StatelessWidget {
   final GameState game;
 
   static const _conditionLabels = <QuestCondition, String>{
-    QuestCondition.killEnemies:  'Enemies killed',
-    QuestCondition.winBattles:   'Battles won',
-    QuestCondition.reachStage:   'Stage reached',
-    QuestCondition.bossKills:    'Bosses slain',
-    QuestCondition.useAbilities: 'Abilities used',
+    QuestCondition.killEnemies:       'Enemies killed',
+    QuestCondition.winBattles:        'Battles won',
+    QuestCondition.reachStage:        'Stage reached',
+    QuestCondition.bossKills:         'Bosses slain',
+    QuestCondition.useAbilities:      'Abilities used',
+    QuestCondition.dungeonClears:     'Dungeons cleared',
+    QuestCondition.gauntletScore:     'Gauntlet high score',
+    QuestCondition.bossRushClears:    'Boss Rushes completed',
+    QuestCondition.prestigeReach:     'Prestige level',
+    QuestCondition.ascensionReach:    'Ascension level',
+    QuestCondition.equipItem:         'Items equipped',
+    QuestCondition.upgradeAbility:    'Abilities upgraded',
+    QuestCondition.unlockPassive:     'Passives unlocked',
+    QuestCondition.socketGem:         'Gems socketed',
+    QuestCondition.forgeItem:         'Items forged',
+    QuestCondition.completeExpedition:'Expeditions completed',
+    QuestCondition.pvpWins:           'PvP wins',
+    QuestCondition.reachLevel:        'Hero level',
+    QuestCondition.earnGold:          'Gold earned',
+    QuestCondition.earnEssence:       'Essence earned',
+    QuestCondition.collectArtifact:   'Artifacts collected',
+    QuestCondition.endlessStage:      'Endless stage',
   };
 
   @override

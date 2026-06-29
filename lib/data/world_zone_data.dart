@@ -11,6 +11,10 @@ const kWorldZones = <WorldZone>[
     icon: '💀',
     firstStage: 1,
     lastStage: 5,
+    modifier: ZoneModifier(
+      effect: ZoneEffect.enemyRegen, value: 5,
+      label: 'Undead Regen', icon: '💀',
+    ),
   ),
   // ── Act II: The Blighted Wilds (6–10) ──────────────────────────────────────
   WorldZone(
@@ -21,6 +25,10 @@ const kWorldZones = <WorldZone>[
     icon: '🌲',
     firstStage: 6,
     lastStage: 10,
+    modifier: ZoneModifier(
+      effect: ZoneEffect.heroDrain, value: 2,
+      label: 'Toxic Air', icon: '☣',
+    ),
   ),
   // ── Act III: The Infernal Depths (11–15) ───────────────────────────────────
   WorldZone(
@@ -31,6 +39,10 @@ const kWorldZones = <WorldZone>[
     icon: '🔥',
     firstStage: 11,
     lastStage: 15,
+    modifier: ZoneModifier(
+      effect: ZoneEffect.heroDrain, value: 4,
+      label: 'Molten Ground', icon: '🔥',
+    ),
   ),
   // ── Act IV: The Void Expanse (16–20) ───────────────────────────────────────
   WorldZone(
@@ -41,6 +53,10 @@ const kWorldZones = <WorldZone>[
     icon: '🌀',
     firstStage: 16,
     lastStage: 20,
+    modifier: ZoneModifier(
+      effect: ZoneEffect.heroMissChance, value: 15,
+      label: 'Reality Fray', icon: '🌀',
+    ),
   ),
   // ── Act V: Throne of Ruin (21–25) — Rebirth gate ───────────────────────────
   WorldZone(
@@ -51,6 +67,10 @@ const kWorldZones = <WorldZone>[
     icon: '☠',
     firstStage: 21,
     lastStage: 25,
+    modifier: ZoneModifier(
+      effect: ZoneEffect.enemyAtkBonus, value: 2,
+      label: 'Death Aura', icon: '☠',
+    ),
   ),
   // ── Act VI: The Crystal Sanctum (26–30) ────────────────────────────────────
   WorldZone(
@@ -61,6 +81,10 @@ const kWorldZones = <WorldZone>[
     icon: '💎',
     firstStage: 26,
     lastStage: 30,
+    modifier: ZoneModifier(
+      effect: ZoneEffect.enemyAcBonus, value: 2,
+      label: 'Crystal Shell', icon: '💎',
+    ),
   ),
   // ── Act VII: The Shadow Realm (31–35) ──────────────────────────────────────
   WorldZone(
@@ -71,6 +95,10 @@ const kWorldZones = <WorldZone>[
     icon: '🌑',
     firstStage: 31,
     lastStage: 35,
+    modifier: ZoneModifier(
+      effect: ZoneEffect.heroMissChance, value: 20,
+      label: 'Shadow Veil', icon: '🌑',
+    ),
   ),
   // ── Act VIII: The Frozen Wastes (36–40) ────────────────────────────────────
   WorldZone(
@@ -81,6 +109,10 @@ const kWorldZones = <WorldZone>[
     icon: '❄',
     firstStage: 36,
     lastStage: 40,
+    modifier: ZoneModifier(
+      effect: ZoneEffect.heroDrain, value: 5,
+      label: 'Frostbite', icon: '❄',
+    ),
   ),
   // ── Act IX: The Storm Heights (41–45) ──────────────────────────────────────
   WorldZone(
@@ -91,6 +123,10 @@ const kWorldZones = <WorldZone>[
     icon: '⚡',
     firstStage: 41,
     lastStage: 45,
+    modifier: ZoneModifier(
+      effect: ZoneEffect.heroDrain, value: 4,
+      label: 'Lightning Surge', icon: '⚡',
+    ),
   ),
   // ── Act X: The Abyssal Ocean (46–50) ───────────────────────────────────────
   WorldZone(
@@ -101,6 +137,10 @@ const kWorldZones = <WorldZone>[
     icon: '🌊',
     firstStage: 46,
     lastStage: 50,
+    modifier: ZoneModifier(
+      effect: ZoneEffect.enemyAcBonus, value: 3,
+      label: 'Crushing Pressure', icon: '🌊',
+    ),
   ),
   // ── Act XI: The Twilight Labyrinth (51–55) ─────────────────────────────────
   WorldZone(
@@ -111,6 +151,10 @@ const kWorldZones = <WorldZone>[
     icon: '🏛',
     firstStage: 51,
     lastStage: 55,
+    modifier: ZoneModifier(
+      effect: ZoneEffect.heroMissChance, value: 22,
+      label: 'Shifting Walls', icon: '🏛',
+    ),
   ),
   // ── Act XII: The Forgotten Empire (56–60) ──────────────────────────────────
   WorldZone(
@@ -121,6 +165,10 @@ const kWorldZones = <WorldZone>[
     icon: '⚙',
     firstStage: 56,
     lastStage: 60,
+    modifier: ZoneModifier(
+      effect: ZoneEffect.enemyAtkBonus, value: 3,
+      label: 'War Protocol', icon: '⚙',
+    ),
   ),
   // ── Act XIII: The Plaguelands (61–65) ──────────────────────────────────────
   WorldZone(
@@ -131,6 +179,10 @@ const kWorldZones = <WorldZone>[
     icon: '☣',
     firstStage: 61,
     lastStage: 65,
+    modifier: ZoneModifier(
+      effect: ZoneEffect.heroDrain, value: 7,
+      label: 'Infection', icon: '☣',
+    ),
   ),
   // ── Act XIV: The Celestial Ruins (66–70) ───────────────────────────────────
   WorldZone(
@@ -141,6 +193,10 @@ const kWorldZones = <WorldZone>[
     icon: '✨',
     firstStage: 66,
     lastStage: 70,
+    modifier: ZoneModifier(
+      effect: ZoneEffect.enemyRegen, value: 7,
+      label: 'Divine Mending', icon: '✨',
+    ),
   ),
   // ── Act XV: The Dark Matter (71–75) ────────────────────────────────────────
   WorldZone(
@@ -151,6 +207,10 @@ const kWorldZones = <WorldZone>[
     icon: '🕳',
     firstStage: 71,
     lastStage: 75,
+    modifier: ZoneModifier(
+      effect: ZoneEffect.enemyAcBonus, value: 4,
+      label: 'Null Shield', icon: '🕳',
+    ),
   ),
   // ── Act XVI: The Eternal Prison (76–80) ────────────────────────────────────
   WorldZone(
@@ -161,6 +221,10 @@ const kWorldZones = <WorldZone>[
     icon: '⛓',
     firstStage: 76,
     lastStage: 80,
+    modifier: ZoneModifier(
+      effect: ZoneEffect.enemyAtkBonus, value: 4,
+      label: 'Inescapable', icon: '⛓',
+    ),
   ),
   // ── Act XVII: The Abyss Gate (81–85) ───────────────────────────────────────
   WorldZone(
@@ -171,6 +235,10 @@ const kWorldZones = <WorldZone>[
     icon: '🌌',
     firstStage: 81,
     lastStage: 85,
+    modifier: ZoneModifier(
+      effect: ZoneEffect.heroMissChance, value: 25,
+      label: 'Void Terror', icon: '🌌',
+    ),
   ),
   // ── Act XVIII: The Shattered Realm (86–90) ─────────────────────────────────
   WorldZone(
@@ -181,6 +249,10 @@ const kWorldZones = <WorldZone>[
     icon: '💔',
     firstStage: 86,
     lastStage: 90,
+    modifier: ZoneModifier(
+      effect: ZoneEffect.heroDrain, value: 9,
+      label: 'Divine Corruption', icon: '💔',
+    ),
   ),
   // ── Act XIX: The Final Frontier (91–95) ────────────────────────────────────
   WorldZone(
@@ -191,6 +263,10 @@ const kWorldZones = <WorldZone>[
     icon: '🚀',
     firstStage: 91,
     lastStage: 95,
+    modifier: ZoneModifier(
+      effect: ZoneEffect.enemyRegen, value: 10,
+      label: 'Time Distortion', icon: '🚀',
+    ),
   ),
   // ── Act XX: The Omega Throne (96–100) ──────────────────────────────────────
   WorldZone(
@@ -201,6 +277,10 @@ const kWorldZones = <WorldZone>[
     icon: '♾',
     firstStage: 96,
     lastStage: 100,
+    modifier: ZoneModifier(
+      effect: ZoneEffect.enemyAtkBonus, value: 6,
+      label: 'Primordial Fury', icon: '♾',
+    ),
   ),
 ];
 

@@ -1,7 +1,10 @@
 ﻿import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../models/damage_type.dart';
 import '../models/endless_upgrades.dart';
+import '../models/equipment.dart';
 import '../models/hero_model.dart';
+import '../models/passive_tree.dart';
 import '../models/upgrade.dart';
 import '../services/game_state.dart';
 import '../theme/app_theme.dart';
@@ -34,6 +37,8 @@ class StatsGridPanel extends StatelessWidget {
       (abbr: 'CHA', icon: Icons.theater_comedy,   color: EndlessNode.cha.color,          upgradeId: 'cha_1', score: hero.charisma,     mod: hero.chaMod),
     ];
 
+    final keyStats = hero.heroClass.info.keyStats;
+
     Widget row(int from) => Row(
       children: List.generate(3, (i) {
         final d = data[from + i];
@@ -43,15 +48,15 @@ class StatsGridPanel extends StatelessWidget {
           child: Padding(
             padding: EdgeInsets.only(right: i < 2 ? 6 : 0),
             child: _StatCard(
-              abbr:      d.abbr,
-              score:     d.score,
-              modifier:  d.mod,
-              icon:      d.icon,
-              color:     d.color,
-              upgrade:   upgrade,
-              canAfford: canAfford,
-              hero:      hero,
-              onUpgrade: canAfford ? () => game.purchaseUpgrade(upgrade!) : null,
+              abbr:        d.abbr,
+              score:       d.score,
+              icon:        d.icon,
+              color:       d.color,
+              upgrade:     upgrade,
+              canAfford:   canAfford,
+              isKeyAbility: keyStats.contains(d.abbr),
+              hero:        hero,
+              onUpgrade:   canAfford ? () => game.purchaseUpgrade(upgrade!) : null,
             ),
           ),
         );
@@ -93,22 +98,23 @@ class _StatCard extends StatefulWidget {
   const _StatCard({
     required this.abbr,
     required this.score,
-    required this.modifier,
     required this.icon,
     required this.color,
     required this.upgrade,
     required this.canAfford,
+    required this.isKeyAbility,
     required this.hero,
     required this.onUpgrade,
   });
 
   final String     abbr;
   final int        score;
-  final int        modifier;
+
   final IconData   icon;
   final Color      color;
   final Upgrade?   upgrade;
   final bool       canAfford;
+  final bool       isKeyAbility;
   final HeroModel  hero;
   final VoidCallback? onUpgrade;
 
@@ -134,12 +140,12 @@ class _StatCardState extends State<_StatCard>
 
   String get _description {
     switch (widget.abbr) {
-      case 'STR': return 'Improves your attack roll bonus and\nthe bonus damage on every hit.';
-      case 'DEX': return 'Raises Armor Class — the higher your\nAC, the more enemy attacks miss.';
-      case 'CON': return 'Increases maximum Hit Points\nand HP gained each level-up.';
-      case 'INT': return 'Multiplies gold earned from every\nenemy defeated.';
-      case 'WIS': return 'Boosts idle progress rate —\nhow much you earn per tap at rest.';
-      case 'CHA': return 'Increases XP earned from every\nvictory, speeding up level-ups.';
+      case 'STR': return 'Physical Damage % bonus (stat÷4, max 25%).\nScales Physical damage resistance.';
+      case 'DEX': return 'Lightning Damage % bonus (stat÷4, max 25%).\nScales Lightning damage resistance.';
+      case 'CON': return 'Poison Damage % bonus (stat÷4, max 25%).\nScales Poison damage resistance.';
+      case 'INT': return 'Void Damage % bonus (stat÷4, max 25%).\nScales Void damage resistance.';
+      case 'WIS': return 'Cold Damage % bonus (stat÷4, max 25%).\nScales Cold damage resistance.';
+      case 'CHA': return 'Fire Damage % bonus (stat÷4, max 25%).\nScales Fire damage resistance.';
       default:    return '';
     }
   }
@@ -147,12 +153,12 @@ class _StatCardState extends State<_StatCard>
   String get _currentEffect {
     final h = widget.hero;
     switch (widget.abbr) {
-      case 'STR': return 'ATK Bonus +${h.attackBonus}   ·   Dmg Mod +${h.damageMod}';
-      case 'DEX': return 'Armor Class  ${h.armorClass}';
-      case 'CON': return 'Max HP  ${h.maxHealth}';
-      case 'INT': return 'Gold Rate  ×${h.goldRate}';
-      case 'WIS': return 'Idle Rate  ${h.idleRate} / tap';
-      case 'CHA': return 'XP Multiplier  ×${h.xpMultiplier.toStringAsFixed(2)}';
+      case 'STR': return 'Physical Dmg  +${h.damagePctFor(DamageType.physical)}%';
+      case 'DEX': return 'Lightning Dmg  +${h.damagePctFor(DamageType.lightning)}%';
+      case 'CON': return 'Poison Dmg  +${h.damagePctFor(DamageType.poison)}%';
+      case 'INT': return 'Void Dmg  +${h.damagePctFor(DamageType.void_)}%';
+      case 'WIS': return 'Cold Dmg  +${h.damagePctFor(DamageType.cold)}%';
+      case 'CHA': return 'Fire Dmg  +${h.damagePctFor(DamageType.fire)}%';
       default:    return '';
     }
   }
@@ -316,12 +322,18 @@ class _StatCardState extends State<_StatCard>
   @override
   Widget build(BuildContext context) {
     final isMaxed  = widget.upgrade?.isMaxed ?? true;
-    final modSign  = widget.modifier >= 0 ? '+' : '';
-    final modColor = widget.modifier > 0
-        ? widget.color
-        : widget.modifier < 0
-            ? const Color(0xFFcc4444)
-            : AppTheme.textMuted;
+
+    final isKey = widget.isKeyAbility;
+
+    final dmgType = switch (widget.abbr) {
+      'STR' => DamageType.physical,
+      'DEX' => DamageType.lightning,
+      'CON' => DamageType.poison,
+      'INT' => DamageType.void_,
+      'WIS' => DamageType.cold,
+      'CHA' => DamageType.fire,
+      _     => DamageType.physical,
+    };
 
     return AnimatedBuilder(
       animation: _scale,
@@ -329,20 +341,22 @@ class _StatCardState extends State<_StatCard>
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 250),
         decoration: BoxDecoration(
-          // Subtle colour tint when the player can afford the upgrade
           color: widget.canAfford
               ? Color.lerp(AppTheme.cardBg, widget.color, 0.07)!
-              : AppTheme.cardBg,
+              : isKey
+                  ? Color.lerp(AppTheme.cardBg, widget.color, 0.05)!
+                  : AppTheme.cardBg,
           border: Border(
-            left:   BorderSide(color: widget.color, width: widget.canAfford ? 4 : 3),
-            top:    const BorderSide(color: AppTheme.cardBorder),
-            right:  const BorderSide(color: AppTheme.cardBorder),
-            bottom: const BorderSide(color: AppTheme.cardBorder),
+            left:   BorderSide(color: widget.color, width: widget.canAfford ? 4 : isKey ? 4 : 3),
+            top:    BorderSide(color: isKey ? widget.color.withValues(alpha: 0.35) : AppTheme.cardBorder),
+            right:  BorderSide(color: isKey ? widget.color.withValues(alpha: 0.35) : AppTheme.cardBorder),
+            bottom: BorderSide(color: isKey ? widget.color.withValues(alpha: 0.35) : AppTheme.cardBorder),
           ),
-          // Glow when affordable
           boxShadow: widget.canAfford
               ? [BoxShadow(color: widget.color.withValues(alpha: 0.18), blurRadius: 8, spreadRadius: 0)]
-              : null,
+              : isKey
+                  ? [BoxShadow(color: widget.color.withValues(alpha: 0.10), blurRadius: 6, spreadRadius: 0)]
+                  : null,
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -361,39 +375,57 @@ class _StatCardState extends State<_StatCard>
                 ),
                 child: Padding(
                   padding: const EdgeInsets.fromLTRB(4, 10, 4, 8),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
+                  child: Stack(
+                    clipBehavior: Clip.none,
                     children: [
-                      Icon(widget.icon, size: 14, color: widget.color),
-                      const SizedBox(height: 3),
-                      Text(
-                        widget.abbr,
-                        style: AppTheme.pixelHeading(
-                            fontSize: 10, letterSpacing: 0.5, color: widget.color),
+                      Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(widget.icon, size: 14, color: widget.color),
+                          const SizedBox(height: 3),
+                          Text(
+                            widget.abbr,
+                            style: AppTheme.pixelHeading(
+                                fontSize: 10, letterSpacing: 0.5, color: widget.color),
+                          ),
+                          Text(
+                            '${widget.score}',
+                            style: GoogleFonts.pixelifySans(
+                              fontSize: 19,
+                              fontWeight: FontWeight.bold,
+                              color: AppTheme.textLight,
+                            ),
+                          ),
+                          Text(
+                            '${dmgType.emoji} ${dmgType.label}',
+                            style: AppTheme.pixelHeading(
+                                fontSize: 10, letterSpacing: 0, color: dmgType.color),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            'tap for info',
+                            style: AppTheme.pixelHeading(
+                              fontSize: 7,
+                              letterSpacing: 0.3,
+                              color: AppTheme.textMuted.withValues(alpha: 0.5),
+                            ),
+                          ),
+                        ],
                       ),
-                      Text(
-                        '${widget.score}',
-                        style: GoogleFonts.pixelifySans(
-                          fontSize: 19,
-                          fontWeight: FontWeight.bold,
-                          color: AppTheme.textLight,
+                      // ★ badge for key ability scores
+                      if (isKey)
+                        Positioned(
+                          top: -2,
+                          right: 0,
+                          child: Text(
+                            '★',
+                            style: TextStyle(
+                              fontSize: 9,
+                              color: widget.color.withValues(alpha: 0.85),
+                              height: 1,
+                            ),
+                          ),
                         ),
-                      ),
-                      Text(
-                        '$modSign${widget.modifier}',
-                        style: AppTheme.pixelHeading(
-                            fontSize: 10, letterSpacing: 0, color: modColor),
-                      ),
-                      // Small hint nudging the player to tap for info
-                      const SizedBox(height: 4),
-                      Text(
-                        'tap for info',
-                        style: AppTheme.pixelHeading(
-                          fontSize: 7,
-                          letterSpacing: 0.3,
-                          color: AppTheme.textMuted.withValues(alpha: 0.5),
-                        ),
-                      ),
                     ],
                   ),
                 ),
@@ -481,4 +513,148 @@ class _PlusButton extends StatelessWidget {
       ),
     );
   }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// CombatStatsPanel
+// Aggregate view of all combat-relevant derived stats, shown on the SHEET tab.
+// ─────────────────────────────────────────────────────────────────────────────
+
+class CombatStatsPanel extends StatelessWidget {
+  const CombatStatsPanel({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final game = GameStateProvider.of(context);
+    final h    = game.hero;
+    final pt   = game.passiveTree;
+    final inv  = game.inventory;
+
+    final atkTotal  = h.attackBonus
+        + pt.totalOf(PassiveEffect.attackFlat)
+        + inv.totalOf(ItemStat.attackBonus)
+        + inv.totalOf(ItemStat.strength)
+        + game.petAttackBonus + game.skinAttackBonus + game.auraAttackBonus
+        + game.questAttackBonus + game.artifactAttackBonus
+        + game.ascAtkBonus + game.runeAtkBonus + game.allyAtkBonus;
+
+    final dmgFlat   = h.damageMod
+        + pt.totalOf(PassiveEffect.damageFlat)
+        + inv.totalOf(ItemStat.damageBonus)
+        + inv.totalOf(ItemStat.strength)
+        + game.petDamage + game.skinDamage + game.auraDamage
+        + game.questDamageBonus + game.artifactDamageBonus
+        + game.ascDmgBonus + game.runeDmgBonus + game.allyDmgBonus;
+
+    final dmgPct    = pt.totalOf(PassiveEffect.allDamage)
+        + inv.totalOf(ItemStat.damagePercent)
+        + h.levelBonusDamagePct
+        + h.damagePctFor(h.activeDamageType);
+
+    final acTotal   = h.armorClass
+        + pt.totalOf(PassiveEffect.armorFlat)
+        + inv.totalOf(ItemStat.armorClass)
+        + inv.totalOf(ItemStat.dexterity)
+        + game.petArmor + game.skinArmor;
+
+    final hitPct    = inv.totalOf(ItemStat.hitChance);
+    final critPct   = pt.totalOf(PassiveEffect.critChance) + game.prestigeCritBonus;
+    final pierce    = pt.totalOf(PassiveEffect.pierce);
+    final regen     = pt.totalOf(PassiveEffect.regenFlat)
+        + inv.totalOf(ItemStat.constitution) * 3
+        + game.petHpRegen + game.skinHpRegen;
+    final dodge     = pt.totalOf(PassiveEffect.dodgeChance) + game.petDodgeChance;
+    final xpMult    = h.xpMultiplier;
+
+    final power = atkTotal + dmgFlat;
+
+    // Effective DPS estimate: (avg base dmg + power) × (1 + dmgPct/100) × crit factor
+    final avgBase = 4.5 + power;
+    final critFactor = 1.0 + (critPct.clamp(0, 100)) / 100.0 * 1.0;
+    final dps = (avgBase * (1.0 + dmgPct / 100.0) * critFactor).round();
+
+    final stats = [
+      _CS('Est. DPS',   '~$dps / hit',                     const Color(0xFFff4488)),
+      _CS('Power',      '+$power',                        const Color(0xFFff6644)),
+      _CS('DMG Mult',   '+$dmgPct%',                      const Color(0xFFff6633)),
+      _CS('Armor',      '$acTotal',                        const Color(0xFF66aaff)),
+      _CS('Max HP',     '${h.maxHealth}',                  const Color(0xFFff6666)),
+      _CS('HP Regen',   '+$regen / round',                 const Color(0xFF44cc88)),
+      _CS('Hit Chance', hitPct > 0 ? '+$hitPct%' : '—',  const Color(0xFFffcc44)),
+      _CS('Crit Chance',critPct > 0 ? '+$critPct%' : '5% (nat 20)', const Color(0xFFffee44)),
+      _CS('Pierce',     pierce > 0 ? '$pierce AC ignored' : '—', const Color(0xFFffaa44)),
+      _CS('Dodge',      dodge > 0 ? '+$dodge%' : '—',     const Color(0xFF88ffcc)),
+      _CS('XP Mult',    '×${xpMult.toStringAsFixed(2)}',  const Color(0xFF88ddff)),
+      _CS('Lv Milestone', '+${h.levelBonusDamagePct}% DMG', const Color(0xFFaa88ff)),
+    ];
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(bottom: 8),
+          child: Text(
+            'COMBAT STATS',
+            style: AppTheme.pixelHeading(fontSize: 11, letterSpacing: 2, color: AppTheme.textMuted),
+          ),
+        ),
+        Container(
+          decoration: BoxDecoration(
+            color: AppTheme.cardBg,
+            border: Border.all(color: AppTheme.cardBorder),
+            borderRadius: BorderRadius.circular(4),
+          ),
+          child: Column(
+            children: List.generate(stats.length, (i) {
+              final s = stats[i];
+              final isLast = i == stats.length - 1;
+              return Container(
+                decoration: BoxDecoration(
+                  border: isLast ? null : const Border(
+                    bottom: BorderSide(color: AppTheme.cardBorder, width: 0.5),
+                  ),
+                ),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 4,
+                      height: 14,
+                      decoration: BoxDecoration(
+                        color: s.color,
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        s.label,
+                        style: const TextStyle(fontSize: 13, color: AppTheme.textMuted),
+                      ),
+                    ),
+                    Text(
+                      s.value,
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.bold,
+                        color: s.color,
+                        fontFamily: GoogleFonts.sourceCodePro().fontFamily,
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            }),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _CS {
+  const _CS(this.label, this.value, this.color);
+  final String label;
+  final String value;
+  final Color  color;
 }

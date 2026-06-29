@@ -1,35 +1,138 @@
-import 'package:flutter/material.dart';
+import 'dart:math';
 
-enum ExpeditionType { goldRun, shardHunt, essenceDelve, relicSearch }
+enum LocationBiome {
+  graveyard, cave, temple, fortress, ruin, dungeon, catacombs, sanctum, barrows, highPass;
 
-enum ExpeditionDuration { short, medium, long }
-
-extension ExpeditionTypeInfo on ExpeditionType {
-  String get label => switch (this) {
-    ExpeditionType.goldRun      => 'Gold Run',
-    ExpeditionType.shardHunt    => 'Shard Hunt',
-    ExpeditionType.essenceDelve => 'Essence Delve',
-    ExpeditionType.relicSearch  => 'Relic Search',
+  String get displayName => switch (this) {
+    LocationBiome.graveyard  => 'Graveyard',
+    LocationBiome.cave       => 'Cave',
+    LocationBiome.temple     => 'Temple',
+    LocationBiome.fortress   => 'Fortress',
+    LocationBiome.ruin       => 'Ruin',
+    LocationBiome.dungeon    => 'Dungeon',
+    LocationBiome.catacombs  => 'Catacombs',
+    LocationBiome.sanctum    => 'Sanctum',
+    LocationBiome.barrows    => 'Barrows',
+    LocationBiome.highPass   => 'High Pass',
   };
+
   String get icon => switch (this) {
-    ExpeditionType.goldRun      => '💰',
-    ExpeditionType.shardHunt    => '◆',
-    ExpeditionType.essenceDelve => '✦',
-    ExpeditionType.relicSearch  => '🗺',
+    LocationBiome.graveyard  => '🪦',
+    LocationBiome.cave       => '🗻',
+    LocationBiome.temple     => '🏛',
+    LocationBiome.fortress   => '🏰',
+    LocationBiome.ruin       => '🏚',
+    LocationBiome.dungeon    => '⛓',
+    LocationBiome.catacombs  => '💀',
+    LocationBiome.sanctum    => '✨',
+    LocationBiome.barrows    => '⚰',
+    LocationBiome.highPass   => '🏔',
   };
-  String get rewardLabel => switch (this) {
-    ExpeditionType.goldRun      => 'Gold',
-    ExpeditionType.shardHunt    => 'Shards',
-    ExpeditionType.essenceDelve => 'Essence',
-    ExpeditionType.relicSearch  => 'Gold + Shards',
+
+  String get imagePath => switch (this) {
+    LocationBiome.graveyard  => 'assets/images/exp_graveyard.png',
+    LocationBiome.cave       => 'assets/images/exp_cave.png',
+    LocationBiome.temple     => 'assets/images/exp_temple.png',
+    LocationBiome.fortress   => 'assets/images/exp_fortress.png',
+    LocationBiome.ruin       => 'assets/images/exp_ruin.png',
+    LocationBiome.dungeon    => 'assets/images/exp_dungeon.png',
+    LocationBiome.catacombs  => 'assets/images/exp_catacombs.png',
+    LocationBiome.sanctum    => 'assets/images/exp_sanctum.png',
+    LocationBiome.barrows    => 'assets/images/exp_barrows.png',
+    LocationBiome.highPass   => 'assets/images/exp_highpass.png',
   };
-  Color get color => switch (this) {
-    ExpeditionType.goldRun      => const Color(0xFFFFD700),
-    ExpeditionType.shardHunt    => const Color(0xFF44aaff),
-    ExpeditionType.essenceDelve => const Color(0xFFaaff88),
-    ExpeditionType.relicSearch  => const Color(0xFFff8833),
+
+  String get rewardFocus => switch (this) {
+    LocationBiome.graveyard  => '💰 Gold · ◆ Shards',
+    LocationBiome.cave       => '◆ Shards · ✦ Essence',
+    LocationBiome.temple     => '✦ Essence · 💰 Gold',
+    LocationBiome.fortress   => '💰 Gold · ⬡ Mythril',
+    LocationBiome.ruin       => 'All resources (balanced)',
+    LocationBiome.dungeon    => '◆ Shards · 💎 Crystals',
+    LocationBiome.catacombs  => '✦ Essence · ◆ Shards',
+    LocationBiome.sanctum    => '✦ Essence · 💎 Crystals',
+    LocationBiome.barrows    => '💰 Gold · ✦ Essence',
+    LocationBiome.highPass   => '⬡ Mythril · 🔊 Echoes',
   };
 }
+
+class ExpeditionLocation {
+  const ExpeditionLocation({
+    required this.name,
+    required this.biome,
+    required this.seed,
+  });
+
+  final String name;
+  final LocationBiome biome;
+  final int seed;
+
+  static const _prefixes = [
+    'Tomb of',   'Ruins of',  'Shadow',   'Forsaken',
+    'Ancient',   'Cursed',    'Lost',     'Dark',
+    'Sunken',    'Haunted',   'Fallen',   'Blighted',
+  ];
+
+  static const _nouns = [
+    'Graveyard', 'Cave',      'Temple',   'Fortress',
+    'Ruin',      'Dungeon',   'Catacombs','Sanctum',
+    'Crypt',     'Citadel',   'Barrows',  'Vault',
+    'High Pass', 'Grounds',
+  ];
+
+  static const _biomeMap = <String, LocationBiome>{
+    'Graveyard':  LocationBiome.graveyard,
+    'Cave':       LocationBiome.cave,
+    'Temple':     LocationBiome.temple,
+    'Fortress':   LocationBiome.fortress,
+    'Ruin':       LocationBiome.ruin,
+    'Dungeon':    LocationBiome.dungeon,
+    'Catacombs':  LocationBiome.catacombs,
+    'Sanctum':    LocationBiome.sanctum,
+    'Crypt':      LocationBiome.catacombs,
+    'Citadel':    LocationBiome.fortress,
+    'Barrows':    LocationBiome.barrows,
+    'Vault':      LocationBiome.dungeon,
+    'High Pass':  LocationBiome.highPass,
+    'Grounds':    LocationBiome.barrows,
+  };
+
+  static List<ExpeditionLocation> daily(int daySeed, {int count = 4}) {
+    final rng = Random(daySeed * 7919);
+    final used = <LocationBiome>{};
+    final result = <ExpeditionLocation>[];
+    var attempts = 0;
+    while (result.length < count && attempts < 80) {
+      attempts++;
+      final prefix = _prefixes[rng.nextInt(_prefixes.length)];
+      final noun   = _nouns[rng.nextInt(_nouns.length)];
+      final biome  = _biomeMap[noun] ?? LocationBiome.ruin;
+      if (used.contains(biome)) continue;
+      used.add(biome);
+      result.add(ExpeditionLocation(
+        name:  '$prefix $noun',
+        biome: biome,
+        seed:  rng.nextInt(10000),
+      ));
+    }
+    return result;
+  }
+
+  Map<String, dynamic> toJson() => {
+    'name':  name,
+    'biome': biome.name,
+    'seed':  seed,
+  };
+
+  factory ExpeditionLocation.fromJson(Map<String, dynamic> json) =>
+      ExpeditionLocation(
+        name:  json['name']  as String,
+        biome: LocationBiome.values.byName(json['biome'] as String),
+        seed:  json['seed']  as int,
+      );
+}
+
+enum ExpeditionDuration { short, medium, long }
 
 extension ExpeditionDurationInfo on ExpeditionDuration {
   String get label => switch (this) {
@@ -51,12 +154,14 @@ extension ExpeditionDurationInfo on ExpeditionDuration {
 
 class Expedition {
   const Expedition({
-    required this.type,
+    required this.mercId,
+    required this.location,
     required this.duration,
     required this.startEpochMs,
   });
 
-  final ExpeditionType type;
+  final String mercId;
+  final ExpeditionLocation location;
   final ExpeditionDuration duration;
   final int startEpochMs;
 
@@ -74,14 +179,18 @@ class Expedition {
   }
 
   Map<String, dynamic> toJson() => {
-    'type': type.name,
-    'duration': duration.name,
+    'mercId':       mercId,
+    'location':     location.toJson(),
+    'duration':     duration.name,
     'startEpochMs': startEpochMs,
   };
 
   factory Expedition.fromJson(Map<String, dynamic> json) => Expedition(
-    type: ExpeditionType.values.byName(json['type'] as String),
-    duration: ExpeditionDuration.values.byName(json['duration'] as String),
+    mercId:   json['mercId']       as String? ?? 'greybeard',
+    location: json['location'] != null
+        ? ExpeditionLocation.fromJson(json['location'] as Map<String, dynamic>)
+        : const ExpeditionLocation(name: 'Lost Ruin', biome: LocationBiome.ruin, seed: 0),
+    duration:     ExpeditionDuration.values.byName(json['duration'] as String),
     startEpochMs: json['startEpochMs'] as int,
   );
 }

@@ -1,44 +1,68 @@
 import 'damage_type.dart';
 import 'dnd_class.dart';
 
+enum HeroGender {
+  male,
+  female,
+  nonBinary;
+
+  String get icon => switch (this) {
+    HeroGender.male      => '♂',
+    HeroGender.female    => '♀',
+    HeroGender.nonBinary => '⚧',
+  };
+
+  String get label => switch (this) {
+    HeroGender.male      => 'Male',
+    HeroGender.female    => 'Female',
+    HeroGender.nonBinary => 'Non-Binary',
+  };
+
+  static HeroGender? tryParse(String? s) =>
+      HeroGender.values.where((v) => v.name == s).firstOrNull;
+}
+
 const int kStatCap = 100;
 
 class HeroModel {
   HeroModel({
     required this.name,
     this.heroClass = DndClass.fighter,
+    this.gender = HeroGender.male,
     this.level = 1,
     this.experience = 0,
     this.experienceToNextLevel = 100,
-    this.strength = 10,
-    this.dexterity = 10,
-    this.constitution = 12,
-    this.intelligence = 10,
-    this.wisdom = 10,
-    this.charisma = 10,
+    this.strength = 5,
+    this.dexterity = 5,
+    this.constitution = 6,
+    this.intelligence = 5,
+    this.wisdom = 5,
+    this.charisma = 5,
     int? currentHealth,
-  }) : currentHealth = currentHealth ?? (10 + _calcConMod(12));
-
-  static int _calcConMod(int con) => (con - 10) ~/ 2;
+  }) : currentHealth = currentHealth ?? 100;
 
   String name;
   DndClass heroClass;
+  HeroGender gender;
   int level;
   int experience;
   int experienceToNextLevel;
 
   // Core attributes (stored under legacy names for save compatibility)
-  int strength;     // POWER    — attack rolls and damage
-  int dexterity;    // AGILITY  — armor class and dodge
-  int constitution; // VITALITY — max HP and post-battle regen
-  int intelligence; // ARCANE   — gold multiplier and item synergies
-  int wisdom;       // FOCUS    — idle gold rate
-  int charisma;     // FORTUNE  — XP gain and crit chance
+  int strength;     // POWER    — Physical Damage % and resistance
+  int dexterity;    // AGILITY  — Lightning Damage % and resistance
+  int constitution; // VITALITY — Poison Damage % and resistance
+  int intelligence; // ARCANE   — Void Damage % and resistance
+  int wisdom;       // FOCUS    — Cold Damage % and resistance
+  int charisma;     // FORTUNE  — Fire Damage % and resistance
 
   int currentHealth;
 
   // Applied by HeroTrait chosen at character creation (+/- %)
   int extraHpPct = 0;
+
+  // +10% damage per 10 hero levels (permanent, additive with other % bonuses)
+  int levelBonusDamagePct = 0;
 
   // ── Elemental damage system ────────────────────────────────────────────────
   // classElement unlocks at level 5 (auto).
@@ -48,12 +72,12 @@ class HeroModel {
   bool dualMasteryUnlocked  = false;
 
   // ── Modern display aliases ─────────────────────────────────────
-  int get power    => strength;
-  int get agility  => dexterity;
-  int get vitality => constitution;
-  int get arcane   => intelligence;
-  int get focus    => wisdom;
-  int get fortune  => charisma;
+  int get power    => strength;     // Physical Damage %
+  int get agility  => dexterity;    // Lightning Damage %
+  int get vitality => constitution; // Poison Damage %
+  int get arcane   => intelligence; // Void Damage %
+  int get focus    => wisdom;       // Cold Damage %
+  int get fortune  => charisma;     // Fire Damage %
 
   // ── Raw modifiers (used internally by formulas) ─────────────────
   int get strMod => (strength - 10) ~/ 2;
@@ -67,30 +91,44 @@ class HeroModel {
   int get proficiencyBonus => 2 + (level - 1) ~/ 4;
 
   // ── Derived combat stats ───────────────────────────────────────
-  // Attack bonus = POWER mod + proficiency
-  int get attackBonus => strMod + proficiencyBonus;
+  // Attack bonus = proficiency only (stats no longer contribute)
+  int get attackBonus => proficiencyBonus;
 
-  // Damage bonus = POWER mod
-  int get damageMod => strMod;
+  // Flat damage scales with level (+1 per 2 levels); % damage via damagePctFor
+  int get damageMod => level ~/ 2;
 
-  // Max HP: VITALITY × 8 base + (5 + VITALITY mod) per level
-  // Larger pool means early fights last 10–20 rounds before upgrades.
+  // Max HP: level-based + Vitality (CON) scaling
   int get maxHealth {
-    final base = (30 + constitution * 8) + (level - 1) * (5 + conMod).clamp(1, 99);
-    return (base * (100 + extraHpPct) / 100).round().clamp(1, 9999);
+    final base = 100 + (level - 1) * 20;
+    final vitalityBonus = constitution; // +1% max HP per point of CON
+    return (base * (100 + extraHpPct + vitalityBonus) / 100).round().clamp(1, 99999);
   }
 
-  // Armor class = 10 + AGILITY mod
-  int get armorClass => 10 + dexMod;
+  // Armor class = flat 10; DEX no longer boosts AC (use passives/items)
+  int get armorClass => 10;
 
-  // Idle rate = 5 + FOCUS mod
-  int get idleRate => 5 + wisMod.clamp(-4, 99);
+  // Idle rate = flat 5; WIS no longer boosts idle rate (use passives/items)
+  int get idleRate => 5;
 
-  // Gold multiplier = ARCANE mod (each point of INT above 10 adds 1 gold tier)
-  int get goldRate => 1 + intMod.clamp(0, 99);
+  // Gold multiplier = flat 1; INT no longer boosts gold (use passives/items)
+  int get goldRate => 1;
 
-  // XP multiplier = FORTUNE gives 5% per point of CHA modifier
-  double get xpMultiplier => 1.0 + chaMod * 0.05;
+  // XP multiplier = flat 1.0; CHA no longer boosts XP (use passives/items)
+  double get xpMultiplier => 1.0;
+
+  // Elemental damage % from each stat: stat * 25 / 100 → 0–25% at stat 0–100
+  // STR→Physical, DEX→Lightning, CON→Poison, INT→Void, WIS→Cold, CHA→Fire
+  int damagePctFor(DamageType type) {
+    final stat = switch (type) {
+      DamageType.physical  => strength,
+      DamageType.lightning => dexterity,
+      DamageType.poison    => constitution,
+      DamageType.void_     => intelligence,
+      DamageType.cold      => wisdom,
+      DamageType.fire      => charisma,
+    };
+    return stat * 25 ~/ 100;
+  }
 
   // Battle sprite ID based on chosen class
   String get spriteId => heroClass.spriteId;
@@ -112,8 +150,10 @@ class HeroModel {
 
   List<DamageType> get availableDamageTypes {
     final types = [DamageType.physical];
-    if (classElementUnlocked) types.add(heroClass.info.classElement);
-    if (dualMasteryUnlocked)  types.add(heroClass.info.secondaryElement);
+    final ce = heroClass.info.classElement;
+    final se = heroClass.info.secondaryElement;
+    if (classElementUnlocked && !types.contains(ce)) types.add(ce);
+    if (dualMasteryUnlocked && !types.contains(se)) types.add(se);
     return types;
   }
 
@@ -160,13 +200,14 @@ class HeroModel {
 
   void levelUp() {
     level += 1;
-    experienceToNextLevel = (experienceToNextLevel * 1.22).round();
+    experienceToNextLevel = (experienceToNextLevel * 1.08).round();
 
     // Grant automatic stat growth on every level-up
     _applyStat(_primaryStat[heroClass] ?? 'strength', 1);
     if (level % 2 == 0) _applyStat(_secondaryStat[heroClass] ?? 'constitution', 1);
     if (level % 3 == 0) constitution = (constitution + 1).clamp(0, kStatCap);
 
+    if (level % 10 == 0) levelBonusDamagePct += 10;
     currentHealth = maxHealth; // full heal on level-up
   }
 
@@ -200,6 +241,7 @@ class HeroModel {
   Map<String, dynamic> toJson() => {
     'name': name,
     'heroClass': heroClass.name,
+    'gender': gender.name,
     'level': level,
     'experience': experience,
     'experienceToNextLevel': experienceToNextLevel,
@@ -211,6 +253,7 @@ class HeroModel {
     'charisma': charisma,
     'currentHealth': currentHealth,
     'extraHpPct': extraHpPct,
+    'levelBonusDamagePct': levelBonusDamagePct,
     'activeDamageTypeIndex': activeDamageTypeIndex,
     'dualMasteryUnlocked': dualMasteryUnlocked,
   };
@@ -218,6 +261,7 @@ class HeroModel {
   void loadFromJson(Map<String, dynamic> json) {
     name      = (json['name']      as String?) ?? name;
     heroClass = DndClass.tryParse(json['heroClass'] as String?) ?? DndClass.fighter;
+    gender    = HeroGender.tryParse(json['gender'] as String?) ?? HeroGender.male;
     level = json['level'] as int;
     experience = json['experience'] as int;
     experienceToNextLevel = json['experienceToNextLevel'] as int;
@@ -229,6 +273,7 @@ class HeroModel {
     wisdom       = (json['wisdom']       as int?) ?? 10;
     charisma     = (json['charisma']     as int?) ?? 10;
     extraHpPct             = (json['extraHpPct']             as int?)  ?? 0;
+    levelBonusDamagePct    = (json['levelBonusDamagePct']    as int?)  ?? 0;
     activeDamageTypeIndex  = (json['activeDamageTypeIndex']  as int?)  ?? 0;
     dualMasteryUnlocked    = (json['dualMasteryUnlocked']    as bool?) ?? false;
     currentHealth = (json['currentHealth'] as int?) ?? maxHealth;

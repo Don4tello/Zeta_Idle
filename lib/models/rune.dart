@@ -60,7 +60,7 @@ class RuneDef {
       slot: RuneSlot.weapon,
       icon: '🔴',
       color: Color(0xFFff4422),
-      description: '+3 attack roll for 20 min.',
+      description: '+3 critical damage for 20 min.',
       durationMinutes: 20,
       dustCost: 5,
       atkBonus: 3,

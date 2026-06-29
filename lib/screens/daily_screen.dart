@@ -3,6 +3,7 @@ import '../models/daily_challenge.dart';
 import '../services/game_state.dart';
 import '../theme/app_theme.dart';
 import '../widgets/section_card.dart';
+import 'main_shell.dart' show TutorialTip;
 
 class DailyScreen extends StatelessWidget {
   const DailyScreen({super.key});
@@ -33,6 +34,12 @@ class DailyScreen extends StatelessWidget {
               ],
             ),
           ),
+          if (game.hasClaimableDaily)
+            TextButton(
+              onPressed: () => game.claimAllDailies(),
+              child: Text('CLAIM ALL',
+                  style: AppTheme.pixelHeading(fontSize: 10, color: const Color(0xFF55cc88))),
+            ),
         ],
       ),
       body: SingleChildScrollView(
@@ -40,11 +47,19 @@ class DailyScreen extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            TutorialTip(
+              tutorialKey: 'daily',
+              game: game,
+              text: 'Complete daily challenges to earn gold, shards, essence, and crystals. '
+                  'All 7 challenges reset each day. Complete them all for a bonus chest!',
+            ),
             _OverallProgress(claimed: claimed, total: total),
             const SizedBox(height: 14),
             _DailyChestCard(game: game, claimed: claimed, total: total),
             const SizedBox(height: 14),
-            ...game.dailyChallenges.asMap().entries.map((e) => Padding(
+            ...game.dailyChallenges.asMap().entries
+                .where((e) => !e.value.claimed)
+                .map((e) => Padding(
               padding: const EdgeInsets.only(bottom: 10),
               child: _ChallengeCard(
                 challenge: e.value,
@@ -133,6 +148,81 @@ class _DailyChestCard extends StatelessWidget {
   final GameState game;
   final int claimed, total;
 
+  void _showChestReward(BuildContext context) {
+    showDialog<void>(
+      context: context,
+      barrierDismissible: true,
+      barrierColor: Colors.black.withValues(alpha: 0.85),
+      builder: (dialogCtx) => Center(
+        child: Material(
+          color: Colors.transparent,
+          child: TweenAnimationBuilder<double>(
+            tween: Tween(begin: 0.0, end: 1.0),
+            duration: const Duration(milliseconds: 800),
+            curve: Curves.easeOutCubic,
+            builder: (ctx, t, child) {
+              return Opacity(
+                opacity: t.clamp(0.0, 1.0),
+                child: Transform.scale(
+                  scale: 0.8 + 0.2 * t,
+                  child: child,
+                ),
+              );
+            },
+            child: Container(
+              constraints: const BoxConstraints(maxWidth: 300),
+              padding: const EdgeInsets.symmetric(horizontal: 36, vertical: 28),
+              decoration: BoxDecoration(
+                color: const Color(0xFF241910),
+                border: Border.all(color: AppTheme.accentGold, width: 2),
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text('🎁', style: TextStyle(fontSize: 38)),
+                  const SizedBox(height: 8),
+                  Text('DAILY CHEST',
+                      style: AppTheme.pixelHeading(fontSize: 22, letterSpacing: 3, color: AppTheme.accentGold)),
+                  const SizedBox(height: 20),
+                  _chestRow('💰', '+1,000 GOLD', const Color(0xFFffd700)),
+                  const SizedBox(height: 8),
+                  _chestRow('💎', '+150 CRYSTALS', const Color(0xFF44ddcc)),
+                  const SizedBox(height: 8),
+                  _chestRow('◆', '+75 SHARDS', const Color(0xFF80d0ff)),
+                  const SizedBox(height: 8),
+                  _chestRow('✦', '+50 ESSENCE', const Color(0xFF88cc44)),
+                  const SizedBox(height: 20),
+                  ElevatedButton(
+                    onPressed: () => Navigator.pop(dialogCtx),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppTheme.accentGold,
+                      foregroundColor: Colors.black,
+                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                    ),
+                    child: const Text('COLLECT',
+                        style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, letterSpacing: 1)),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  static Widget _chestRow(String icon, String label, Color color) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(icon, style: const TextStyle(fontSize: 16)),
+        const SizedBox(width: 8),
+        Text(label, style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: color, letterSpacing: 1)),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final ready    = game.dailyChestAvailable;
@@ -196,7 +286,10 @@ class _DailyChestCard extends StatelessWidget {
           ),
           if (ready)
             GestureDetector(
-              onTap: () => game.claimDailyChest(),
+              onTap: () {
+                game.claimDailyChest();
+                _showChestReward(context);
+              },
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                 decoration: BoxDecoration(

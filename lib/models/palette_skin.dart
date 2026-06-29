@@ -34,7 +34,7 @@ class PaletteSkin {
       PetBonusType.xpPct       => '+$v% XP per kill',
       PetBonusType.hpRegen     => '+$v HP after each victory',
       PetBonusType.idleRate    => '+$v idle rate',
-      PetBonusType.attackBonus => '+$v to attack rolls',
+      PetBonusType.attackBonus => '+$v critical damage',
       PetBonusType.armor       => '+$v AC',
       PetBonusType.damage      => '+$v damage',
       PetBonusType.shardBonus  => '+$v shard per kill',

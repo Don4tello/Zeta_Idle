@@ -1,5 +1,6 @@
 import 'dart:math';
 import '../data/enemy_data.dart';
+import '../models/hero_ability.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Dungeon (roguelite run)
@@ -23,6 +24,100 @@ enum DungeonRoomType {
 enum DungeonConsumableType { healthPotion, damageBoost, ironShield }
 
 enum DungeonBlessingType { attackUp, defenseUp, goldSense, swiftness, toughSkin, bloodthirst }
+
+// ── Shrine Curse/Blessing system ─────────────────────────────────────────────
+
+class ShrineEffect {
+  const ShrineEffect({
+    required this.id,
+    required this.name,
+    required this.icon,
+    required this.description,
+    required this.isCurse,
+    this.atkMod = 0,
+    this.acMod = 0,
+    this.dmgMod = 0,
+    this.hpPctMod = 0.0,
+    this.goldMult = 1.0,
+    this.damageTakenMult = 1.0,
+    this.damageDealtMult = 1.0,
+    this.healMult = 1.0,
+    this.trapDmgMult = 1.0,
+    this.extraLootChance = 0.0,
+  });
+
+  final String id, name, icon, description;
+  final bool isCurse;
+  final int atkMod, acMod, dmgMod;
+  final double hpPctMod, goldMult, damageTakenMult, damageDealtMult;
+  final double healMult, trapDmgMult, extraLootChance;
+
+  static const pool = <ShrineEffect>[
+    // ── BLESSINGS (10) ──────────────────────────────────────────────────────
+    ShrineEffect(id: 'b_warrior', name: "Warrior's Blessing", icon: '⚔',
+      description: '+4 ATK for the rest of the run.',
+      isCurse: false, atkMod: 4),
+    ShrineEffect(id: 'b_iron', name: 'Iron Skin', icon: '🛡',
+      description: '+4 Armor for the rest of the run.',
+      isCurse: false, acMod: 4),
+    ShrineEffect(id: 'b_fury', name: 'Blessed Fury', icon: '🔥',
+      description: 'Deal 30% more damage.',
+      isCurse: false, damageDealtMult: 1.3),
+    ShrineEffect(id: 'b_fortune', name: "Fortune's Favor", icon: '💰',
+      description: '2× gold from all rooms.',
+      isCurse: false, goldMult: 2.0),
+    ShrineEffect(id: 'b_vitality', name: 'Vitality Surge', icon: '❤',
+      description: 'Restore 30% of max HP.',
+      isCurse: false, hpPctMod: 0.3),
+    ShrineEffect(id: 'b_nimble', name: 'Nimble Step', icon: '💨',
+      description: 'Traps deal 50% less damage.',
+      isCurse: false, trapDmgMult: 0.5),
+    ShrineEffect(id: 'b_treasure', name: 'Treasure Sense', icon: '✦',
+      description: '25% chance for bonus loot from combat.',
+      isCurse: false, extraLootChance: 0.25),
+    ShrineEffect(id: 'b_regen', name: 'Sacred Renewal', icon: '🌿',
+      description: 'Healing effects are 50% stronger.',
+      isCurse: false, healMult: 1.5),
+    ShrineEffect(id: 'b_power', name: 'Power Surge', icon: '⚡',
+      description: '+6 flat damage per hit.',
+      isCurse: false, dmgMod: 6),
+    ShrineEffect(id: 'b_guardian', name: "Guardian's Embrace", icon: '🛡',
+      description: 'Take 20% less damage from all sources.',
+      isCurse: false, damageTakenMult: 0.8),
+
+    // ── CURSES (10) ─────────────────────────────────────────────────────────
+    ShrineEffect(id: 'c_greed', name: 'Curse of Greed', icon: '💰',
+      description: '3× gold... but take 25% more damage.',
+      isCurse: true, goldMult: 3.0, damageTakenMult: 1.25),
+    ShrineEffect(id: 'c_glass', name: 'Glass Cannon', icon: '💥',
+      description: 'Deal 50% more damage but take 40% more.',
+      isCurse: true, damageDealtMult: 1.5, damageTakenMult: 1.4),
+    ShrineEffect(id: 'c_frailty', name: 'Curse of Frailty', icon: '💀',
+      description: '-3 Armor, but +5 ATK.',
+      isCurse: true, acMod: -3, atkMod: 5),
+    ShrineEffect(id: 'c_blood', name: 'Blood Price', icon: '🩸',
+      description: 'Lose 20% of current HP. Gain 2× gold.',
+      isCurse: true, hpPctMod: -0.2, goldMult: 2.0),
+    ShrineEffect(id: 'c_decay', name: 'Creeping Decay', icon: '☠',
+      description: 'Healing reduced by 50%. Extra loot from combat.',
+      isCurse: true, healMult: 0.5, extraLootChance: 0.3),
+    ShrineEffect(id: 'c_burden', name: 'Heavy Burden', icon: '⛓',
+      description: '-4 ATK, but traps deal no damage.',
+      isCurse: true, atkMod: -4, trapDmgMult: 0.0),
+    ShrineEffect(id: 'c_wrath', name: "Dragon's Wrath", icon: '🐉',
+      description: 'Take 30% more damage. Deal 40% more.',
+      isCurse: true, damageTakenMult: 1.3, damageDealtMult: 1.4),
+    ShrineEffect(id: 'c_famine', name: 'Curse of Famine', icon: '🍂',
+      description: 'Gold reduced by 50%. +8 flat damage.',
+      isCurse: true, goldMult: 0.5, dmgMod: 8),
+    ShrineEffect(id: 'c_shadow', name: 'Shadow Pact', icon: '🌑',
+      description: 'Lose 15% max HP permanently. +40% damage dealt.',
+      isCurse: true, hpPctMod: -0.15, damageDealtMult: 1.4),
+    ShrineEffect(id: 'c_chaos', name: 'Embrace of Chaos', icon: '🌀',
+      description: 'All multipliers randomized. Anything could happen.',
+      isCurse: true, damageDealtMult: 1.25, damageTakenMult: 1.15, goldMult: 1.5, healMult: 0.7),
+  ];
+}
 
 // ── Consumable ────────────────────────────────────────────────────────────────
 
@@ -55,12 +150,12 @@ extension DungeonBlessingLabel on DungeonBlessingType {
     DungeonBlessingType.bloodthirst => '🩸 Bloodthirst',
   };
   String get desc => switch (this) {
-    DungeonBlessingType.attackUp   => '+2 to all attack rolls this run',
+    DungeonBlessingType.attackUp   => '+2 critical damage this run',
     DungeonBlessingType.defenseUp  => '+2 AC for the rest of this run',
     DungeonBlessingType.goldSense  => '+50% gold from combat rooms',
     DungeonBlessingType.swiftness  => 'Hero strikes twice in the first round',
     DungeonBlessingType.toughSkin  => 'Reduce all trap & ambush damage by 40%',
-    DungeonBlessingType.bloodthirst => '+4 to damage rolls for the rest of this run',
+    DungeonBlessingType.bloodthirst => '+4 flat damage for the rest of this run',
   };
 }
 
@@ -156,8 +251,9 @@ class DungeonRoom {
 // ── Run ───────────────────────────────────────────────────────────────────────
 
 class DungeonRun {
-  DungeonRun({required this.heroMaxHp, required this.heroHp});
+  DungeonRun({required this.heroMaxHp, required this.heroHp, this.tier = 1});
 
+  int tier;
   int floor = 1;
   final int heroMaxHp;
   int heroHp;
@@ -169,13 +265,54 @@ class DungeonRun {
   ];
 
   final List<DungeonBlessingType> blessings = [];
+  final List<ShrineEffect> shrineEffects = [];
 
-  int get blessingAtk      => blessings.where((b) => b == DungeonBlessingType.attackUp).length * 2;
-  int get blessingAc       => blessings.where((b) => b == DungeonBlessingType.defenseUp).length * 2;
-  int get blessingDmg      => blessings.where((b) => b == DungeonBlessingType.bloodthirst).length * 4;
-  double get goldBonusMult => 1.0 + blessings.where((b) => b == DungeonBlessingType.goldSense).length * 0.5;
-  double get trapDmgMult   => blessings.contains(DungeonBlessingType.toughSkin) ? 0.6 : 1.0;
-  bool get hasSwiftness    => blessings.contains(DungeonBlessingType.swiftness);
+  int get blessingAtk {
+    var total = blessings.where((b) => b == DungeonBlessingType.attackUp).length * 2;
+    for (final e in shrineEffects) total += e.atkMod;
+    return total;
+  }
+  int get blessingAc {
+    var total = blessings.where((b) => b == DungeonBlessingType.defenseUp).length * 2;
+    for (final e in shrineEffects) total += e.acMod;
+    return total;
+  }
+  int get blessingDmg {
+    var total = blessings.where((b) => b == DungeonBlessingType.bloodthirst).length * 4;
+    for (final e in shrineEffects) total += e.dmgMod;
+    return total;
+  }
+  double get goldBonusMult {
+    var mult = 1.0 + blessings.where((b) => b == DungeonBlessingType.goldSense).length * 0.5;
+    for (final e in shrineEffects) mult *= e.goldMult;
+    return mult;
+  }
+  double get trapDmgMult {
+    var mult = blessings.contains(DungeonBlessingType.toughSkin) ? 0.6 : 1.0;
+    for (final e in shrineEffects) mult *= e.trapDmgMult;
+    return mult;
+  }
+  bool get hasSwiftness => blessings.contains(DungeonBlessingType.swiftness);
+  double get damageDealtMult {
+    var mult = 1.0;
+    for (final e in shrineEffects) mult *= e.damageDealtMult;
+    return mult;
+  }
+  double get damageTakenMult {
+    var mult = 1.0;
+    for (final e in shrineEffects) mult *= e.damageTakenMult;
+    return mult;
+  }
+  double get healMult {
+    var mult = 1.0;
+    for (final e in shrineEffects) mult *= e.healMult;
+    return mult;
+  }
+  double get extraLootChance {
+    var chance = 0.0;
+    for (final e in shrineEffects) chance += e.extraLootChance;
+    return chance;
+  }
 
   bool damageBoostActive = false;
   bool shieldActive      = false;
@@ -195,12 +332,17 @@ class DungeonRun {
   String lastCombatSummary = '';
   int lastDamageDealt = 0;
   int lastDamageTaken = 0;
-  // Extra context for ambush pre-hit shown in UI
   int ambushPreHit = 0;
+
+  // Ability state — persists across rooms so cooldowns carry between fights
+  int abilityRound = 0;
+  final Map<String, int> cooldownUntil = {};
+  List<String> lastAbilityLog = [];
 
   // ── Room generation ──────────────────────────────────────────────────────
 
   double get _floorMult => 1.0 + (floor - 1) * 0.08;
+  double get _tierMult  => 1.0 + (tier  - 1) * 0.30;
 
   // Weighted room type selection — auto-picks one room and sets currentRoom.
   void generateRoomChoices(Random rng) {
@@ -257,8 +399,8 @@ class DungeonRun {
     return DungeonRoom(
       floor: floor, type: DungeonRoomType.combat,
       enemyName: e.name,
-      enemyMaxHp: (e.maxHealth * _floorMult).round(),
-      enemyAtk: (e.attack * _floorMult).round(),
+      enemyMaxHp: (e.maxHealth * _floorMult * _tierMult).round(),
+      enemyAtk: (e.attack * _floorMult * _tierMult).round(),
       enemyAc: e.armorClass + (floor ~/ 5).clamp(0, 6),
     );
   }
@@ -269,8 +411,8 @@ class DungeonRun {
     return DungeonRoom(
       floor: floor, type: DungeonRoomType.elite,
       enemyName: '★ ${e.name}',
-      enemyMaxHp: (e.maxHealth * 1.5 * _floorMult).round(),
-      enemyAtk: (e.attack * 1.4 * _floorMult).round(),
+      enemyMaxHp: (e.maxHealth * 1.5 * _floorMult * _tierMult).round(),
+      enemyAtk: (e.attack * 1.4 * _floorMult * _tierMult).round(),
       enemyAc: e.armorClass + 1 + (floor ~/ 5).clamp(0, 6),
     );
   }
@@ -281,8 +423,8 @@ class DungeonRun {
     return DungeonRoom(
       floor: floor, type: DungeonRoomType.ambush,
       enemyName: e.name,
-      enemyMaxHp: (e.maxHealth * _floorMult).round(),
-      enemyAtk: (e.attack * _floorMult).round(),
+      enemyMaxHp: (e.maxHealth * _floorMult * _tierMult).round(),
+      enemyAtk: (e.attack * _floorMult * _tierMult).round(),
       enemyAc: e.armorClass + (floor ~/ 5).clamp(0, 6),
       isAmbush: true,
     );
@@ -302,8 +444,8 @@ class DungeonRun {
     return DungeonRoom(
       floor: floor, type: DungeonRoomType.boss,
       enemyName: '☠ ${e.name}',
-      enemyMaxHp: (e.maxHealth * 2.5 * _floorMult).round(),
-      enemyAtk: (e.attack * 1.6 * _floorMult).round(),
+      enemyMaxHp: (e.maxHealth * 2.5 * _floorMult * _tierMult).round(),
+      enemyAtk: (e.attack * 1.6 * _floorMult * _tierMult).round(),
       enemyAc: e.armorClass + 2 + (floor ~/ 5).clamp(0, 8),
     );
   }
@@ -326,7 +468,9 @@ class DungeonRun {
 
   DungeonRoom _makeTrapRoom(Random rng) {
     const names = ['Poison Spikes', 'Fire Jet', 'Boulder Trap', 'Arcane Curse', 'Acid Pool', 'Void Rift', 'Shadow Snare'];
-    final rawDmg = (6 + floor * 4).clamp(1, heroMaxHp ~/ 2);
+    // % of max HP: 8% on floor 1, +1.5% per floor, capped at 40%
+    final pct    = (8.0 + floor * 1.5).clamp(8.0, 40.0);
+    final rawDmg = (heroMaxHp * pct / 100).round();
     final dmg = (rawDmg * trapDmgMult).round().clamp(1, heroMaxHp);
     return DungeonRoom(
       floor: floor, type: DungeonRoomType.trap,
@@ -356,15 +500,32 @@ class DungeonRun {
   // ── Combat simulation ─────────────────────────────────────────────────────
 
   /// Resolves a combat, elite, ambush, or boss room.
-  int resolveCombat(DungeonRoom room, int heroAtkBonus, int heroAc,
-      int heroStrMod, Random rng) {
+  /// Pass [abilities], [getCooldown], and [getValue] to fire hero abilities each round.
+  int resolveCombat(
+    DungeonRoom room,
+    int heroAtkBonus,
+    int heroAc,
+    int heroStrMod,
+    Random rng, {
+    List<HeroAbility> abilities = const [],
+    int Function(HeroAbility)? getCooldown,
+    int Function(HeroAbility)? getValue,
+  }) {
     int heroHpLocal  = heroHp;
     int enemyHpLocal = room.enemyMaxHp ?? 10;
-    final effAtk = heroAtkBonus + blessingAtk;
-    final effAc  = heroAc + blessingAc;
-    final eAtk   = room.enemyAtk ?? 5;
-    final eAc    = room.enemyAc  ?? 10;
+    final baseAtk = heroAtkBonus + blessingAtk;
+    final baseAc  = heroAc + blessingAc;
+    final eAtk    = room.enemyAtk ?? 5;
+    final eAc     = room.enemyAc  ?? 10;
 
+    // Per-combat temp state
+    int tempAtkBonus = 0, tempAtkRounds = 0;
+    int tempAcBonus  = 0, tempAcRounds  = 0;
+    bool enemyStunned      = false;
+    int  enemyWeakenRounds = 0; // enemy ATK -30%
+    int  enemyVulnRounds   = 0; // hero deals +25% damage
+
+    lastAbilityLog = [];
     int heroDmg  = 0;
     int enemyDmg = 0;
     int rounds   = 0;
@@ -385,12 +546,81 @@ class DungeonRun {
 
     while (heroHpLocal > 0 && enemyHpLocal > 0 && rounds < 60) {
       rounds++;
+      abilityRound++;
+
+      // ── Fire ready abilities ────────────────────────────────────────────────
+      for (final ability in abilities) {
+        final readyAt = cooldownUntil[ability.id] ?? 0;
+        if (abilityRound < readyAt) continue;
+
+        final sv = getValue?.call(ability) ?? ability.value;
+        cooldownUntil[ability.id] =
+            abilityRound + (getCooldown?.call(ability) ?? ability.cooldownRounds);
+
+        switch (ability.effect) {
+          case AbilityEffect.bonusDamage:
+            final dmg = ((sv * 0.5).round() * (enemyVulnRounds > 0 ? 1.25 : 1.0))
+                .round().clamp(1, 9999);
+            enemyHpLocal -= dmg;
+            heroDmg      += dmg;
+            lastAbilityLog.add('✦ ${ability.name}: $dmg bonus damage!');
+
+          case AbilityEffect.heal:
+            final h = sv.clamp(1, 9999);
+            heroHpLocal = (heroHpLocal + h).clamp(0, heroMaxHp);
+            lastAbilityLog.add('✦ ${ability.name}: healed $h HP.');
+
+          case AbilityEffect.attackBonus:
+            tempAtkBonus  = sv;
+            tempAtkRounds = ability.duration > 0 ? ability.duration : 3;
+            lastAbilityLog.add('✦ ${ability.name}: +$sv ATK for $tempAtkRounds rounds.');
+
+          case AbilityEffect.acBonus:
+            tempAcBonus  = sv;
+            tempAcRounds = ability.duration > 0 ? ability.duration : 3;
+            lastAbilityLog.add('✦ ${ability.name}: +$sv AC for $tempAcRounds rounds.');
+
+          case AbilityEffect.stun:
+            enemyStunned = true;
+            lastAbilityLog.add('✦ ${ability.name}: enemy stunned!');
+
+          case AbilityEffect.dot:
+            final dmg = ((sv * 0.6).round() * (enemyVulnRounds > 0 ? 1.25 : 1.0))
+                .round().clamp(1, 9999);
+            enemyHpLocal -= dmg;
+            heroDmg      += dmg;
+            lastAbilityLog.add('✦ ${ability.name}: $dmg DoT damage!');
+
+          case AbilityEffect.dodge:
+            if (tempAcBonus < 6) { tempAcBonus = 6; tempAcRounds = 1; }
+            lastAbilityLog.add('✦ ${ability.name}: dodge — +6 AC this round.');
+
+          case AbilityEffect.aura:
+            final h = (sv * 0.5).round().clamp(1, 9999);
+            heroHpLocal = (heroHpLocal + h).clamp(0, heroMaxHp);
+            lastAbilityLog.add('✦ ${ability.name}: aura healed $h HP.');
+
+          case AbilityEffect.debuffWeaken:
+            enemyWeakenRounds = 3;
+            lastAbilityLog.add('✦ ${ability.name}: enemy weakened for 3 rounds!');
+
+          case AbilityEffect.debuffVulnerable:
+            enemyVulnRounds = 3;
+            lastAbilityLog.add('✦ ${ability.name}: enemy vulnerable for 3 rounds!');
+        }
+        if (enemyHpLocal <= 0) break;
+      }
+      if (enemyHpLocal <= 0) break;
+
+      // ── Hero attacks ────────────────────────────────────────────────────────
+      final effAtk = baseAtk + tempAtkBonus;
       final strikes = (rounds == 1 && hasSwiftness) ? 2 : 1;
       for (var s = 0; s < strikes; s++) {
         final roll = rng.nextInt(20) + 1;
         if (roll + effAtk >= eAc || roll == 20) {
           var dmg = rng.nextInt(8) + 1 + heroStrMod.clamp(0, 20) + blessingDmg;
           if (damageBoostActive) { dmg *= 3; damageBoostActive = false; }
+          if (enemyVulnRounds > 0) dmg = (dmg * 1.25).round();
           dmg = dmg.clamp(1, 9999);
           enemyHpLocal -= dmg;
           heroDmg      += dmg;
@@ -399,16 +629,27 @@ class DungeonRun {
       }
       if (enemyHpLocal <= 0) break;
 
-      if (shieldActive) {
+      // ── Enemy attacks ───────────────────────────────────────────────────────
+      if (enemyStunned) {
+        enemyStunned = false;
+      } else if (shieldActive) {
         shieldActive = false;
       } else {
-        final eRoll = rng.nextInt(20) + 1;
-        if (eRoll + (eAtk ~/ 8).clamp(0, 12) >= effAc || eRoll == 20) {
-          final dmg = (rng.nextInt(eAtk ~/ 3 + 1) + 1).clamp(1, 9999);
+        final effAc     = baseAc + tempAcBonus;
+        final effEAtk   = enemyWeakenRounds > 0 ? (eAtk * 0.7).round() : eAtk;
+        final eRoll     = rng.nextInt(20) + 1;
+        if (eRoll + (effEAtk ~/ 8).clamp(0, 12) >= effAc || eRoll == 20) {
+          final dmg = (rng.nextInt(effEAtk ~/ 3 + 1) + 1).clamp(1, 9999);
           heroHpLocal -= dmg;
           enemyDmg    += dmg;
         }
       }
+
+      // ── Tick buffs/debuffs at end of round ──────────────────────────────────
+      if (tempAtkRounds > 0) { tempAtkRounds--; if (tempAtkRounds == 0) tempAtkBonus = 0; }
+      if (tempAcRounds  > 0) { tempAcRounds--;  if (tempAcRounds  == 0) tempAcBonus  = 0; }
+      if (enemyWeakenRounds > 0) enemyWeakenRounds--;
+      if (enemyVulnRounds   > 0) enemyVulnRounds--;
     }
 
     lastDamageDealt = heroDmg;

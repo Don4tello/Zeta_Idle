@@ -1,9 +1,12 @@
 ﻿import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import '../screens/aura_shop_screen.dart';
+import '../screens/premium_shop_screen.dart';
+import '../utils/format_number.dart';
 import '../screens/hero_hub_screen.dart';
 import '../screens/inventory_hub_screen.dart';
+import '../screens/guild_screen.dart';
 import '../screens/modes_screen.dart';
+import '../widgets/resource_bar.dart';
 import '../services/game_state.dart';
 import '../services/save_service.dart';
 import '../theme/app_theme.dart';
@@ -69,6 +72,65 @@ class _MainShellState extends State<MainShell> {
     );
   }
 
+  void _showLootLog(BuildContext ctx, GameState game) {
+    showModalBottomSheet(
+      context: ctx,
+      backgroundColor: const Color(0xFF1a1a2e),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(12)),
+      ),
+      builder: (_) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('LOOT LOG', style: AppTheme.pixelHeading(fontSize: 12, letterSpacing: 2, color: AppTheme.accentGold)),
+              const SizedBox(height: 10),
+              if (game.lootHistory.isEmpty)
+                const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 20),
+                  child: Center(child: Text('No loot yet — go fight something!',
+                      style: TextStyle(color: AppTheme.textMuted, fontSize: 12))),
+                )
+              else
+                SizedBox(
+                  height: 300,
+                  child: ListView.builder(
+                    itemCount: game.lootHistory.length,
+                    itemBuilder: (_, i) {
+                      final e = game.lootHistory[i];
+                      final ago = DateTime.now().difference(e.time);
+                      final timeLabel = ago.inMinutes < 1 ? 'just now'
+                          : ago.inMinutes < 60 ? '${ago.inMinutes}m ago'
+                          : '${ago.inHours}h ago';
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 6),
+                        child: Row(children: [
+                          Text(e.icon, style: const TextStyle(fontSize: 14)),
+                          const SizedBox(width: 8),
+                          Expanded(child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(e.text, style: const TextStyle(fontSize: 11, color: Colors.white70)),
+                              if (e.detail != null)
+                                Text(e.detail!, style: const TextStyle(fontSize: 9, color: AppTheme.textMuted)),
+                            ],
+                          )),
+                          Text(timeLabel, style: const TextStyle(fontSize: 9, color: AppTheme.textMuted)),
+                        ]),
+                      );
+                    },
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   void _showOfflineDialog(GameState game) {
     final secs = game.offlineSecondsAway;
     final String timeLabel;
@@ -80,11 +142,11 @@ class _MainShellState extends State<MainShell> {
       timeLabel = '${secs ~/ 60}m';
     }
     final gold = game.offlineGoldEarned;
-    final String goldLabel = gold >= 1000000
-        ? '${(gold / 1000000).toStringAsFixed(1)}M'
-        : gold >= 1000
-            ? '${(gold / 1000).toStringAsFixed(1)}K'
-            : '$gold';
+    final goldLabel = fmtNum(gold);
+
+    final xp   = game.offlineXpEarned;
+    final ess  = game.offlineEssenceEarned;
+    final exps = game.offlineExpeditionsReady;
 
     showDialog<void>(
       context: context,
@@ -99,20 +161,19 @@ class _MainShellState extends State<MainShell> {
             Text('You were away for $timeLabel.',
                 style: const TextStyle(fontSize: 13, color: AppTheme.textMuted)),
             const SizedBox(height: 12),
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: AppTheme.accentGold.withValues(alpha: 0.07),
-                border: Border.all(color: AppTheme.accentGold.withValues(alpha: 0.4)),
-                borderRadius: BorderRadius.circular(4),
-              ),
-              child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                const Text('💰', style: TextStyle(fontSize: 21)),
-                const SizedBox(width: 8),
-                Text('+$goldLabel gold',
-                    style: AppTheme.pixelHeading(fontSize: 17, color: AppTheme.accentGold)),
-              ]),
-            ),
+            _offlineRow('💰', '+$goldLabel gold', AppTheme.accentGold),
+            if (xp > 0) ...[
+              const SizedBox(height: 6),
+              _offlineRow('✨', '+${fmtNum(xp)} XP', const Color(0xFF88aaff)),
+            ],
+            if (ess > 0) ...[
+              const SizedBox(height: 6),
+              _offlineRow('✦', '+$ess essence', const Color(0xFF44dd88)),
+            ],
+            if (exps > 0) ...[
+              const SizedBox(height: 6),
+              _offlineRow('🗺️', '$exps expedition${exps > 1 ? "s" : ""} ready!', const Color(0xFF55cc88)),
+            ],
             const SizedBox(height: 8),
             const Text('Idle income collected while you rested.',
                 style: TextStyle(fontSize: 12, color: AppTheme.textMuted,
@@ -129,72 +190,361 @@ class _MainShellState extends State<MainShell> {
     );
   }
 
-  static const _items = <BottomNavigationBarItem>[
-    BottomNavigationBarItem(
-      icon: Icon(Icons.person_outline, size: 20),
-      activeIcon: Icon(Icons.person, size: 20),
-      label: 'HERO',
-    ),
-    BottomNavigationBarItem(
-      icon: Icon(Icons.games_outlined, size: 20),
-      activeIcon: Icon(Icons.games, size: 20),
-      label: 'MODES',
-    ),
-    BottomNavigationBarItem(
-      icon: Icon(Icons.backpack_outlined, size: 20),
-      activeIcon: Icon(Icons.backpack, size: 20),
-      label: 'INVENTORY',
-    ),
-    BottomNavigationBarItem(
-      icon: Icon(Icons.storefront_outlined, size: 20),
-      activeIcon: Icon(Icons.storefront, size: 20),
-      label: 'SHOP',
-    ),
+  Widget _offlineRow(String emoji, String text, Color color) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.07),
+        border: Border.all(color: color.withValues(alpha: 0.4)),
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+        Text(emoji, style: const TextStyle(fontSize: 16)),
+        const SizedBox(width: 8),
+        Text(text, style: AppTheme.pixelHeading(fontSize: 14, color: color)),
+      ]),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final game = GameStateProvider.of(context);
+    if (game.pendingMilestone != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        final id = game.pendingMilestone!;
+        game.claimMilestoneRewards(id);
+        game.dismissMilestone();
+        final rewards = GameState.milestoneRewards(id);
+        final rewardStr = rewards.entries.map((e) => '+${e.value} ${e.key}').join('  •  ');
+        showDialog(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            backgroundColor: const Color(0xFF1a1a2e),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+              side: const BorderSide(color: Color(0xFFFFD700), width: 2),
+            ),
+            title: Text('✦ MILESTONE ✦',
+                textAlign: TextAlign.center,
+                style: AppTheme.pixelHeading(fontSize: 16, letterSpacing: 3, color: const Color(0xFFFFD700))),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(6),
+                  child: Image.asset('assets/images/milestone_event.png',
+                      height: 120, width: double.infinity, fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) => const SizedBox.shrink()),
+                ),
+                const SizedBox(height: 12),
+                Text(GameState.milestoneLabel(id),
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white)),
+                const SizedBox(height: 12),
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF112211),
+                    border: Border.all(color: const Color(0xFF44cc88).withValues(alpha: 0.5)),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: Text(rewardStr,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(fontSize: 12, color: Color(0xFF44cc88))),
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: Text('CLAIM', style: AppTheme.pixelHeading(fontSize: 12, color: const Color(0xFFFFD700))),
+              ),
+            ],
+          ),
+        );
+      });
+    }
+    if (game.pendingComebackRewards != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        final rewards = game.pendingComebackRewards!;
+        final rewardStr = rewards.entries.map((e) => '+${e.value} ${e.key}').join('\n');
+        showDialog(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            backgroundColor: const Color(0xFF1a1a2e),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+              side: const BorderSide(color: Color(0xFF44aaff), width: 2),
+            ),
+            title: Text('WELCOME BACK!',
+                textAlign: TextAlign.center,
+                style: AppTheme.pixelHeading(fontSize: 16, letterSpacing: 3, color: const Color(0xFF44aaff))),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text('We missed you! Here\'s a bonus\nfor your time away:',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(fontSize: 13, color: Colors.white70)),
+                const SizedBox(height: 12),
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF112222),
+                    border: Border.all(color: const Color(0xFF44aaff).withValues(alpha: 0.5)),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: Text(rewardStr,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(fontSize: 12, color: Color(0xFF44aaff), height: 1.5)),
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () { game.claimComebackBonus(); Navigator.pop(ctx); },
+                child: Text('CLAIM', style: AppTheme.pixelHeading(fontSize: 12, color: const Color(0xFF44aaff))),
+              ),
+            ],
+          ),
+        );
+      });
+    }
+    return Scaffold(
+      backgroundColor: AppTheme.darkBg,
+      body: Column(children: [
+        Row(children: [
+          const Expanded(child: ResourceBar()),
+          GestureDetector(
+            onTap: () => _showLootLog(context, game),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+              color: const Color(0xFF1a1916),
+              child: Stack(children: [
+                const Icon(Icons.notifications_outlined, size: 16, color: AppTheme.textMuted),
+                if (game.lootHistory.isNotEmpty)
+                  Positioned(top: 0, right: 0,
+                    child: Container(width: 6, height: 6,
+                      decoration: const BoxDecoration(color: Color(0xFFffcc44), shape: BoxShape.circle))),
+              ]),
+            ),
+          ),
+        ]),
+        // Flash event banner
+        if (game.activeFlashEvent != null && game.activeFlashEvent!.isActive)
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+            color: const Color(0xFF2a1a00),
+            child: Row(children: [
+              Text(game.activeFlashEvent!.event.icon, style: const TextStyle(fontSize: 14)),
+              const SizedBox(width: 6),
+              Expanded(child: Text(
+                '${game.activeFlashEvent!.event.name} — ${game.activeFlashEvent!.event.description}',
+                style: const TextStyle(fontSize: 10, color: Color(0xFFffaa33), fontWeight: FontWeight.bold),
+                overflow: TextOverflow.ellipsis,
+              )),
+              Text('${game.activeFlashEvent!.minutesRemaining}m left',
+                  style: const TextStyle(fontSize: 9, color: Color(0xFFffaa33))),
+            ]),
+          ),
+        Expanded(child: IndexedStack(
+          index: _tab,
+          children: [
+            HeroHubScreen(onBackToSelect: widget.onBackToSelect),
+            const ModesScreen(),
+            const InventoryHubScreen(),
+            const PremiumShopScreen(),
+            if (game.campaignStageIndex >= 15) const GuildScreen(),
+          ],
+        )),
+      ]),
+      bottomNavigationBar: SafeArea(
+        top: false,
+        child: _CustomBottomNav(
+        currentIndex: _tab,
+        onTap: (i) => setState(() => _tab = i),
+        badges: [
+          game.hasAffordableAbilityUpgrade || game.hasAffordablePassiveNode,
+          game.hasClaimableDaily,
+          game.inventory.bag.isNotEmpty,
+          false,
+          game.guildId != null,
+        ],
+        showGuild: game.campaignStageIndex >= 15,
+      )),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Custom bottom navigation
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _CustomBottomNav extends StatelessWidget {
+  const _CustomBottomNav({required this.currentIndex, required this.onTap, this.badges = const [], this.showGuild = false});
+
+  final int currentIndex;
+  final ValueChanged<int> onTap;
+  final List<bool> badges;
+  final bool showGuild;
+
+  List<({String emoji, String label})> get _navItems => [
+    (emoji: '⚔️',  label: 'HERO'),
+    (emoji: '🗺️',  label: 'MODES'),
+    (emoji: '🎒',  label: 'INVENTORY'),
+    (emoji: '🛒',  label: 'SHOP'),
+    if (showGuild) (emoji: '🏰', label: 'GUILD'),
   ];
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppTheme.darkBg,
-      body: IndexedStack(
-        index: _tab,
-        children: [
-          HeroHubScreen(onBackToSelect: widget.onBackToSelect),
-          const ModesScreen(),
-          const InventoryHubScreen(),
-          const AuraShopScreen(),
-        ],
-      ),
-      bottomNavigationBar: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          // Pixel-art top border — thin gold line above the bar
-          Container(
-            height: 2,
-            color: AppTheme.accentGold.withValues(alpha: 0.25),
-          ),
-          BottomNavigationBar(
-            currentIndex: _tab,
-            onTap: (i) => setState(() => _tab = i),
-            type: BottomNavigationBarType.fixed,
-            backgroundColor: AppTheme.cardBg,
-            selectedItemColor: AppTheme.accentGold,
-            unselectedItemColor: AppTheme.textMuted,
-            selectedFontSize: 9,
-            unselectedFontSize: 9,
-            selectedLabelStyle: GoogleFonts.pixelifySans(
-              fontSize: 10,
-              fontWeight: FontWeight.bold,
-              letterSpacing: 1,
+    final bottomPadding = MediaQuery.of(context).padding.bottom;
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        // Gold glow separator
+        Container(
+          height: 1,
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [
+                Colors.transparent,
+                AppTheme.accentGold.withValues(alpha: 0.5),
+                AppTheme.accentGold.withValues(alpha: 0.5),
+                Colors.transparent,
+              ],
+              stops: const [0.0, 0.2, 0.8, 1.0],
             ),
-            unselectedLabelStyle: GoogleFonts.pixelifySans(
-              fontSize: 10,
-              letterSpacing: 1,
-            ),
-            elevation: 0,
-            items: _items,
+            boxShadow: [
+              BoxShadow(
+                color: AppTheme.accentGold.withValues(alpha: 0.2),
+                blurRadius: 6,
+                offset: Offset.zero,
+              ),
+            ],
           ),
-        ],
+        ),
+        Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [Color(0xFF1A1714), Color(0xFF0E0C0A)],
+            ),
+          ),
+          child: Row(
+            children: List.generate(_navItems.length, (i) {
+              return Expanded(
+                child: _NavItem(
+                  emoji: _navItems[i].emoji,
+                  label: _navItems[i].label,
+                  active: currentIndex == i,
+                  badge: i < badges.length && badges[i],
+                  onTap: () => onTap(i),
+                ),
+              );
+            }),
+          ),
+        ),
+        if (bottomPadding > 0)
+          Container(height: bottomPadding, color: const Color(0xFF0E0C0A)),
+      ],
+    );
+  }
+}
+
+class _NavItem extends StatelessWidget {
+  const _NavItem({
+    required this.emoji,
+    required this.label,
+    required this.active,
+    required this.onTap,
+    this.badge = false,
+  });
+
+  final String emoji;
+  final String label;
+  final bool active;
+  final bool badge;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = active ? AppTheme.accentGold : AppTheme.textMuted;
+    final isPhone = MediaQuery.of(context).size.width < 600;
+    return GestureDetector(
+      onTap: onTap,
+      behavior: HitTestBehavior.opaque,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 220),
+        curve: Curves.easeOut,
+        decoration: BoxDecoration(
+          color: active
+              ? AppTheme.accentGold.withValues(alpha: 0.07)
+              : Colors.transparent,
+        ),
+        child: Stack(
+          alignment: Alignment.topCenter,
+          children: [
+            // Gold top-line indicator with glow
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 220),
+              height: 2,
+              margin: const EdgeInsets.symmetric(horizontal: 12),
+              decoration: BoxDecoration(
+                color: active ? AppTheme.accentGold : Colors.transparent,
+                boxShadow: active
+                    ? [
+                        BoxShadow(
+                          color: AppTheme.accentGold.withValues(alpha: 0.7),
+                          blurRadius: 8,
+                          spreadRadius: 1,
+                        ),
+                      ]
+                    : [],
+              ),
+            ),
+            Padding(
+              padding: EdgeInsets.symmetric(vertical: isPhone ? 6 : 9),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  AnimatedDefaultTextStyle(
+                    duration: const Duration(milliseconds: 200),
+                    style: TextStyle(fontSize: active ? (isPhone ? 18 : 22) : (isPhone ? 15 : 18)),
+                    child: Text(emoji),
+                  ),
+                  SizedBox(height: isPhone ? 1 : 3),
+                  AnimatedDefaultTextStyle(
+                    duration: const Duration(milliseconds: 200),
+                    style: AppTheme.pixelHeading(
+                      fontSize: active ? (isPhone ? 7 : 9) : (isPhone ? 6 : 8),
+                      color: color,
+                      letterSpacing: active ? 1.5 : 1,
+                    ),
+                    child: Text(label),
+                  ),
+                ],
+              ),
+            ),
+            if (badge)
+              Positioned(
+                top: 6,
+                right: 12,
+                child: Container(
+                  width: 8,
+                  height: 8,
+                  decoration: const BoxDecoration(
+                    color: Color(0xFFffcc44),
+                    shape: BoxShape.circle,
+                  ),
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }
@@ -294,12 +644,25 @@ class TutorialTip extends StatelessWidget {
   final GameState game;
 
   bool _isSeen() => switch (tutorialKey) {
-    'battle'   => game.tutorialBattleSeen,
-    'idle'     => game.tutorialIdleSeen,
-    'upgrade'  => game.tutorialUpgradeSeen,
-    'campaign' => game.tutorialCampaignSeen,
-    'dungeon'  => game.tutorialDungeonSeen,
-    _          => true,
+    'battle'    => game.tutorialBattleSeen,
+    'idle'      => game.tutorialIdleSeen,
+    'upgrade'   => game.tutorialUpgradeSeen,
+    'campaign'  => game.tutorialCampaignSeen,
+    'dungeon'   => game.tutorialDungeonSeen,
+    'gear'      => game.tutorialGearSeen,
+    'forge'     => game.tutorialForgeSeen,
+    'runes'     => game.tutorialRunesSeen,
+    'artifacts' => game.tutorialArtifactsSeen,
+    'endless'   => game.tutorialEndlessSeen,
+    'gauntlet'  => game.tutorialGauntletSeen,
+    'bossRush'  => game.tutorialBossRushSeen,
+    'daily'     => game.tutorialDailySeen,
+    'abilities' => game.tutorialAbilitiesSeen,
+    'passives'  => game.tutorialPassivesSeen,
+    'bestiary'  => game.tutorialBestiarySeen,
+    'prestige'  => game.tutorialPrestigeSeen,
+    'mercs'     => game.tutorialMercsSeen,
+    _           => true,
   };
 
   @override

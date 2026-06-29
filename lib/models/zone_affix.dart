@@ -16,7 +16,7 @@ enum ZoneAffix {
   cursedGround,   // hero loses 5% max HP per round (min 1)
   volatileDeath,  // enemy explodes on death — ATK÷4 unavoidable damage
   ironSkin,       // all hero hit damage reduced by 2 (min 1)
-  soulSiphon,     // enemy heals 15% of all damage it deals
+  soulSiphon,     // enemy weakens hero: +3 bonus damage
   shadowCloak,    // 20% chance to negate any incoming hero hit
   voidCurse,      // all hero HP recovery halved
   abyssalRoar,    // enemy gains +3 to all attack rolls
@@ -25,21 +25,21 @@ enum ZoneAffix {
   // ── Tier 2 (mutations) ────────────────────────────────────────────────────
   deathSpiral,    // cursedGround mutation: drain grows +1% every 3 rounds
   diamondHide,    // ironSkin mutation: reduction scales with enemy HP (max −8)
-  lifeleechAura;  // soulSiphon mutation: enemy passively heals 5% max HP/round
+  lifeleechAura;  // soulSiphon mutation: enemy applies DoT (3% max HP/round for 3 rounds)
 
   String get displayName {
     switch (this) {
       case ZoneAffix.cursedGround:  return 'Cursed Ground';
       case ZoneAffix.volatileDeath: return 'Volatile Death';
       case ZoneAffix.ironSkin:      return 'Iron Skin';
-      case ZoneAffix.soulSiphon:    return 'Soul Siphon';
+      case ZoneAffix.soulSiphon:    return 'Cursed Strikes';
       case ZoneAffix.shadowCloak:   return 'Shadow Cloak';
       case ZoneAffix.voidCurse:     return 'Void Curse';
       case ZoneAffix.abyssalRoar:   return 'Abyssal Roar';
       case ZoneAffix.timeFracture:  return 'Time Fracture';
       case ZoneAffix.deathSpiral:   return 'Death Spiral';
       case ZoneAffix.diamondHide:   return 'Diamond Hide';
-      case ZoneAffix.lifeleechAura: return 'Lifeleech Aura';
+      case ZoneAffix.lifeleechAura: return 'Venomous Aura';
     }
   }
 
@@ -48,14 +48,14 @@ enum ZoneAffix {
       case ZoneAffix.cursedGround:  return 'Hero bleeds 5% max HP each round.';
       case ZoneAffix.volatileDeath: return 'Enemy explodes on death — unavoidable blast.';
       case ZoneAffix.ironSkin:      return 'All hero damage reduced by 2 (min 1).';
-      case ZoneAffix.soulSiphon:    return 'Enemy heals 15% of all damage it deals.';
+      case ZoneAffix.soulSiphon:    return 'Enemy deals +3 bonus damage per hit.';
       case ZoneAffix.shadowCloak:   return '20% chance to negate any incoming hit.';
       case ZoneAffix.voidCurse:     return 'All hero HP recovery halved.';
-      case ZoneAffix.abyssalRoar:   return 'Enemy gains +3 to all attack rolls.';
-      case ZoneAffix.timeFracture:  return 'Every 4th attack re-rolls (take lower).';
+      case ZoneAffix.abyssalRoar:   return 'Enemy gains +3 bonus damage.';
+      case ZoneAffix.timeFracture:  return 'Every 4th attack is deflected (reduced damage).';
       case ZoneAffix.deathSpiral:   return 'HP drain grows +1% every 3 rounds.';
       case ZoneAffix.diamondHide:   return 'Damage reduction scales with enemy remaining HP.';
-      case ZoneAffix.lifeleechAura: return 'Enemy heals 5% max HP at start of its turn.';
+      case ZoneAffix.lifeleechAura: return 'Enemy applies poison DoT (3% max HP/round for 3 rounds).';
     }
   }
 

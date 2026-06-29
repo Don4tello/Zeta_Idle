@@ -423,10 +423,12 @@ class _SkinPreview extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (!showLabel) {
+      return _spriteBox(skin.toColorFilter());
+    }
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        // Side-by-side: original → skinned
         Row(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -437,10 +439,8 @@ class _SkinPreview extends StatelessWidget {
             _spriteBox(skin.toColorFilter()),
           ],
         ),
-        if (showLabel) ...[
-          const SizedBox(height: 4),
-          Text('Before / After', style: const TextStyle(fontSize: 10, color: AppTheme.textMuted)),
-        ],
+        const SizedBox(height: 4),
+        const Text('Before / After', style: TextStyle(fontSize: 10, color: AppTheme.textMuted)),
       ],
     );
   }
@@ -790,7 +790,7 @@ class _PackageCard extends StatelessWidget {
           ElevatedButton(
             onPressed: () {
               if (devMode) {
-                game.iapService.devGrant(pkg.crystals);
+                game.grantCrystals(pkg.crystals);
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
                     content: Text('+${pkg.crystals} crystals granted (debug)'),
@@ -799,7 +799,7 @@ class _PackageCard extends StatelessWidget {
                   ),
                 );
               } else {
-                game.iapService.buy(pkg.productId);
+                game.iapService.buyConsumable(pkg.productId);
               }
             },
             style: ElevatedButton.styleFrom(

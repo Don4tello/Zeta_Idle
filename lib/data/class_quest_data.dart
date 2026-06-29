@@ -39,6 +39,20 @@ class ClassQuestData {
         condition: QuestCondition.bossKills, target: 20,
         reward: QuestReward(title: 'Warlord', permanentDamageBonus: 1),
       ),
+      ClassQuest(
+        id: 'barb_q5', classRequired: DndClass.barbarian, questIndex: 5,
+        title: 'Unstoppable',
+        description: 'Complete a Boss Rush from start to finish. Death is not an option.',
+        condition: QuestCondition.bossRushClears, target: 1,
+        reward: QuestReward(shards: 50, permanentAttackBonus: 1),
+      ),
+      ClassQuest(
+        id: 'barb_q6', classRequired: DndClass.barbarian, questIndex: 6,
+        title: 'Legend of Blood',
+        description: 'Die and be reborn. Achieve your first Prestige and prove rage is eternal.',
+        condition: QuestCondition.prestigeReach, target: 1,
+        reward: QuestReward(title: 'Immortal Berserker', permanentDamageBonus: 1),
+      ),
     ],
 
     DndClass.bard: [
@@ -76,6 +90,20 @@ class ClassQuestData {
         description: 'Use abilities 250 times — your name echoes through the realm.',
         condition: QuestCondition.useAbilities, target: 250,
         reward: QuestReward(title: 'Legendary Bard', permanentAttackBonus: 1),
+      ),
+      ClassQuest(
+        id: 'bard_q5', classRequired: DndClass.bard, questIndex: 5,
+        title: 'Dungeon Concert',
+        description: 'Clear 3 dungeons. Every dark hall deserves a live performance.',
+        condition: QuestCondition.dungeonClears, target: 3,
+        reward: QuestReward(shards: 50, permanentACBonus: 1),
+      ),
+      ClassQuest(
+        id: 'bard_q6', classRequired: DndClass.bard, questIndex: 6,
+        title: 'Immortal Song',
+        description: 'Ascend to a higher plane of existence. Your legend is now timeless.',
+        condition: QuestCondition.ascensionReach, target: 1,
+        reward: QuestReward(title: 'The Immortal Bard', permanentAttackBonus: 1),
       ),
     ],
 
@@ -115,6 +143,20 @@ class ClassQuestData {
         condition: QuestCondition.reachStage, target: 20,
         reward: QuestReward(title: 'High Priest', permanentACBonus: 1),
       ),
+      ClassQuest(
+        id: 'cler_q5', classRequired: DndClass.cleric, questIndex: 5,
+        title: 'Divine Trial',
+        description: 'Reach a gauntlet score of 500. Your god tests your endurance.',
+        condition: QuestCondition.gauntletScore, target: 500,
+        reward: QuestReward(shards: 50, permanentACBonus: 1),
+      ),
+      ClassQuest(
+        id: 'cler_q6', classRequired: DndClass.cleric, questIndex: 6,
+        title: 'Saint',
+        description: 'Achieve your first Prestige — death only strengthens your faith.',
+        condition: QuestCondition.prestigeReach, target: 1,
+        reward: QuestReward(title: 'Saint', permanentDamageBonus: 1),
+      ),
     ],
 
     DndClass.druid: [
@@ -152,6 +194,20 @@ class ClassQuestData {
         description: 'Fell 10 of the realm\'s great bosses.',
         condition: QuestCondition.bossKills, target: 10,
         reward: QuestReward(title: 'Archdruid', permanentACBonus: 1),
+      ),
+      ClassQuest(
+        id: 'drud_q5', classRequired: DndClass.druid, questIndex: 5,
+        title: 'Circle of Stone',
+        description: 'Clear 5 dungeons. The ancient groves beneath the earth hold many secrets.',
+        condition: QuestCondition.dungeonClears, target: 5,
+        reward: QuestReward(shards: 50, permanentDamageBonus: 1),
+      ),
+      ClassQuest(
+        id: 'drud_q6', classRequired: DndClass.druid, questIndex: 6,
+        title: 'Ancient One',
+        description: 'Ascend beyond mortality. The cycle of nature has no end.',
+        condition: QuestCondition.ascensionReach, target: 1,
+        reward: QuestReward(title: 'Ancient One', permanentACBonus: 1),
       ),
     ],
 
@@ -191,6 +247,20 @@ class ClassQuestData {
         condition: QuestCondition.bossKills, target: 25,
         reward: QuestReward(title: 'Champion', permanentDamageBonus: 1),
       ),
+      ClassQuest(
+        id: 'fght_q5', classRequired: DndClass.fighter, questIndex: 5,
+        title: 'Iron Gauntlet',
+        description: 'Reach a gauntlet score of 1000. You were built for endless war.',
+        condition: QuestCondition.gauntletScore, target: 1000,
+        reward: QuestReward(shards: 50, permanentAttackBonus: 1),
+      ),
+      ClassQuest(
+        id: 'fght_q6', classRequired: DndClass.fighter, questIndex: 6,
+        title: 'Eternal Soldier',
+        description: 'Achieve your first Prestige. A true fighter never stops fighting.',
+        condition: QuestCondition.prestigeReach, target: 1,
+        reward: QuestReward(title: 'Eternal Soldier', permanentACBonus: 1),
+      ),
     ],
 
     DndClass.monk: [
@@ -228,6 +298,20 @@ class ClassQuestData {
         description: 'Fell 200 enemies with perfect technique.',
         condition: QuestCondition.killEnemies, target: 200,
         reward: QuestReward(title: 'Grand Master', permanentACBonus: 1),
+      ),
+      ClassQuest(
+        id: 'monk_q5', classRequired: DndClass.monk, questIndex: 5,
+        title: 'The Meditation Depths',
+        description: 'Clear 3 dungeons in silence and focus. The void within mirrors the void without.',
+        condition: QuestCondition.dungeonClears, target: 3,
+        reward: QuestReward(shards: 50, permanentAttackBonus: 1),
+      ),
+      ClassQuest(
+        id: 'monk_q6', classRequired: DndClass.monk, questIndex: 6,
+        title: 'One With All',
+        description: 'Ascend beyond the self. There is no monk — only motion.',
+        condition: QuestCondition.ascensionReach, target: 1,
+        reward: QuestReward(title: 'Transcendent', permanentACBonus: 1),
       ),
     ],
 
@@ -267,6 +351,20 @@ class ClassQuestData {
         condition: QuestCondition.reachStage, target: 20,
         reward: QuestReward(title: 'Holy Avenger', permanentACBonus: 1),
       ),
+      ClassQuest(
+        id: 'pala_q5', classRequired: DndClass.paladin, questIndex: 5,
+        title: 'Sacred Siege',
+        description: 'Complete a Boss Rush. Your oath demands you face the mightiest foes.',
+        condition: QuestCondition.bossRushClears, target: 1,
+        reward: QuestReward(shards: 50, permanentDamageBonus: 1),
+      ),
+      ClassQuest(
+        id: 'pala_q6', classRequired: DndClass.paladin, questIndex: 6,
+        title: "God's Champion",
+        description: 'Achieve your first Prestige. Even death answers to your sworn oath.',
+        condition: QuestCondition.prestigeReach, target: 1,
+        reward: QuestReward(title: "God's Champion", permanentAttackBonus: 1),
+      ),
     ],
 
     DndClass.ranger: [
@@ -304,6 +402,20 @@ class ClassQuestData {
         description: 'Claim 15 boss kills — the realm\'s most feared hunter.',
         condition: QuestCondition.bossKills, target: 15,
         reward: QuestReward(title: 'Warden', permanentDamageBonus: 1),
+      ),
+      ClassQuest(
+        id: 'rang_q5', classRequired: DndClass.ranger, questIndex: 5,
+        title: 'Into the Depths',
+        description: 'Clear 5 dungeons. Every dark cavern holds a worthy quarry.',
+        condition: QuestCondition.dungeonClears, target: 5,
+        reward: QuestReward(shards: 50, permanentAttackBonus: 1),
+      ),
+      ClassQuest(
+        id: 'rang_q6', classRequired: DndClass.ranger, questIndex: 6,
+        title: 'Apex Predator',
+        description: 'Ascend beyond the mortal hunt. You are what all creatures fear.',
+        condition: QuestCondition.ascensionReach, target: 1,
+        reward: QuestReward(title: 'Apex Predator', permanentDamageBonus: 1),
       ),
     ],
 
@@ -343,6 +455,20 @@ class ClassQuestData {
         condition: QuestCondition.bossKills, target: 15,
         reward: QuestReward(title: 'Assassin', permanentDamageBonus: 1),
       ),
+      ClassQuest(
+        id: 'rogu_q5', classRequired: DndClass.rogue, questIndex: 5,
+        title: 'Bounty Rush',
+        description: 'Complete a Boss Rush. The guild pays double for this job.',
+        condition: QuestCondition.bossRushClears, target: 1,
+        reward: QuestReward(shards: 50, permanentDamageBonus: 1),
+      ),
+      ClassQuest(
+        id: 'rogu_q6', classRequired: DndClass.rogue, questIndex: 6,
+        title: 'Ghost',
+        description: 'Achieve your first Prestige. Death cannot track what leaves no footprints.',
+        condition: QuestCondition.prestigeReach, target: 1,
+        reward: QuestReward(title: 'Ghost', permanentAttackBonus: 1),
+      ),
     ],
 
     DndClass.sorcerer: [
@@ -380,6 +506,20 @@ class ClassQuestData {
         description: 'Topple 20 bosses on pure sorcerous instinct.',
         condition: QuestCondition.bossKills, target: 20,
         reward: QuestReward(title: 'Wild Archmage', permanentAttackBonus: 1),
+      ),
+      ClassQuest(
+        id: 'sorc_q5', classRequired: DndClass.sorcerer, questIndex: 5,
+        title: 'Mana Torrent',
+        description: 'Reach a gauntlet score of 500. The power cannot be contained.',
+        condition: QuestCondition.gauntletScore, target: 500,
+        reward: QuestReward(shards: 50, permanentDamageBonus: 1),
+      ),
+      ClassQuest(
+        id: 'sorc_q6', classRequired: DndClass.sorcerer, questIndex: 6,
+        title: 'Arcane Ascendant',
+        description: 'Ascend beyond mortality. Raw magic flows through you without end.',
+        condition: QuestCondition.ascensionReach, target: 1,
+        reward: QuestReward(title: 'Arcane Ascendant', permanentAttackBonus: 1),
       ),
     ],
 
@@ -419,6 +559,20 @@ class ClassQuestData {
         condition: QuestCondition.winBattles, target: 100,
         reward: QuestReward(title: 'Void Walker', permanentAttackBonus: 1),
       ),
+      ClassQuest(
+        id: 'wrlk_q5', classRequired: DndClass.warlock, questIndex: 5,
+        title: "Patron's Proving Ground",
+        description: 'Reach a gauntlet score of 500. Your patron watches from the dark.',
+        condition: QuestCondition.gauntletScore, target: 500,
+        reward: QuestReward(shards: 50, permanentDamageBonus: 1),
+      ),
+      ClassQuest(
+        id: 'wrlk_q6', classRequired: DndClass.warlock, questIndex: 6,
+        title: 'Eternal Pact',
+        description: 'Achieve your first Prestige. The pact has no expiration clause.',
+        condition: QuestCondition.prestigeReach, target: 1,
+        reward: QuestReward(title: 'Pact Eternal', permanentACBonus: 1),
+      ),
     ],
 
     DndClass.wizard: [
@@ -456,6 +610,20 @@ class ClassQuestData {
         description: 'Conquer all 25 campaign stages — the realm is your laboratory.',
         condition: QuestCondition.reachStage, target: 25,
         reward: QuestReward(title: 'Arch-Wizard', permanentACBonus: 1),
+      ),
+      ClassQuest(
+        id: 'wizd_q5', classRequired: DndClass.wizard, questIndex: 5,
+        title: 'Field Research',
+        description: 'Clear 5 dungeons. Theory means nothing without empirical data.',
+        condition: QuestCondition.dungeonClears, target: 5,
+        reward: QuestReward(shards: 50, permanentAttackBonus: 1),
+      ),
+      ClassQuest(
+        id: 'wizd_q6', classRequired: DndClass.wizard, questIndex: 6,
+        title: 'Omniscient',
+        description: 'Ascend beyond mortality. All arcane knowledge now flows freely.',
+        condition: QuestCondition.ascensionReach, target: 1,
+        reward: QuestReward(title: 'Omniscient', permanentACBonus: 1),
       ),
     ],
   };

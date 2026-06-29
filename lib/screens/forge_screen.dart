@@ -19,7 +19,7 @@ class _ForgeScreenState extends State<ForgeScreen>
   @override
   void initState() {
     super.initState();
-    _tabs = TabController(length: 4, vsync: this);
+    _tabs = TabController(length: 2, vsync: this);
   }
 
   @override
@@ -37,16 +37,33 @@ class _ForgeScreenState extends State<ForgeScreen>
       labelStyle: AppTheme.pixelHeading(fontSize: 11, letterSpacing: 1),
       unselectedLabelColor: AppTheme.textMuted,
       indicatorColor: AppTheme.accentGold,
-      tabs: const [Tab(text: 'COMBINE'), Tab(text: 'DISENCHANT'), Tab(text: 'GEMS'), Tab(text: 'REFORGE')],
+      tabs: const [
+        Tab(child: Tooltip(
+          message: 'Destroy items to recover Shards (◆).\n'
+              '• Common → 3 ◆\n'
+              '• Rare → 8 ◆\n'
+              '• Epic → 20 ◆\n'
+              '• Legendary → 60 ◆\n'
+              '• Set → 100 ◆',
+          preferBelow: false,
+          child: Text('DISENCHANT'),
+        )),
+        Tab(child: Tooltip(
+          message: 'Upgrade an item from +0 to +10.\n'
+              'Each tier boosts all stats by 8%.\n'
+              'At +5 and +10 the item gains a title prefix.\n'
+              'Costs Gold + Shards per tier.',
+          preferBelow: false,
+          child: Text('UPGRADE'),
+        )),
+      ],
     );
 
     final tabView = TabBarView(
       controller: _tabs,
       children: [
-        _CombineTab(game: game),
         _DisenchantTab(game: game),
-        _GemsTab(game: game),
-        _ReforgeTab(game: game),
+        _UpgradeTab(game: game),
       ],
     );
 
@@ -256,7 +273,7 @@ class _DisenchantTabState extends State<_DisenchantTab> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Info banner
+          // Info banner with button at top
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
@@ -264,14 +281,34 @@ class _DisenchantTabState extends State<_DisenchantTab> {
               border: Border.all(color: AppTheme.cardBorder),
               borderRadius: BorderRadius.circular(4),
             ),
-            child: const Column(
+            child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('DISENCHANT RATES',
-                    style: TextStyle(fontSize: 11, color: AppTheme.textMuted,
-                        fontWeight: FontWeight.bold, letterSpacing: 1)),
-                SizedBox(height: 6),
-                Wrap(spacing: 8, runSpacing: 4, children: const [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text('DISENCHANT RATES',
+                        style: TextStyle(fontSize: 11, color: AppTheme.textMuted,
+                            fontWeight: FontWeight.bold, letterSpacing: 1)),
+                    if (_selected.isNotEmpty)
+                      ElevatedButton(
+                        onPressed: () => _disenchant(context),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF1a0a0a),
+                          foregroundColor: const Color(0xFFcc4444),
+                          side: const BorderSide(color: Color(0xFFcc4444)),
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                          minimumSize: Size.zero,
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        ),
+                        child: Text('DISENCHANT  ${_selected.length}  (+$_shardPreview ◆)',
+                            style: AppTheme.pixelHeading(fontSize: 10, letterSpacing: 1,
+                                color: const Color(0xFFcc4444))),
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                const Wrap(spacing: 8, runSpacing: 4, children: [
                   _RateChip(label: 'Common',    value: '3 ◆',   color: Color(0xFFaaaaaa)),
                   _RateChip(label: 'Rare',      value: '8 ◆',   color: Color(0xFF6699ff)),
                   _RateChip(label: 'Epic',      value: '20 ◆',  color: Color(0xFFcc44ff)),
@@ -327,40 +364,6 @@ class _DisenchantTabState extends State<_DisenchantTab> {
                 }),
               );
             }),
-          ],
-          const SizedBox(height: 16),
-          // Confirm button
-          if (_selected.isNotEmpty) ...[
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: const Color(0xFF2A2623),
-                border: Border.all(color: AppTheme.accentGold.withValues(alpha: 0.4)),
-                borderRadius: BorderRadius.circular(4),
-              ),
-              child: Row(children: [
-                const Text('◆ ', style: TextStyle(fontSize: 17, color: AppTheme.accentGold)),
-                Text('You will receive $_shardPreview shards',
-                    style: const TextStyle(fontSize: 14, color: AppTheme.accentGold,
-                        fontWeight: FontWeight.bold)),
-              ]),
-            ),
-            const SizedBox(height: 10),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: () => _disenchant(context),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF1a0a0a),
-                  foregroundColor: const Color(0xFFcc4444),
-                  side: const BorderSide(color: Color(0xFFcc4444)),
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                ),
-                child: Text('DISENCHANT  ${_selected.length} ITEM(S)',
-                    style: AppTheme.pixelHeading(fontSize: 12, letterSpacing: 1,
-                        color: const Color(0xFFcc4444))),
-              ),
-            ),
           ],
         ],
       ),
@@ -749,7 +752,7 @@ class _GemsTabState extends State<_GemsTab> {
                 children: [
                   Text(previewGem.name,
                       style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: _type.color)),
-                  Text(_type.statDescription,
+                  Text(_type.elementLabel,
                       style: const TextStyle(fontSize: 12, color: AppTheme.textLight)),
                   Text('+${previewGem.value}  •  ${_tier.shardCost} 💠 to craft',
                       style: const TextStyle(fontSize: 11, color: AppTheme.textMuted)),
@@ -868,7 +871,7 @@ class _GemBagTile extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(gem.name, style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: gem.color)),
-              Text(gem.type.statDescription, style: const TextStyle(fontSize: 11, color: AppTheme.textMuted)),
+              Text(gem.type.elementLabel, style: const TextStyle(fontSize: 11, color: AppTheme.textMuted)),
             ],
           )),
           Container(
@@ -1042,35 +1045,34 @@ class _SocketPickerSheet extends StatelessWidget {
   }
 }
 
-// ── Reforge tab ───────────────────────────────────────────────────────────────
+// ── Upgrade tab ──────────────────────────────────────────────────────────────
 
-class _ReforgeTab extends StatefulWidget {
-  const _ReforgeTab({required this.game});
+class _UpgradeTab extends StatefulWidget {
+  const _UpgradeTab({required this.game});
   final GameState game;
   @override
-  State<_ReforgeTab> createState() => _ReforgeTabState();
+  State<_UpgradeTab> createState() => _UpgradeTabState();
 }
 
-class _ReforgeTabState extends State<_ReforgeTab> {
+class _UpgradeTabState extends State<_UpgradeTab> {
   EquipmentItem? _selected;
 
-  List<EquipmentItem> get _reforgeableItems {
+  List<EquipmentItem> get _upgradeableItems {
     final all = <EquipmentItem>[
       ...widget.game.inventory.equipped.values,
       ...widget.game.inventory.bag,
     ];
-    return all.where((i) => ItemLootTable.canReforge(i.rarity)).toList();
+    return all.where((i) => i.canUpgrade).toList();
   }
 
   @override
   Widget build(BuildContext context) {
     final game = widget.game;
-    final items = _reforgeableItems;
+    final items = _upgradeableItems;
 
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
-        // Info banner
         Container(
           padding: const EdgeInsets.all(12),
           margin: const EdgeInsets.only(bottom: 16),
@@ -1082,25 +1084,29 @@ class _ReforgeTabState extends State<_ReforgeTab> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('REFORGE', style: AppTheme.pixelHeading(fontSize: 12, color: const Color(0xFFaa66ff), letterSpacing: 2)),
+              Text('UPGRADE', style: AppTheme.pixelHeading(fontSize: 12, color: const Color(0xFFaa66ff), letterSpacing: 2)),
               const SizedBox(height: 6),
-              const Text('Reroll all stat values on an item. Stats stay the same — only the numbers change.',
-                  style: TextStyle(fontSize: 12, color: AppTheme.textMuted)),
+              const Text(
+                'Upgrade items from +0 to +10. Each tier boosts all stats by 8%.\n'
+                'At +5 the item earns a Refined prefix.\n'
+                'At +10 it becomes Masterwork.',
+                style: TextStyle(fontSize: 11, color: AppTheme.textMuted, height: 1.4)),
               const SizedBox(height: 8),
-              for (final r in [ItemRarity.rare, ItemRarity.epic, ItemRarity.legendary]) ...[
-                _CostRow(rarity: r),
-                if (r != ItemRarity.legendary) const SizedBox(height: 3),
-              ],
+              Row(children: [
+                const Text('Balance: ', style: TextStyle(fontSize: 10, color: AppTheme.textMuted)),
+                Text('💰 ${game.gold}', style: const TextStyle(fontSize: 11, color: AppTheme.accentGold, fontWeight: FontWeight.bold)),
+                const SizedBox(width: 14),
+                Text('◆ ${game.shards}', style: const TextStyle(fontSize: 11, color: Color(0xFF6699ff), fontWeight: FontWeight.bold)),
+              ]),
             ],
           ),
         ),
 
-        // Item picker
         if (items.isEmpty)
           const Center(
             child: Padding(
               padding: EdgeInsets.all(32),
-              child: Text('No rare, epic, or legendary items in inventory.',
+              child: Text('No items available for upgrade.\nAll items are at +10 or bag is empty.',
                   style: TextStyle(fontSize: 13, color: AppTheme.textMuted), textAlign: TextAlign.center),
             ),
           )
@@ -1122,39 +1128,143 @@ class _ReforgeTabState extends State<_ReforgeTab> {
                   ),
                   borderRadius: BorderRadius.circular(4),
                 ),
-                child: Row(
-                  children: [
-                    Container(width: 3, height: 36,
-                        decoration: BoxDecoration(color: item.rarityColor, borderRadius: BorderRadius.circular(2))),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(item.name,
-                              style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: item.rarityColor)),
-                          const SizedBox(height: 2),
-                          Text(item.bonuses.map((b) => '${_sn(b.stat)} +${b.value}').join('  '),
-                              style: const TextStyle(fontSize: 11, color: Colors.white54)),
-                        ],
-                      ),
+                child: Row(children: [
+                  Container(width: 3, height: 36,
+                      decoration: BoxDecoration(color: item.rarityColor, borderRadius: BorderRadius.circular(2))),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(children: [
+                          Expanded(child: Text(item.name,
+                              style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: item.rarityColor),
+                              maxLines: 1, overflow: TextOverflow.ellipsis)),
+                          if (item.upgradeTier > 0)
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFaa66ff).withValues(alpha: 0.2),
+                                borderRadius: BorderRadius.circular(3),
+                              ),
+                              child: Text('+${item.upgradeTier}',
+                                  style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFFaa66ff))),
+                            ),
+                        ]),
+                        const SizedBox(height: 2),
+                        Text(item.bonuses.map((b) => '${_sn(b.stat)} +${b.value}').join('  '),
+                            style: const TextStyle(fontSize: 10, color: Colors.white54)),
+                      ],
                     ),
-                    if (isSelected)
-                      Icon(Icons.check_circle, color: item.rarityColor, size: 16),
-                  ],
-                ),
+                  ),
+                  if (isSelected)
+                    Icon(Icons.check_circle, color: item.rarityColor, size: 16),
+                ]),
               ),
             );
           }),
 
-          // Reforge button
           if (_selected != null) ...[
-            const SizedBox(height: 16),
-            _ReforgeButton(
-              item: _selected!,
-              game: game,
-              onReforged: (item) => setState(() => _selected = item),
+            const SizedBox(height: 12),
+            // Upgrade preview
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: const Color(0xFF1a1225),
+                border: Border.all(color: const Color(0xFFaa66ff).withValues(alpha: 0.5)),
+                borderRadius: BorderRadius.circular(4),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(children: [
+                    Expanded(child: Text(_selected!.name, style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: _selected!.rarityColor),
+                        maxLines: 1, overflow: TextOverflow.ellipsis)),
+                    const SizedBox(width: 8),
+                    Text('+${_selected!.upgradeTier} → +${_selected!.upgradeTier + 1}',
+                        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFFaa66ff))),
+                  ]),
+                  const SizedBox(height: 8),
+                  // Tier image track
+                  SizedBox(
+                    height: 40,
+                    child: Row(
+                      children: List.generate(EquipmentItem.maxUpgradeTier, (i) {
+                        final tier = i + 1;
+                        final reached = _selected!.upgradeTier >= tier;
+                        final isNext = _selected!.upgradeTier + 1 == tier;
+                        return Expanded(
+                          child: Container(
+                            margin: const EdgeInsets.symmetric(horizontal: 1),
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(3),
+                              border: Border.all(
+                                color: isNext ? const Color(0xFFaa66ff) : reached ? const Color(0xFF44cc88).withValues(alpha: 0.5) : const Color(0xFF333333),
+                                width: isNext ? 1.5 : 0.5,
+                              ),
+                            ),
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(2),
+                              child: Stack(
+                                fit: StackFit.expand,
+                                children: [
+                                  Image.asset('assets/images/tier_$tier.png',
+                                    fit: BoxFit.cover,
+                                    opacity: AlwaysStoppedAnimation(reached ? 1.0 : isNext ? 0.6 : 0.15),
+                                    errorBuilder: (_, __, ___) => const SizedBox.shrink()),
+                                  if (reached)
+                                    const Positioned(top: 1, right: 1,
+                                      child: Icon(Icons.check, size: 10, color: Color(0xFF44cc88))),
+                                  Positioned(bottom: 1, left: 0, right: 0,
+                                    child: Text('+$tier', textAlign: TextAlign.center,
+                                      style: TextStyle(fontSize: 7, fontWeight: FontWeight.bold,
+                                        color: reached ? Colors.white : Colors.white38))),
+                                ],
+                              ),
+                            ),
+                          ),
+                        );
+                      }),
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Text('All stats +8%${_selected!.baseDamage > 0 ? "  •  Weapon damage +8%" : ""}',
+                      style: const TextStyle(fontSize: 10, color: Colors.white54)),
+                  if (_selected!.upgradeTier + 1 == 5)
+                    const Text('🏷 Earns "Refined" prefix at +5!',
+                        style: TextStyle(fontSize: 10, color: Color(0xFFaa66ff))),
+                  if (_selected!.upgradeTier + 1 == 10)
+                    const Text('🏷 Earns "Masterwork" prefix at +10!',
+                        style: TextStyle(fontSize: 10, color: Color(0xFFFFD700))),
+                ],
+              ),
             ),
+            const SizedBox(height: 10),
+            // Upgrade button
+            Builder(builder: (_) {
+              final canAfford = game.gold >= _selected!.upgradeGoldCost && game.shards >= _selected!.upgradeShardCost;
+              return TextButton(
+                onPressed: canAfford ? () {
+                  game.upgradeItem(_selected!);
+                  if (!_selected!.canUpgrade) _selected = null;
+                  setState(() {});
+                } : null,
+                style: TextButton.styleFrom(
+                  backgroundColor: canAfford ? const Color(0xFFaa66ff).withValues(alpha: 0.12) : Colors.transparent,
+                  side: BorderSide(color: canAfford ? const Color(0xFFaa66ff) : AppTheme.cardBorder),
+                  minimumSize: const Size(double.infinity, 48),
+                ),
+                child: Column(mainAxisSize: MainAxisSize.min, children: [
+                  Text('UPGRADE TO +${_selected!.upgradeTier + 1}',
+                      style: AppTheme.pixelHeading(fontSize: 12,
+                          color: canAfford ? const Color(0xFFaa66ff) : AppTheme.cardBorder)),
+                  const SizedBox(height: 2),
+                  Text('💰 ${_selected!.upgradeGoldCost}  ◆ ${_selected!.upgradeShardCost}',
+                      style: TextStyle(fontSize: 11,
+                          color: canAfford ? const Color(0xFFaa66ff).withValues(alpha: 0.7) : AppTheme.cardBorder)),
+                ]),
+              );
+            }),
           ],
         ],
       ],
@@ -1175,96 +1285,7 @@ class _ReforgeTabState extends State<_ReforgeTab> {
     ItemStat.goldPct         => 'Gold%',
     ItemStat.xpPct           => 'XP%',
     ItemStat.elemPenetration => 'PEN%',
+    ItemStat.hitChance       => 'HIT%',
+    ItemStat.damagePercent   => 'DMG%',
   };
-}
-
-class _CostRow extends StatelessWidget {
-  const _CostRow({required this.rarity});
-  final ItemRarity rarity;
-
-  @override
-  Widget build(BuildContext context) {
-    final cost = ItemLootTable.reforgeCost(rarity);
-    final label = switch (rarity) {
-      ItemRarity.rare      => 'Rare',
-      ItemRarity.epic      => 'Epic',
-      ItemRarity.legendary => 'Legendary',
-      _ => '',
-    };
-    final color = switch (rarity) {
-      ItemRarity.rare      => const Color(0xFF6699ff),
-      ItemRarity.epic      => const Color(0xFFcc44ff),
-      ItemRarity.legendary => const Color(0xFFFFD700),
-      _ => Colors.white,
-    };
-    return Row(children: [
-      Container(width: 6, height: 6, decoration: BoxDecoration(shape: BoxShape.circle, color: color)),
-      const SizedBox(width: 6),
-      Text('$label:', style: TextStyle(fontSize: 11, color: color)),
-      const SizedBox(width: 6),
-      Text('💰 ${cost.gold}  ◆ ${cost.shards}',
-          style: const TextStyle(fontSize: 11, color: AppTheme.textLight)),
-    ]);
-  }
-}
-
-class _ReforgeButton extends StatefulWidget {
-  const _ReforgeButton({required this.item, required this.game, required this.onReforged});
-  final EquipmentItem item;
-  final GameState game;
-  final void Function(EquipmentItem) onReforged;
-  @override
-  State<_ReforgeButton> createState() => _ReforgeButtonState();
-}
-
-class _ReforgeButtonState extends State<_ReforgeButton> {
-  bool _confirm = false;
-
-  @override
-  Widget build(BuildContext context) {
-    final cost = ItemLootTable.reforgeCost(widget.item.rarity);
-    final canAfford = widget.game.gold >= cost.gold && widget.game.shards >= cost.shards;
-
-    if (_confirm) {
-      return Row(children: [
-        Expanded(
-          child: TextButton(
-            onPressed: canAfford ? () {
-              widget.game.reforgeItem(widget.item);
-              widget.onReforged(widget.item);
-              setState(() => _confirm = false);
-            } : null,
-            style: TextButton.styleFrom(
-              backgroundColor: const Color(0xFFaa66ff).withValues(alpha: 0.15),
-              side: const BorderSide(color: Color(0xFFaa66ff)),
-            ),
-            child: Text('CONFIRM REFORGE', style: AppTheme.pixelHeading(fontSize: 11, color: const Color(0xFFaa66ff))),
-          ),
-        ),
-        const SizedBox(width: 8),
-        TextButton(
-          onPressed: () => setState(() => _confirm = false),
-          style: TextButton.styleFrom(side: const BorderSide(color: AppTheme.cardBorder)),
-          child: Text('CANCEL', style: AppTheme.pixelHeading(fontSize: 11, color: AppTheme.textMuted)),
-        ),
-      ]);
-    }
-
-    return TextButton(
-      onPressed: canAfford ? () => setState(() => _confirm = true) : null,
-      style: TextButton.styleFrom(
-        backgroundColor: canAfford ? const Color(0xFFaa66ff).withValues(alpha: 0.08) : Colors.transparent,
-        side: BorderSide(color: canAfford ? const Color(0xFFaa66ff) : AppTheme.cardBorder),
-        minimumSize: const Size(double.infinity, 44),
-      ),
-      child: Column(mainAxisSize: MainAxisSize.min, children: [
-        Text('REFORGE', style: AppTheme.pixelHeading(fontSize: 12,
-            color: canAfford ? const Color(0xFFaa66ff) : AppTheme.cardBorder)),
-        const SizedBox(height: 2),
-        Text('💰 ${cost.gold}  ◆ ${cost.shards}',
-            style: TextStyle(fontSize: 11,
-                color: canAfford ? const Color(0xFFaa66ff).withValues(alpha: 0.7) : AppTheme.cardBorder)),
-      ]),
-    );
-  }
 }

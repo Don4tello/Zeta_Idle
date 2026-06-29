@@ -58,7 +58,7 @@ class ClassMastery {
       MasteryEffect.piercePerHit      => 'ignore $v enemy AC',
       MasteryEffect.lifestealPct      => 'heal $v% of damage dealt',
       MasteryEffect.multiStrikePct    => '$v% chance to strike again',
-      MasteryEffect.permanentAttack   => '+$v to attack rolls',
+      MasteryEffect.permanentAttack   => '+$v critical damage',
       MasteryEffect.permanentDamage   => '+$v to damage',
       MasteryEffect.permanentAC       => '+$v AC',
       MasteryEffect.permanentGoldPct  => '+$v% gold',

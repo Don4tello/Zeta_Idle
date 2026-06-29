@@ -141,7 +141,21 @@ class _BountyCard extends StatelessWidget {
             if (bounty.claimed)
               const Icon(Icons.check_circle, color: Color(0xFF44aa44), size: 20)
             else if (bounty.isComplete)
-              _ClaimButton(onTap: () => game.claimBounty(def.id)),
+              _ClaimButton(onTap: () {
+                final r = def.reward;
+                game.claimBounty(def.id);
+                final parts = <String>[];
+                if (r.gold > 0) parts.add('💰 +${r.gold}');
+                if (r.shards > 0) parts.add('◆ +${r.shards}');
+                if (r.crystals > 0) parts.add('💎 +${r.crystals}');
+                if (r.xp > 0) parts.add('⚡ +${r.xp} XP');
+                ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                  content: Text('${def.label} claimed! ${parts.join("  ")}',
+                      style: const TextStyle(color: AppTheme.accentGold)),
+                  backgroundColor: const Color(0xFF2A2623),
+                  duration: const Duration(seconds: 3),
+                ));
+              }),
           ]),
           const SizedBox(height: 10),
           // Progress bar

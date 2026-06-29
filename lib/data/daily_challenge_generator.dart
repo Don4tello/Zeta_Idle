@@ -117,8 +117,9 @@ class DailyChallengeGenerator {
     DailyChallengeType.equipItem: [
       _Template(
         type: DailyChallengeType.equipItem,
-        title: 'Gearhead',
-        makeDesc: _equipDesc, target: 1,
+        title: 'Recycler',
+        makeDesc: (_) => 'Disenchant any item today.',
+        target: 1,
         gold: 100, shards: 5, essence: 3, crystals: 3,
       ),
     ],

@@ -153,8 +153,15 @@ class _CategorySection extends StatelessWidget {
   final List<Achievement> achievements;
   final GameState game;
 
+  static int _sortKey(Achievement a) {
+    if (a.unlocked && !a.claimed) return 0;
+    if (!a.claimed) return 1;
+    return 2;
+  }
+
   @override
   Widget build(BuildContext context) {
+    final sorted = [...achievements]..sort((a, b) => _sortKey(a).compareTo(_sortKey(b)));
     final done = achievements.where((a) => a.claimed).length;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -166,7 +173,7 @@ class _CategorySection extends StatelessWidget {
               style: const TextStyle(fontSize: 11, color: AppTheme.textMuted)),
         ]),
         const SizedBox(height: 8),
-        ...achievements.map((a) => Padding(
+        ...sorted.map((a) => Padding(
           padding: const EdgeInsets.only(bottom: 6),
           child: _AchievementTile(a: a, game: game),
         )),
@@ -251,7 +258,7 @@ class _AchievementTile extends StatelessWidget {
                     ),
                     const SizedBox(width: 8),
                     Text(
-                      '${_fmt(progress)} / ${_fmt(a.target)}',
+                      '${AppTheme.fmtNumber(progress)} / ${AppTheme.fmtNumber(a.target)}',
                       style: TextStyle(
                           fontSize: 10,
                           color: isReady ? const Color(0xFFaacc44) : AppTheme.textMuted),
@@ -289,11 +296,6 @@ class _AchievementTile extends StatelessWidget {
     );
   }
 
-  String _fmt(int n) {
-    if (n >= 1000000) return '${(n / 1000000).toStringAsFixed(1)}M';
-    if (n >= 1000) return '${(n / 1000).toStringAsFixed(1)}K';
-    return '$n';
-  }
 }
 
 class _RewardBadge extends StatelessWidget {

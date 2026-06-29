@@ -1,6 +1,6 @@
 import 'damage_type.dart';
 
-enum AbilityCategory { damage, buff, debuff }
+enum AbilityCategory { damage, buff, debuff, ultimate }
 
 enum AbilityEffect {
   bonusDamage, heal, attackBonus, acBonus, stun, dot, dodge,

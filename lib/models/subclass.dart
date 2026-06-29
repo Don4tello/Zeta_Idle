@@ -151,7 +151,7 @@ const kSubclassCatalog = <Subclass>[
     id: 'champion', name: 'Champion', classRequired: DndClass.fighter,
     flavor: 'Perfected technique turns near-misses into killing blows.',
     effect: SubclassEffect.champion,
-    effectLabel: 'Critical hit on attack rolls of 18, 19, or 20',
+    effectLabel: 'Critical hit on 18, 19, or 20',
     strBonus: 1, conBonus: 1,
   ),
   Subclass(
@@ -167,7 +167,7 @@ const kSubclassCatalog = <Subclass>[
     id: 'open_hand', name: 'Way of the Open Hand', classRequired: DndClass.monk,
     flavor: 'The palm strike channels pure force. No armour can absorb it.',
     effect: SubclassEffect.openHand,
-    effectLabel: 'Attack damage die: d10 (instead of d8)',
+    effectLabel: '+25% base attack damage',
     dexBonus: 2, wisBonus: 1,
   ),
   Subclass(

@@ -1,7 +1,9 @@
 ﻿import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../models/damage_type.dart';
 import '../models/dnd_class.dart';
+import '../models/hero_model.dart' show HeroGender;
 import '../models/hero_race.dart';
 import '../models/hero_trait.dart';
 import '../theme/app_theme.dart';
@@ -13,11 +15,13 @@ class CharacterCreationResult {
     required this.heroClass,
     required this.heroRace,
     required this.trait,
+    required this.gender,
   });
   final String name;
   final DndClass heroClass;
   final HeroRace heroRace;
   final HeroTrait trait;
+  final HeroGender gender;
 }
 
 class CharacterCreationScreen extends StatefulWidget {
@@ -34,6 +38,7 @@ class _CharacterCreationScreenState extends State<CharacterCreationScreen> {
   DndClass? _selectedClass;
   HeroRace? _selectedRace;
   HeroTrait? _selectedTrait;
+  HeroGender _selectedGender = HeroGender.male;
 
   @override
   void dispose() {
@@ -66,6 +71,7 @@ class _CharacterCreationScreenState extends State<CharacterCreationScreen> {
         heroClass: _selectedClass!,
         heroRace: _selectedRace!,
         trait: _selectedTrait!,
+        gender: _selectedGender,
       ),
     );
   }
@@ -95,6 +101,8 @@ class _CharacterCreationScreenState extends State<CharacterCreationScreen> {
                   0 => _NameStep(
                       key: const ValueKey(0),
                       controller: _nameController,
+                      selectedGender: _selectedGender,
+                      onGenderChanged: (g) => setState(() => _selectedGender = g),
                       onNext: _goToClass,
                     ),
                   1 => _ClassStep(
@@ -106,12 +114,11 @@ class _CharacterCreationScreenState extends State<CharacterCreationScreen> {
                   _ => _RaceStep(
                       key: const ValueKey(2),
                       selectedRace: _selectedRace,
-                      selectedTrait: _selectedTrait,
                       onRaceSelected: (r) => setState(() {
                         _selectedRace = r;
-                        _selectedTrait = null;
+                        // Auto-select the single trait for this race.
+                        _selectedTrait = HeroTrait.forRace(r).firstOrNull;
                       }),
-                      onTraitSelected: (t) => setState(() => _selectedTrait = t),
                       onConfirm: _create,
                     ),
                 },
@@ -191,8 +198,16 @@ class _StepIndicator extends StatelessWidget {
 // ── Step 1: Name ──────────────────────────────────────────────────────────────
 
 class _NameStep extends StatelessWidget {
-  const _NameStep({super.key, required this.controller, required this.onNext});
+  const _NameStep({
+    super.key,
+    required this.controller,
+    required this.selectedGender,
+    required this.onGenderChanged,
+    required this.onNext,
+  });
   final TextEditingController controller;
+  final HeroGender selectedGender;
+  final ValueChanged<HeroGender> onGenderChanged;
   final VoidCallback onNext;
 
   @override
@@ -242,7 +257,51 @@ class _NameStep extends StatelessWidget {
             ),
             onSubmitted: (_) => onNext(),
           ).animate(delay: 200.ms).fadeIn(duration: 400.ms),
-          const SizedBox(height: 48),
+          const SizedBox(height: 24),
+          // Gender picker
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: HeroGender.values.map((g) {
+              final active = g == selectedGender;
+              return GestureDetector(
+                onTap: () => onGenderChanged(g),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  margin: const EdgeInsets.symmetric(horizontal: 6),
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: active
+                        ? AppTheme.accentGold.withValues(alpha: 0.12)
+                        : Colors.transparent,
+                    border: Border.all(
+                      color: active
+                          ? AppTheme.accentGold
+                          : AppTheme.cardBorder,
+                      width: active ? 2 : 1,
+                    ),
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(g.icon,
+                          style: TextStyle(
+                            fontSize: 20,
+                            color: active ? AppTheme.accentGold : AppTheme.textMuted,
+                          )),
+                      const SizedBox(height: 4),
+                      Text(g.label.toUpperCase(),
+                          style: GoogleFonts.pixelifySans(
+                            fontSize: 9,
+                            color: active ? AppTheme.accentGold : AppTheme.textMuted,
+                            letterSpacing: 1,
+                          )),
+                    ],
+                  ),
+                ),
+              );
+            }).toList(),
+          ).animate(delay: 250.ms).fadeIn(duration: 400.ms),
+          const SizedBox(height: 36),
           SizedBox(
             width: double.infinity,
             child: ElevatedButton(
@@ -300,7 +359,7 @@ class _ClassStep extends StatelessWidget {
               maxCrossAxisExtent: 220,
               mainAxisSpacing: 10,
               crossAxisSpacing: 10,
-              childAspectRatio: 1.55,
+              childAspectRatio: 0.95,
             ),
             itemCount: DndClass.values.length,
             itemBuilder: (ctx, i) {
@@ -452,14 +511,26 @@ class _ClassCard extends StatelessWidget {
   final bool selected;
   final VoidCallback onTap;
 
+  // The two damage types this class specialises in.
+  // Physical+X classes (classElement == secondaryElement) → Physical + that element.
+  // Dual-element classes → classElement + secondaryElement.
+  List<DamageType> get _elementPair {
+    final ce = dndClass.info.classElement;
+    final se = dndClass.info.secondaryElement;
+    return ce == se ? [DamageType.physical, ce] : [ce, se];
+  }
+
   @override
   Widget build(BuildContext context) {
     final info = dndClass.info;
+    final pair = _elementPair;
+    final stats = [info.str, info.dex, info.con, info.intelligence, info.wis, info.cha];
+
     return GestureDetector(
       onTap: onTap,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 150),
-        padding: const EdgeInsets.all(10),
+        padding: const EdgeInsets.fromLTRB(10, 9, 10, 8),
         decoration: BoxDecoration(
           color: selected ? AppTheme.cardBg : AppTheme.darkBg,
           border: Border.all(
@@ -467,78 +538,110 @@ class _ClassCard extends StatelessWidget {
             width: selected ? 2 : 1,
           ),
           boxShadow: selected
-              ? [
-                  BoxShadow(
-                    color: AppTheme.accentGold.withValues(alpha: 0.15),
-                    blurRadius: 10,
-                    spreadRadius: 1,
-                  )
-                ]
+              ? [BoxShadow(
+                  color: AppTheme.accentGold.withValues(alpha: 0.15),
+                  blurRadius: 10, spreadRadius: 1,
+                )]
               : null,
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // ── Name row ──────────────────────────────────────────────
             Row(
               children: [
-                Icon(
-                  info.icon,
-                  size: 14,
-                  color: selected ? AppTheme.accentGold : AppTheme.textMuted,
-                ),
-                const SizedBox(width: 6),
+                Icon(info.icon, size: 13,
+                    color: selected ? AppTheme.accentGold : AppTheme.textMuted),
+                const SizedBox(width: 5),
                 Expanded(
                   child: Text(
                     info.displayName.toUpperCase(),
                     style: GoogleFonts.pixelifySans(
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
-                      color: selected
-                          ? AppTheme.accentGold
-                          : AppTheme.textLight,
-                      letterSpacing: 1,
+                      fontSize: 11, fontWeight: FontWeight.bold, letterSpacing: 1,
+                      color: selected ? AppTheme.accentGold : AppTheme.textLight,
                     ),
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 5),
-            Text(
-              info.likes,
-              style: GoogleFonts.pixelifySans(
-                fontSize: 10,
-                color: AppTheme.textMuted,
-              ),
-            ),
             const SizedBox(height: 2),
-            Text(
-              info.primaryAbility,
-              style: GoogleFonts.pixelifySans(
-                fontSize: 10,
-                color: AppTheme.accentGold.withValues(alpha: 0.75),
-              ),
-              overflow: TextOverflow.ellipsis,
+            Text('${info.likes} · ${info.primaryAbility}',
+                style: GoogleFonts.pixelifySans(fontSize: 8, color: AppTheme.textMuted),
+                overflow: TextOverflow.ellipsis),
+            const SizedBox(height: 6),
+
+            // ── Sprite + damage types ────────────────────────────────
+            Row(
+              children: [
+                SizedBox(
+                  width: 40, height: 50,
+                  child: BattleSprite(spriteId: dndClass.spriteId, facingLeft: false),
+                ),
+                const SizedBox(width: 8),
+                Expanded(child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(mainAxisSize: MainAxisSize.min, children: [
+                      _DmgPill(pair[0]),
+                      const SizedBox(width: 4),
+                      _DmgPill(pair[1]),
+                    ]),
+                    const SizedBox(height: 6),
+                    // Stats as PWR/AGI/VIT/ARC/FOC/FOR
+                    Row(
+                      children: [
+                        for (final e in [('PWR', stats[0]), ('AGI', stats[1]), ('VIT', stats[2])])
+                          Expanded(child: Column(mainAxisSize: MainAxisSize.min, children: [
+                            Text(e.$1, textAlign: TextAlign.center,
+                                style: GoogleFonts.pixelifySans(fontSize: 7, color: AppTheme.textMuted)),
+                            Text('${e.$2}', textAlign: TextAlign.center,
+                                style: GoogleFonts.pixelifySans(fontSize: 10, fontWeight: FontWeight.bold,
+                                    color: e.$2 >= 15 ? AppTheme.accentGold : e.$2 <= 9 ? const Color(0xFF886655) : AppTheme.textLight)),
+                          ])),
+                      ],
+                    ),
+                    const SizedBox(height: 2),
+                    Row(
+                      children: [
+                        for (final e in [('ARC', stats[3]), ('FOC', stats[4]), ('FOR', stats[5])])
+                          Expanded(child: Column(mainAxisSize: MainAxisSize.min, children: [
+                            Text(e.$1, textAlign: TextAlign.center,
+                                style: GoogleFonts.pixelifySans(fontSize: 7, color: AppTheme.textMuted)),
+                            Text('${e.$2}', textAlign: TextAlign.center,
+                                style: GoogleFonts.pixelifySans(fontSize: 10, fontWeight: FontWeight.bold,
+                                    color: e.$2 >= 15 ? AppTheme.accentGold : e.$2 <= 9 ? const Color(0xFF886655) : AppTheme.textLight)),
+                          ])),
+                      ],
+                    ),
+                  ],
+                )),
+              ],
             ),
+
             const Spacer(),
+
+            // ── Complexity ────────────────────────────────────────────
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(
-                  info.complexityDots,
-                  style: GoogleFonts.pixelifySans(
-                    fontSize: 11,
-                    color: _complexityColor(info.complexity),
-                    letterSpacing: 3,
-                  ),
-                ),
-                Text(
-                  info.complexityLabel.toUpperCase(),
-                  style: GoogleFonts.pixelifySans(
-                    fontSize: 9,
-                    color: _complexityColor(info.complexity),
-                    letterSpacing: 1,
-                  ),
+                Text('COMPLEXITY',
+                    style: GoogleFonts.pixelifySans(
+                        fontSize: 7, color: AppTheme.textMuted,
+                        letterSpacing: 0.5)),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(info.complexityDots,
+                        style: GoogleFonts.pixelifySans(
+                            fontSize: 10, color: _complexityColor(info.complexity),
+                            letterSpacing: 2)),
+                    const SizedBox(width: 4),
+                    Text(info.complexityLabel.toUpperCase(),
+                        style: GoogleFonts.pixelifySans(
+                            fontSize: 8, color: _complexityColor(info.complexity),
+                            letterSpacing: 0.5)),
+                  ],
                 ),
               ],
             ),
@@ -557,30 +660,94 @@ class _ClassCard extends StatelessWidget {
   }
 }
 
+// ── Damage type pill ──────────────────────────────────────────────────────────
+
+class _DmgPill extends StatelessWidget {
+  const _DmgPill(this.type);
+  final DamageType type;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(type.emoji,
+            style: const TextStyle(fontSize: 9)),
+        const SizedBox(width: 2),
+        Text(
+          type.label,
+          style: GoogleFonts.pixelifySans(
+            fontSize: 8,
+            color: type.color,
+            fontWeight: FontWeight.bold,
+            letterSpacing: 0.3,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
 // ── Step 3: Race + racial trait selection ────────────────────────────────────
 
-class _RaceStep extends StatelessWidget {
+// ── Bonus source data for a single trait ──────────────────────────────────────
+class _TraitBonus {
+  const _TraitBonus(this.label, this.value, this.color);
+  final String label;
+  final String value;
+  final Color  color;
+}
+
+List<_TraitBonus> _traitBonuses(HeroTrait t) {
+  final out = <_TraitBonus>[];
+  String pct(int v) => v >= 0 ? '+$v%' : '$v%';
+  if (t.xpPct    != 0) out.add(_TraitBonus('XP per kill',    pct(t.xpPct),    const Color(0xFF88aaff)));
+  if (t.goldPct  != 0) out.add(_TraitBonus('Gold per kill',  pct(t.goldPct),  t.goldPct  > 0 ? AppTheme.accentGold : const Color(0xFFaa6644)));
+  if (t.shardPct != 0) out.add(_TraitBonus('Shards per kill',pct(t.shardPct), t.shardPct > 0 ? const Color(0xFF44ccff) : const Color(0xFF4488aa)));
+  if (t.hpPct    != 0) out.add(_TraitBonus('Max HP',         pct(t.hpPct),    t.hpPct    > 0 ? const Color(0xFF44cc88) : const Color(0xFFff4444)));
+  if (t.dmgPct   != 0) out.add(_TraitBonus('Damage dealt',   pct(t.dmgPct),   t.dmgPct   > 0 ? const Color(0xFFff8844) : const Color(0xFFcc4444)));
+  return out;
+}
+
+Color _traitAccent(HeroTrait? t) {
+  if (t == null) return AppTheme.accentGold;
+  final bonuses = _traitBonuses(t);
+  return bonuses.isNotEmpty ? bonuses.first.color : AppTheme.accentGold;
+}
+
+// ── _RaceStep ─────────────────────────────────────────────────────────────────
+class _RaceStep extends StatefulWidget {
   const _RaceStep({
     super.key,
     required this.selectedRace,
-    required this.selectedTrait,
     required this.onRaceSelected,
-    required this.onTraitSelected,
     required this.onConfirm,
   });
 
   final HeroRace? selectedRace;
-  final HeroTrait? selectedTrait;
   final ValueChanged<HeroRace> onRaceSelected;
-  final ValueChanged<HeroTrait> onTraitSelected;
   final VoidCallback onConfirm;
 
   @override
+  State<_RaceStep> createState() => _RaceStepState();
+}
+
+class _RaceStepState extends State<_RaceStep> {
+  HeroRace? _expanded;
+
+  void _tap(HeroRace race) {
+    final alreadySel = widget.selectedRace == race;
+    widget.onRaceSelected(race);
+    setState(() {
+      _expanded = (alreadySel && _expanded == race) ? null : race;
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final ready = selectedRace != null && selectedTrait != null;
     return Column(
       children: [
-        const SizedBox(height: 20),
+        const SizedBox(height: 16),
         Text(
           'CHOOSE YOUR RACE',
           style: AppTheme.pixelHeading(fontSize: 19, letterSpacing: 4),
@@ -594,164 +761,203 @@ class _RaceStep extends StatelessWidget {
             letterSpacing: 3,
           ),
         ).animate(delay: 80.ms).fadeIn(duration: 300.ms),
-        const SizedBox(height: 12),
+        const SizedBox(height: 10),
         Expanded(
-          child: ListView(
+          child: ListView.builder(
             padding: const EdgeInsets.symmetric(horizontal: 16),
-            children: [
-              // Race grid
-              GridView.builder(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 2,
-                  mainAxisSpacing: 8,
-                  crossAxisSpacing: 8,
-                  childAspectRatio: 2.5,
-                ),
-                itemCount: HeroRace.values.length,
-                itemBuilder: (ctx, i) {
-                  final race = HeroRace.values[i];
-                  final info = race.info;
-                  final sel = selectedRace == race;
-                  return GestureDetector(
-                    onTap: () => onRaceSelected(race),
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 150),
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                      decoration: BoxDecoration(
-                        color: sel ? AppTheme.cardBg : AppTheme.darkBg,
-                        border: Border.all(
-                          color: sel ? AppTheme.accentGold : AppTheme.cardBorder,
-                          width: sel ? 2 : 1,
-                        ),
-                        boxShadow: sel
-                            ? [BoxShadow(
-                                color: AppTheme.accentGold.withValues(alpha: 0.12),
-                                blurRadius: 8, spreadRadius: 1)]
-                            : null,
-                      ),
-                      child: Row(children: [
-                        Text(info.icon, style: const TextStyle(fontSize: 21)),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(info.displayName.toUpperCase(),
-                                  style: GoogleFonts.pixelifySans(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.bold,
-                                    color: sel ? AppTheme.accentGold : AppTheme.textLight,
-                                    letterSpacing: 1,
-                                  ),
-                                  overflow: TextOverflow.ellipsis),
-                              Text(info.tags,
-                                  style: GoogleFonts.pixelifySans(
-                                    fontSize: 9,
-                                    color: AppTheme.textMuted,
-                                  ),
-                                  overflow: TextOverflow.ellipsis),
-                            ],
-                          ),
-                        ),
-                      ]),
-                    ),
-                  ).animate(delay: (i * 25).ms).fadeIn(duration: 250.ms);
-                },
-              ),
-              // Racial trait picker — slides in when race is selected
-              if (selectedRace != null) ...[
-                const SizedBox(height: 16),
-                Text(
-                  '— CHOOSE YOUR RACIAL TRAIT —',
-                  textAlign: TextAlign.center,
-                  style: GoogleFonts.pixelifySans(
-                    fontSize: 11,
-                    color: AppTheme.textMuted,
-                    letterSpacing: 2,
-                  ),
-                ).animate().fadeIn(duration: 250.ms),
-                const SizedBox(height: 10),
-                ...HeroTrait.forRace(selectedRace!).asMap().entries.map((entry) {
-                  final t = entry.value;
-                  final sel = selectedTrait?.id == t.id;
-                  return GestureDetector(
-                    onTap: () => onTraitSelected(t),
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 150),
-                      margin: const EdgeInsets.only(bottom: 10),
-                      padding: const EdgeInsets.all(14),
-                      decoration: BoxDecoration(
-                        color: sel ? AppTheme.cardBg : AppTheme.darkBg,
-                        border: Border.all(
-                          color: sel ? AppTheme.accentGold : AppTheme.cardBorder,
-                          width: sel ? 2 : 1,
-                        ),
-                        boxShadow: sel
-                            ? [BoxShadow(
-                                color: AppTheme.accentGold.withValues(alpha: 0.12),
-                                blurRadius: 10, spreadRadius: 1)]
-                            : null,
-                      ),
-                      child: Row(children: [
-                        Text(t.icon, style: const TextStyle(fontSize: 25)),
-                        const SizedBox(width: 14),
-                        Expanded(child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(t.name,
-                                style: GoogleFonts.pixelifySans(
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.bold,
-                                  color: sel ? AppTheme.accentGold : AppTheme.textLight,
-                                  letterSpacing: 1,
-                                )),
-                            const SizedBox(height: 4),
-                            Text(t.description,
-                                style: GoogleFonts.pixelifySans(
-                                  fontSize: 11,
-                                  color: AppTheme.textMuted,
-                                  height: 1.4,
-                                )),
-                          ],
-                        )),
-                        if (sel)
-                          const Icon(Icons.check_circle,
-                              color: AppTheme.accentGold, size: 18),
-                      ]),
-                    ),
-                  ).animate(delay: (entry.key * 60).ms).fadeIn(duration: 250.ms)
-                   .slideX(begin: 0.04, duration: 250.ms, curve: Curves.easeOut);
-                }),
-                const SizedBox(height: 8),
-              ],
-            ],
+            itemCount: HeroRace.values.length,
+            itemBuilder: (ctx, i) {
+              final race = HeroRace.values[i];
+              return _RaceListRow(
+                race: race,
+                selected: widget.selectedRace == race,
+                expanded: _expanded == race,
+                onTap: () => _tap(race),
+              ).animate(delay: (i * 20).ms).fadeIn(duration: 200.ms);
+            },
           ),
         ),
         Padding(
-          padding: const EdgeInsets.fromLTRB(16, 0, 16, 20),
+          padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
           child: SizedBox(
             width: double.infinity,
             child: ElevatedButton(
-              onPressed: ready ? onConfirm : null,
+              onPressed: widget.selectedRace != null ? widget.onConfirm : null,
               style: ElevatedButton.styleFrom(
                 disabledBackgroundColor: AppTheme.cardBorder,
                 disabledForegroundColor: AppTheme.textMuted,
               ),
               child: Text(
-                ready
+                widget.selectedRace != null
                     ? 'BEGIN YOUR JOURNEY'
-                    : selectedRace == null
-                        ? 'SELECT A RACE'
-                        : 'SELECT A TRAIT',
+                    : 'SELECT A RACE',
                 style: GoogleFonts.pixelifySans(fontSize: 15, letterSpacing: 2),
               ),
             ),
           ),
         ),
       ],
+    );
+  }
+}
+
+// ── _RaceListRow ──────────────────────────────────────────────────────────────
+class _RaceListRow extends StatelessWidget {
+  const _RaceListRow({
+    required this.race,
+    required this.selected,
+    required this.expanded,
+    required this.onTap,
+  });
+
+  final HeroRace     race;
+  final bool         selected;
+  final bool         expanded;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final info    = race.info;
+    final trait   = HeroTrait.forRace(race).firstOrNull;
+    final bonuses = trait != null ? _traitBonuses(trait) : <_TraitBonus>[];
+    final accent  = _traitAccent(trait);
+
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 150),
+        margin: const EdgeInsets.only(bottom: 4),
+        decoration: BoxDecoration(
+          color: expanded
+              ? accent.withValues(alpha: 0.07)
+              : const Color(0xFF0d1020),
+          border: Border.all(
+            color: selected
+                ? AppTheme.accentGold.withValues(alpha: expanded ? 0.55 : 0.35)
+                : const Color(0xFF1e2235),
+          ),
+        ),
+        child: Column(
+          children: [
+            // ── collapsed header row ──
+            Padding(
+              padding: const EdgeInsets.fromLTRB(10, 6, 10, 6),
+              child: Row(
+                children: [
+                  Text(info.icon, style: const TextStyle(fontSize: 26)),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          info.displayName.toUpperCase(),
+                          style: GoogleFonts.pixelifySans(
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                            color: selected ? AppTheme.accentGold : Colors.white70,
+                            letterSpacing: 1.2,
+                          ),
+                        ),
+                        if (trait != null)
+                          Text(
+                            trait.name,
+                            style: GoogleFonts.pixelifySans(
+                              fontSize: 9,
+                              color: AppTheme.textMuted,
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                  // Bonus values preview (colored, right-aligned)
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: bonuses
+                        .map((b) => Padding(
+                              padding: const EdgeInsets.only(left: 6),
+                              child: Text(
+                                b.value,
+                                style: GoogleFonts.pixelifySans(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.bold,
+                                  color: b.color,
+                                ),
+                              ),
+                            ))
+                        .toList(),
+                  ),
+                  const SizedBox(width: 4),
+                  Icon(
+                    expanded ? Icons.expand_less : Icons.expand_more,
+                    size: 14,
+                    color: Colors.white24,
+                  ),
+                ],
+              ),
+            ),
+            // ── expanded detail section ──
+            if (expanded && bonuses.isNotEmpty)
+              Container(
+                decoration: BoxDecoration(
+                  border: Border(
+                      top: BorderSide(color: accent.withValues(alpha: 0.2))),
+                  color: accent.withValues(alpha: 0.04),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    ...bonuses.map((b) => Padding(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 16, vertical: 4),
+                          child: Row(
+                            children: [
+                              Container(
+                                width: 3,
+                                height: 3,
+                                decoration: BoxDecoration(
+                                  color: b.color.withValues(alpha: 0.6),
+                                  shape: BoxShape.circle,
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  b.label,
+                                  style: const TextStyle(
+                                      fontSize: 11, color: Colors.white38),
+                                ),
+                              ),
+                              Text(
+                                b.value,
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.bold,
+                                  color: b.color,
+                                ),
+                              ),
+                            ],
+                          ),
+                        )),
+                    if (trait != null)
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 2, 16, 8),
+                        child: Text(
+                          trait.description,
+                          style: GoogleFonts.pixelifySans(
+                            fontSize: 10,
+                            color: AppTheme.textMuted,
+                            height: 1.5,
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+          ],
+        ),
+      ),
     );
   }
 }

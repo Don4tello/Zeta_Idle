@@ -1,11 +1,14 @@
 ﻿import 'dart:async';
+import 'dart:math';
 import 'package:flutter/material.dart';
 import '../models/dungeon.dart';
+import '../models/hero_ability.dart';
 import '../screens/main_shell.dart';
 import '../services/game_state.dart';
 import '../theme/app_theme.dart';
-import '../widgets/ability_bar.dart';
 import '../widgets/battle_arena.dart';
+import '../widgets/battle_split_panel.dart';
+import '../widgets/tier_selector.dart';
 import '../widgets/pet_battle_sprite.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -26,17 +29,43 @@ class DungeonScreen extends StatefulWidget {
 }
 
 class _DungeonScreenState extends State<DungeonScreen> {
+  int _selectedTier = 1;
+  bool _autoRun = false;
+  Timer? _autoTimer;
+
+  @override
+  void dispose() {
+    _autoTimer?.cancel();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     final game = GameStateProvider.of(context);
     final run  = game.activeDungeon;
 
     final body = switch (run) {
-      null               => _DungeonLobby(game: game, onStart: () => setState(() => game.startDungeon())),
-      _ when run.isOver  => _DungeonSummary(run: run, game: game, onExit: _exitDungeon),
+      null              => _DungeonLobby(
+                             game: game,
+                             selectedTier: _selectedTier,
+                             onTierChange: (t) => setState(() => _selectedTier = t),
+                             onStart: () => setState(() => game.startDungeon(tier: _selectedTier)),
+                             autoRun: _autoRun,
+                             onToggleAuto: _toggleAuto,
+                           ),
+      _ when run.isOver => _DungeonSummary(
+                             run: run, game: game,
+                             autoRun: _autoRun,
+                             onToggleAuto: _toggleAuto,
+                             onExit: _exitDungeon,
+                             onRunAgain: () => setState(() {
+                               game.activeDungeon = null;
+                               game.startDungeon(tier: _selectedTier);
+                             }),
+                           ),
       _ when run.currentRoom == null || !run.currentRoom!.resolved
-                         => _RoomDetail(run: run, game: game, onResolved: () => setState(() {})),
-      _                  => _RoomResult(run: run, game: game, onNext: _afterRoom),
+                        => _RoomDetail(run: run, game: game, onResolved: _onRoomResolved),
+      _                 => _RoomResult(run: run, game: game, onNext: _afterRoom),
     };
 
     return Scaffold(
@@ -45,69 +74,189 @@ class _DungeonScreenState extends State<DungeonScreen> {
         backgroundColor: const Color(0xFF2A2623),
         title: run == null
             ? Text('THE DUNGEON', style: AppTheme.pixelHeading(fontSize: 14, letterSpacing: 2))
-            : Text('FLOOR ${run.floor}  —  THE DUNGEON',
+            : Text('T${run.tier}  FL.${run.floor}  —  THE DUNGEON',
                 style: AppTheme.pixelHeading(fontSize: 12, letterSpacing: 1)),
-        actions: [
-          if (run != null && !run.isOver)
-            TextButton(
-              onPressed: _abandon,
-              child: Text('FLEE', style: AppTheme.pixelHeading(fontSize: 10, color: const Color(0xFFcc4444))),
-            ),
-        ],
+        leading: run != null && !run.isOver
+            ? IconButton(
+                icon: const Icon(Icons.arrow_back, size: 20),
+                onPressed: _abandon,
+                tooltip: 'Flee dungeon',
+              )
+            : null,
       ),
       body: body,
     );
   }
 
-  void _abandon() => setState(() => GameStateProvider.of(context).abandonDungeon());
+  void _abandon() {
+    _autoTimer?.cancel();
+    _autoRun = false;
+    setState(() => GameStateProvider.of(context).abandonDungeon());
+  }
+
+  void _onRoomResolved() {
+    setState(() {});
+    if (_autoRun) _scheduleAutoAction();
+  }
+
   void _afterRoom() {
     final game = GameStateProvider.of(context);
     final run  = game.activeDungeon;
-    if (run == null || run.isOver) { setState(() {}); return; }
+    if (run == null || run.isOver) {
+      setState(() {});
+      if (_autoRun) _scheduleAutoAction();
+      return;
+    }
     game.advanceDungeonFloor();
     setState(() {});
+    if (_autoRun) _scheduleAutoAction();
   }
-  void _exitDungeon() => setState(() => GameStateProvider.of(context).activeDungeon = null);
+
+  void _exitDungeon() {
+    _autoTimer?.cancel();
+    _autoRun = false;
+    setState(() => GameStateProvider.of(context).activeDungeon = null);
+  }
+
+  void _toggleAuto() {
+    setState(() => _autoRun = !_autoRun);
+    if (_autoRun) _scheduleAutoAction();
+  }
+
+  void _scheduleAutoAction() {
+    _autoTimer?.cancel();
+    _autoTimer = null;
+    if (!_autoRun || !mounted) return;
+
+    final game = GameStateProvider.of(context);
+    final run  = game.activeDungeon;
+
+    if (run == null || run.isOver) {
+      _autoTimer = Timer(const Duration(milliseconds: 2500), () {
+        if (!mounted || !_autoRun) return;
+        setState(() {
+          game.activeDungeon = null;
+          game.startDungeon(tier: _selectedTier);
+        });
+        _scheduleAutoAction();
+      });
+      return;
+    }
+
+    final room = run.currentRoom;
+    if (room == null) return;
+
+    const combatTypes = {
+      DungeonRoomType.combat, DungeonRoomType.elite,
+      DungeonRoomType.ambush, DungeonRoomType.boss,
+    };
+
+    if (room.resolved) {
+      _autoTimer = Timer(const Duration(milliseconds: 700), () {
+        if (!mounted || !_autoRun) return;
+        _afterRoom();
+      });
+    } else if (!combatTypes.contains(room.type)) {
+      _autoTimer = Timer(const Duration(milliseconds: 800), () {
+        if (!mounted || !_autoRun) return;
+        _autoResolveRoom(game, run, room);
+      });
+    }
+  }
+
+  void _autoResolveRoom(GameState game, DungeonRun run, DungeonRoom room) {
+    switch (room.type) {
+      case DungeonRoomType.treasure:
+        game.collectDungeonTreasure();
+      case DungeonRoomType.restSite:
+        game.resolveDungeonRestSite();
+      case DungeonRoomType.trap:
+        game.resolveDungeonTrap();
+      case DungeonRoomType.shrine:
+        final choices = room.blessingChoices ?? [];
+        if (choices.isNotEmpty) {
+          game.chooseDungeonBlessing(choices.first);
+        } else {
+          room.resolved = true;
+        }
+      case DungeonRoomType.lockedChest:
+        room.resolved = true;
+      default:
+        room.resolved = true;
+    }
+    _onRoomResolved();
+  }
 }
 
 // ── Lobby ─────────────────────────────────────────────────────────────────────
 
 class _DungeonLobby extends StatelessWidget {
-  const _DungeonLobby({required this.game, required this.onStart});
+  const _DungeonLobby({
+    required this.game,
+    required this.selectedTier,
+    required this.onTierChange,
+    required this.onStart,
+    required this.autoRun,
+    required this.onToggleAuto,
+  });
   final GameState game;
+  final int selectedTier;
+  final void Function(int) onTierChange;
   final VoidCallback onStart;
+  final bool autoRun;
+  final VoidCallback onToggleAuto;
+
+  static const int _kMaxTiers = 10;
 
   @override
   Widget build(BuildContext context) {
+    final maxUnlocked = game.dungeonHighestTier + 1; // always can try the next tier
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
       child: Column(
         children: [
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              color: const Color(0xFF231F1B),
-              border: Border.all(color: AppTheme.accentGold.withValues(alpha: 0.4)),
-              borderRadius: BorderRadius.circular(4),
-            ),
-            child: Column(
-              children: [
-                const Text('🏰', style: TextStyle(fontSize: 49)),
-                const SizedBox(height: 12),
-                Text('THE DUNGEON', style: AppTheme.pixelHeading(fontSize: 15, letterSpacing: 2, color: AppTheme.accentGold)),
-                const SizedBox(height: 8),
-                const Text(
-                  'Descend the cursed dungeon. Survive as many floors as you can.\n'
-                  'Every 5th floor is a Boss. Loot is yours — even if you fall.',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 13, color: AppTheme.textMuted, height: 1.5),
+          // Hero image with overlay text
+          Stack(
+            children: [
+              SizedBox(
+                width: double.infinity,
+                height: 220,
+                child: Image.asset(
+                  'assets/images/dungeon_bg.png',
+                  fit: BoxFit.cover,
+                  alignment: Alignment.center,
                 ),
-                const SizedBox(height: 16),
-                _RecordChip(floor: game.deepestDungeonFloor),
-              ],
-            ),
+              ),
+              Positioned.fill(
+                child: Container(
+                  decoration: const BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [Color(0x00000000), Color(0xDD0a0a0a)],
+                      stops: [0.3, 1.0],
+                    ),
+                  ),
+                ),
+              ),
+              Positioned(
+                left: 16, right: 16, bottom: 16,
+                child: Column(
+                  children: [
+                    const Text(
+                      'Survive as many floors as you can. Every 5th floor is a Boss.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(fontSize: 12, color: Color(0xFFccbbaa), height: 1.4),
+                    ),
+                    const SizedBox(height: 10),
+                    _RecordChip(floor: game.deepestDungeonFloor),
+                  ],
+                ),
+              ),
+            ],
           ),
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(children: [
           TutorialTip(
             tutorialKey: 'dungeon',
             game: game,
@@ -115,9 +264,78 @@ class _DungeonLobby extends StatelessWidget {
                 'Loot is yours immediately — even if your hero falls.',
           ),
           const SizedBox(height: 16),
+          // Tier selector
+          TierSelector(
+            selectedTier: selectedTier,
+            maxUnlocked: maxUnlocked.clamp(1, _kMaxTiers),
+            highestCleared: game.dungeonHighestTier,
+            onTierChange: onTierChange,
+          ),
+          const SizedBox(height: 10),
+          // Daily dungeon affix
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: BoxDecoration(
+              color: const Color(0xAA0d0c14),
+              border: Border.all(color: const Color(0xFF9966ff).withValues(alpha: 0.5)),
+              borderRadius: BorderRadius.circular(4),
+            ),
+            child: Row(children: [
+              const Text('⚡', style: TextStyle(fontSize: 14)),
+              const SizedBox(width: 8),
+              Expanded(child: Text(
+                'AFFIX: ${game.dungeonAffixLabel}',
+                style: const TextStyle(fontSize: 10, color: Color(0xFF9966ff), fontWeight: FontWeight.bold),
+              )),
+            ]),
+          ),
+          const SizedBox(height: 10),
+          _DungeonEnterSection(game: game, tier: selectedTier, onStart: onStart),
+          if (game.dungeonHighestTier >= selectedTier) ...[
+            const SizedBox(height: 8),
+            GestureDetector(
+              onTap: onToggleAuto,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                decoration: BoxDecoration(
+                  color: autoRun
+                      ? const Color(0xFF44cc88).withValues(alpha: 0.10)
+                      : const Color(0xFF231F1B),
+                  border: Border.all(
+                    color: autoRun
+                        ? const Color(0xFF44cc88)
+                        : AppTheme.cardBorder,
+                  ),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      autoRun ? Icons.autorenew : Icons.autorenew,
+                      color: autoRun ? const Color(0xFF44cc88) : AppTheme.textMuted,
+                      size: 16,
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      autoRun ? 'AUTO RUN: ON' : 'AUTO RUN: OFF',
+                      style: AppTheme.pixelHeading(
+                        fontSize: 11,
+                        letterSpacing: 1,
+                        color: autoRun ? const Color(0xFF44cc88) : AppTheme.textMuted,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+          const SizedBox(height: 16),
           _InfoCard(),
-          const SizedBox(height: 20),
-          _EnterButton(onStart: onStart),
+          const SizedBox(height: 16),
+          _LootPreviewCard(deepestFloor: game.deepestDungeonFloor),
+        ])),
         ],
       ),
     );
@@ -188,25 +406,142 @@ class _InfoCard extends StatelessWidget {
   }
 }
 
-class _EnterButton extends StatelessWidget {
-  const _EnterButton({required this.onStart});
+class _LootPreviewCard extends StatelessWidget {
+  const _LootPreviewCard({required this.deepestFloor});
+  final int deepestFloor;
+
+  static String _itemTierLabel(int floor) {
+    if (floor >= 20) return 'Rare–Legendary';
+    if (floor >= 10) return 'Uncommon–Rare';
+    if (floor >= 5)  return 'Common–Uncommon';
+    return 'Common';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final mythrilAt5  = (5  / 2).floor().clamp(0, 10);
+    final mythrilAt10 = (10 / 2).floor().clamp(0, 10);
+    final tier = _itemTierLabel(deepestFloor);
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        color: const Color(0xFF1A1510),
+        border: Border.all(color: const Color(0xFF5a4a2a).withValues(alpha: 0.6)),
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('EXPECTED LOOT', style: AppTheme.pixelHeading(fontSize: 10, letterSpacing: 2, color: AppTheme.textMuted)),
+          const SizedBox(height: 10),
+          Row(children: [
+            const Text('⛏', style: TextStyle(fontSize: 14)),
+            const SizedBox(width: 8),
+            Expanded(child: Text('Mythril: ~$mythrilAt5 (floor 5)  →  ~$mythrilAt10 (floor 10)',
+                style: const TextStyle(fontSize: 12, color: AppTheme.textLight))),
+          ]),
+          const SizedBox(height: 6),
+          Row(children: [
+            const Text('🗡', style: TextStyle(fontSize: 14)),
+            const SizedBox(width: 8),
+            Expanded(child: Text('Item tier at your depth: $tier',
+                style: const TextStyle(fontSize: 12, color: AppTheme.textLight))),
+          ]),
+          if (deepestFloor > 0) ...[
+            const SizedBox(height: 6),
+            Row(children: [
+              const Text('📊', style: TextStyle(fontSize: 14)),
+              const SizedBox(width: 8),
+              Text('Your best: floor $deepestFloor  →  ~${(deepestFloor / 2).floor().clamp(0, 10)} mythril',
+                  style: const TextStyle(fontSize: 12, color: Color(0xFFFFCC44))),
+            ]),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+// Tier selector is now shared via TierSelector widget
+
+class _DungeonEnterSection extends StatelessWidget {
+  const _DungeonEnterSection({required this.game, required this.tier, required this.onStart});
+  final GameState game;
+  final int tier;
   final VoidCallback onStart;
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      width: double.infinity,
-      child: ElevatedButton(
-        onPressed: onStart,
-        style: ElevatedButton.styleFrom(
-          backgroundColor: const Color(0xFF2a1f00),
-          foregroundColor: AppTheme.accentGold,
-          side: const BorderSide(color: AppTheme.accentGold, width: 1.5),
-          padding: const EdgeInsets.symmetric(vertical: 16),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+    final remaining = game.dungeonAttemptsRemaining;
+    final canAfford = game.crystals >= GameState.kDungeonExtraCost;
+    return Column(
+      children: [
+        // Attempt counter
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.refresh, size: 14, color: AppTheme.textMuted),
+            const SizedBox(width: 5),
+            Text(
+              'Daily attempts: $remaining / ${GameState.kDungeonMaxAttempts}',
+              style: const TextStyle(fontSize: 12, color: AppTheme.textMuted),
+            ),
+          ],
         ),
-        child: Text('ENTER DUNGEON', style: AppTheme.pixelHeading(fontSize: 14, letterSpacing: 2, color: AppTheme.accentGold)),
-      ),
+        const SizedBox(height: 10),
+        SizedBox(
+          width: double.infinity,
+          child: ElevatedButton(
+            onPressed: remaining > 0 ? onStart : null,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF2a1f00),
+              foregroundColor: AppTheme.accentGold,
+              disabledBackgroundColor: const Color(0xFF1a1410),
+              disabledForegroundColor: Colors.white24,
+              side: BorderSide(
+                color: remaining > 0 ? AppTheme.accentGold : Colors.white24,
+                width: 1.5,
+              ),
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+            ),
+            child: Text(
+              remaining > 0 ? 'ENTER  TIER $tier' : 'NO ATTEMPTS LEFT',
+              style: AppTheme.pixelHeading(
+                fontSize: 14, letterSpacing: 2,
+                color: remaining > 0 ? AppTheme.accentGold : Colors.white24,
+              ),
+            ),
+          ),
+        ),
+        if (remaining == 0) ...[
+          const SizedBox(height: 8),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton(
+              onPressed: canAfford ? () => game.buyExtraDungeonAttempt() : null,
+              style: OutlinedButton.styleFrom(
+                foregroundColor: const Color(0xFF88ccff),
+                side: BorderSide(
+                  color: canAfford
+                      ? const Color(0xFF88ccff).withValues(alpha: 0.6)
+                      : Colors.white24,
+                ),
+                padding: const EdgeInsets.symmetric(vertical: 10),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+              ),
+              child: Text(
+                '💎 ${GameState.kDungeonExtraCost} crystals — Buy 1 extra attempt',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: canAfford ? const Color(0xFF88ccff) : Colors.white24,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ],
     );
   }
 }
@@ -222,43 +557,162 @@ class _HeroBar extends StatelessWidget {
     final pct = (run.heroHp / run.heroMaxHp).clamp(0.0, 1.0);
     final hpColor = pct > 0.5 ? const Color(0xFF88cc44) : pct > 0.25 ? const Color(0xFFcc8833) : const Color(0xFFcc4444);
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
       decoration: const BoxDecoration(
         color: Color(0xFF231F1B),
         border: Border(bottom: BorderSide(color: AppTheme.cardBorder)),
       ),
       child: Column(
         children: [
-          Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-            Text('HP', style: AppTheme.pixelHeading(fontSize: 10, letterSpacing: 2, color: hpColor)),
-            Text('${run.heroHp} / ${run.heroMaxHp}',
-                style: TextStyle(fontSize: 12, color: hpColor, fontWeight: FontWeight.bold)),
-          ]),
-          const SizedBox(height: 4),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(2),
-            child: LinearProgressIndicator(
-              value: pct,
-              minHeight: 6,
-              backgroundColor: AppTheme.cardBorder,
-              valueColor: AlwaysStoppedAnimation<Color>(hpColor),
+          // ── Floor progress strip ─────────────────────────────────────────
+          _FloorStrip(run: run),
+          // ── HP bar ──────────────────────────────────────────────────────
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 10),
+            child: Column(
+              children: [
+                Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+                  Text('HP', style: AppTheme.pixelHeading(fontSize: 10, letterSpacing: 2, color: hpColor)),
+                  Text('${run.heroHp} / ${run.heroMaxHp}',
+                      style: TextStyle(fontSize: 12, color: hpColor, fontWeight: FontWeight.bold)),
+                ]),
+                const SizedBox(height: 4),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(2),
+                  child: LinearProgressIndicator(
+                    value: pct,
+                    minHeight: 6,
+                    backgroundColor: AppTheme.cardBorder,
+                    valueColor: AlwaysStoppedAnimation<Color>(hpColor),
+                  ),
+                ),
+                if (run.blessings.isNotEmpty) ...[
+                  const SizedBox(height: 6),
+                  Wrap(
+                    spacing: 6,
+                    children: run.blessings.map((b) => Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF1a3a2a),
+                        border: Border.all(color: const Color(0xFF44cc88)),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Text(b.label, style: const TextStyle(fontSize: 10, color: Color(0xFF44cc88))),
+                    )).toList(),
+                  ),
+                ],
+              ],
             ),
           ),
-          if (run.blessings.isNotEmpty) ...[
-            const SizedBox(height: 6),
-            Wrap(
-              spacing: 6,
-              children: run.blessings.map((b) => Container(
-                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF1a3a2a),
-                  border: Border.all(color: const Color(0xFF44cc88)),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Text(b.label, style: const TextStyle(fontSize: 10, color: Color(0xFF44cc88))),
-              )).toList(),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Floor strip ───────────────────────────────────────────────────────────────
+
+class _FloorStrip extends StatelessWidget {
+  const _FloorStrip({required this.run});
+  final DungeonRun run;
+
+  static const _roomIcons = <DungeonRoomType, String>{
+    DungeonRoomType.combat:      '⚔',
+    DungeonRoomType.elite:       '💀',
+    DungeonRoomType.ambush:      '🗡',
+    DungeonRoomType.treasure:    '💎',
+    DungeonRoomType.shrine:      '🕯',
+    DungeonRoomType.lockedChest: '🔒',
+    DungeonRoomType.trap:        '⚠',
+    DungeonRoomType.restSite:    '🏕',
+    DungeonRoomType.boss:        '☠',
+  };
+
+  static const _roomColors = <DungeonRoomType, Color>{
+    DungeonRoomType.combat:      Color(0xFFff6644),
+    DungeonRoomType.elite:       Color(0xFFcc44ff),
+    DungeonRoomType.ambush:      Color(0xFFff8833),
+    DungeonRoomType.treasure:    Color(0xFFffcc33),
+    DungeonRoomType.shrine:      Color(0xFF44ccaa),
+    DungeonRoomType.lockedChest: Color(0xFF88aaff),
+    DungeonRoomType.trap:        Color(0xFFcc8833),
+    DungeonRoomType.restSite:    Color(0xFF44cc88),
+    DungeonRoomType.boss:        Color(0xFFcc4444),
+  };
+
+  @override
+  Widget build(BuildContext context) {
+    final cur = run.floor;
+    final currentType = run.currentRoom?.type;
+    final totalFloors = run.tier * 8;
+
+    return Container(
+      padding: const EdgeInsets.fromLTRB(8, 6, 8, 6),
+      decoration: const BoxDecoration(
+        color: Color(0xFF181410),
+        border: Border(bottom: BorderSide(color: AppTheme.cardBorder, width: 0.5)),
+      ),
+      child: Row(
+        children: [
+          // Vertical depth indicator
+          Column(
+            children: [
+              Text('⬇', style: TextStyle(fontSize: 10, color: AppTheme.textMuted.withValues(alpha: 0.5))),
+              const SizedBox(height: 2),
+              Text('F$cur', style: AppTheme.pixelHeading(fontSize: 10, color: AppTheme.accentGold)),
+            ],
+          ),
+          const SizedBox(width: 8),
+          // Floor nodes in a wrapped vertical-feeling flow
+          Expanded(
+            child: Wrap(
+              spacing: 4,
+              runSpacing: 4,
+              children: List.generate(totalFloors.clamp(1, 40), (i) {
+                final f = i + 1;
+                final isPast    = f < cur;
+                final isCurrent = f == cur;
+                final isBoss    = f % 5 == 0;
+
+                final String icon;
+                final Color nodeColor;
+                final Color bg;
+
+                if (isCurrent && currentType != null) {
+                  icon = _roomIcons[currentType] ?? '?';
+                  nodeColor = _roomColors[currentType] ?? AppTheme.accentGold;
+                  bg = nodeColor.withValues(alpha: 0.15);
+                } else if (isPast) {
+                  icon = isBoss ? '☠' : '✓';
+                  nodeColor = const Color(0xFF44cc88).withValues(alpha: 0.7);
+                  bg = nodeColor.withValues(alpha: 0.06);
+                } else {
+                  icon = isBoss ? '☠' : '·';
+                  nodeColor = isBoss
+                      ? const Color(0xFFcc4444).withValues(alpha: 0.4)
+                      : AppTheme.textMuted.withValues(alpha: 0.2);
+                  bg = const Color(0xFF0e0c08);
+                }
+
+                return Container(
+                  width: 24,
+                  height: 24,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: bg,
+                    border: Border.all(
+                      color: isCurrent ? nodeColor : nodeColor.withValues(alpha: 0.4),
+                      width: isCurrent ? 2 : 0.5,
+                    ),
+                    borderRadius: BorderRadius.circular(isBoss ? 6 : 3),
+                    boxShadow: isCurrent ? [
+                      BoxShadow(color: nodeColor.withValues(alpha: 0.3), blurRadius: 6),
+                    ] : null,
+                  ),
+                  child: Text(icon, style: TextStyle(fontSize: isCurrent ? 12 : 9, color: nodeColor)),
+                );
+              }),
             ),
-          ],
+          ),
         ],
       ),
     );
@@ -284,20 +738,49 @@ class _ConsumableBar extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         children: run.consumables.map((c) {
           final available = !c.used;
+          final (icon, color) = switch (c.type) {
+            DungeonConsumableType.healthPotion => ('🧪', const Color(0xFF44cc66)),
+            DungeonConsumableType.damageBoost  => ('⚔', const Color(0xFFff6644)),
+            DungeonConsumableType.ironShield   => ('🛡', const Color(0xFF66aaff)),
+          };
           return Tooltip(
             message: c.desc,
             child: GestureDetector(
               onTap: available ? () => onUse(c.type) : null,
-              child: Opacity(
-                opacity: available ? 1.0 : 0.3,
+              child: AnimatedOpacity(
+                duration: const Duration(milliseconds: 200),
+                opacity: available ? 1.0 : 0.25,
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                   decoration: BoxDecoration(
-                    color: available ? const Color(0xFF1a2a1a) : AppTheme.cardBg,
-                    border: Border.all(color: available ? const Color(0xFF44aa44) : AppTheme.cardBorder),
-                    borderRadius: BorderRadius.circular(4),
+                    color: available
+                        ? color.withValues(alpha: 0.10)
+                        : const Color(0xFF1a1a1a),
+                    border: Border.all(
+                      color: available ? color : AppTheme.cardBorder,
+                      width: available ? 1.5 : 1,
+                    ),
+                    borderRadius: BorderRadius.circular(6),
+                    boxShadow: available ? [
+                      BoxShadow(color: color.withValues(alpha: 0.15), blurRadius: 6),
+                    ] : null,
                   ),
-                  child: Text(c.label, style: const TextStyle(fontSize: 12, color: AppTheme.textLight)),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(icon, style: const TextStyle(fontSize: 18)),
+                      const SizedBox(height: 3),
+                      Text(
+                        c.label.split(' ').last,
+                        style: TextStyle(
+                          fontSize: 9,
+                          color: available ? color : AppTheme.textMuted,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 0.5,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -339,6 +822,8 @@ class _RoomDetail extends StatelessWidget {
     return Column(
       children: [
         _HeroBar(run: run),
+        // ── Pinned action buttons just below health bar ───────────────────
+        _buildRoomActionBar(room),
         Expanded(
           child: SingleChildScrollView(
             padding: const EdgeInsets.all(16),
@@ -355,6 +840,96 @@ class _RoomDetail extends StatelessWidget {
         _ConsumableBar(run: run, onUse: (t) { game.useDungeonConsumable(t); onResolved(); }),
       ],
     );
+  }
+
+  Widget _buildRoomActionBar(DungeonRoom room) {
+    const pad = EdgeInsets.symmetric(horizontal: 12, vertical: 8);
+    Widget btn(String label, Color color, Color bg, VoidCallback onTap) =>
+        Expanded(
+          child: ElevatedButton(
+            onPressed: onTap,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: bg,
+              side: BorderSide(color: color, width: 1.5),
+              padding: const EdgeInsets.symmetric(vertical: 13),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+            ),
+            child: Text(label,
+                style: AppTheme.pixelHeading(fontSize: 12, letterSpacing: 1, color: color)),
+          ),
+        );
+
+    switch (room.type) {
+      case DungeonRoomType.treasure:
+        return Padding(
+          padding: pad,
+          child: Row(children: [
+            btn('COLLECT', AppTheme.accentGold, const Color(0xFF2a1f00),
+                () { game.collectDungeonTreasure(); onResolved(); }),
+          ]),
+        );
+      case DungeonRoomType.restSite:
+        final heal = room.restoreHp ?? (run.heroMaxHp ~/ 5);
+        return Padding(
+          padding: pad,
+          child: Row(children: [
+            btn('REST  (+$heal HP)', const Color(0xFF44cc88), const Color(0xFF0e2a1a),
+                () { game.resolveDungeonRestSite(); onResolved(); }),
+          ]),
+        );
+      case DungeonRoomType.trap:
+        final dmg  = room.trapDamage ?? 0;
+        final pct  = run.heroMaxHp > 0 ? (dmg * 100 / run.heroMaxHp).round() : 0;
+        final hasPot = run.consumables
+            .any((c) => c.type == DungeonConsumableType.healthPotion && !c.used);
+        return Padding(
+          padding: pad,
+          child: Row(children: [
+            btn('PROCEED  (−$dmg HP / $pct%)', const Color(0xFFcc8833), const Color(0xFF3a2200),
+                () { game.resolveDungeonTrap(); onResolved(); }),
+            if (hasPot) ...[
+              const SizedBox(width: 8),
+              btn('USE POTION', const Color(0xFF44cc88), const Color(0xFF0e2a1a),
+                  () { game.useDungeonConsumable(DungeonConsumableType.healthPotion); onResolved(); }),
+            ],
+          ]),
+        );
+      case DungeonRoomType.lockedChest:
+        final cost      = room.chestShardCost ?? 30;
+        final canShards = game.shards >= cost;
+        final canCryst  = game.crystals >= GameState.chestCrystalCost;
+        return Padding(
+          padding: pad,
+          child: Column(
+            children: [
+              Row(children: [
+                btn(
+                  canShards ? 'OPEN  ($cost ◆)' : 'NOT ENOUGH SHARDS',
+                  canShards ? const Color(0xFF88aaff) : AppTheme.cardBorder,
+                  AppTheme.cardBg,
+                  canShards ? () { game.openDungeonChest(); onResolved(); } : () {},
+                ),
+                const SizedBox(width: 8),
+                btn('LEAVE IT', AppTheme.textMuted, AppTheme.cardBg,
+                    () { room.resolved = true; onResolved(); }),
+              ]),
+              if (!canShards && canCryst) ...[
+                const SizedBox(height: 8),
+                Row(children: [
+                  btn(
+                    'OPEN WITH 💎 ${GameState.chestCrystalCost} CRYSTALS',
+                    const Color(0xFFcc88ff),
+                    AppTheme.cardBg,
+                    () { game.openDungeonChestWithCrystals(); onResolved(); },
+                  ),
+                ]),
+              ],
+            ],
+          ),
+        );
+      default:
+        return const SizedBox.shrink();
+    }
   }
 }
 
@@ -382,6 +957,7 @@ class _AnimatedCombatRoomState extends State<_AnimatedCombatRoom> {
   final _arenaKey = GlobalKey<BattleArenaState>();
   Timer? _timer;
   bool _finished = false;
+  final List<String> _log = [];
 
   late int _heroHp;
   late int _heroMaxHp;
@@ -390,6 +966,15 @@ class _AnimatedCombatRoomState extends State<_AnimatedCombatRoom> {
   late int _heroAtk;
   late int _heroAc;
   late int _heroDmgMod;
+
+  int _abilityRound = 0;
+  final Map<String, int> _abilityCooldownUntil = {};
+  int _bonusAtk = 0;
+  int _totalDealt = 0;
+  int _totalTaken = 0;
+  int _bonusAc  = 0;
+  bool _dodgeThisRound        = false;
+  bool _enemyStunnedThisRound = false;
 
   @override
   void initState() {
@@ -401,8 +986,47 @@ class _AnimatedCombatRoomState extends State<_AnimatedCombatRoom> {
     _enemyMaxHp = _enemyHp;
     _heroAtk   = g.hero.attackBonus;
     _heroAc    = g.hero.armorClass;
-    _heroDmgMod = g.hero.strMod.clamp(0, 20);
-    _timer = Timer.periodic(const Duration(milliseconds: 600), (_) => _doRound());
+    _heroDmgMod = 0; // STR no longer gives flat damage
+    // Fire ally battle-start abilities
+    _fireAllyStart(g);
+    _timer = Timer.periodic(Duration(milliseconds: g.scaledInterval(600)), (_) => _doRound());
+  }
+
+  final Set<String> _allyUsed = {};
+
+  void _fireAllyStart(GameState g) {
+    final enemyName = widget.room.enemyName ?? 'Enemy';
+    if (g.allyUnlocked('greybeard') && _allyUsed.add('greybeard')) {
+      _bonusAtk += 5;
+      _log.add('📣 Greybeard: War Cry! +5 ATK for this fight.');
+    }
+    if (g.allyUnlocked('elder_voss') && _allyUsed.add('elder_voss')) {
+      final burst = (_enemyMaxHp * 0.10).round().clamp(1, 9999);
+      _enemyHp = (_enemyHp - burst).clamp(0, _enemyMaxHp);
+      _log.add('🔮 Voss: Arcane Surge! $enemyName takes $burst arcane damage!');
+    }
+    if (g.allyUnlocked('coin_felix') && _allyUsed.add('coin_felix')) {
+      _log.add('🤑 Felix: Bribe! $enemyName will drop 2× gold!');
+    }
+    if (g.allyUnlocked('shadow_lena') && _allyUsed.add('shadow_lena')) {
+      _bonusAtk += 8;
+      _log.add("🌑 Lena: Backstab! +8 ATK for first strike.");
+    }
+    if (g.allyUnlocked('golem_ruk') && _allyUsed.add('golem_ruk')) {
+      _bonusAc += 4;
+      _log.add('🪨 Ruk: Stone Skin! +4 ARM for this fight.');
+    }
+  }
+
+  void _checkAllyHpAbilities(GameState g) {
+    if (_heroHp <= 0) return;
+    if (g.allyUnlocked('mira') && !_allyUsed.contains('mira_heal') &&
+        _heroHp < _heroMaxHp * 0.30) {
+      _allyUsed.add('mira_heal');
+      final heal = (_heroMaxHp * 0.25).round().clamp(1, _heroMaxHp);
+      _heroHp = (_heroHp + heal).clamp(0, _heroMaxHp);
+      _log.add('💉 Mira: Field Triage! Healed for $heal HP!');
+    }
   }
 
   @override
@@ -413,49 +1037,170 @@ class _AnimatedCombatRoomState extends State<_AnimatedCombatRoom> {
 
   void _doRound() {
     if (_finished || !mounted) return;
-    final eAc  = widget.room.enemyAc  ?? 10;
-    final eAtk = widget.room.enemyAtk ?? 5;
-    final rng  = DateTime.now().microsecondsSinceEpoch;
+    final eAc       = widget.room.enemyAc  ?? 10;
+    final eAtk      = widget.room.enemyAtk ?? 5;
+    final enemyName = widget.room.enemyName ?? 'Enemy';
+    final heroName  = widget.game.hero.name;
+    final rng       = DateTime.now().microsecondsSinceEpoch;
 
-    // Hero strikes
-    final heroRoll = rng % 20 + 1;
-    final crit     = heroRoll == 20;
-    if (crit || (heroRoll + _heroAtk) >= eAc) {
-      final die = rng % 8 + 1;
-      final dmg = ((crit ? die * 2 : die) + _heroDmgMod).clamp(1, 9999);
-      setState(() => _enemyHp = (_enemyHp - dmg).clamp(0, _enemyMaxHp));
-      _arenaKey.currentState?.playHeroAttack(dmg, isCrit: crit, heroClass: widget.game.hero.heroClass);
+    _abilityRound++;
+    _dodgeThisRound        = false;
+    _enemyStunnedThisRound = false;
+
+    // ── Fire ready abilities ──────────────────────────────────────────────────
+    for (final ability in widget.game.unlockedAbilities) {
+      final readyAt = _abilityCooldownUntil[ability.id] ?? 0;
+      if (_abilityRound < readyAt) continue;
+      _abilityCooldownUntil[ability.id] =
+          _abilityRound + widget.game.scaledAbilityCooldown(ability);
+      _applyAbilityInAnimation(ability, widget.game.scaledAbilityValue(ability), enemyName);
+      if (_enemyHp <= 0) break;
     }
 
     if (_enemyHp <= 0) {
       _finished = true;
       _timer?.cancel();
-      _arenaKey.currentState?.playEnemyDeath();
-      Future.delayed(const Duration(milliseconds: 500), () {
-        if (mounted) { widget.game.resolveDungeonCombat(); widget.onResolved(); }
+      setState(() => _log.add('⚔ $enemyName is defeated!'));
+      GameStateProvider.of(context).recordExternalKill(enemyName: enemyName);
+      Future.delayed(const Duration(milliseconds: 320), () {
+        if (!mounted) return;
+        _arenaKey.currentState?.playEnemyDeath();
+        Future.delayed(const Duration(milliseconds: 500), () {
+          if (mounted) {
+            widget.game.resolveDungeonCombat();
+            widget.run.isDead = false;
+            widget.run.lastCombatSummary = 'Victory in $_abilityRound rounds! Dealt $_totalDealt dmg, took $_totalTaken.';
+            widget.onResolved();
+          }
+        });
       });
       return;
     }
 
-    // Enemy strikes
-    final eRoll  = rng ~/ 100 % 20 + 1;
-    final eBonus = (eAtk ~/ 8).clamp(0, 12);
-    if (eRoll == 20 || (eRoll + eBonus) >= _heroAc) {
-      final dmg = (rng ~/ 1000 % (eAtk > 0 ? eAtk : 1) + 1).clamp(1, 9999);
-      setState(() => _heroHp = (_heroHp - dmg).clamp(0, _heroMaxHp));
-      _arenaKey.currentState?.playEnemyAttack(dmg);
+    // Hero strikes
+    final heroRoll = rng % 20 + 1;
+    final crit     = heroRoll == 20;
+    if (crit || (heroRoll + _heroAtk + _bonusAtk) >= eAc) {
+      final die = rng % 8 + 1;
+      final dmg = ((crit ? die * 2 : die) + _heroDmgMod).clamp(1, 9999);
+      setState(() {
+        _enemyHp = (_enemyHp - dmg).clamp(0, _enemyMaxHp);
+        _totalDealt += dmg;
+        _log.add(crit
+            ? '💥 CRIT $dmg dmg! ($enemyName: $_enemyHp/$_enemyMaxHp)'
+            : 'Hit! $dmg dmg ($enemyName: $_enemyHp/$_enemyMaxHp)');
+      });
+      _arenaKey.currentState?.playHeroAttack(dmg, isCrit: crit, heroClass: widget.game.hero.heroClass);
+    } else {
+      setState(() => _log.add('Miss! $heroName\'s attack glances off.'));
     }
+
+    if (_enemyHp <= 0) {
+      _finished = true;
+      _timer?.cancel();
+      setState(() => _log.add('⚔ $enemyName is defeated!'));
+      GameStateProvider.of(context).recordExternalKill(enemyName: enemyName);
+      Future.delayed(const Duration(milliseconds: 320), () {
+        if (!mounted) return;
+        _arenaKey.currentState?.playEnemyDeath();
+        Future.delayed(const Duration(milliseconds: 500), () {
+          if (mounted) {
+            widget.game.resolveDungeonCombat();
+            widget.run.isDead = false;
+            widget.run.lastCombatSummary = 'Victory in $_abilityRound rounds! Dealt $_totalDealt dmg, took $_totalTaken.';
+            widget.onResolved();
+          }
+        });
+      });
+      return;
+    }
+
+    // Enemy strikes (skip if stunned or hero dodges)
+    if (_enemyStunnedThisRound) {
+      setState(() => _log.add('$enemyName is stunned — skips attack!'));
+    } else {
+      final eRoll  = rng ~/ 100 % 20 + 1;
+      final eBonus = (eAtk ~/ 8).clamp(0, 12);
+      if (!_dodgeThisRound && (eRoll == 20 || (eRoll + eBonus) >= _heroAc + _bonusAc)) {
+        final dmg = (rng ~/ 1000 % (eAtk > 0 ? eAtk : 1) + 1).clamp(1, 9999);
+        setState(() {
+          _heroHp = (_heroHp - dmg).clamp(0, _heroMaxHp);
+          _totalTaken += dmg;
+          _log.add('$enemyName hits $dmg dmg (You: $_heroHp/$_heroMaxHp)');
+        });
+        _arenaKey.currentState?.playEnemyAttack(dmg);
+      } else {
+        setState(() => _log.add(_dodgeThisRound ? '$heroName dodges!' : '$enemyName misses!'));
+      }
+    }
+
+    _checkAllyHpAbilities(widget.game);
 
     if (_heroHp <= 0) {
       _finished = true;
       _timer?.cancel();
+      setState(() => _log.add('💀 $heroName has fallen!'));
       Future.delayed(const Duration(milliseconds: 400), () {
-        if (mounted) { widget.game.resolveDungeonCombat(); widget.onResolved(); }
+        if (mounted) {
+          widget.game.resolveDungeonCombat();
+          widget.run.lastCombatSummary = 'Fallen after $_abilityRound rounds. Dealt $_totalDealt dmg, took $_totalTaken.';
+          widget.onResolved();
+        }
       });
       return;
     }
 
     setState(() {});
+  }
+
+  void _applyAbilityInAnimation(HeroAbility ability, int sv, String enemyName) {
+    switch (ability.effect) {
+      case AbilityEffect.bonusDamage:
+        final dmg = (sv * 0.5).round().clamp(1, 9999);
+        setState(() {
+          _enemyHp = (_enemyHp - dmg).clamp(0, _enemyMaxHp);
+          _totalDealt += dmg;
+          _log.add('✦ ${ability.name}: $dmg damage ($enemyName: $_enemyHp/$_enemyMaxHp)');
+        });
+        _arenaKey.currentState?.addExtraFloat(dmg);
+      case AbilityEffect.dot:
+        final dmg = (sv * 0.6).round().clamp(1, 9999);
+        setState(() {
+          _enemyHp = (_enemyHp - dmg).clamp(0, _enemyMaxHp);
+          _totalDealt += dmg;
+          _log.add('✦ ${ability.name}: $dmg DoT ($enemyName: $_enemyHp/$_enemyMaxHp)');
+        });
+        _arenaKey.currentState?.addExtraFloat(dmg);
+      case AbilityEffect.heal:
+        setState(() {
+          _heroHp = (_heroHp + sv).clamp(0, _heroMaxHp);
+          _log.add('✦ ${ability.name}: +$sv HP (You: $_heroHp/$_heroMaxHp)');
+        });
+        _arenaKey.currentState?.addExtraFloat(sv, isHeal: true);
+      case AbilityEffect.aura:
+        final h = (sv * 0.5).round().clamp(1, 9999);
+        setState(() {
+          _heroHp = (_heroHp + h).clamp(0, _heroMaxHp);
+          _log.add('✦ ${ability.name}: +$h HP (You: $_heroHp/$_heroMaxHp)');
+        });
+        _arenaKey.currentState?.addExtraFloat(h, isHeal: true);
+      case AbilityEffect.attackBonus:
+        _bonusAtk += sv;
+        setState(() => _log.add('✦ ${ability.name}: +$sv ATK!'));
+      case AbilityEffect.acBonus:
+        _bonusAc += sv;
+        setState(() => _log.add('✦ ${ability.name}: +$sv AC!'));
+      case AbilityEffect.stun:
+        _enemyStunnedThisRound = true;
+        setState(() => _log.add('✦ ${ability.name}: enemy stunned!'));
+      case AbilityEffect.dodge:
+        _dodgeThisRound = true;
+        setState(() => _log.add('✦ ${ability.name}: dodge!'));
+      case AbilityEffect.debuffWeaken:
+        setState(() => _log.add('✦ ${ability.name}: enemy weakened!'));
+      case AbilityEffect.debuffVulnerable:
+        setState(() => _log.add('✦ ${ability.name}: enemy vulnerable!'));
+    }
   }
 
   @override
@@ -467,6 +1212,7 @@ class _AnimatedCombatRoomState extends State<_AnimatedCombatRoom> {
     if (widget.isAmbush) { bannerColor = const Color(0xFFcc4444); bannerText = '🗡 AMBUSH — Enemy struck first!'; }
     if (widget.isElite)  { bannerColor = const Color(0xFFcc8833); bannerText = '💀 ELITE ENEMY — Greater loot awaits'; }
     if (widget.isBoss)   { bannerColor = const Color(0xFFcc2222); bannerText = '☠ BOSS ENCOUNTER'; }
+    final speedLabel = ['1×', '1.5×', '2×'][g.speedTier.clamp(1, 3) - 1];
     return Column(
       children: [
         if (bannerText != null)
@@ -474,8 +1220,29 @@ class _AnimatedCombatRoomState extends State<_AnimatedCombatRoom> {
             width: double.infinity,
             padding: const EdgeInsets.symmetric(vertical: 6),
             color: bannerColor!.withValues(alpha: 0.18),
-            child: Text(bannerText, textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 12, color: bannerColor, fontWeight: FontWeight.bold)),
+            child: Row(children: [
+              Expanded(child: Text(bannerText, textAlign: TextAlign.center,
+                  style: TextStyle(fontSize: 12, color: bannerColor, fontWeight: FontWeight.bold))),
+              GestureDetector(
+                onTap: () {
+                  final next = (g.speedTier % 3) + 1;
+                  g.setSpeedTier(next);
+                  _timer?.cancel();
+                  _timer = Timer.periodic(Duration(milliseconds: g.scaledInterval(600)), (_) => _doRound());
+                },
+                child: Container(
+                  margin: const EdgeInsets.only(right: 8),
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: g.speedTier > 1 ? const Color(0xFFffaa00).withValues(alpha: 0.15) : Colors.transparent,
+                    border: Border.all(color: g.speedTier > 1 ? const Color(0xFFffaa00) : AppTheme.cardBorder),
+                    borderRadius: BorderRadius.circular(3),
+                  ),
+                  child: Text(speedLabel, style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold,
+                      color: g.speedTier > 1 ? const Color(0xFFffaa00) : AppTheme.textMuted)),
+                ),
+              ),
+            ]),
           ),
         Expanded(
           child: BattleArena(
@@ -486,6 +1253,7 @@ class _AnimatedCombatRoomState extends State<_AnimatedCombatRoom> {
             heroMaxHp:         _heroMaxHp,
             heroAttack:        _heroAtk,
             heroSpriteId:      g.hero.spriteId,
+            heroGender:        g.hero.gender,
             heroAuraColor:     g.heroAuraColor,
             heroAuraIntensity: g.heroAuraIntensity,
             heroColorFilter:   g.heroSkinFilter,
@@ -501,7 +1269,13 @@ class _AnimatedCombatRoomState extends State<_AnimatedCombatRoom> {
             isBoss:         widget.isBoss,
           ),
         ),
-        const AbilityBar(),
+        BattleIconBar(
+          localCooldownResolver: (id) {
+            final readyAt = _abilityCooldownUntil[id] ?? 0;
+            final remaining = readyAt - _abilityRound;
+            return remaining > 0 ? remaining : 0;
+          },
+        ),
       ],
     );
   }
@@ -542,20 +1316,6 @@ class _TreasureDetail extends StatelessWidget {
             ],
           ),
         ),
-        const SizedBox(height: 20),
-        SizedBox(
-          width: double.infinity,
-          child: ElevatedButton(
-            onPressed: () { game.collectDungeonTreasure(); onResolved(); },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF2a1f00),
-              side: const BorderSide(color: AppTheme.accentGold, width: 1.5),
-              padding: const EdgeInsets.symmetric(vertical: 16),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
-            ),
-            child: Text('COLLECT', style: AppTheme.pixelHeading(fontSize: 14, letterSpacing: 2, color: AppTheme.accentGold)),
-          ),
-        ),
       ],
     );
   }
@@ -580,7 +1340,7 @@ class _LootChip extends StatelessWidget {
   }
 }
 
-class _ShrineDetail extends StatelessWidget {
+class _ShrineDetail extends StatefulWidget {
   const _ShrineDetail({required this.run, required this.room, required this.game, required this.onResolved});
   final DungeonRun run;
   final DungeonRoom room;
@@ -588,24 +1348,129 @@ class _ShrineDetail extends StatelessWidget {
   final VoidCallback onResolved;
 
   @override
+  State<_ShrineDetail> createState() => _ShrineDetailState();
+}
+
+class _ShrineDetailState extends State<_ShrineDetail> {
+  ShrineEffect? _revealed;
+
+  void _enterShrine() {
+    final rng = Random();
+    final effect = ShrineEffect.pool[rng.nextInt(ShrineEffect.pool.length)];
+    setState(() => _revealed = effect);
+
+    // Apply the effect
+    widget.run.shrineEffects.add(effect);
+    if (effect.hpPctMod != 0) {
+      final hpChange = (widget.run.heroMaxHp * effect.hpPctMod).round();
+      widget.run.heroHp = (widget.run.heroHp + hpChange).clamp(1, widget.run.heroMaxHp);
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final choices = room.blessingChoices ?? [];
+    if (_revealed != null) {
+      final e = _revealed!;
+      final color = e.isCurse ? const Color(0xFFcc4444) : const Color(0xFF44cc88);
+      return Column(
+        children: [
+          Text(e.icon, style: const TextStyle(fontSize: 49)),
+          const SizedBox(height: 8),
+          Text(e.isCurse ? '💀 CURSED!' : '✦ BLESSED!',
+              style: AppTheme.pixelHeading(fontSize: 16, letterSpacing: 2, color: color)),
+          const SizedBox(height: 8),
+          Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.08),
+              border: Border.all(color: color.withValues(alpha: 0.5)),
+              borderRadius: BorderRadius.circular(6),
+            ),
+            child: Column(children: [
+              Text(e.name, style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: color)),
+              const SizedBox(height: 6),
+              Text(e.description, textAlign: TextAlign.center,
+                  style: const TextStyle(fontSize: 13, color: AppTheme.textLight, height: 1.4)),
+            ]),
+          ),
+          const SizedBox(height: 14),
+          Text(e.isCurse ? 'The darkness takes its toll...' : 'Ancient power flows through you.',
+              style: const TextStyle(fontSize: 11, color: AppTheme.textMuted, fontStyle: FontStyle.italic)),
+          const SizedBox(height: 14),
+          SizedBox(
+            width: double.infinity,
+            height: 44,
+            child: ElevatedButton(
+              onPressed: () {
+                widget.room.resolved = true;
+                widget.onResolved();
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: color.withValues(alpha: 0.15),
+                foregroundColor: color,
+                side: BorderSide(color: color),
+              ),
+              child: Text('CONTINUE', style: AppTheme.pixelHeading(fontSize: 12, color: color)),
+            ),
+          ),
+        ],
+      );
+    }
+
+    // Not yet entered — show enter or skip
     return Column(
       children: [
         const Text('🕯', style: TextStyle(fontSize: 49)),
         const SizedBox(height: 8),
         const Text('Ancient Shrine', style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: AppTheme.textLight)),
-        const SizedBox(height: 4),
-        const Text('Choose one blessing for the rest of this run.',
-            style: TextStyle(fontSize: 12, color: AppTheme.textMuted)),
+        const SizedBox(height: 6),
+        const Text(
+          'A mysterious shrine pulses with unknown energy.\n'
+          'Enter to receive a blessing... or a curse.\n'
+          'You won\'t know which until it\'s too late.',
+          textAlign: TextAlign.center,
+          style: TextStyle(fontSize: 12, color: AppTheme.textMuted, height: 1.5)),
+        if (widget.run.shrineEffects.isNotEmpty) ...[
+          const SizedBox(height: 8),
+          Text('Active effects: ${widget.run.shrineEffects.length}',
+              style: const TextStyle(fontSize: 10, color: AppTheme.textMuted)),
+        ],
         const SizedBox(height: 16),
-        ...choices.map((b) => Padding(
-          padding: const EdgeInsets.only(bottom: 10),
-          child: _BlessingCard(
-            blessing: b,
-            onTap: () { game.chooseDungeonBlessing(b); onResolved(); },
+        Row(children: [
+          Expanded(
+            child: SizedBox(
+              height: 48,
+              child: ElevatedButton(
+                onPressed: _enterShrine,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF2a1a44),
+                  foregroundColor: const Color(0xFFcc88ff),
+                  side: const BorderSide(color: Color(0xFFcc88ff), width: 1.5),
+                ),
+                child: Text('⚡ ENTER SHRINE',
+                    style: AppTheme.pixelHeading(fontSize: 12, color: const Color(0xFFcc88ff))),
+              ),
+            ),
           ),
-        )),
+          const SizedBox(width: 10),
+          Expanded(
+            child: SizedBox(
+              height: 48,
+              child: OutlinedButton(
+                onPressed: () {
+                  widget.room.resolved = true;
+                  widget.onResolved();
+                },
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: AppTheme.textMuted,
+                  side: const BorderSide(color: AppTheme.cardBorder),
+                ),
+                child: Text('SKIP',
+                    style: AppTheme.pixelHeading(fontSize: 12, color: AppTheme.textMuted)),
+              ),
+            ),
+          ),
+        ]),
       ],
     );
   }
@@ -651,9 +1516,22 @@ class _TrapDetail extends StatelessWidget {
   final GameState game;
   final VoidCallback onResolved;
 
+  static const _trapVisuals = <String, (String, int)>{
+    'Poison Spikes': ('☠', 0xFF44cc44),
+    'Fire Jet':      ('🔥', 0xFFff6633),
+    'Boulder Trap':  ('🪨', 0xFF998866),
+    'Arcane Curse':  ('🌑', 0xFF9966ff),
+    'Acid Pool':     ('🧪', 0xFF88ee22),
+    'Void Rift':     ('🌀', 0xFF6644cc),
+    'Shadow Snare':  ('🕸', 0xFF8888aa),
+  };
+
   @override
   Widget build(BuildContext context) {
-    final hasPot = run.consumables.any((c) => c.type == DungeonConsumableType.healthPotion && !c.used);
+    final name = room.trapName ?? 'Trap';
+    final visual = _trapVisuals[name];
+    final trapColor = Color(visual?.$2 ?? 0xFFcc8833);
+
     return Column(
       children: [
         Container(
@@ -661,61 +1539,285 @@ class _TrapDetail extends StatelessWidget {
           padding: const EdgeInsets.all(24),
           decoration: BoxDecoration(
             color: const Color(0xFF231F1B),
-            border: Border.all(color: const Color(0xFFcc8833).withValues(alpha: 0.6)),
+            border: Border.all(color: trapColor.withValues(alpha: 0.6)),
             borderRadius: BorderRadius.circular(4),
           ),
           child: Column(
             children: [
-              const Text('⚠', style: TextStyle(fontSize: 49)),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(4),
+                child: CustomPaint(
+                  size: const Size(200, 100),
+                  painter: _TrapScenePainter(name),
+                ),
+              ),
+              const SizedBox(height: 10),
+              Text(name,
+                  style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: trapColor)),
               const SizedBox(height: 8),
-              Text(room.trapName ?? 'Trap',
-                  style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: Color(0xFFcc8833))),
-              const SizedBox(height: 8),
-              Text('You will take ${room.trapDamage ?? 0} damage.',
-                  style: const TextStyle(fontSize: 14, color: AppTheme.textLight)),
+              Builder(builder: (_) {
+                final dmg = room.trapDamage ?? 0;
+                final pct = run.heroMaxHp > 0 ? (dmg * 100 / run.heroMaxHp).round() : 0;
+                return Text('You will take $dmg damage ($pct% of max HP).',
+                    style: const TextStyle(fontSize: 14, color: AppTheme.textLight));
+              }),
             ],
           ),
         ),
-        const SizedBox(height: 20),
-        SizedBox(
-          width: double.infinity,
-          child: ElevatedButton(
-            onPressed: () { game.resolveDungeonTrap(); onResolved(); },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF3a2200),
-              side: const BorderSide(color: Color(0xFFcc8833), width: 1.5),
-              padding: const EdgeInsets.symmetric(vertical: 16),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
-            ),
-            child: Text('PROCEED (take ${room.trapDamage ?? 0} dmg)',
-                style: AppTheme.pixelHeading(fontSize: 12, letterSpacing: 1, color: const Color(0xFFcc8833))),
-          ),
-        ),
-        if (hasPot) ...[
-          const SizedBox(height: 10),
-          SizedBox(
-            width: double.infinity,
-            child: OutlinedButton(
-              onPressed: () { game.useDungeonConsumable(DungeonConsumableType.healthPotion); onResolved(); },
-              style: OutlinedButton.styleFrom(
-                foregroundColor: const Color(0xFF44cc88),
-                side: const BorderSide(color: Color(0xFF44cc88)),
-                padding: const EdgeInsets.symmetric(vertical: 12),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
-              ),
-              child: Text('USE HEAL POTION (heal 40%, skip trap)',
-                  style: AppTheme.pixelHeading(fontSize: 11, color: const Color(0xFF44cc88))),
-            ),
-          ),
-        ],
       ],
     );
   }
 }
 
+class _TrapScenePainter extends CustomPainter {
+  const _TrapScenePainter(this.trapName);
+  final String trapName;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final p = Paint();
+    final w = size.width;
+    final h = size.height;
+
+    // ── Dungeon background ──────────────────────────────────
+    p.color = const Color(0xFF1a1510);
+    canvas.drawRect(Rect.fromLTWH(0, 0, w, h), p);
+
+    // Stone wall (top half)
+    for (int row = 0; row < 3; row++) {
+      for (int col = 0; col < 8; col++) {
+        final x = col * 26.0 + (row.isOdd ? 13.0 : 0.0);
+        final y = row * 14.0;
+        p.color = Color((0xFF222018 + (col * 3 + row * 7) % 12 * 0x010101));
+        canvas.drawRect(Rect.fromLTWH(x, y, 25, 13), p);
+        p.color = const Color(0xFF0e0c08);
+        canvas.drawRect(Rect.fromLTWH(x, y + 13, 25, 1), p);
+        canvas.drawRect(Rect.fromLTWH(x + 25, y, 1, 14), p);
+      }
+    }
+
+    // Stone floor (bottom third)
+    p.color = const Color(0xFF2a2418);
+    canvas.drawRect(Rect.fromLTWH(0, h * 0.65, w, h * 0.35), p);
+    for (int i = 0; i < 10; i++) {
+      final x = i * 22.0;
+      p.color = const Color(0xFF1a1810);
+      canvas.drawRect(Rect.fromLTWH(x, h * 0.65, 1, h * 0.35), p);
+    }
+    p.color = const Color(0xFF181410);
+    canvas.drawRect(Rect.fromLTWH(0, h * 0.65, w, 2), p);
+
+    // ── Trap-specific art ───────────────────────────────────
+    switch (trapName) {
+      case 'Poison Spikes':
+        _drawPoisonSpikes(canvas, w, h);
+      case 'Fire Jet':
+        _drawFireJet(canvas, w, h);
+      case 'Boulder Trap':
+        _drawBoulder(canvas, w, h);
+      case 'Arcane Curse':
+        _drawArcaneCurse(canvas, w, h);
+      case 'Acid Pool':
+        _drawAcidPool(canvas, w, h);
+      case 'Void Rift':
+        _drawVoidRift(canvas, w, h);
+      case 'Shadow Snare':
+        _drawShadowSnare(canvas, w, h);
+      default:
+        _drawGenericTrap(canvas, w, h);
+    }
+  }
+
+  void _drawPoisonSpikes(Canvas c, double w, double h) {
+    final p = Paint();
+    final baseY = h * 0.65;
+    for (int i = 0; i < 7; i++) {
+      final x = w * 0.2 + i * 12.0;
+      final spikeH = 18.0 + (i % 3) * 6.0;
+      p.color = const Color(0xFF44aa33);
+      final path = Path()
+        ..moveTo(x, baseY)
+        ..lineTo(x + 5, baseY - spikeH)
+        ..lineTo(x + 10, baseY)
+        ..close();
+      c.drawPath(path, p);
+      p.color = const Color(0xFF66dd44);
+      final highlight = Path()
+        ..moveTo(x + 2, baseY)
+        ..lineTo(x + 5, baseY - spikeH)
+        ..lineTo(x + 5, baseY)
+        ..close();
+      c.drawPath(highlight, p);
+    }
+    // Poison drips
+    p.color = const Color(0xFF33cc22).withValues(alpha: 0.6);
+    c.drawCircle(Offset(w * 0.35, baseY + 6), 3, p);
+    c.drawCircle(Offset(w * 0.55, baseY + 4), 2, p);
+    c.drawCircle(Offset(w * 0.7, baseY + 8), 2.5, p);
+  }
+
+  void _drawFireJet(Canvas c, double w, double h) {
+    final p = Paint();
+    // Wall nozzles
+    p.color = const Color(0xFF555550);
+    c.drawRect(Rect.fromLTWH(w * 0.2, h * 0.25, 12, 8), p);
+    c.drawRect(Rect.fromLTWH(w * 0.65, h * 0.25, 12, 8), p);
+    // Flames
+    for (int i = 0; i < 5; i++) {
+      final x1 = w * 0.22 + 12;
+      final x2 = w * 0.67 + 12;
+      final y = h * 0.2 + i * 8.0;
+      final fw = 30.0 - i * 4.0;
+      p.color = Color.lerp(const Color(0xFFff4400), const Color(0xFFffcc00), i / 4.0)!
+          .withValues(alpha: 1.0 - i * 0.15);
+      c.drawRect(Rect.fromLTWH(x1, y, fw, 6), p);
+      c.drawRect(Rect.fromLTWH(x2, y, fw, 6), p);
+    }
+    // Floor glow
+    p.color = const Color(0xFFff4400).withValues(alpha: 0.15);
+    c.drawRect(Rect.fromLTWH(0, h * 0.65, w, h * 0.35), p);
+  }
+
+  void _drawBoulder(Canvas c, double w, double h) {
+    final p = Paint();
+    final cx = w * 0.5;
+    final cy = h * 0.45;
+    // Shadow
+    p.color = const Color(0xFF0a0808).withValues(alpha: 0.5);
+    c.drawOval(Rect.fromCenter(center: Offset(cx, h * 0.7), width: 50, height: 12), p);
+    // Boulder body
+    p.color = const Color(0xFF706050);
+    c.drawCircle(Offset(cx, cy), 22, p);
+    p.color = const Color(0xFF908070);
+    c.drawCircle(Offset(cx - 4, cy - 4), 18, p);
+    // Highlight
+    p.color = const Color(0xFFa09080);
+    c.drawCircle(Offset(cx - 8, cy - 8), 8, p);
+    // Cracks
+    p.color = const Color(0xFF504030);
+    c.drawRect(Rect.fromLTWH(cx - 2, cy - 5, 1, 12), p);
+    c.drawRect(Rect.fromLTWH(cx + 5, cy - 3, 8, 1), p);
+  }
+
+  void _drawArcaneCurse(Canvas c, double w, double h) {
+    final p = Paint()..style = PaintingStyle.stroke..strokeWidth = 2;
+    final cx = w * 0.5;
+    final cy = h * 0.5;
+    // Rune circle
+    p.color = const Color(0xFF9944ff).withValues(alpha: 0.7);
+    c.drawCircle(Offset(cx, cy), 28, p);
+    p.color = const Color(0xFFcc66ff).withValues(alpha: 0.5);
+    c.drawCircle(Offset(cx, cy), 20, p);
+    // Inner glyph lines
+    p.color = const Color(0xFFdd88ff).withValues(alpha: 0.8);
+    p.strokeWidth = 1.5;
+    for (int i = 0; i < 6; i++) {
+      final angle = i * 3.14159 / 3;
+      final dx = 20 * cos(angle);
+      final dy = 20 * sin(angle);
+      c.drawLine(Offset(cx, cy), Offset(cx + dx, cy + dy), p);
+    }
+    // Center glow
+    final glow = Paint()..color = const Color(0xFFcc66ff).withValues(alpha: 0.3);
+    c.drawCircle(Offset(cx, cy), 10, glow);
+  }
+
+  void _drawAcidPool(Canvas c, double w, double h) {
+    final p = Paint();
+    final baseY = h * 0.6;
+    // Pool shape
+    p.color = const Color(0xFF44aa00).withValues(alpha: 0.7);
+    c.drawOval(Rect.fromCenter(center: Offset(w * 0.5, baseY + 10), width: 120, height: 30), p);
+    p.color = const Color(0xFF66dd00).withValues(alpha: 0.6);
+    c.drawOval(Rect.fromCenter(center: Offset(w * 0.5, baseY + 8), width: 100, height: 22), p);
+    p.color = const Color(0xFF88ff22).withValues(alpha: 0.4);
+    c.drawOval(Rect.fromCenter(center: Offset(w * 0.5, baseY + 6), width: 60, height: 14), p);
+    // Bubbles
+    p.color = const Color(0xFF88ff22).withValues(alpha: 0.5);
+    c.drawCircle(Offset(w * 0.4, baseY + 4), 4, p);
+    c.drawCircle(Offset(w * 0.55, baseY), 3, p);
+    c.drawCircle(Offset(w * 0.62, baseY + 8), 2.5, p);
+    // Steam wisps
+    p.color = const Color(0xFF66cc00).withValues(alpha: 0.2);
+    c.drawCircle(Offset(w * 0.45, baseY - 10), 6, p);
+    c.drawCircle(Offset(w * 0.58, baseY - 14), 5, p);
+  }
+
+  void _drawVoidRift(Canvas c, double w, double h) {
+    final p = Paint();
+    final cx = w * 0.5;
+    final cy = h * 0.45;
+    // Outer rift glow
+    p.color = const Color(0xFF4400aa).withValues(alpha: 0.3);
+    c.drawCircle(Offset(cx, cy), 35, p);
+    p.color = const Color(0xFF6622cc).withValues(alpha: 0.4);
+    c.drawCircle(Offset(cx, cy), 25, p);
+    // Rift core
+    p.color = const Color(0xFF1a0040);
+    c.drawOval(Rect.fromCenter(center: Offset(cx, cy), width: 36, height: 28), p);
+    p.color = const Color(0xFF0a0020);
+    c.drawOval(Rect.fromCenter(center: Offset(cx, cy), width: 24, height: 18), p);
+    // Energy streaks
+    p.color = const Color(0xFF9966ff).withValues(alpha: 0.6);
+    p.style = PaintingStyle.stroke;
+    p.strokeWidth = 1.5;
+    c.drawOval(Rect.fromCenter(center: Offset(cx - 2, cy), width: 40, height: 20), p);
+    c.drawOval(Rect.fromCenter(center: Offset(cx + 2, cy), width: 30, height: 32), p);
+    p.style = PaintingStyle.fill;
+    // Sparks
+    p.color = const Color(0xFFcc88ff);
+    c.drawCircle(Offset(cx - 18, cy - 8), 2, p);
+    c.drawCircle(Offset(cx + 16, cy + 6), 1.5, p);
+    c.drawCircle(Offset(cx + 8, cy - 14), 1.5, p);
+  }
+
+  void _drawShadowSnare(Canvas c, double w, double h) {
+    final p = Paint()..style = PaintingStyle.stroke..strokeWidth = 1.5;
+    final baseY = h * 0.6;
+    // Web strands
+    p.color = const Color(0xFF666688).withValues(alpha: 0.5);
+    for (int i = 0; i < 8; i++) {
+      final x1 = w * 0.1 + i * w * 0.1;
+      final x2 = w * 0.15 + i * w * 0.1;
+      c.drawLine(Offset(x1, baseY - 20), Offset(x2, baseY + 10), p);
+    }
+    // Horizontal web lines
+    p.color = const Color(0xFF8888aa).withValues(alpha: 0.4);
+    c.drawLine(Offset(w * 0.15, baseY - 10), Offset(w * 0.85, baseY - 10), p);
+    c.drawLine(Offset(w * 0.1, baseY), Offset(w * 0.9, baseY), p);
+    c.drawLine(Offset(w * 0.2, baseY + 8), Offset(w * 0.8, baseY + 8), p);
+    // Dark tendrils from floor
+    p.style = PaintingStyle.fill;
+    p.color = const Color(0xFF222233).withValues(alpha: 0.6);
+    for (int i = 0; i < 5; i++) {
+      final x = w * 0.2 + i * w * 0.15;
+      c.drawOval(Rect.fromCenter(center: Offset(x, baseY + 14), width: 14, height: 6), p);
+    }
+  }
+
+  void _drawGenericTrap(Canvas c, double w, double h) {
+    final p = Paint()..color = const Color(0xFFcc8833);
+    final cx = w * 0.5;
+    final cy = h * 0.45;
+    // Warning triangle
+    final path = Path()
+      ..moveTo(cx, cy - 20)
+      ..lineTo(cx - 18, cy + 14)
+      ..lineTo(cx + 18, cy + 14)
+      ..close();
+    c.drawPath(path, p);
+    p.color = const Color(0xFF1a1510);
+    c.drawRect(Rect.fromLTWH(cx - 2, cy - 8, 4, 12), p);
+    c.drawCircle(Offset(cx, cy + 10), 2.5, p);
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
 // ── Locked chest ─────────────────────────────────────────────────────────────
 
-class _LockedChestDetail extends StatelessWidget {
+class _LockedChestDetail extends StatefulWidget {
   const _LockedChestDetail({required this.run, required this.room, required this.game, required this.onResolved});
   final DungeonRun run;
   final DungeonRoom room;
@@ -723,9 +1825,24 @@ class _LockedChestDetail extends StatelessWidget {
   final VoidCallback onResolved;
 
   @override
+  State<_LockedChestDetail> createState() => _LockedChestDetailState();
+}
+
+class _LockedChestDetailState extends State<_LockedChestDetail>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _glow = AnimationController(
+    vsync: this, duration: const Duration(milliseconds: 1200),
+  )..repeat(reverse: true);
+
+  @override
+  void dispose() { _glow.dispose(); super.dispose(); }
+
+  @override
   Widget build(BuildContext context) {
-    final cost = room.chestShardCost ?? 30;
-    final canAfford = game.shards >= cost;
+    final cost = widget.room.chestShardCost ?? 30;
+    final canAffordShards = widget.game.shards >= cost;
+    final canAffordCrystals = widget.game.crystals >= GameState.chestCrystalCost;
+
     return Column(
       children: [
         Container(
@@ -737,69 +1854,108 @@ class _LockedChestDetail extends StatelessWidget {
             borderRadius: BorderRadius.circular(4),
           ),
           child: Column(children: [
-            const Text('🔒', style: TextStyle(fontSize: 49)),
-            const SizedBox(height: 8),
+            // Chest visual — pixel art style
+            AnimatedBuilder(
+              animation: _glow,
+              builder: (_, child) => Container(
+                decoration: BoxDecoration(
+                  boxShadow: [
+                    BoxShadow(
+                      color: const Color(0xFF88aaff).withValues(alpha: 0.15 + _glow.value * 0.25),
+                      blurRadius: 12 + _glow.value * 8,
+                      spreadRadius: 2,
+                    ),
+                  ],
+                ),
+                child: child,
+              ),
+              child: CustomPaint(
+                size: const Size(80, 60),
+                painter: _ChestPainter(),
+              ),
+            ),
+            const SizedBox(height: 12),
             const Text('Locked Chest',
                 style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: AppTheme.textLight)),
             const SizedBox(height: 6),
             const Text('Contains a rare or epic item.',
                 style: TextStyle(fontSize: 13, color: AppTheme.textMuted)),
             const SizedBox(height: 14),
+            // Shard option
             Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-              const Text('◆', style: TextStyle(fontSize: 19, color: Color(0xFF88aaff))),
+              const Text('◆', style: TextStyle(fontSize: 17, color: Color(0xFF88aaff))),
               const SizedBox(width: 6),
-              Text('$cost shards to open',
-                  style: const TextStyle(fontSize: 14, color: Color(0xFF88aaff), fontWeight: FontWeight.bold)),
+              Text('$cost shards',
+                  style: TextStyle(
+                    fontSize: 14, fontWeight: FontWeight.bold,
+                    color: canAffordShards ? const Color(0xFF88aaff) : const Color(0xFF556677),
+                  )),
+              if (!canAffordShards) ...[
+                const SizedBox(width: 8),
+                Text('(have ${widget.game.shards})',
+                    style: const TextStyle(fontSize: 11, color: Color(0xFFcc4444))),
+              ],
             ]),
-            if (!canAfford) ...[
-              const SizedBox(height: 6),
-              Text('You only have ${game.shards} shards.',
-                  style: const TextStyle(fontSize: 12, color: Color(0xFFcc4444))),
+            // Crystal fallback
+            if (!canAffordShards) ...[
+              const SizedBox(height: 10),
+              Container(height: 1, color: const Color(0xFF3a3020)),
+              const SizedBox(height: 10),
+              Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                const Text('💎', style: TextStyle(fontSize: 17)),
+                const SizedBox(width: 6),
+                Text('${GameState.chestCrystalCost} crystals',
+                    style: TextStyle(
+                      fontSize: 14, fontWeight: FontWeight.bold,
+                      color: canAffordCrystals ? const Color(0xFFcc88ff) : const Color(0xFF556677),
+                    )),
+                if (!canAffordCrystals) ...[
+                  const SizedBox(width: 8),
+                  Text('(have ${widget.game.crystals})',
+                      style: const TextStyle(fontSize: 11, color: Color(0xFFcc4444))),
+                ],
+              ]),
             ],
           ]),
-        ),
-        const SizedBox(height: 20),
-        SizedBox(
-          width: double.infinity,
-          child: ElevatedButton(
-            onPressed: canAfford ? () {
-              game.openDungeonChest();
-              onResolved();
-            } : null,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF0e1a3a),
-              disabledBackgroundColor: AppTheme.cardBg,
-              side: BorderSide(color: canAfford ? const Color(0xFF88aaff) : AppTheme.cardBorder, width: 1.5),
-              padding: const EdgeInsets.symmetric(vertical: 16),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
-            ),
-            child: Text(
-              canAfford ? 'OPEN  ($cost ◆)' : 'NOT ENOUGH SHARDS',
-              style: AppTheme.pixelHeading(fontSize: 12, letterSpacing: 1,
-                  color: canAfford ? const Color(0xFF88aaff) : AppTheme.cardBorder),
-            ),
-          ),
-        ),
-        const SizedBox(height: 10),
-        SizedBox(
-          width: double.infinity,
-          child: OutlinedButton(
-            onPressed: () {
-              room.resolved = true;
-              onResolved();
-            },
-            style: OutlinedButton.styleFrom(
-              foregroundColor: AppTheme.textMuted,
-              side: const BorderSide(color: AppTheme.cardBorder),
-              padding: const EdgeInsets.symmetric(vertical: 12),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
-            ),
-            child: Text('LEAVE IT', style: AppTheme.pixelHeading(fontSize: 11, color: AppTheme.textMuted)),
-          ),
         ),
       ],
     );
   }
+}
+
+class _ChestPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    const s = 5.0;
+    void b(double x, double y, double w, double h, int c) =>
+        canvas.drawRect(Rect.fromLTWH(x * s, y * s, w * s, h * s), Paint()..color = Color(c));
+
+    // Chest body (wood)
+    b(1, 4, 14, 8, 0xFF5a3818);
+    b(2, 4, 12, 7, 0xFF7a4820);
+    b(2, 4, 12, 1, 0xFF8a5828);
+    // Lid (curved top)
+    b(1, 1, 14, 4, 0xFF6a3818);
+    b(2, 0, 12, 3, 0xFF7a4820);
+    b(3, 0, 10, 1, 0xFF8a5828);
+    // Metal bands
+    b(1, 3, 14, 1, 0xFF888898);
+    b(1, 8, 14, 1, 0xFF888898);
+    b(7, 0, 2, 4, 0xFF888898);
+    // Lock
+    b(7, 4, 2, 2, 0xFFd4af37);
+    b(7, 4, 2, 1, 0xFFffe060);
+    // Keyhole
+    b(7.5, 5, 1, 1, 0xFF2a1808);
+    // Corner rivets
+    b(1, 3, 1, 1, 0xFFaaaaaa);
+    b(14, 3, 1, 1, 0xFFaaaaaa);
+    b(1, 8, 1, 1, 0xFFaaaaaa);
+    b(14, 8, 1, 1, 0xFFaaaaaa);
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
 // ── Rest site ─────────────────────────────────────────────────────────────────
@@ -837,21 +1993,6 @@ class _RestSiteDetail extends StatelessWidget {
             _LootChip('❤ +$heal HP  (→ $newHp / ${run.heroMaxHp})', const Color(0xFF44cc88)),
           ]),
         ),
-        const SizedBox(height: 20),
-        SizedBox(
-          width: double.infinity,
-          child: ElevatedButton(
-            onPressed: () { game.resolveDungeonRestSite(); onResolved(); },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF0e2a1a),
-              side: const BorderSide(color: Color(0xFF44cc88), width: 1.5),
-              padding: const EdgeInsets.symmetric(vertical: 16),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
-            ),
-            child: Text('REST (+$heal HP)',
-                style: AppTheme.pixelHeading(fontSize: 14, letterSpacing: 1, color: const Color(0xFF44cc88))),
-          ),
-        ),
       ],
     );
   }
@@ -873,6 +2014,41 @@ class _RoomResult extends StatelessWidget {
     return Column(
       children: [
         _HeroBar(run: run),
+        // Action button always visible at top — above the scrollable result
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
+          child: isDead
+              ? SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: onNext,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF2A2623),
+                      side: const BorderSide(color: AppTheme.cardBorder),
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+                    ),
+                    child: Text('RETURN',
+                        style: AppTheme.pixelHeading(fontSize: 14, letterSpacing: 1, color: AppTheme.textMuted)),
+                  ),
+                )
+              : SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    onPressed: onNext,
+                    icon: const Text('⬇', style: TextStyle(fontSize: 16)),
+                    label: Text('DESCEND TO FLOOR ${run.floor + 1}',
+                        style: AppTheme.pixelHeading(fontSize: 13, letterSpacing: 1, color: const Color(0xFF44cc88))),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF0d1e14),
+                      foregroundColor: const Color(0xFF44cc88),
+                      side: const BorderSide(color: Color(0xFF44cc88), width: 1.5),
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+                    ),
+                  ),
+                ),
+        ),
         Expanded(
           child: SingleChildScrollView(
             padding: const EdgeInsets.all(16),
@@ -995,38 +2171,6 @@ class _RoomResult extends StatelessWidget {
                   ),
                 ],
 
-                const SizedBox(height: 20),
-                if (!isDead)
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton(
-                      onPressed: onNext,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF231F1B),
-                        foregroundColor: const Color(0xFF44cc88),
-                        side: const BorderSide(color: Color(0xFF44cc88), width: 1.5),
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
-                      ),
-                      child: Text('NEXT FLOOR →',
-                          style: AppTheme.pixelHeading(fontSize: 14, letterSpacing: 1, color: const Color(0xFF44cc88))),
-                    ),
-                  )
-                else
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton(
-                      onPressed: onNext,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF2A2623),
-                        side: const BorderSide(color: AppTheme.cardBorder),
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
-                      ),
-                      child: Text('RETURN',
-                          style: AppTheme.pixelHeading(fontSize: 14, letterSpacing: 1, color: AppTheme.textMuted)),
-                    ),
-                  ),
               ],
             ),
           ),
@@ -1051,14 +2195,26 @@ class _RoomResult extends StatelessWidget {
 // ── Summary ───────────────────────────────────────────────────────────────────
 
 class _DungeonSummary extends StatelessWidget {
-  const _DungeonSummary({required this.run, required this.game, required this.onExit});
+  const _DungeonSummary({
+    required this.run,
+    required this.game,
+    required this.autoRun,
+    required this.onToggleAuto,
+    required this.onExit,
+    required this.onRunAgain,
+  });
   final DungeonRun run;
   final GameState game;
+  final bool autoRun;
+  final VoidCallback onToggleAuto;
   final VoidCallback onExit;
+  final VoidCallback onRunAgain;
 
   @override
   Widget build(BuildContext context) {
-    final isRecord = run.floor >= game.deepestDungeonFloor;
+    final isRecord    = run.floor >= game.deepestDungeonFloor;
+    final tierCleared = run.bossesDefeated >= 1;
+    final autoUnlocked = run.tier <= game.dungeonHighestTier || tierCleared;
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
       child: Column(
@@ -1085,6 +2241,9 @@ class _DungeonSummary extends StatelessWidget {
                     color: run.isDead ? const Color(0xFFcc4444) : AppTheme.textLight,
                   ),
                 ),
+                const SizedBox(height: 4),
+                Text('TIER ${run.tier}',
+                    style: AppTheme.pixelHeading(fontSize: 11, color: AppTheme.textMuted, letterSpacing: 2)),
                 const SizedBox(height: 16),
                 Row(mainAxisAlignment: MainAxisAlignment.center, children: [
                   _SummaryPill('FLOOR', '${run.floor}', AppTheme.textLight),
@@ -1099,8 +2258,21 @@ class _DungeonSummary extends StatelessWidget {
                   const SizedBox(width: 16),
                   _SummaryPill('SHARDS', '+${run.shardsEarned}', const Color(0xFF88aaff)),
                 ]),
-                if (isRecord && run.floor > 0) ...[
+                if (tierCleared && run.tier > (game.dungeonHighestTier - 1)) ...[
                   const SizedBox(height: 12),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF44cc88).withValues(alpha: 0.1),
+                      border: Border.all(color: const Color(0xFF44cc88).withValues(alpha: 0.5)),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Text('✓ Tier ${run.tier} cleared — AUTO unlocked!',
+                        style: AppTheme.pixelHeading(fontSize: 11, color: const Color(0xFF44cc88))),
+                  ),
+                ],
+                if (isRecord && run.floor > 0) ...[
+                  const SizedBox(height: 8),
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
                     decoration: BoxDecoration(
@@ -1119,6 +2291,51 @@ class _DungeonSummary extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 20),
+          // AUTO / RUN AGAIN row
+          Row(children: [
+            if (autoUnlocked) ...[
+              Expanded(
+                child: ElevatedButton(
+                  onPressed: onToggleAuto,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: autoRun
+                        ? const Color(0xFF1a3a2a)
+                        : const Color(0xFF231F1B),
+                    side: BorderSide(
+                      color: autoRun ? const Color(0xFF44cc88) : AppTheme.cardBorder,
+                      width: 1.5,
+                    ),
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+                  ),
+                  child: Text(
+                    autoRun ? '⏹ STOP' : '▶ AUTO',
+                    style: AppTheme.pixelHeading(
+                      fontSize: 13, letterSpacing: 1,
+                      color: autoRun ? const Color(0xFF44cc88) : AppTheme.textMuted,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+            ],
+            Expanded(
+              child: ElevatedButton(
+                onPressed: autoRun ? null : onRunAgain,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF2a1f00),
+                  disabledBackgroundColor: const Color(0xFF1a1510),
+                  side: BorderSide(color: autoRun ? AppTheme.cardBorder : AppTheme.accentGold, width: 1.5),
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+                ),
+                child: Text('RUN AGAIN',
+                    style: AppTheme.pixelHeading(fontSize: 13, letterSpacing: 1,
+                        color: autoRun ? AppTheme.cardBorder : AppTheme.accentGold)),
+              ),
+            ),
+          ]),
+          const SizedBox(height: 10),
           SizedBox(
             width: double.infinity,
             child: ElevatedButton(
@@ -1126,27 +2343,11 @@ class _DungeonSummary extends StatelessWidget {
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF2A2623),
                 side: const BorderSide(color: AppTheme.cardBorder),
-                padding: const EdgeInsets.symmetric(vertical: 16),
+                padding: const EdgeInsets.symmetric(vertical: 14),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
               ),
               child: Text('RETURN TO HALL',
-                  style: AppTheme.pixelHeading(fontSize: 14, letterSpacing: 1, color: AppTheme.textMuted)),
-            ),
-          ),
-          const SizedBox(height: 10),
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton(
-              onPressed: () { onExit(); game.startDungeon(); },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF2a1f00),
-                foregroundColor: AppTheme.accentGold,
-                side: const BorderSide(color: AppTheme.accentGold, width: 1.5),
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
-              ),
-              child: Text('RUN AGAIN',
-                  style: AppTheme.pixelHeading(fontSize: 14, letterSpacing: 1, color: AppTheme.accentGold)),
+                  style: AppTheme.pixelHeading(fontSize: 13, letterSpacing: 1, color: AppTheme.textMuted)),
             ),
           ),
         ],

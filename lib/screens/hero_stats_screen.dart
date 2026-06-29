@@ -1,7 +1,9 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../models/damage_type.dart';
+import '../models/endless_upgrades.dart';
 import '../models/equipment.dart';
+import '../models/npc_ally.dart';
 import '../models/passive_tree.dart';
 import '../models/pet.dart';
 import '../services/game_state.dart';
@@ -44,17 +46,215 @@ class _StatsBody extends StatelessWidget {
     return ListView(
       padding: const EdgeInsets.fromLTRB(10, 8, 10, 24),
       children: [
+        _currenciesSection(),
         if (game.prestigeLevel > 0) _prestigeSection(),
+        _section('ABILITY SCORES', _abilityScoreRows()),
+        _section('DAMAGE TYPES',  _damageTypeRows()),
+        if (game.endlessUpgrades.levelOf(EndlessNode.str) > 0 ||
+            game.endlessUpgrades.levelOf(EndlessNode.dex) > 0)
+          _section('UPGRADES', _upgradeRows()),
+        _section('DAMAGE BREAKDOWN', _damageBreakdownRows()),
         _section('COMBAT',      _combatRows()),
         _section('RESISTANCES', _resistanceRows()),
         _section('ECONOMY',     _economyRows()),
         _section('MASTERY',     _masteryRows()),
         _section('SURVIVAL',    _survivalRows()),
+        if (game.unlockedAllies.isNotEmpty) _mercenariesSection(),
       ],
     );
   }
 
-  // ── helpers ─────────────────────────────────────────────────────────────────
+
+  int _evoBonus(PetDefinition p) {
+    final evo = game.petEvolutionLevel(p.id);
+    if (evo == 0) return p.bonusValue;
+    if (evo == 1) return (p.bonusValue * 1.5).round();
+    return p.bonusValue * 2;
+  }
+
+  // Returns individual pet sources if any pets contribute; otherwise a single "+0" fallback.
+  List<_Source> _petSourcesOrZero(PetBonusType type, String Function(int v) fmt) {
+    final sources = game.ownedPetIds
+        .map((id) => kPetCatalog.where((p) => p.id == id).firstOrNull)
+        .where((p) => p?.bonusType == type)
+        .cast<PetDefinition>()
+        .map((p) => _Source('${p.emoji} ${p.name}', fmt(_evoBonus(p))))
+        .toList();
+    return sources.isNotEmpty ? sources : [_Source('Pets', fmt(0))];
+  }
+
+  // ── Currencies ───────────────────────────────────────────────────────────────
+
+  Widget _currenciesSection() {
+    const purple = Color(0xFF9966ff);
+
+    final rows = <_StatRow>[
+      _StatRow(
+        label: 'Gold',
+        icon: Icons.monetization_on_outlined,
+        color: AppTheme.accentGold,
+        total: AppTheme.fmtNumber(game.gold),
+        sources: [
+          _Source('Campaign', 'per enemy kill'),
+          _Source('Idle income', 'passive / per tick'),
+          _Source('Daily Challenges', 'chest reward'),
+          _Source('Bounty Board', 'mission rewards'),
+          _Source('World Events', 'event drops'),
+          _Source('Quests', 'quest completion'),
+        ],
+      ),
+      _StatRow(
+        label: 'Shards ◆',
+        icon: Icons.diamond_outlined,
+        color: const Color(0xFF44ccff),
+        total: AppTheme.fmtNumber(game.shards),
+        sources: [
+          _Source('Campaign', 'small drop per kill'),
+          _Source('Endless Mode', 'primary source'),
+          _Source('Boss Rush', 'per boss defeated'),
+          _Source('Dungeon', 'floor rewards'),
+          _Source('Daily Challenges', 'chest reward'),
+          _Source('Bounty Board', 'some missions'),
+        ],
+      ),
+      _StatRow(
+        label: 'Mythril ⬡',
+        icon: Icons.workspaces_outlined,
+        color: const Color(0xFFaa66ff),
+        total: AppTheme.fmtNumber(game.mythril),
+        sources: [
+          _Source('Dungeon', '1 per 2 floors cleared'),
+          _Source('Rebirth (Prestige)', '+10 on each prestige'),
+          _Source('Boss Rush', 'rank-based rewards'),
+        ],
+      ),
+      _StatRow(
+        label: 'Essence ✨',
+        icon: Icons.auto_awesome,
+        color: const Color(0xFFaaff88),
+        total: AppTheme.fmtNumber(game.essence),
+        sources: [
+          _Source('Campaign kills', 'baseline per kill, scales with stage'),
+          _Source('Gauntlet runs', 'earned from challenge scores'),
+          _Source('Daily Challenges', 'chest reward'),
+          _Source('Passive Tree', '+% essence gain bonus'),
+          _Source('Pets & Auras', '+% essence gain bonus'),
+        ],
+      ),
+      _StatRow(
+        label: 'Crystals 💎',
+        icon: Icons.water_drop_outlined,
+        color: const Color(0xFF88ddff),
+        total: AppTheme.fmtNumber(game.crystals),
+        sources: [
+          _Source('Daily Chest', 'complete all 7 daily challenges'),
+          _Source('Achievements', 'milestone rewards'),
+          _Source('Boss Rush', 'clear reward (rare)'),
+          _Source('IAP', 'premium purchase'),
+        ],
+      ),
+      _StatRow(
+        label: 'Souls 🌑',
+        icon: Icons.brightness_2_outlined,
+        color: const Color(0xFFcc8844),
+        total: AppTheme.fmtNumber(game.prestigeSouls),
+        sources: [
+          _Source('Rebirth', 'earned each time you prestige (scales with stage)'),
+          _Source('Soul Shop', 'spend for permanent bonuses that survive resets'),
+        ],
+      ),
+      _StatRow(
+        label: 'Asc. Points 🌀',
+        icon: Icons.change_circle_outlined,
+        color: const Color(0xFF88ffdd),
+        total: AppTheme.fmtNumber(game.ascensionPoints),
+        sources: [
+          _Source('Ascension', 'earned on each ascension tier'),
+          _Source('Ascension tree', 'spend for powerful permanent upgrades'),
+        ],
+      ),
+      _StatRow(
+        label: 'Event Tokens 🎪',
+        icon: Icons.local_activity_outlined,
+        color: const Color(0xFFffaa44),
+        total: AppTheme.fmtNumber(game.eventTokens),
+        sources: [
+          _Source('World Events', 'earned by participating in active events'),
+          _Source('Event Shop', 'spend for exclusive event rewards'),
+        ],
+      ),
+    ];
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: purple.withValues(alpha: 0.05),
+          border: Border.all(color: purple.withValues(alpha: 0.25)),
+          borderRadius: BorderRadius.circular(3),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(children: [
+              const Icon(Icons.account_balance_wallet_outlined,
+                  color: purple, size: 13),
+              const SizedBox(width: 6),
+              Text('CURRENCIES & REBIRTHS',
+                  style: AppTheme.pixelHeading(
+                      fontSize: 11, letterSpacing: 2, color: purple)),
+              const SizedBox(width: 8),
+              Text('tap to see sources',
+                  style: const TextStyle(fontSize: 9, color: AppTheme.textMuted)),
+            ]),
+            const SizedBox(height: 8),
+            ...rows.map((r) => Padding(
+              padding: const EdgeInsets.only(bottom: 2),
+              child: _StatRowWidget(row: r),
+            )),
+            const SizedBox(height: 4),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+              decoration: BoxDecoration(
+                color: const Color(0xFFcc88ff).withValues(alpha: 0.10),
+                border: Border.all(
+                    color: const Color(0xFFcc88ff).withValues(alpha: 0.45)),
+                borderRadius: BorderRadius.circular(3),
+              ),
+              child: Row(children: [
+                const Text('✦',
+                    style: TextStyle(fontSize: 14, color: Color(0xFFcc88ff))),
+                const SizedBox(width: 8),
+                Text('Rebirths',
+                    style: GoogleFonts.pixelifySans(
+                        fontSize: 12, color: Colors.white54)),
+                const Spacer(),
+                Text('${game.prestigeLevel}',
+                    style: GoogleFonts.pixelifySans(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: game.prestigeLevel > 0
+                            ? const Color(0xFFcc88ff)
+                            : Colors.white24)),
+                if (game.ascensionLevel > 0) ...[
+                  const SizedBox(width: 12),
+                  const Text('🌀', style: TextStyle(fontSize: 12)),
+                  const SizedBox(width: 4),
+                  Text('Ascension ${game.ascensionLevel}',
+                      style: GoogleFonts.pixelifySans(
+                          fontSize: 11,
+                          color: const Color(0xFF88ffdd))),
+                ],
+              ]),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ── Prestige ─────────────────────────────────────────────────────────────────
 
   Widget _prestigeSection() {
     const gold  = Color(0xFFcc8844);
@@ -125,6 +325,8 @@ class _StatsBody extends StatelessWidget {
     );
   }
 
+  // ── Section wrapper ──────────────────────────────────────────────────────────
+
   Widget _section(String title, List<_StatRow> rows) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
@@ -138,25 +340,109 @@ class _StatsBody extends StatelessWidget {
     );
   }
 
-  // Returns the evolved bonus value for a pet the player owns.
-  int _evoBonus(PetDefinition p) {
-    final evo = game.petEvolutionLevel(p.id);
-    if (evo == 0) return p.bonusValue;
-    if (evo == 1) return (p.bonusValue * 1.5).round();
-    return p.bonusValue * 2;
+  // ── Ability Score rows ───────────────────────────────────────────────────────
+
+  List<_StatRow> _abilityScoreRows() {
+    final h = game.hero;
+    return [
+      _StatRow(label: 'Strength (PWR)',     icon: Icons.fitness_center,  color: const Color(0xFFe05030), total: '${h.strength}',     sources: [_Source('Base', '${h.strength}')]),
+      _StatRow(label: 'Dexterity (AGI)',    icon: Icons.directions_run,  color: const Color(0xFF40b060), total: '${h.dexterity}',    sources: [_Source('Base', '${h.dexterity}')]),
+      _StatRow(label: 'Constitution (VIT)', icon: Icons.favorite,        color: const Color(0xFF4488cc), total: '${h.constitution}', sources: [_Source('Base', '${h.constitution}')]),
+      _StatRow(label: 'Intelligence (ARC)', icon: Icons.psychology,      color: const Color(0xFFC9A35A), total: '${h.intelligence}', sources: [_Source('Base', '${h.intelligence}')]),
+      _StatRow(label: 'Wisdom (FOC)',       icon: Icons.visibility,      color: const Color(0xFF9060c0), total: '${h.wisdom}',       sources: [_Source('Base', '${h.wisdom}')]),
+      _StatRow(label: 'Charisma (FOR)',     icon: Icons.theater_comedy,  color: const Color(0xFFc06080), total: '${h.charisma}',     sources: [_Source('Base', '${h.charisma}')]),
+    ];
   }
 
-  // Returns one _Source per owned pet that has the given bonus type.
-  List<_Source> _petSources(PetBonusType type, String Function(int v) fmt) {
-    return game.ownedPetIds
-        .map((id) => kPetCatalog.where((p) => p.id == id).firstOrNull)
-        .where((p) => p?.bonusType == type)
-        .cast<PetDefinition>()
-        .map((p) => _Source('${p.emoji} ${p.name}', fmt(_evoBonus(p))))
-        .toList();
+  // ── Damage Type rows ──────────────────────────────────────────────────────────
+
+  List<_StatRow> _damageTypeRows() {
+    final h = game.hero;
+    return DamageType.values.map((dt) {
+      final pct = h.damagePctFor(dt);
+      final res = game.heroResistancePct(dt);
+      return _StatRow(
+        label: '${dt.emoji} ${dt.label}',
+        icon: Icons.whatshot,
+        color: dt.color,
+        total: '+$pct% DMG / $res% RES',
+        sources: [
+          _Source('Damage %', '+$pct%'),
+          _Source('Resistance %', '$res%'),
+        ],
+      );
+    }).toList();
   }
 
-  // ── data builders ───────────────────────────────────────────────────────────
+  // ── Upgrade rows ──────────────────────────────────────────────────────────────
+
+  List<_StatRow> _upgradeRows() {
+    final u = game.endlessUpgrades;
+    return [
+      if (u.levelOf(EndlessNode.str) > 0)
+        _StatRow(label: 'Power', icon: Icons.fitness_center, color: const Color(0xFFe05030),
+            total: 'Lv${u.levelOf(EndlessNode.str)}  +${((u.damageMultiplier - 1) * 100).toStringAsFixed(1)}% DMG',
+            sources: [_Source('Level', '${u.levelOf(EndlessNode.str)}')]),
+      if (u.levelOf(EndlessNode.dex) > 0)
+        _StatRow(label: 'Agility', icon: Icons.directions_run, color: const Color(0xFF40b060),
+            total: 'Lv${u.levelOf(EndlessNode.dex)}  +${u.attackRollBonus} Crit DMG',
+            sources: [_Source('Level', '${u.levelOf(EndlessNode.dex)}')]),
+      if (u.levelOf(EndlessNode.con) > 0)
+        _StatRow(label: 'Fortitude', icon: Icons.shield, color: const Color(0xFF4488cc),
+            total: 'Lv${u.levelOf(EndlessNode.con)}  -${u.flatDamageReduction} dmg/hit',
+            sources: [_Source('Level', '${u.levelOf(EndlessNode.con)}')]),
+      if (u.levelOf(EndlessNode.intelligence) > 0)
+        _StatRow(label: 'Arcane', icon: Icons.psychology, color: const Color(0xFFC9A35A),
+            total: 'Lv${u.levelOf(EndlessNode.intelligence)}  +${((u.goldMultiplier - 1) * 100).toStringAsFixed(1)}% Gold',
+            sources: [_Source('Level', '${u.levelOf(EndlessNode.intelligence)}')]),
+      if (u.levelOf(EndlessNode.wis) > 0)
+        _StatRow(label: 'Focus', icon: Icons.visibility, color: const Color(0xFF9060c0),
+            total: 'Lv${u.levelOf(EndlessNode.wis)}  +${((u.shardMultiplier - 1) * 100).toStringAsFixed(1)}% Echoes',
+            sources: [_Source('Level', '${u.levelOf(EndlessNode.wis)}')]),
+      if (u.levelOf(EndlessNode.cha) > 0)
+        _StatRow(label: 'Fortune', icon: Icons.theater_comedy, color: const Color(0xFFc06080),
+            total: 'Lv${u.levelOf(EndlessNode.cha)}  +${((u.xpMultiplier - 1) * 100).toStringAsFixed(1)}% XP',
+            sources: [_Source('Level', '${u.levelOf(EndlessNode.cha)}')]),
+    ];
+  }
+
+  // ── Combat rows ──────────────────────────────────────────────────────────────
+
+  List<_StatRow> _damageBreakdownRows() {
+    final weaponDmg = game.inventory.equippedWeaponDamage;
+    final heroDmg = game.hero.damageMod;
+    final passiveDmg = game.passiveTree.totalOf(PassiveEffect.damageFlat);
+    final equipDmg = game.inventory.totalOf(ItemStat.damageBonus)
+        + game.inventory.totalOf(ItemStat.strength);
+    final setDmg = game.inventorySetTotal(ItemStat.damageBonus)
+        + game.inventorySetTotal(ItemStat.strength);
+    final petDmg = game.petDamage;
+    final skinDmg = game.skinDamage;
+    final allyDmg = game.allyDmgBonus;
+    final questDmg = game.questDamageBonus;
+    final artifactDmg = game.artifactDamageBonus;
+    final runeDmg = game.runeDmgBonus;
+    final ascDmg = game.ascDmgBonus;
+    final total = weaponDmg + heroDmg + passiveDmg + equipDmg + setDmg
+        + petDmg + skinDmg + allyDmg + questDmg + artifactDmg + runeDmg + ascDmg;
+
+    return [
+      _StatRow(label: 'Total Damage', icon: Icons.flash_on, color: const Color(0xFFff6644), total: '$total', sources: [
+        if (weaponDmg > 0) _Source('Weapon Base', '+$weaponDmg'),
+        if (heroDmg > 0) _Source('Hero Level', '+$heroDmg'),
+        if (passiveDmg > 0) _Source('Passives', '+$passiveDmg'),
+        if (equipDmg > 0) _Source('Equipment', '+$equipDmg'),
+        if (setDmg > 0) _Source('Set Bonuses', '+$setDmg'),
+        if (petDmg > 0) _Source('Pets', '+$petDmg'),
+        if (skinDmg > 0) _Source('Skins', '+$skinDmg'),
+        if (allyDmg > 0) _Source('Allies', '+$allyDmg'),
+        if (questDmg > 0) _Source('Quests', '+$questDmg'),
+        if (artifactDmg > 0) _Source('Artifacts', '+$artifactDmg'),
+        if (runeDmg > 0) _Source('Runes', '+$runeDmg'),
+        if (ascDmg > 0) _Source('Ascension', '+$ascDmg'),
+      ]),
+    ];
+  }
 
   List<_StatRow> _combatRows() {
     final h  = game.hero;
@@ -170,6 +456,7 @@ class _StatsBody extends StatelessWidget {
                    + game.inventorySetTotal(ItemStat.strength);
     final atkPets  = game.petAttackBonus;
     final atkSkin  = game.skinAttackBonus;
+    final atkAlly  = game.allyAtkBonus;
 
     final dmgBase  = h.damageMod;
     final dmgPass  = pt.totalOf(PassiveEffect.damageFlat);
@@ -179,6 +466,7 @@ class _StatsBody extends StatelessWidget {
                    + game.inventorySetTotal(ItemStat.strength);
     final dmgPets  = game.petDamage;
     final dmgSkin  = game.skinDamage;
+    final dmgAlly  = game.allyDmgBonus;
     final dmgTrait = game.traitDmgPct;
 
     final acBase  = h.armorClass;
@@ -189,66 +477,57 @@ class _StatsBody extends StatelessWidget {
                   + game.inventorySetTotal(ItemStat.dexterity);
     final acPets  = game.petArmor;
     final acSkin  = game.skinArmor;
+    final acAlly  = game.allyAcBonus;
 
     final hpBase  = h.maxHealth;
     final hpPass  = pt.totalOf(PassiveEffect.maxHp);
-    final hpTrait = game.traitHpPct + game.artifactHpPct + game.runeHpPct + game.allyHpPct;
+    final hpAlly  = game.allyHpPct;
+    final hpTrait = game.traitHpPct + game.artifactHpPct + game.runeHpPct + hpAlly;
 
-    final pierce   = pt.totalOf(PassiveEffect.pierce);
-    final critPass = pt.totalOf(PassiveEffect.critChance);
-
+    final pierce    = pt.totalOf(PassiveEffect.pierce);
+    final critPass  = pt.totalOf(PassiveEffect.critChance);
     final dodgePass = pt.totalOf(PassiveEffect.dodgeChance);
     final dodgePets = game.petDodgeChance;
 
     final regenPass  = pt.totalOf(PassiveEffect.regenFlat);
     final regenEquip = game.inventory.totalOf(ItemStat.constitution) * 3
-                     + game.inventorySetTotal(ItemStat.constitution) * 3;
+                     + game.inventorySetTotal(ItemStat.constitution) * 3
+                     + game.inventoryGemTotal(ItemStat.constitution) * 3;
     final regenPets  = game.petHpRegen;
     final regenSkin  = game.skinHpRegen;
 
     return [
       _StatRow(
-        label: 'Attack Bonus',
-        icon: Icons.add_circle_outline,
-        color: const Color(0xFFff8844),
-        total: '+${atkBase + atkPass + atkEquip + atkSet + atkPets + atkSkin}',
-        sources: [
-          if (atkBase != 0)  _Source('Base (STR/prof)', '+$atkBase'),
-          if (atkPass != 0)  _Source('Passives', '+$atkPass'),
-          if (atkEquip != 0) _Source('Equipment', '+$atkEquip'),
-          if (atkSet != 0)   _Source('Set bonuses', '+$atkSet'),
-          ..._petSources(PetBonusType.attackBonus, (v) => '+$v'),
-          if (atkSkin != 0)  _Source('Skin', '+$atkSkin'),
-        ],
-      ),
-      _StatRow(
-        label: 'Damage Bonus',
+        label: 'Power',
         icon: Icons.flash_on,
-        color: const Color(0xFFff4444),
-        total: '+${dmgBase + dmgPass + dmgEquip + dmgSet + dmgPets + dmgSkin}'
-            + (dmgTrait != 0 ? '  ×${(1 + dmgTrait / 100).toStringAsFixed(2)}' : ''),
+        color: const Color(0xFFff6644),
+        total: '+${atkBase + atkPass + atkEquip + atkSet + atkPets + atkSkin + atkAlly + dmgBase + dmgPass + dmgEquip + dmgSet + dmgPets + dmgSkin + dmgAlly}'
+            '${dmgTrait != 0 ? "  ×${(1 + dmgTrait / 100).toStringAsFixed(2)}" : ""}',
         sources: [
-          if (dmgBase != 0)  _Source('Base (STR)', '+$dmgBase'),
-          if (dmgPass != 0)  _Source('Passives', '+$dmgPass'),
-          if (dmgEquip != 0) _Source('Equipment', '+$dmgEquip'),
-          if (dmgSet != 0)   _Source('Set bonuses', '+$dmgSet'),
-          ..._petSources(PetBonusType.damage, (v) => '+$v'),
-          if (dmgSkin != 0)  _Source('Skin', '+$dmgSkin'),
-          if (dmgTrait != 0) _Source('Trait (mult)', '${dmgTrait > 0 ? '+' : ''}$dmgTrait%'),
+          _Source('Base (prof + level)', '+${atkBase + dmgBase}'),
+          _Source('Passives', '+${atkPass + dmgPass}'),
+          _Source('Equipment', '+${atkEquip + dmgEquip}'),
+          _Source('Set bonuses', '+${atkSet + dmgSet}'),
+          ..._petSourcesOrZero(PetBonusType.attackBonus, (v) => '+$v'),
+          ..._petSourcesOrZero(PetBonusType.damage, (v) => '+$v'),
+          _Source('Skin', '+${atkSkin + dmgSkin}'),
+          _Source('Mercenaries', '+${atkAlly + dmgAlly}'),
+          if (dmgTrait != 0) _Source('Trait (mult)', '${dmgTrait >= 0 ? '+' : ''}$dmgTrait%'),
         ],
       ),
       _StatRow(
-        label: 'Armor Class',
+        label: 'Armor',
         icon: Icons.shield_outlined,
         color: const Color(0xFF66aaff),
-        total: '${acBase + acPass + acEquip + acSet + acPets + acSkin}',
+        total: '${acBase + acPass + acEquip + acSet + acPets + acSkin + acAlly}',
         sources: [
-          if (acBase != 0)  _Source('Base (DEX)', '$acBase'),
-          if (acPass != 0)  _Source('Passives', '+$acPass'),
-          if (acEquip != 0) _Source('Equipment', '+$acEquip'),
-          if (acSet != 0)   _Source('Set bonuses', '+$acSet'),
-          ..._petSources(PetBonusType.armor, (v) => '+$v'),
-          if (acSkin != 0)  _Source('Skin', '+$acSkin'),
+          _Source('Base (flat)', '$acBase'),
+          _Source('Passives', '+$acPass'),
+          _Source('Equipment', '+$acEquip'),
+          _Source('Set bonuses', '+$acSet'),
+          ..._petSourcesOrZero(PetBonusType.armor, (v) => '+$v'),
+          _Source('Skin', '+$acSkin'),
+          _Source('Mercenaries', '+$acAlly'),
         ],
       ),
       _StatRow(
@@ -257,117 +536,178 @@ class _StatsBody extends StatelessWidget {
         color: const Color(0xFFff6666),
         total: '$hpBase HP',
         sources: [
-          _Source('Base (CON/level)', '${(h.maxHealth * 100 / (100 + hpPass + hpTrait)).round()} HP'),
-          if (hpPass != 0)  _Source('Passives', '+$hpPass%'),
-          if (hpTrait != 0) _Source('Trait / Artifact / Rune', '+$hpTrait%'),
+          _Source('Base (level)', '${(h.maxHealth * 100 / (100 + hpPass + hpTrait)).round()} HP'),
+          _Source('Passives', '+$hpPass%'),
+          _Source('Trait / Artifact / Rune', '+${game.traitHpPct + game.artifactHpPct + game.runeHpPct}%'),
+          _Source('Mercenaries', '+$hpAlly%'),
         ],
       ),
-      if (pierce > 0)
-        _StatRow(
-          label: 'Pierce (ignore AC)',
-          icon: Icons.compare_arrows,
-          color: const Color(0xFFffaa44),
-          total: '$pierce AC ignored',
-          sources: [_Source('Passives', '$pierce')],
-        ),
-      if (critPass > 0)
-        _StatRow(
-          label: 'Crit Chance bonus',
-          icon: Icons.star_outline,
-          color: const Color(0xFFffee44),
-          total: '+$critPass%',
-          sources: [_Source('Passives', '+$critPass%')],
-        ),
-      if (dodgePass + dodgePets > 0)
-        _StatRow(
-          label: 'Dodge Chance',
-          icon: Icons.directions_run,
-          color: const Color(0xFF88ffcc),
-          total: '+${dodgePass + dodgePets}%',
-          sources: [
-            if (dodgePass != 0) _Source('Passives', '+$dodgePass%'),
-            ..._petSources(PetBonusType.dodgeChance, (v) => '+$v%'),
-          ],
-        ),
-      if (regenPass + regenEquip + regenPets + regenSkin > 0)
-        _StatRow(
-          label: 'HP Regen / round',
-          icon: Icons.healing,
-          color: const Color(0xFF44cc88),
-          total: '+${regenPass + regenEquip + regenPets + regenSkin} HP',
-          sources: [
-            if (regenPass != 0)  _Source('Passives', '+$regenPass'),
-            if (regenEquip != 0) _Source('Equipment (CON)', '+$regenEquip'),
-            ..._petSources(PetBonusType.hpRegen, (v) => '+$v HP'),
-            if (regenSkin != 0)  _Source('Skin', '+$regenSkin'),
-          ],
-        ),
+      _StatRow(
+        label: 'Pierce (ignore AC)',
+        icon: Icons.compare_arrows,
+        color: const Color(0xFFffaa44),
+        total: '$pierce AC ignored',
+        sources: [
+          _Source('Passives', '$pierce'),
+          _Source('How to get', 'Pierce passive nodes'),
+        ],
+      ),
+      _StatRow(
+        label: 'Crit Chance bonus',
+        icon: Icons.star_outline,
+        color: const Color(0xFFffee44),
+        total: '+$critPass%',
+        sources: [
+          _Source('Passives', '+$critPass%'),
+          _Source('How to get', 'Critical passive nodes'),
+        ],
+      ),
+      _StatRow(
+        label: 'Dodge Chance',
+        icon: Icons.directions_run,
+        color: const Color(0xFF88ffcc),
+        total: '+${dodgePass + dodgePets}%',
+        sources: [
+          _Source('Passives', '+$dodgePass%'),
+          ..._petSourcesOrZero(PetBonusType.dodgeChance, (v) => '+$v%'),
+        ],
+      ),
+      _StatRow(
+        label: 'HP Regen / round',
+        icon: Icons.healing,
+        color: const Color(0xFF44cc88),
+        total: '+${regenPass + regenEquip + regenPets + regenSkin} HP',
+        sources: [
+          _Source('Passives', '+$regenPass'),
+          _Source('Equipment (CON)', '+$regenEquip'),
+          ..._petSourcesOrZero(PetBonusType.hpRegen, (v) => '+$v HP'),
+          _Source('Skin', '+$regenSkin'),
+        ],
+      ),
+      _StatRow(
+        label: 'Hit Chance bonus',
+        icon: Icons.gps_fixed,
+        color: const Color(0xFFffcc44),
+        total: '+${game.inventory.totalOf(ItemStat.hitChance)}%',
+        sources: [
+          _Source('Equipment (HIT)', '+${game.inventory.totalOf(ItemStat.hitChance)}%'),
+          _Source('How to get', 'HIT% stat on weapons & accessories'),
+          _Source('Effect', 'Force-hit ignoring AC (stacks with crit)'),
+        ],
+      ),
+      _StatRow(
+        label: 'All Damage %',
+        icon: Icons.trending_up,
+        color: const Color(0xFFff6633),
+        total: '+${pt.totalOf(PassiveEffect.allDamage) + game.inventory.totalOf(ItemStat.damagePercent) + h.levelBonusDamagePct}%',
+        sources: [
+          _Source('Passives', '+${pt.totalOf(PassiveEffect.allDamage)}%'),
+          _Source('Equipment (%DMG)', '+${game.inventory.totalOf(ItemStat.damagePercent)}%'),
+          _Source('Level milestones', '+${h.levelBonusDamagePct}% (+10% per 10 levels)'),
+        ],
+      ),
     ];
   }
 
+  // ── Resistance rows ───────────────────────────────────────────────────────────
+
   List<_StatRow> _resistanceRows() {
     final h = game.hero;
+
     return DamageType.values.map((type) {
-      final pct = game.heroResistancePct(type);
-      final sign = pct >= 0 ? '+' : '';
+      final baseStat = switch (type) {
+        DamageType.physical  => h.strength,
+        DamageType.lightning => h.dexterity,
+        DamageType.poison    => h.constitution,
+        DamageType.void_     => h.intelligence,
+        DamageType.cold      => h.wisdom,
+        DamageType.fire      => h.charisma,
+      };
+      final itemStat = switch (type) {
+        DamageType.physical  => ItemStat.strength,
+        DamageType.lightning => ItemStat.dexterity,
+        DamageType.poison    => ItemStat.constitution,
+        DamageType.void_     => ItemStat.intelligence,
+        DamageType.cold      => ItemStat.wisdom,
+        DamageType.fire      => ItemStat.charisma,
+      };
+
+      final equip = game.inventory.totalOf(itemStat);
+      final set   = game.inventorySetTotal(itemStat);
+      final gem   = game.inventoryGemTotal(itemStat);
+
+      // Attribute the -10 base offset to the base stat contribution.
+      final basePct  = ((baseStat - 10) * 25.0 / 90).round();
+      final equipPct = (equip * 25.0 / 90).round();
+      final setPct   = (set   * 25.0 / 90).round();
+      final gemPct   = (gem   * 25.0 / 90).round();
+
+      final pct   = game.heroResistancePct(type);
+      final sign  = pct >= 0 ? '+' : '';
       final color = pct > 0
           ? type.color
           : pct < 0
               ? const Color(0xFFff4444)
               : AppTheme.textMuted;
-      final statLabel = type.resistanceStat;
       final capped = pct.abs() == 75;
+
+      String sg(int v) => v >= 0 ? '+' : '';
+
       return _StatRow(
         label: '${type.label} Resist',
         icon: pct < 0 ? Icons.warning_amber_rounded : Icons.shield_outlined,
         color: color,
-        total: '$sign$pct%${capped ? " ⬆" : ""}',
+        total: '$sign$pct%${capped ? ' ⬆' : ''}',
         sources: [
-          _Source('From $statLabel stat', '$sign$pct%'),
-          _Source('Resistance cap', '±75% max'),
+          _Source('Base ${type.resistanceStat} ($baseStat stat)', '${sg(basePct)}$basePct%'),
+          _Source('Equipment', '${sg(equipPct)}$equipPct%'),
+          _Source('Set bonuses', '${sg(setPct)}$setPct%'),
+          _Source('Gems', '${sg(gemPct)}$gemPct%'),
+          _Source('Cap', '±75% max'),
         ],
       );
     }).toList();
   }
 
+  // ── Economy rows ─────────────────────────────────────────────────────────────
+
   List<_StatRow> _economyRows() {
     final pt = game.passiveTree;
 
-    final goldPass  = pt.totalOf(PassiveEffect.goldFlat);
-    final goldEquip = game.inventory.totalOf(ItemStat.goldPct)
-                    + game.inventorySetTotal(ItemStat.goldPct)
-                    + game.inventoryGemTotal(ItemStat.goldPct);
-    final goldPets  = game.petGoldPct;
-    final goldSkin  = game.skinGoldPct;
-    final goldArt   = game.artifactGoldPct + game.runeGoldPct;
-    final goldPrest = ((game.prestigeGoldMult - 1.0) * 100).round();
-    final goldAlly  = ((game.allyGoldMult - 1.0) * 100).round();
+    final goldPass    = pt.totalOf(PassiveEffect.goldFlat);
+    final goldEquip   = game.inventory.totalOf(ItemStat.goldPct)
+                      + game.inventorySetTotal(ItemStat.goldPct)
+                      + game.inventoryGemTotal(ItemStat.goldPct);
+    final goldSkin    = game.skinGoldPct;
+    final goldArt     = game.artifactGoldPct + game.runeGoldPct;
+    final goldPrest   = ((game.prestigeGoldMult - 1.0) * 100).round();
+    final goldAlly    = ((game.allyGoldMult - 1.0) * 100).round();
     final goldEndless = ((game.endlessUpgrades.goldMultiplier - 1.0) * 100).round();
-    final totalGoldPct = goldPass + goldEquip + goldPets + goldSkin + goldArt + goldPrest + goldAlly + goldEndless;
+    final totalGoldPct = goldPass + goldEquip + game.petGoldPct + goldSkin
+                       + goldArt + goldPrest + goldAlly + goldEndless;
 
     final xpPass    = pt.totalOf(PassiveEffect.xpFlat);
     final xpEquip   = game.inventory.totalOf(ItemStat.xpPct)
                     + game.inventorySetTotal(ItemStat.xpPct)
                     + game.inventoryGemTotal(ItemStat.xpPct);
-    final xpPets    = game.petXpPct;
     final xpSkin    = game.skinXpPct;
     final xpArt     = game.artifactXpPct + game.runeXpPct;
     final xpPrest   = ((game.prestigeXpMult - 1.0) * 100).round();
     final xpAlly    = ((game.allyXpMult - 1.0) * 100).round();
     final xpEndless = ((game.endlessUpgrades.xpMultiplier - 1.0) * 100).round();
-    final totalXpPct = xpPass + xpEquip + xpPets + xpSkin + xpArt + xpPrest + xpAlly + xpEndless;
+    final totalXpPct = xpPass + xpEquip + game.petXpPct + xpSkin
+                     + xpArt + xpPrest + xpAlly + xpEndless;
 
     final shardPass  = pt.totalOf(PassiveEffect.shardFlat);
-    final shardPets  = game.petShards;
     final shardPct   = game.traitShardPct + game.artifactShardPct + game.runeShardPct;
     final shardAlly  = ((game.allyShardMult - 1.0) * 100).round();
     final shardPrest = ((game.prestigeShardMult - 1.0) * 100).round();
+    final shardPets  = game.petShards;
 
     final idleBase    = game.hero.idleRate;
     final idlePass    = pt.totalOf(PassiveEffect.idleFlat);
     final idlePrest   = game.prestigeIdleBonus;
     final idleEquip   = game.inventory.totalOf(ItemStat.wisdom);
-    final idlePets    = game.petIdleRate;
     final idleMultPct = ((game.prestigeIdleMult - 1.0) * 100).round()
                       + ((game.allyIdleMult - 1.0) * 100).round();
 
@@ -378,14 +718,14 @@ class _StatsBody extends StatelessWidget {
         color: AppTheme.accentGold,
         total: '+$totalGoldPct%',
         sources: [
-          if (goldPass != 0)    _Source('Passives', '+$goldPass%'),
-          if (goldEquip != 0)   _Source('Equipment', '+$goldEquip%'),
-          ..._petSources(PetBonusType.goldPct, (v) => '+$v%'),
-          if (goldSkin != 0)    _Source('Skin', '+$goldSkin%'),
-          if (goldArt != 0)     _Source('Artifact / Rune', '+$goldArt%'),
-          if (goldPrest != 0)   _Source('Prestige', '+$goldPrest%'),
-          if (goldAlly != 0)    _Source('Allies', '+$goldAlly%'),
-          if (goldEndless != 0) _Source('Endless upgrades', '+$goldEndless%'),
+          _Source('Passives', '+$goldPass%'),
+          _Source('Equipment', '+$goldEquip%'),
+          ..._petSourcesOrZero(PetBonusType.goldPct, (v) => '+$v%'),
+          _Source('Skin', '+$goldSkin%'),
+          _Source('Artifact / Rune', '+$goldArt%'),
+          _Source('Prestige', '+$goldPrest%'),
+          _Source('Allies', '+$goldAlly%'),
+          _Source('Endless upgrades', '+$goldEndless%'),
         ],
       ),
       _StatRow(
@@ -394,14 +734,14 @@ class _StatsBody extends StatelessWidget {
         color: const Color(0xFF88aaff),
         total: '+$totalXpPct%',
         sources: [
-          if (xpPass != 0)    _Source('Passives', '+$xpPass%'),
-          if (xpEquip != 0)   _Source('Equipment', '+$xpEquip%'),
-          ..._petSources(PetBonusType.xpPct, (v) => '+$v%'),
-          if (xpSkin != 0)    _Source('Skin', '+$xpSkin%'),
-          if (xpArt != 0)     _Source('Artifact / Rune', '+$xpArt%'),
-          if (xpPrest != 0)   _Source('Prestige', '+$xpPrest%'),
-          if (xpAlly != 0)    _Source('Allies', '+$xpAlly%'),
-          if (xpEndless != 0) _Source('Endless upgrades', '+$xpEndless%'),
+          _Source('Passives', '+$xpPass%'),
+          _Source('Equipment', '+$xpEquip%'),
+          ..._petSourcesOrZero(PetBonusType.xpPct, (v) => '+$v%'),
+          _Source('Skin', '+$xpSkin%'),
+          _Source('Artifact / Rune', '+$xpArt%'),
+          _Source('Prestige', '+$xpPrest%'),
+          _Source('Allies', '+$xpAlly%'),
+          _Source('Endless upgrades', '+$xpEndless%'),
         ],
       ),
       _StatRow(
@@ -412,95 +752,100 @@ class _StatsBody extends StatelessWidget {
             '${shardPct + shardAlly + shardPrest > 0 ? "  +${shardPct + shardAlly + shardPrest}%" : ""}'
             '${shardPets > 0 ? "  +$shardPets" : ""}',
         sources: [
-          if (shardPass != 0)  _Source('Passives', '+$shardPass/kill'),
-          ..._petSources(PetBonusType.shardBonus, (v) => '+$v/kill'),
-          if (shardPct != 0)   _Source('Trait / Artifact / Rune', '+$shardPct%'),
-          if (shardAlly != 0)  _Source('Allies', '+$shardAlly%'),
-          if (shardPrest != 0) _Source('Prestige', '+$shardPrest%'),
+          _Source('Passives', '+$shardPass/kill'),
+          ..._petSourcesOrZero(PetBonusType.shardBonus, (v) => '+$v/kill'),
+          _Source('Trait / Artifact / Rune', '+$shardPct%'),
+          _Source('Allies', '+$shardAlly%'),
+          _Source('Prestige', '+$shardPrest%'),
         ],
       ),
       _StatRow(
         label: 'Idle Rate',
         icon: Icons.timelapse,
         color: const Color(0xFF44cc66),
-        total: '${idleBase + idlePass + idlePrest + idleEquip + idlePets}/tick'
+        total: '${idleBase + idlePass + idlePrest + idleEquip + game.petIdleRate}/tick'
             '${idleMultPct > 0 ? "  ×${(1 + idleMultPct / 100).toStringAsFixed(2)}" : ""}',
         sources: [
-          _Source('Base (WIS)', '$idleBase'),
-          if (idlePass != 0)    _Source('Passives', '+$idlePass'),
-          if (idleEquip != 0)   _Source('Equipment (WIS)', '+$idleEquip'),
-          ..._petSources(PetBonusType.idleRate, (v) => '+$v'),
-          if (idlePrest != 0)   _Source('Prestige shop', '+$idlePrest'),
-          if (idleMultPct != 0) _Source('Prestige / Ally (mult)', '+$idleMultPct%'),
+          _Source('Base (flat)', '$idleBase'),
+          _Source('Passives', '+$idlePass'),
+          _Source('Equipment (WIS)', '+$idleEquip'),
+          ..._petSourcesOrZero(PetBonusType.idleRate, (v) => '+$v'),
+          _Source('Prestige shop', '+$idlePrest'),
+          _Source('Prestige / Ally (mult)', '+$idleMultPct%'),
         ],
       ),
     ];
   }
+
+  // ── Mastery rows ─────────────────────────────────────────────────────────────
 
   List<_StatRow> _masteryRows() {
     final pt = game.passiveTree;
 
-    final cdRedPass   = pt.totalOf(PassiveEffect.cooldownReduce) + game.traitCooldownReduction;
+    final cdRedPass   = pt.totalOf(PassiveEffect.cooldownReduce);
+    final cdRedTrait  = game.traitCooldownReduction;
     final abilDmgPass = pt.totalOf(PassiveEffect.abilityDamage);
     final healPass    = pt.totalOf(PassiveEffect.healBoost);
     final essPass     = pt.totalOf(PassiveEffect.essenceGain);
     final essPrest    = ((game.prestigeEssenceMult - 1.0) * 100).round();
-    final essPets     = game.petEssenceGain;
 
     return [
-      if (cdRedPass > 0)
-        _StatRow(
-          label: 'Cooldown Reduction',
-          icon: Icons.fast_forward,
-          color: const Color(0xFFcc88ff),
-          total: '-$cdRedPass round${cdRedPass == 1 ? '' : 's'}',
-          sources: [
-            if (pt.totalOf(PassiveEffect.cooldownReduce) > 0)
-              _Source('Passives', '-${pt.totalOf(PassiveEffect.cooldownReduce)}'),
-            if (game.traitCooldownReduction > 0)
-              _Source('Trait', '-${game.traitCooldownReduction}'),
-          ],
-        ),
-      if (abilDmgPass > 0)
-        _StatRow(
-          label: 'Ability Damage',
-          icon: Icons.bolt,
-          color: const Color(0xFFffcc44),
-          total: '+$abilDmgPass%',
-          sources: [_Source('Passives', '+$abilDmgPass%')],
-        ),
-      if (healPass > 0)
-        _StatRow(
-          label: 'Heal Boost',
-          icon: Icons.local_hospital_outlined,
-          color: const Color(0xFF44ee88),
-          total: '+$healPass%',
-          sources: [_Source('Passives', '+$healPass%')],
-        ),
+      _StatRow(
+        label: 'Cooldown Reduction',
+        icon: Icons.fast_forward,
+        color: const Color(0xFFcc88ff),
+        total: '-${cdRedPass + cdRedTrait} round${(cdRedPass + cdRedTrait) == 1 ? '' : 's'}',
+        sources: [
+          _Source('Passives', '-$cdRedPass'),
+          _Source('Trait', '-$cdRedTrait'),
+        ],
+      ),
+      _StatRow(
+        label: 'Ability Damage',
+        icon: Icons.bolt,
+        color: const Color(0xFFffcc44),
+        total: '+$abilDmgPass%',
+        sources: [
+          _Source('Passives', '+$abilDmgPass%'),
+          _Source('How to get', 'Ability Damage passive nodes'),
+        ],
+      ),
+      _StatRow(
+        label: 'Heal Boost',
+        icon: Icons.local_hospital_outlined,
+        color: const Color(0xFF44ee88),
+        total: '+$healPass%',
+        sources: [
+          _Source('Passives', '+$healPass%'),
+          _Source('How to get', 'Heal Boost passive nodes'),
+        ],
+      ),
       _StatRow(
         label: 'Essence per Kill',
         icon: Icons.auto_awesome,
         color: const Color(0xFFaaff88),
-        total: '+${essPass + essPrest + essPets}%',
+        total: '+${essPass + essPrest + game.petEssenceGain}%',
         sources: [
-          if (essPass != 0)  _Source('Passives', '+$essPass%'),
-          ..._petSources(PetBonusType.essenceGain, (v) => '+$v%'),
-          if (essPrest != 0) _Source('Prestige', '+$essPrest%'),
+          _Source('Passives', '+$essPass%'),
+          ..._petSourcesOrZero(PetBonusType.essenceGain, (v) => '+$v%'),
+          _Source('Prestige', '+$essPrest%'),
         ],
       ),
     ];
   }
 
+  // ── Survival rows ─────────────────────────────────────────────────────────────
+
   List<_StatRow> _survivalRows() {
     final h           = game.hero;
-    final conHealPct  = (10 + h.conMod * 5).clamp(5, 100);
+    const baseHealPct = 10;
     final conEquip    = game.inventory.totalOf(ItemStat.constitution) * 3
                       + game.inventorySetTotal(ItemStat.constitution) * 3
                       + game.inventoryGemTotal(ItemStat.constitution) * 3;
-    final endlessRegen = (h.maxHealth * game.endlessUpgrades.hpRecoveryFraction).round();
+    final endlessRegen = game.endlessUpgrades.flatDamageReduction;
     final regenPets   = game.petHpRegen;
     final regenSkin   = game.skinHpRegen;
-    final totalRegen  = (h.maxHealth * conHealPct / 100).round()
+    final totalRegen  = (h.maxHealth * baseHealPct / 100).round()
                       + endlessRegen + conEquip + regenPets + regenSkin;
 
     return [
@@ -508,16 +853,14 @@ class _StatsBody extends StatelessWidget {
         label: 'Post-battle HP Heal',
         icon: Icons.healing,
         color: const Color(0xFFff6666),
-        total: '~$totalRegen HP ($conHealPct% base)',
+        total: '~$totalRegen HP ($baseHealPct% base)',
         sources: [
-          _Source('VIT (${h.vitality}) — ${conHealPct}% of max HP',
-              '~${(h.maxHealth * conHealPct / 100).round()} HP'),
-          if (endlessRegen > 0)
-            _Source('Endless upgrade (HP Recovery)', '+$endlessRegen HP'),
-          if (conEquip > 0)
-            _Source('Equipment CON stat', '+$conEquip HP'),
-          ..._petSources(PetBonusType.hpRegen, (v) => '+$v HP'),
-          if (regenSkin > 0) _Source('Skin', '+$regenSkin HP'),
+          _Source('Flat base — $baseHealPct% of max HP',
+              '~${(h.maxHealth * baseHealPct / 100).round()} HP'),
+          _Source('Endless upgrade (HP Recovery)', '+$endlessRegen HP'),
+          _Source('Equipment CON stat', '+$conEquip HP'),
+          ..._petSourcesOrZero(PetBonusType.hpRegen, (v) => '+$v HP'),
+          _Source('Skin', '+$regenSkin HP'),
         ],
       ),
       _StatRow(
@@ -527,10 +870,119 @@ class _StatsBody extends StatelessWidget {
         total: '${h.vitality} (mod ${h.conMod >= 0 ? '+' : ''}${h.conMod})',
         sources: [
           _Source('Base VIT', '${h.vitality}'),
-          _Source('Max HP formula', '${h.maxHealth} HP at lv ${h.level}'),
+          _Source('Max HP Bonus', '+${h.vitality}%'),
+          _Source('Poison Dmg %', '+${h.damagePctFor(DamageType.poison)}% (${h.vitality}÷4)'),
         ],
       ),
     ];
+  }
+
+  // ── Mercenaries section ───────────────────────────────────────────────────────
+
+  Widget _mercenariesSection() {
+    const teal = Color(0xFF44ddcc);
+    final allies   = game.unlockedAllies;
+    final synergies = game.activeSynergies;
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: teal.withValues(alpha: 0.05),
+          border: Border.all(color: teal.withValues(alpha: 0.30)),
+          borderRadius: BorderRadius.circular(3),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(children: [
+              const Icon(Icons.handshake_outlined, color: teal, size: 13),
+              const SizedBox(width: 6),
+              Text('MERCENARIES',
+                  style: AppTheme.pixelHeading(fontSize: 11, letterSpacing: 2, color: teal)),
+              const SizedBox(width: 8),
+              Text('${allies.length} / ${NpcAllyDef.all.length} recruited',
+                  style: const TextStyle(fontSize: 10, color: AppTheme.textMuted)),
+            ]),
+            const SizedBox(height: 10),
+            // One row per recruited ally
+            ...allies.map((a) {
+              final lv  = game.allyLevel(a.id);
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text(a.icon, style: const TextStyle(fontSize: 18)),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                      Row(children: [
+                        Text(a.name,
+                            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold,
+                                color: AppTheme.textLight)),
+                        const SizedBox(width: 6),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                          decoration: BoxDecoration(
+                            color: teal.withValues(alpha: 0.15),
+                            border: Border.all(color: teal.withValues(alpha: 0.5)),
+                            borderRadius: BorderRadius.circular(2),
+                          ),
+                          child: Text('Lv $lv',
+                              style: TextStyle(fontSize: 10, color: teal,
+                                  fontWeight: FontWeight.bold)),
+                        ),
+                      ]),
+                      const SizedBox(height: 2),
+                      Text('Passive: ${a.bonusDescription} (×$lv = ${_allyPassiveTotal(a, lv)})',
+                          style: const TextStyle(fontSize: 12, color: AppTheme.textMuted)),
+                      if (a.activeAbility != null)
+                        Text('Active: ${a.activeAbility!.icon} ${a.activeAbility!.name} — ${a.activeAbility!.description}',
+                            style: const TextStyle(fontSize: 11, color: AppTheme.textMuted, height: 1.4)),
+                    ]),
+                  ),
+                ]),
+              );
+            }),
+            // Active synergies
+            if (synergies.isNotEmpty) ...[
+              const Divider(color: AppTheme.cardBorder, height: 16, thickness: 0.5),
+              Text('ACTIVE SYNERGIES',
+                  style: AppTheme.pixelHeading(fontSize: 10, letterSpacing: 2,
+                      color: AppTheme.textMuted)),
+              const SizedBox(height: 8),
+              ...synergies.map((s) => Padding(
+                padding: const EdgeInsets.only(bottom: 6),
+                child: Row(children: [
+                  const Icon(Icons.link, color: teal, size: 13),
+                  const SizedBox(width: 8),
+                  Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    Text(s.name,
+                        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold,
+                            color: AppTheme.textLight)),
+                    Text('${s.description}  •  ${s.bonusSummary}',
+                        style: const TextStyle(fontSize: 11, color: AppTheme.textMuted, height: 1.4)),
+                  ])),
+                ]),
+              )),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  String _allyPassiveTotal(NpcAllyDef a, int lv) {
+    final parts = <String>[];
+    if (a.atkBonus > 0)      parts.add('+${a.atkBonus * lv} ATK');
+    if (a.dmgBonus > 0)      parts.add('+${a.dmgBonus * lv} DMG');
+    if (a.acBonus > 0)       parts.add('+${a.acBonus * lv} AC');
+    if (a.hpPctBonus > 0)    parts.add('+${(a.hpPctBonus * lv * 100).round()}% HP');
+    if (a.goldPctBonus > 0)  parts.add('+${(a.goldPctBonus * lv * 100).round()}% Gold');
+    if (a.xpPctBonus > 0)    parts.add('+${(a.xpPctBonus * lv * 100).round()}% XP');
+    if (a.shardPctBonus > 0) parts.add('+${(a.shardPctBonus * lv * 100).round()}% Shards');
+    if (a.idlePctBonus > 0)  parts.add('+${(a.idlePctBonus * lv * 100).round()}% Idle');
+    return parts.join('  •  ');
   }
 }
 
@@ -552,10 +1004,10 @@ class _StatRow {
     required this.total,
     this.sources = const [],
   });
-  final String       label;
-  final IconData     icon;
-  final Color        color;
-  final String       total;
+  final String        label;
+  final IconData      icon;
+  final Color         color;
+  final String        total;
   final List<_Source> sources;
 }
 
@@ -591,7 +1043,7 @@ class _StatRowWidgetState extends State<_StatRowWidget> {
 
   @override
   Widget build(BuildContext context) {
-    final row      = widget.row;
+    final row       = widget.row;
     final hasDetail = row.sources.isNotEmpty;
 
     return GestureDetector(
@@ -679,8 +1131,7 @@ class _StatRowWidgetState extends State<_StatRowWidget> {
                                 Text(s.value,
                                     style: TextStyle(
                                         fontSize: 11,
-                                        color:
-                                            row.color.withValues(alpha: 0.85),
+                                        color: row.color.withValues(alpha: 0.85),
                                         fontWeight: FontWeight.bold)),
                               ],
                             ),

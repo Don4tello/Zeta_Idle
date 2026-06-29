@@ -2,6 +2,7 @@
 import 'package:flutter/material.dart';
 import '../models/damage_type.dart';
 import '../models/dnd_class.dart';
+import '../models/hero_model.dart' show HeroGender;
 import '../theme/app_theme.dart';
 import 'attack_effect.dart';
 import 'battle_backgrounds.dart';
@@ -30,6 +31,7 @@ class BattleArena extends StatefulWidget {
     required this.heroMaxHp,
     required this.heroAttack,
     required this.heroSpriteId,
+    this.heroGender,
     this.heroAuraColor,
     this.heroAuraIntensity = 1.0,
     this.heroColorFilter,
@@ -41,6 +43,7 @@ class BattleArena extends StatefulWidget {
     required this.enemyMaxHp,
     required this.enemyAttack,
     required this.enemyId,
+    this.stageIndex = 0,
     // Context
     this.headerLabel,
     this.isBoss = false,
@@ -55,6 +58,7 @@ class BattleArena extends StatefulWidget {
   });
 
   final String heroName, heroSpriteId;
+  final HeroGender?    heroGender;
   final int    heroLevel, heroCurrentHp, heroMaxHp, heroAttack;
   final Color?       heroAuraColor;
   final double       heroAuraIntensity;
@@ -63,6 +67,7 @@ class BattleArena extends StatefulWidget {
 
   final String enemyName, enemyId;
   final int    enemyLevel, enemyCurrentHp, enemyMaxHp, enemyAttack;
+  final int    stageIndex;
 
   final String? headerLabel;
   final bool    isBoss, isBossEnraged;
@@ -88,15 +93,63 @@ class BattleArenaState extends State<BattleArena> with TickerProviderStateMixin 
   late final AnimationController _burstCtrl = AnimationController(
       vsync: this, duration: const Duration(milliseconds: 420));
 
+  // Step 3 — low-HP danger vignette (repeats while HP is low)
+  late final AnimationController _dangerCtrl = AnimationController(
+      vsync: this, duration: const Duration(milliseconds: 900));
+
+  // Step 4 — VS text bounce on new enemy
+  late final AnimationController _vsCtrl = AnimationController(
+      vsync: this, duration: const Duration(milliseconds: 650), value: 1.0);
+
+  // Step 5 — boss intro flash
+  late final AnimationController _bossFlashCtrl = AnimationController(
+      vsync: this, duration: const Duration(milliseconds: 700));
+
+  // Enemy fade between battles
+  late final AnimationController _enemyFadeCtrl = AnimationController(
+      vsync: this, duration: const Duration(milliseconds: 220), value: 1.0);
+
+  Future<void> fadeEnemyOut() async {
+    await _enemyFadeCtrl.animateTo(0.0, curve: Curves.easeIn);
+  }
+
   final List<_FloatEntry> _floaters = [];
+  final _rng = Random();
   Size _arenaSize = Size.zero;
 
   @override
   void dispose() {
     _shakeCtrl.dispose();
     _burstCtrl.dispose();
+    _dangerCtrl.dispose();
+    _vsCtrl.dispose();
+    _bossFlashCtrl.dispose();
+    _enemyFadeCtrl.dispose();
     for (final f in _floaters) f.ctrl.dispose();
     super.dispose();
+  }
+
+  @override
+  void didUpdateWidget(BattleArena oldWidget) {
+    super.didUpdateWidget(oldWidget);
+
+    // VS bounce + boss flash + enemy fade-in on new enemy
+    if (widget.enemyId != oldWidget.enemyId) {
+      _vsCtrl.forward(from: 0.0);
+      if (widget.isBoss) _bossFlashCtrl.forward(from: 0.0);
+      _enemyFadeCtrl.animateTo(1.0, curve: Curves.easeOut);
+    }
+
+    // Danger vignette: start/stop based on HP ratio
+    final hpRatio = widget.heroMaxHp > 0
+        ? widget.heroCurrentHp / widget.heroMaxHp
+        : 1.0;
+    if (hpRatio < 0.25 && !_dangerCtrl.isAnimating) {
+      _dangerCtrl.repeat(reverse: true);
+    } else if (hpRatio >= 0.25 && _dangerCtrl.isAnimating) {
+      _dangerCtrl.stop();
+      _dangerCtrl.value = 0.0;
+    }
   }
 
   // ── Public API ──────────────────────────────────────────────────────────────
@@ -106,9 +159,13 @@ class BattleArenaState extends State<BattleArena> with TickerProviderStateMixin 
        DamageType damageType = DamageType.physical}) async {
     _heroKey.currentState?.playAttack();
     if (heroClass != null) _effectKey.currentState?.trigger(heroClass);
-    _spawnFloat(damage, isCrit: isCrit, onEnemy: true, damageType: damageType);
+    final isWeak = (widget.enemyResistances[damageType] ?? 0) < 0;
+    _spawnFloat(damage, isCrit: isCrit, onEnemy: true, damageType: damageType, isWeak: isWeak);
+    if (isCrit) _shakeCtrl.forward(from: 0.6);
     await Future.delayed(const Duration(milliseconds: 200));
-    if (mounted) _enemyKey.currentState?.playHit();
+    if (mounted) {
+      _enemyKey.currentState?.playHit();
+    }
   }
 
   void addExtraFloat(int value,
@@ -152,25 +209,31 @@ class BattleArenaState extends State<BattleArena> with TickerProviderStateMixin 
 
   void _spawnFloat(int damage,
       {required bool isCrit, required bool onEnemy,
-       DamageType damageType = DamageType.physical}) {
+       DamageType damageType = DamageType.physical,
+       bool isWeak = false}) {
     if (damage <= 0) return;
     final Color baseColor;
     if (isCrit) {
       baseColor = const Color(0xFFffdd00);
+    } else if (isWeak) {
+      baseColor = Color.lerp(damageType.color, Colors.white, 0.35)!;
     } else if (damageType != DamageType.physical) {
       baseColor = damageType.color;
     } else {
       baseColor = onEnemy ? const Color(0xFFff6666) : const Color(0xFF88ddff);
     }
     final ctrl = AnimationController(
-        vsync: this, duration: const Duration(milliseconds: 900));
-    final label = isCrit ? '$damage${damageType.shortTag}!' : '$damage${damageType.shortTag}';
+        vsync: this, duration: const Duration(milliseconds: 1000));
+    final weakTag = isWeak && !isCrit ? ' WEAK!' : '';
+    final label = isCrit ? '$damage${damageType.shortTag}!' : '$damage${damageType.shortTag}$weakTag';
+    final driftX = (_rng.nextDouble() - 0.5) * 52.0;
     final entry = _FloatEntry(
         ctrl: ctrl,
         text: label,
         color: baseColor,
         isCrit: isCrit,
-        onEnemy: onEnemy);
+        onEnemy: onEnemy,
+        driftX: driftX);
     setState(() => _floaters.add(entry));
     ctrl.forward().then((_) {
       if (mounted) {
@@ -204,7 +267,7 @@ class BattleArenaState extends State<BattleArena> with TickerProviderStateMixin 
               // Background
               Positioned.fill(
                   child:
-                      CustomPaint(painter: battleBackgroundFor(widget.enemyId))),
+                      CustomPaint(painter: battleBackgroundFor(widget.stageIndex))),
               // Vignette + border
               Positioned.fill(
                 child: DecoratedBox(
@@ -223,6 +286,19 @@ class BattleArenaState extends State<BattleArena> with TickerProviderStateMixin 
                   ),
                 ),
               ),
+              // Step 3 — low-HP danger vignette
+              if (widget.heroMaxHp > 0 &&
+                  widget.heroCurrentHp / widget.heroMaxHp < 0.25)
+                Positioned.fill(
+                  child: IgnorePointer(
+                    child: AnimatedBuilder(
+                      animation: _dangerCtrl,
+                      builder: (_, __) => CustomPaint(
+                        painter: _DangerVignettePainter(_dangerCtrl.value),
+                      ),
+                    ),
+                  ),
+                ),
               // Arena content
               Column(
                 children: [
@@ -298,6 +374,7 @@ class BattleArenaState extends State<BattleArena> with TickerProviderStateMixin 
                             key: _heroKey,
                             spriteId: widget.heroSpriteId,
                             facingLeft: false,
+                            gender: widget.heroGender,
                             auraColor: widget.heroAuraColor,
                             auraIntensity: widget.heroAuraIntensity,
                             colorFilter: widget.heroColorFilter,
@@ -306,34 +383,53 @@ class BattleArenaState extends State<BattleArena> with TickerProviderStateMixin 
                           petWidget: widget.heroPet,
                           nameColor: const Color(0xFF4ad46a),
                           alignRight: false,
-                          damageType: widget.heroDamageType,
+                          // damageType omitted — shown on dashboard instead
                         ),
-                        const Padding(
-                          padding: EdgeInsets.only(bottom: 32),
-                          child: Text('VS',
-                              style: TextStyle(
-                                  fontSize: 21,
-                                  fontWeight: FontWeight.bold,
-                                  color: AppTheme.accentGold,
-                                  letterSpacing: 2)),
-                        ),
-                        _CombatantPanel(
-                          name: widget.enemyName,
-                          level: widget.enemyLevel,
-                          currentHp: widget.enemyCurrentHp,
-                          maxHp: widget.enemyMaxHp,
-                          attack: widget.enemyAttack,
-                          sprite: BattleSprite(
-                            key: _enemyKey,
-                            spriteId: widget.enemyId,
-                            facingLeft: true,
-                            auraColor: widget.enemyAuraColor,
-                            buffGlows: widget.enemyDebuffGlows,
+                        // Step 4 — VS bounce on new enemy
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 32),
+                          child: AnimatedBuilder(
+                            animation: _vsCtrl,
+                            builder: (_, child) {
+                              final scale = _vsCtrl.value < 1.0
+                                  ? Curves.elasticOut
+                                      .transform(_vsCtrl.value)
+                                      .clamp(0.0, 1.6)
+                                  : 1.0;
+                              return Transform.scale(scale: scale, child: child);
+                            },
+                            child: const Text('VS',
+                                style: TextStyle(
+                                    fontSize: 21,
+                                    fontWeight: FontWeight.bold,
+                                    color: AppTheme.accentGold,
+                                    letterSpacing: 2)),
                           ),
-                          nameColor: const Color(0xFFee4040),
-                          alignRight: true,
-                          damageType: widget.enemyAttackType,
-                          resistances: widget.enemyResistances,
+                        ),
+                        AnimatedBuilder(
+                          animation: _enemyFadeCtrl,
+                          builder: (_, child) => Opacity(
+                            opacity: _enemyFadeCtrl.value,
+                            child: child,
+                          ),
+                          child: _CombatantPanel(
+                            name: widget.enemyName,
+                            level: widget.enemyLevel,
+                            currentHp: widget.enemyCurrentHp,
+                            maxHp: widget.enemyMaxHp,
+                            attack: widget.enemyAttack,
+                            sprite: BattleSprite(
+                              key: _enemyKey,
+                              spriteId: widget.enemyId,
+                              facingLeft: true,
+                              auraColor: widget.enemyAuraColor,
+                              buffGlows: widget.enemyDebuffGlows,
+                            ),
+                            nameColor: const Color(0xFFee4040),
+                            alignRight: true,
+                            damageType: widget.enemyAttackType,
+                            resistances: widget.enemyResistances,
+                          ),
                         ),
                       ],
                     ),
@@ -345,6 +441,21 @@ class BattleArenaState extends State<BattleArena> with TickerProviderStateMixin 
                   ),
                   const SizedBox(height: 4),
                 ],
+              ),
+              // Step 5 — boss intro flash (purple-white slam)
+              AnimatedBuilder(
+                animation: _bossFlashCtrl,
+                builder: (_, __) {
+                  final t = _bossFlashCtrl.value;
+                  if (t <= 0 || t >= 1) return const SizedBox.shrink();
+                  return Positioned.fill(
+                    child: IgnorePointer(
+                      child: CustomPaint(
+                        painter: _BossFlashPainter(t),
+                      ),
+                    ),
+                  );
+                },
               ),
               // Attack effect overlay
               Positioned.fill(
@@ -376,33 +487,51 @@ class BattleArenaState extends State<BattleArena> with TickerProviderStateMixin 
     return AnimatedBuilder(
       animation: f.ctrl,
       builder: (_, __) {
-        final t     = f.ctrl.value;
+        final t = f.ctrl.value;
+
+        // Fade out in last 30%
         final alpha = t < 0.7 ? 1.0 : (1 - (t - 0.7) / 0.3);
-        final rise  = t * 70.0;
-        final cx    = _arenaSize.width * (f.onEnemy ? 0.72 : 0.28);
-        final cy    = _arenaSize.height * 0.62 - rise;
+
+        // Rise + horizontal drift
+        final rise  = t * 80.0;
+        final drift = f.driftX * t;
+
+        // Scale: elastic pop in first 45%, then hold at 1.0
+        final scaleFrac = (t / 0.45).clamp(0.0, 1.0);
+        final scale = f.isCrit
+            ? Curves.elasticOut.transform(scaleFrac)
+            : Curves.easeOutBack.transform(scaleFrac);
+
+        // Crits: brief rotation wobble that damps out quickly
+        final rotation = f.isCrit
+            ? sin(t * pi * 5) * (1 - min(1.0, t * 3.5)) * 0.18
+            : 0.0;
+
+        final cx = _arenaSize.width  * (f.onEnemy ? 0.72 : 0.28);
+        final cy = _arenaSize.height * 0.62 - rise;
+
         return Positioned(
-          left: cx - (f.isCrit ? 36 : 24),
+          left: cx + drift - (f.isCrit ? 40 : 26),
           top:  cy - 16,
           child: IgnorePointer(
             child: Opacity(
               opacity: alpha.clamp(0.0, 1.0),
-              child: Text(
-                f.text,
-                style: TextStyle(
-                  fontSize: f.isCrit ? 26 : 18,
-                  fontWeight: FontWeight.bold,
-                  color: f.color,
-                  shadows: const [
-                    Shadow(
-                        color: Colors.black,
-                        blurRadius: 4,
-                        offset: Offset(1, 1)),
-                    Shadow(
-                        color: Colors.black,
-                        blurRadius: 4,
-                        offset: Offset(-1, -1)),
-                  ],
+              child: Transform.rotate(
+                angle: rotation,
+                child: Transform.scale(
+                  scale: scale.clamp(0.0, 2.0),
+                  child: Text(
+                    f.text,
+                    style: TextStyle(
+                      fontSize: f.isCrit ? 28 : 18,
+                      fontWeight: FontWeight.bold,
+                      color: f.color,
+                      shadows: const [
+                        Shadow(color: Colors.black, blurRadius: 4, offset: Offset(1, 1)),
+                        Shadow(color: Colors.black, blurRadius: 4, offset: Offset(-1, -1)),
+                      ],
+                    ),
+                  ),
                 ),
               ),
             ),
@@ -471,11 +600,13 @@ class _FloatEntry {
     required this.color,
     required this.isCrit,
     required this.onEnemy,
+    this.driftX = 0.0,
   });
   final AnimationController ctrl;
   final String text;
   final Color  color;
   final bool   isCrit, onEnemy;
+  final double driftX; // horizontal drift in pixels over the full animation
 }
 
 class _DeathBurstPainter extends CustomPainter {
@@ -592,8 +723,8 @@ class _CombatantPanel extends StatelessWidget {
                 fontWeight: FontWeight.bold,
                 color: nameColor,
                 letterSpacing: 1),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
+            maxLines: 2,
+            overflow: TextOverflow.visible,
           ),
           Row(
             mainAxisSize: MainAxisSize.min,
@@ -611,20 +742,45 @@ class _CombatantPanel extends StatelessWidget {
           ),
           // Resistance/vulnerability row (shown for enemy panel)
           if (resBadges.isNotEmpty) ...[
-            const SizedBox(height: 3),
-            Wrap(
-              spacing: 2, runSpacing: 2,
-              children: resBadges,
+            const SizedBox(height: 2),
+            Wrap(spacing: 2, runSpacing: 2, children: resBadges),
+          ],
+          const SizedBox(height: 2),
+          Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxHeight: 100),
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: Alignment.bottomCenter,
+                child: spriteRow,
+              ),
+            ),
+          ),
+          const SizedBox(height: 4),
+          PixelHealthBar(current: currentHp, max: maxHp, height: 10),
+          const SizedBox(height: 2),
+          Text('$currentHp / $maxHp',
+              style: const TextStyle(fontSize: 11, color: AppTheme.textLight)),
+          if (damageType != null && !alignRight) ...[
+            const SizedBox(height: 4),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              decoration: BoxDecoration(
+                color: damageType!.color.withValues(alpha: 0.15),
+                border: Border.all(color: damageType!.color.withValues(alpha: 0.55), width: 1),
+                borderRadius: BorderRadius.circular(3),
+              ),
+              child: Text(
+                '${damageType!.emoji} ${damageType!.label.toUpperCase()}',
+                style: TextStyle(
+                  fontSize: 9,
+                  color: damageType!.color,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 0.8,
+                ),
+              ),
             ),
           ],
-          const SizedBox(height: 6),
-          Center(child: spriteRow),
-          const SizedBox(height: 8),
-          PixelHealthBar(current: currentHp, max: maxHp, height: 12),
-          const SizedBox(height: 3),
-          Text('$currentHp / $maxHp',
-              style: const TextStyle(fontSize: 12, color: AppTheme.textLight)),
-          const SizedBox(height: 8),
         ],
       ),
     );
@@ -654,13 +810,28 @@ class _LogLine extends StatelessWidget {
     if (t.contains(' heals') || t.contains('regenerates') || t.contains('HP/round')) {
       return const Color(0xFF44cc66);
     }
+    // Hero takes damage → red
+    if ((t.contains('hits!') && t.contains(' dmg')) || t.contains('bleeds')) {
+      return const Color(0xFFee4444);
+    }
+    // Kill reward / milestone → gold
+    if (t.contains('was defeated!') || t.contains('BOSS DEFEATED') || t.contains('★ MILESTONE')) {
+      return AppTheme.accentGold;
+    }
+    // Miss / dodge / block → muted
+    if (t.contains('Miss!') || t.contains('dodges') || t.contains('evades') ||
+        t.contains('sidesteps') || t.contains('fully absorbed') || t.contains('deflected') ||
+        t.contains('phased through') || t.contains('reads the strike')) {
+      return AppTheme.textMuted;
+    }
     return AppTheme.textLight;
   }
 
   static bool _isBold(String t) =>
       t.contains('CRITICAL HIT') || t.contains('LEGENDARY') ||
       t.contains('SET ITEM') || t.contains('ENRAGES') ||
-      t.contains('REBIRTH') || t.contains('ASCENSION');
+      t.contains('REBIRTH') || t.contains('ASCENSION') ||
+      t.contains('BOSS DEFEATED') || t.contains('★ MILESTONE');
 
   @override
   Widget build(BuildContext context) {
@@ -686,4 +857,84 @@ class _LogLine extends StatelessWidget {
       ),
     );
   }
+}
+
+// ── Step 3: Danger vignette painter ──────────────────────────────────────────
+
+class _DangerVignettePainter extends CustomPainter {
+  const _DangerVignettePainter(this.t);
+  final double t;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final alpha = 0.12 + t * 0.28;
+    final rect  = Rect.fromLTWH(0, 0, size.width, size.height);
+    canvas.drawRect(
+      rect,
+      Paint()
+        ..shader = RadialGradient(
+          center: Alignment.center,
+          radius: 0.85,
+          colors: [
+            Colors.transparent,
+            const Color(0xFFcc0000).withValues(alpha: alpha),
+          ],
+        ).createShader(rect),
+    );
+  }
+
+  @override
+  bool shouldRepaint(_DangerVignettePainter old) => old.t != t;
+}
+
+// ── Step 5: Boss intro flash painter ─────────────────────────────────────────
+
+class _BossFlashPainter extends CustomPainter {
+  const _BossFlashPainter(this.t);
+  final double t;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final rect = Rect.fromLTWH(0, 0, size.width, size.height);
+
+    // White slam that fades out fast (first 40%)
+    if (t < 0.4) {
+      final whiteAlpha = t < 0.12
+          ? t / 0.12          // ramp up
+          : (0.4 - t) / 0.28; // fade out
+      canvas.drawRect(
+        rect,
+        Paint()..color = Colors.white.withValues(alpha: whiteAlpha * 0.85),
+      );
+    }
+
+    // Purple tint lingers a bit longer (0.1 → 0.8)
+    if (t > 0.1 && t < 0.8) {
+      final purpleAlpha = t < 0.25
+          ? (t - 0.1) / 0.15 * 0.35
+          : (0.8 - t) / 0.55 * 0.35;
+      canvas.drawRect(
+        rect,
+        Paint()..color = const Color(0xFF440088).withValues(alpha: purpleAlpha),
+      );
+    }
+
+    // Expanding ring burst from center
+    if (t > 0.05 && t < 0.7) {
+      final ringT   = (t - 0.05) / 0.65;
+      final ringR   = ringT * size.width * 0.65;
+      final ringA   = (1 - ringT) * 0.7;
+      canvas.drawCircle(
+        Offset(size.width / 2, size.height / 2),
+        ringR,
+        Paint()
+          ..style       = PaintingStyle.stroke
+          ..strokeWidth = 4 * (1 - ringT)
+          ..color       = const Color(0xFFcc88ff).withValues(alpha: ringA),
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(_BossFlashPainter old) => old.t != t;
 }

@@ -2,6 +2,7 @@
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../models/dnd_class.dart';
+import '../models/hero_model.dart' show HeroGender;
 import '../models/hero_race.dart';
 import '../models/hero_trait.dart';
 import '../services/save_service.dart';
@@ -11,7 +12,7 @@ import 'character_creation_screen.dart';
 class CharacterSelectScreen extends StatefulWidget {
   const CharacterSelectScreen({super.key, required this.onCharacterSelected});
 
-  final void Function(int slot, String? newName, DndClass? heroClass, HeroRace? heroRace, HeroTrait? trait)
+  final void Function(int slot, String? newName, DndClass? heroClass, HeroRace? heroRace, HeroTrait? trait, HeroGender? gender)
       onCharacterSelected;
 
   @override
@@ -42,7 +43,7 @@ class _CharacterSelectScreenState extends State<CharacterSelectScreen> {
 
   Future<void> _onSlotTapped(int slot, CharacterSummary? existing) async {
     if (existing != null) {
-      widget.onCharacterSelected(slot, null, null, null, null);
+      widget.onCharacterSelected(slot, null, null, null, null, null);
       return;
     }
 
@@ -55,7 +56,7 @@ class _CharacterSelectScreenState extends State<CharacterSelectScreen> {
       ),
     );
     if (result == null) return;
-    widget.onCharacterSelected(slot, result.name, result.heroClass, result.heroRace, result.trait);
+    widget.onCharacterSelected(slot, result.name, result.heroClass, result.heroRace, result.trait, result.gender);
   }
 
   Future<void> _onSlotLongPressed(int slot, CharacterSummary? existing) async {
@@ -302,14 +303,29 @@ class _SlotTile extends StatelessWidget {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Text(
-          char.name,
-          style: GoogleFonts.pixelifySans(
-            fontSize: 19,
-            fontWeight: FontWeight.bold,
-            color: AppTheme.textLight,
-            letterSpacing: 1,
-          ),
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (char.gender != null) ...[
+              Text(
+                char.gender!.icon,
+                style: GoogleFonts.pixelifySans(
+                  fontSize: 17,
+                  color: AppTheme.accentGold.withValues(alpha: 0.7),
+                ),
+              ),
+              const SizedBox(width: 6),
+            ],
+            Text(
+              char.name,
+              style: GoogleFonts.pixelifySans(
+                fontSize: 19,
+                fontWeight: FontWeight.bold,
+                color: AppTheme.textLight,
+                letterSpacing: 1,
+              ),
+            ),
+          ],
         ),
         const SizedBox(height: 6),
         Row(
@@ -340,23 +356,23 @@ class _SlotTile extends StatelessWidget {
                 letterSpacing: 1,
               ),
             ),
-            if (char.prestigeLevel > 0) ...[
-              Text(
-                '  ·  ',
-                style: GoogleFonts.pixelifySans(
-                  fontSize: 12,
-                  color: AppTheme.cardBorder,
-                ),
+            Text(
+              '  ·  ',
+              style: GoogleFonts.pixelifySans(
+                fontSize: 12,
+                color: AppTheme.cardBorder,
               ),
-              Text(
-                '✦ ${char.prestigeLevel}',
-                style: GoogleFonts.pixelifySans(
-                  fontSize: 13,
-                  color: const Color(0xFFcc88ff),
-                  letterSpacing: 1,
-                ),
+            ),
+            Text(
+              '✦ Rebirth ${char.prestigeLevel}',
+              style: GoogleFonts.pixelifySans(
+                fontSize: 12,
+                color: char.prestigeLevel > 0
+                    ? const Color(0xFFcc88ff)
+                    : AppTheme.textMuted,
+                letterSpacing: 1,
               ),
-            ],
+            ),
           ],
         ),
       ],

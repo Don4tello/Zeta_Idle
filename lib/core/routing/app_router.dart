@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import '../../models/hero_model.dart' show HeroGender;
 import '../../screens/character_select_screen.dart';
 import '../../screens/main_shell.dart';
 import '../../screens/campaign_screen.dart';
@@ -9,6 +10,7 @@ import '../../screens/pvp_screen.dart';
 import '../../screens/dungeon_screen.dart';
 import '../../screens/gauntlet_screen.dart';
 import '../../screens/boss_rush_screen.dart';
+import '../../screens/guild_screen.dart';
 import '../../screens/world_event_screen.dart';
 import '../../screens/bounty_board_screen.dart';
 import '../../screens/expedition_screen.dart';
@@ -35,6 +37,7 @@ import '../../screens/login_streak_screen.dart';
 import '../../screens/rune_screen.dart';
 import '../../screens/npc_ally_screen.dart';
 import '../../screens/account_screen.dart';
+import '../../screens/privacy_policy_screen.dart';
 import '../../models/dnd_class.dart';
 import '../../models/hero_race.dart';
 import '../../models/hero_trait.dart';
@@ -101,8 +104,10 @@ abstract final class Routes {
   static const npcAllies    = '/game/npc-allies';
   static const account      = '/game/account';
   static const knowledgeBase = '/game/knowledge-base';
-  static const settings     = '/game/settings';
+  static const settings      = '/game/settings';
+  static const privacyPolicy = '/game/privacy-policy';
   static const worldEvent   = '/game/world-event';
+  static const guild        = '/game/guild';
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -112,9 +117,32 @@ abstract final class Routes {
 // the rest of the app stays unchanged while we migrate call sites.
 // ─────────────────────────────────────────────────────────────────────────────
 
+CustomTransitionPage<void> _fadeSlidePage(Widget child, GoRouterState state) {
+  return CustomTransitionPage(
+    key: state.pageKey,
+    child: child,
+    transitionDuration: const Duration(milliseconds: 250),
+    reverseTransitionDuration: const Duration(milliseconds: 200),
+    transitionsBuilder: (context, animation, secondaryAnimation, child) {
+      final fade = CurvedAnimation(parent: animation, curve: Curves.easeOut);
+      final slide = Tween(begin: const Offset(0.05, 0), end: Offset.zero)
+          .animate(fade);
+      return FadeTransition(
+        opacity: fade,
+        child: SlideTransition(position: slide, child: child),
+      );
+    },
+  );
+}
+
+GoRoute _route(String path, Widget child) => GoRoute(
+  path: path,
+  pageBuilder: (_, state) => _fadeSlidePage(child, state),
+);
+
 GoRouter buildRouter({
   required bool characterSelected,
-  required Future<void> Function(int, String?, DndClass?, HeroRace?, HeroTrait?)
+  required Future<void> Function(int, String?, DndClass?, HeroRace?, HeroTrait?, HeroGender?)
       onCharacterSelected,
   required VoidCallback onBackToSelect,
 }) {
@@ -142,68 +170,70 @@ GoRouter buildRouter({
         builder: (_, __) => MainShell(onBackToSelect: onBackToSelect),
         routes: [
           // Core progression
-          GoRoute(path: 'campaign', builder: (_, __) => const CampaignScreen()),
-          GoRoute(path: 'endless',  builder: (_, __) => const EndlessScreen()),
+          _route('campaign', const CampaignScreen()),
+          _route('endless',  const EndlessScreen()),
 
           // Daily / events
-          GoRoute(path: 'daily',    builder: (_, __) => const DailyScreen()),
-          GoRoute(path: 'events',   builder: (_, __) => const WorldEventScreen()),
-          GoRoute(path: 'bounties', builder: (_, __) => const BountyBoardScreen()),
+          _route('daily',    const DailyScreen()),
+          _route('events',   const WorldEventScreen()),
+          _route('bounties', const BountyBoardScreen()),
 
           // Challenge hub
           GoRoute(
             path: 'challenges',
-            builder: (_, __) => const ChallengeHubScreen(),
+            pageBuilder: (_, s) => _fadeSlidePage(const ChallengeHubScreen(), s),
             routes: [
-              GoRoute(path: 'dungeon',    builder: (_, __) => const DungeonScreen()),
-              GoRoute(path: 'gauntlet',   builder: (_, __) => const GauntletScreen()),
-              GoRoute(path: 'boss-rush',  builder: (_, __) => const BossRushScreen()),
-              GoRoute(path: 'modifiers',  builder: (_, __) => const ChallengeModifiersScreen()),
+              _route('dungeon',   const DungeonScreen()),
+              _route('gauntlet',  const GauntletScreen()),
+              _route('boss-rush', const BossRushScreen()),
+              _route('modifiers', const ChallengeModifiersScreen()),
             ],
           ),
 
           // World hub
           GoRoute(
             path: 'world',
-            builder: (_, __) => const WorldHubScreen(),
+            pageBuilder: (_, s) => _fadeSlidePage(const WorldHubScreen(), s),
             routes: [
-              GoRoute(path: 'expedition', builder: (_, __) => const ExpeditionScreen()),
-              GoRoute(path: 'pvp',        builder: (_, __) => const PvpScreen()),
+              _route('expedition', const ExpeditionScreen()),
+              _route('pvp',        const PvpScreen()),
             ],
           ),
 
           // Meta / collections
-          GoRoute(path: 'quests',   builder: (_, __) => const QuestScreen()),
-          GoRoute(path: 'bestiary', builder: (_, __) => const BestiaryScreen()),
+          _route('quests',   const QuestScreen()),
+          _route('bestiary', const BestiaryScreen()),
 
           // Battle (pushed over shell)
-          GoRoute(path: 'battle', builder: (_, __) => const BattleScreen()),
+          _route('battle', const BattleScreen()),
 
           // Hero tooling
-          GoRoute(path: 'ability-upgrades', builder: (_, __) => const AbilityUpgradeScreen()),
-          GoRoute(path: 'passive-tree',     builder: (_, __) => const PassiveTreeScreen()),
-          GoRoute(path: 'mastery',          builder: (_, __) => const MasteryScreen()),
-          GoRoute(path: 'prestige',         builder: (_, __) => const PrestigeScreen()),
-          GoRoute(path: 'ascension',        builder: (_, __) => const AscensionScreen()),
-          GoRoute(path: 'subclass',         builder: (_, __) => const SubclassScreen()),
+          _route('ability-upgrades', const AbilityUpgradeScreen()),
+          _route('passive-tree',     const PassiveTreeScreen()),
+          _route('mastery',          const MasteryScreen()),
+          _route('prestige',         const PrestigeScreen()),
+          _route('ascension',        const AscensionScreen()),
+          _route('subclass',         const SubclassScreen()),
 
           // Inventory / shop
-          GoRoute(path: 'inventory',  builder: (_, __) => const InventoryScreen()),
-          GoRoute(path: 'forge',      builder: (_, __) => const ForgeScreen()),
-          GoRoute(path: 'artifacts',  builder: (_, __) => const ArtifactScreen()),
-          GoRoute(path: 'rune-forge', builder: (_, __) => const RuneScreen()),
-          GoRoute(path: 'shop',       builder: (_, __) => const ShopScreen()),
-          GoRoute(path: 'aura-shop',  builder: (_, __) => const AuraShopScreen()),
+          _route('inventory',  const InventoryScreen()),
+          _route('forge',      const ForgeScreen()),
+          _route('artifacts',  const ArtifactScreen()),
+          _route('rune-forge', const RuneScreen()),
+          _route('shop',       const ShopScreen()),
+          _route('aura-shop',  const AuraShopScreen()),
 
           // Social / account
-          GoRoute(path: 'leaderboard',   builder: (_, __) => const LeaderboardScreen()),
-          GoRoute(path: 'achievements',  builder: (_, __) => const AchievementScreen()),
-          GoRoute(path: 'login-streak',  builder: (_, __) => const LoginStreakScreen()),
-          GoRoute(path: 'npc-allies',    builder: (_, __) => const NpcAllyScreen()),
-          GoRoute(path: 'account',       builder: (_, __) => const AccountScreen()),
-          GoRoute(path: 'knowledge-base',builder: (_, __) => const KnowledgeBaseScreen()),
-          GoRoute(path: 'settings',      builder: (_, __) => const SettingsScreen()),
-          GoRoute(path: 'world-event',   builder: (_, __) => const WorldEventScreen()),
+          _route('leaderboard',   const LeaderboardScreen()),
+          _route('achievements',  const AchievementScreen()),
+          _route('login-streak',  const LoginStreakScreen()),
+          _route('npc-allies',    const NpcAllyScreen()),
+          _route('account',       const AccountScreen()),
+          _route('knowledge-base',const KnowledgeBaseScreen()),
+          _route('settings',       const SettingsScreen()),
+          _route('privacy-policy', const PrivacyPolicyScreen()),
+          _route('world-event',   const WorldEventScreen()),
+          _route('guild',         const GuildScreen()),
         ],
       ),
     ],

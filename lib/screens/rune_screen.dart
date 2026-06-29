@@ -1,5 +1,6 @@
-﻿import 'package:flutter/material.dart';
-import '../models/rune.dart';
+import 'package:flutter/material.dart';
+import '../models/ability_rune.dart';
+import '../models/equipment.dart';
 import '../services/game_state.dart';
 import '../theme/app_theme.dart';
 
@@ -10,304 +11,185 @@ class RuneScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final game = GameStateProvider.of(context);
+    final runes = AbilityRune.forClass(game.hero.heroClass);
 
-    final tabBar = TabBar(
-      indicatorColor: AppTheme.accentGold,
-      labelColor: AppTheme.accentGold,
-      unselectedLabelColor: AppTheme.textMuted,
-      tabs: RuneSlot.values.map((s) => Tab(
-        child: Text('${s.icon} ${s.label.toUpperCase()}',
-            style: const TextStyle(fontSize: 10)),
-      )).toList(),
-    );
-
-    final body = Column(
+    final body = ListView(
+      padding: const EdgeInsets.all(14),
       children: [
-        _ActiveRuneBar(game: game),
-        Expanded(
-          child: TabBarView(
-            children: RuneSlot.values
-                .map((slot) => _SlotTab(game: game, slot: slot))
-                .toList(),
-          ),
-        ),
-      ],
-    );
-
-    if (embedded) {
-      return DefaultTabController(
-        length: RuneSlot.values.length,
-        child: Container(
-          color: const Color(0xFF1B1A17),
-          child: Column(children: [
-            Container(
-              color: const Color(0xFF2A2623),
-              child: Row(children: [
-                Expanded(child: tabBar),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                  child: _DustBadge(dust: game.runeDust),
-                ),
-              ]),
-            ),
-            Expanded(child: body),
-          ]),
-        ),
-      );
-    }
-
-    return DefaultTabController(
-      length: RuneSlot.values.length,
-      child: Scaffold(
-        backgroundColor: const Color(0xFF1B1A17),
-        appBar: AppBar(
-          backgroundColor: const Color(0xFF2A2623),
-          title: Text('RUNE FORGE',
-              style: AppTheme.pixelHeading(fontSize: 14, letterSpacing: 2)),
-          actions: [
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-              child: _DustBadge(dust: game.runeDust),
-            ),
-          ],
-          bottom: tabBar,
-        ),
-        body: body,
-      ),
-    );
-  }
-}
-
-class _DustBadge extends StatelessWidget {
-  const _DustBadge({required this.dust});
-  final int dust;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: const Color(0xFF884422).withValues(alpha: 0.2),
-        border: Border.all(color: const Color(0xFFcc8844).withValues(alpha: 0.6)),
-        borderRadius: BorderRadius.circular(3),
-      ),
-      child: Row(mainAxisSize: MainAxisSize.min, children: [
-        const Text('✦', style: TextStyle(fontSize: 11, color: Color(0xFFcc8844))),
-        const SizedBox(width: 4),
-        Text('$dust Dust',
-            style: AppTheme.pixelHeading(
-                fontSize: 12, color: const Color(0xFFcc8844))),
-      ]),
-    );
-  }
-}
-
-class _ActiveRuneBar extends StatelessWidget {
-  const _ActiveRuneBar({required this.game});
-  final GameState game;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      color: const Color(0xFF231F1B),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-        children: RuneSlot.values.map((slot) {
-          final active = game.activeRune(slot);
-          final def = active?.def;
-          return Expanded(
-            child: Container(
-              margin: const EdgeInsets.symmetric(horizontal: 4),
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-              decoration: BoxDecoration(
-                color: def != null
-                    ? def.color.withValues(alpha: 0.08)
-                    : Colors.transparent,
-                border: Border.all(
-                    color: def != null
-                        ? def.color.withValues(alpha: 0.5)
-                        : AppTheme.cardBorder.withValues(alpha: 0.4)),
-                borderRadius: BorderRadius.circular(3),
-              ),
-              child: Column(mainAxisSize: MainAxisSize.min, children: [
-                Text(slot.icon,
-                    style: const TextStyle(fontSize: 15)),
-                const SizedBox(height: 2),
-                if (def != null && active != null) ...[
-                  Text(def.name,
-                      style: TextStyle(fontSize: 8, color: def.color),
-                      textAlign: TextAlign.center,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis),
-                  Text('${active.minutesLeft}m',
-                      style: const TextStyle(
-                          fontSize: 9, color: Colors.white54)),
-                ] else
-                  Text('Empty',
-                      style: const TextStyle(
-                          fontSize: 9, color: AppTheme.textMuted)),
-              ]),
-            ),
-          );
-        }).toList(),
-      ),
-    );
-  }
-}
-
-class _SlotTab extends StatelessWidget {
-  const _SlotTab({required this.game, required this.slot});
-  final GameState game;
-  final RuneSlot slot;
-
-  @override
-  Widget build(BuildContext context) {
-    final runes = RuneDef.all.where((r) => r.slot == slot).toList();
-    return ListView(
-      padding: const EdgeInsets.all(16),
-      children: [
+        // Dust balance
         Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          padding: const EdgeInsets.all(12),
           margin: const EdgeInsets.only(bottom: 14),
           decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.03),
-            border: Border.all(color: AppTheme.cardBorder),
+            color: const Color(0xFF1a1225),
+            border: Border.all(color: const Color(0xFFaa66ff).withValues(alpha: 0.4)),
             borderRadius: BorderRadius.circular(4),
           ),
-          child: const Text(
-            'Runes are crafted with Rune Dust, earned by disenchanting '
-            'Common items. Each rune activates for a limited time — '
-            'only one rune per slot can be active.',
-            style: TextStyle(
-                fontSize: 11, color: AppTheme.textMuted, height: 1.5),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('ABILITY RUNES', style: AppTheme.pixelHeading(
+                  fontSize: 12, color: const Color(0xFFaa66ff), letterSpacing: 2)),
+              const SizedBox(height: 6),
+              const Text(
+                'Socket runes to permanently enhance your abilities.\n'
+                'Each rune modifies a specific ability — boosting damage, duration, or cooldown.\n'
+                'Costs Rune Dust from disenchanting gear.',
+                style: TextStyle(fontSize: 11, color: AppTheme.textMuted, height: 1.4)),
+              const SizedBox(height: 8),
+              Row(children: [
+                const Text('🔮 Rune Dust: ', style: TextStyle(fontSize: 11, color: AppTheme.textMuted)),
+                Text('${game.runeDust}', style: const TextStyle(
+                    fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFFaa66ff))),
+                const SizedBox(width: 16),
+                Text('📜 Owned: ${game.ownedRunes.length}/${runes.length}',
+                    style: const TextStyle(fontSize: 11, color: AppTheme.textMuted)),
+              ]),
+            ],
           ),
         ),
-        ...runes.map((r) => Padding(
-              padding: const EdgeInsets.only(bottom: 10),
-              child: _RuneCard(game: game, def: r),
-            )),
+
+        // Rune list
+        if (runes.isEmpty)
+          const Center(child: Text('No runes available for this class.',
+              style: TextStyle(color: AppTheme.textMuted)))
+        else
+          ...runes.map((rune) => _RuneCard(rune: rune, game: game)),
       ],
+    );
+
+    if (embedded) return body;
+    return Scaffold(
+      backgroundColor: AppTheme.darkBg,
+      appBar: AppBar(
+        title: Text('RUNES', style: AppTheme.pixelHeading(fontSize: 14, letterSpacing: 2)),
+      ),
+      body: body,
     );
   }
 }
 
 class _RuneCard extends StatelessWidget {
-  const _RuneCard({required this.game, required this.def});
+  const _RuneCard({required this.rune, required this.game});
+  final AbilityRune rune;
   final GameState game;
-  final RuneDef def;
 
   @override
   Widget build(BuildContext context) {
-    final active   = game.activeRune(def.slot);
-    final isActive = active?.defId == def.id && !(active?.isExpired ?? true);
-    final canCraft = game.runeDust >= def.dustCost;
-    final stockpile = game.runeStockpile(def.id);
+    final owned = game.ownsRune(rune.id);
+    final socketed = game.isRuneSocketed(rune.id);
+    final borderColor = socketed
+        ? const Color(0xFF44cc88)
+        : owned
+            ? rune.color
+            : AppTheme.cardBorder;
 
     return Container(
-      padding: const EdgeInsets.all(12),
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: isActive
-            ? def.color.withValues(alpha: 0.06)
-            : const Color(0xFF231F1B),
-        border: Border.all(
-          color: isActive
-              ? def.color.withValues(alpha: 0.7)
-              : AppTheme.cardBorder,
-          width: isActive ? 1.5 : 1,
-        ),
-        borderRadius: BorderRadius.circular(4),
+        color: socketed
+            ? const Color(0xFF112211)
+            : const Color(0xFF1a1816),
+        border: Border.all(color: borderColor.withValues(alpha: socketed ? 0.6 : 0.4)),
+        borderRadius: BorderRadius.circular(6),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(children: [
-            Text(def.icon, style: const TextStyle(fontSize: 21)),
+            Text(rune.icon, style: const TextStyle(fontSize: 22)),
             const SizedBox(width: 10),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(def.name,
-                      style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.bold,
-                          color: isActive ? def.color : Colors.white70)),
-                  Text(def.description,
-                      style: const TextStyle(
-                          fontSize: 11, color: AppTheme.textMuted)),
-                ],
-              ),
-            ),
-            if (stockpile > 0)
+            Expanded(child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(rune.name,
+                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold,
+                        color: socketed ? const Color(0xFF44cc88) : rune.color)),
+                Text(rune.description,
+                    style: const TextStyle(fontSize: 11, color: AppTheme.textMuted, height: 1.3)),
+              ],
+            )),
+            if (socketed)
               Container(
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 7, vertical: 3),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
-                  color: def.color.withValues(alpha: 0.12),
-                  border: Border.all(
-                      color: def.color.withValues(alpha: 0.5)),
+                  color: const Color(0xFF44cc88).withValues(alpha: 0.15),
+                  border: Border.all(color: const Color(0xFF44cc88)),
                   borderRadius: BorderRadius.circular(3),
                 ),
-                child: Text('×$stockpile',
-                    style: TextStyle(
-                        fontSize: 11,
-                        color: def.color,
-                        fontWeight: FontWeight.bold)),
+                child: Text('SOCKETED', style: AppTheme.pixelHeading(
+                    fontSize: 9, color: const Color(0xFF44cc88))),
               ),
           ]),
-          const SizedBox(height: 10),
-          Row(children: [
-            // Craft button
-            _RuneBtn(
-              label: '✦${def.dustCost} CRAFT',
-              color: canCraft ? const Color(0xFFcc8844) : AppTheme.cardBorder,
-              onTap: canCraft ? () => game.craftRune(def.id) : null,
+          if (rune.bonusEffectDesc != null) ...[
+            const SizedBox(height: 8),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              decoration: BoxDecoration(
+                color: rune.color.withValues(alpha: 0.08),
+                border: Border.all(color: rune.color.withValues(alpha: 0.3)),
+                borderRadius: BorderRadius.circular(4),
+              ),
+              child: Text('✦ ${rune.bonusEffectDesc}',
+                  style: TextStyle(fontSize: 11, color: rune.color, fontWeight: FontWeight.bold)),
             ),
-            const SizedBox(width: 8),
-            // Activate button
-            if (stockpile > 0 && !isActive)
-              _RuneBtn(
-                label: 'ACTIVATE',
-                color: def.color,
-                onTap: () => game.activateRune(def.id),
+          ],
+          if (!owned && !socketed) ...[
+            const SizedBox(height: 8),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              decoration: BoxDecoration(
+                color: const Color(0xFF1a1a1a),
+                border: Border.all(color: AppTheme.cardBorder),
+                borderRadius: BorderRadius.circular(4),
               ),
-            if (isActive && active != null) ...[
-              const SizedBox(width: 4),
-              Text('${active.minutesLeft}m left',
-                  style: TextStyle(
-                      fontSize: 11, color: def.color)),
-            ],
-          ]),
+              child: const Row(children: [
+                Icon(Icons.lock_outline, size: 12, color: AppTheme.textMuted),
+                SizedBox(width: 6),
+                Expanded(child: Text('Not yet found — drops from bosses, dungeons, gauntlet, and expeditions.',
+                    style: TextStyle(fontSize: 9, color: AppTheme.textMuted))),
+              ]),
+            ),
+          ],
+          if (owned && !socketed) ...[
+            const SizedBox(height: 10),
+            Builder(builder: (_) {
+              final socketable = <EquipmentItem>[
+                for (final item in game.inventory.equipped.values)
+                  if (item.canSocketRune) item,
+              ];
+              if (socketable.isEmpty) {
+                return const Text('Equip a ring or amulet to socket this rune.',
+                    style: TextStyle(fontSize: 10, color: AppTheme.textMuted));
+              }
+              return Wrap(
+                spacing: 6,
+                runSpacing: 6,
+                children: socketable.map((item) => SizedBox(
+                  height: 36,
+                  child: ElevatedButton(
+                    onPressed: owned ? () => game.socketAbilityRune(rune.id, item) : null,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: owned
+                          ? rune.color.withValues(alpha: 0.15)
+                          : Colors.transparent,
+                      foregroundColor: owned ? rune.color : AppTheme.cardBorder,
+                      side: BorderSide(color: owned ? rune.color : AppTheme.cardBorder),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+                      padding: const EdgeInsets.symmetric(horizontal: 10),
+                    ),
+                    child: Text('Socket → ${item.name}  (🔮 ${rune.dustCost})',
+                        style: TextStyle(fontSize: 9,
+                            color: owned ? rune.color : AppTheme.cardBorder)),
+                  ),
+                )).toList(),
+              );
+            }),
+          ],
         ],
       ),
-    );
-  }
-}
-
-class _RuneBtn extends StatelessWidget {
-  const _RuneBtn({required this.label, required this.color, this.onTap});
-  final String label;
-  final Color color;
-  final VoidCallback? onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return TextButton(
-      onPressed: onTap,
-      style: TextButton.styleFrom(
-        foregroundColor: color,
-        disabledForegroundColor: AppTheme.cardBorder,
-        side: BorderSide(color: onTap != null ? color : AppTheme.cardBorder),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-        minimumSize: Size.zero,
-        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-      ),
-      child: Text(label,
-          style: AppTheme.pixelHeading(
-              fontSize: 11,
-              letterSpacing: 1,
-              color: onTap != null ? color : AppTheme.cardBorder)),
     );
   }
 }

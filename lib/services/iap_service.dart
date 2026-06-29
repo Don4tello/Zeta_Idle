@@ -12,45 +12,45 @@ class CrystalPackage {
   });
   final String productId;
   final int crystals;
-  final String fallbackPrice; // shown when store query fails
-  final String label;         // e.g. "100 Crystals"
+  final String fallbackPrice;
+  final String label;
 }
 
+typedef PurchaseCallback = void Function(String productId, int crystals);
+
 class IapService {
-  IapService(this._onCrystalsGranted);
+  IapService(this._onCrystalsGranted, {this.onPackPurchased, this.onSubscriptionActivated});
 
   final void Function(int) _onCrystalsGranted;
+  final void Function(String)? onPackPurchased;
+  final void Function(String, int)? onSubscriptionActivated;
   StreamSubscription<List<PurchaseDetails>>? _sub;
   final Map<String, ProductDetails> _products = {};
   bool _storeAvailable = false;
 
   static const packages = [
-    CrystalPackage(
-      productId: 'crystals_100',
-      crystals: 100,
-      fallbackPrice: '\$0.99',
-      label: '100 Crystals',
-    ),
-    CrystalPackage(
-      productId: 'crystals_550',
-      crystals: 550,
-      fallbackPrice: '\$4.99',
-      label: '550 Crystals  (+10%)',
-    ),
-    CrystalPackage(
-      productId: 'crystals_1200',
-      crystals: 1200,
-      fallbackPrice: '\$9.99',
-      label: '1200 Crystals  (+20%)',
-    ),
+    CrystalPackage(productId: 'crystals_100',  crystals: 100,  fallbackPrice: '\$0.99',  label: '100 Crystals'),
+    CrystalPackage(productId: 'crystals_550',  crystals: 550,  fallbackPrice: '\$3.99',  label: '550 Crystals  (+10%)'),
+    CrystalPackage(productId: 'crystals_1200', crystals: 1200, fallbackPrice: '\$7.99',  label: '1,200 Crystals  (+20%)'),
+    CrystalPackage(productId: 'crystals_3000', crystals: 3000, fallbackPrice: '\$14.99', label: '3,000 Crystals  (+50%)'),
   ];
 
-  // IAP is only available on App Store / Google Play, not Windows.
+  static const _allProductIds = {
+    // Consumables (crystals)
+    'crystals_100', 'crystals_550', 'crystals_1200', 'crystals_3000',
+    // Non-consumables (packs)
+    'pack_starter', 'pack_hero', 'pack_legend',
+    // Subscriptions
+    'sub_speed_monthly', 'sub_premium_monthly',
+  };
+
   static bool get platformSupported =>
-      !kIsWeb &&
-      (Platform.isAndroid || Platform.isIOS || Platform.isMacOS);
+      !kIsWeb && (Platform.isAndroid || Platform.isIOS || Platform.isMacOS);
 
   bool get storeAvailable => _storeAvailable;
+
+  String priceFor(String productId) =>
+      _products[productId]?.price ?? '';
 
   Future<void> init() async {
     if (!platformSupported) return;
@@ -62,9 +62,7 @@ class IapService {
       onError: (_) {},
     );
 
-    final result = await InAppPurchase.instance.queryProductDetails(
-      packages.map((p) => p.productId).toSet(),
-    );
+    final result = await InAppPurchase.instance.queryProductDetails(_allProductIds);
     for (final pd in result.productDetails) {
       _products[pd.id] = pd;
     }
@@ -74,12 +72,7 @@ class IapService {
     for (final p in list) {
       if (p.status == PurchaseStatus.purchased ||
           p.status == PurchaseStatus.restored) {
-        final pkg = packages.firstWhere(
-          (pkg) => pkg.productId == p.productID,
-          orElse: () => const CrystalPackage(
-              productId: '', crystals: 0, fallbackPrice: '', label: ''),
-        );
-        if (pkg.crystals > 0) _onCrystalsGranted(pkg.crystals);
+        _fulfillPurchase(p.productID);
         if (p.pendingCompletePurchase) {
           InAppPurchase.instance.completePurchase(p);
         }
@@ -87,19 +80,59 @@ class IapService {
     }
   }
 
-  Future<void> buy(String productId) async {
+  void _fulfillPurchase(String productId) {
+    // Crystal consumables
+    final pkg = packages.where((p) => p.productId == productId).firstOrNull;
+    if (pkg != null) {
+      _onCrystalsGranted(pkg.crystals);
+      return;
+    }
+
+    // Starter packs
+    if (productId.startsWith('pack_')) {
+      onPackPurchased?.call(productId);
+      return;
+    }
+
+    // Subscriptions
+    if (productId == 'sub_speed_monthly') {
+      onSubscriptionActivated?.call(productId, 30);
+      return;
+    }
+    if (productId == 'sub_premium_monthly') {
+      onSubscriptionActivated?.call(productId, 30);
+      return;
+    }
+  }
+
+  Future<void> buyConsumable(String productId) async {
     if (!_storeAvailable) return;
     final pd = _products[productId];
-    if (pd == null) return;
+    if (pd == null) {
+      if (kDebugMode) _fulfillPurchase(productId);
+      return;
+    }
     await InAppPurchase.instance
         .buyConsumable(purchaseParam: PurchaseParam(productDetails: pd));
   }
 
-  // Dev-mode only: grant crystals without a real purchase.
-  void devGrant(int amount) {
-    if (!kDebugMode) return;
-    _onCrystalsGranted(amount);
+  Future<void> buyNonConsumable(String productId) async {
+    if (!_storeAvailable) return;
+    final pd = _products[productId];
+    if (pd == null) {
+      if (kDebugMode) _fulfillPurchase(productId);
+      return;
+    }
+    await InAppPurchase.instance
+        .buyNonConsumable(purchaseParam: PurchaseParam(productDetails: pd));
   }
 
-  void dispose() => _sub?.cancel();
+  Future<void> restorePurchases() async {
+    if (!_storeAvailable) return;
+    await InAppPurchase.instance.restorePurchases();
+  }
+
+  void dispose() {
+    _sub?.cancel();
+  }
 }

@@ -33,18 +33,29 @@ class WorldEventScreen extends StatelessWidget {
           const SizedBox(height: 16),
           _HowToEarn(event: event),
           const SizedBox(height: 16),
-          Text('EVENT SHOP',
+          Text('OMEGA SHOP',
               style: AppTheme.pixelHeading(
                   fontSize: 11, letterSpacing: 2, color: event.color)),
           const SizedBox(height: 10),
-          ...event.rewards.map((r) => Padding(
+          ...WorldEventReward.eventShop(game.hero.level).map((r) => Padding(
                 padding: const EdgeInsets.only(bottom: 10),
                 child: _RewardCard(
                   reward: r,
                   color: event.color,
                   tokens: game.eventTokens,
                   claimed: game.eventRewardClaimed(r.id),
-                  onBuy: () => game.buyEventReward(r.id),
+                  onBuy: () {
+                    final ok = game.buyEventReward(r.id);
+                    if (ok && context.mounted) {
+                      final msg = r.type == EventRewardType.gear
+                          ? '${r.name} forged at Lv${game.hero.level}! Check your bag.'
+                          : '${r.name} claimed!';
+                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                        content: Text(msg),
+                        duration: const Duration(seconds: 3),
+                      ));
+                    }
+                  },
                 ),
               )),
         ],
@@ -70,7 +81,7 @@ class _TokenBadge extends StatelessWidget {
       child: Row(mainAxisSize: MainAxisSize.min, children: [
         const Text('🪙', style: TextStyle(fontSize: 11)),
         const SizedBox(width: 4),
-        Text('$tokens tokens',
+        Text('$tokens Ω',
             style: AppTheme.pixelHeading(fontSize: 12, color: color)),
       ]),
     );
@@ -80,6 +91,15 @@ class _TokenBadge extends StatelessWidget {
 class _EventBanner extends StatelessWidget {
   const _EventBanner({required this.event});
   final WorldEventDef event;
+
+  static Color _dmgColor(String t) => switch (t) {
+    'fire'      => const Color(0xFFff6633),
+    'cold'      => const Color(0xFF44bbff),
+    'lightning' => const Color(0xFFffcc00),
+    'poison'    => const Color(0xFF44cc44),
+    'void'      => const Color(0xFFaa44ff),
+    _           => const Color(0xFFaaaaaa),
+  };
 
   @override
   Widget build(BuildContext context) {
@@ -108,6 +128,21 @@ class _EventBanner extends StatelessWidget {
           Text(event.description,
               style: const TextStyle(
                   fontSize: 12, color: Colors.white60, height: 1.5)),
+          const SizedBox(height: 8),
+          Row(children: [
+            const Text('Damage: ', style: TextStyle(fontSize: 10, color: Colors.white38)),
+            ...event.damageTypes.map((t) => Container(
+              margin: const EdgeInsets.only(right: 6),
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              decoration: BoxDecoration(
+                color: _dmgColor(t).withValues(alpha: 0.15),
+                border: Border.all(color: _dmgColor(t).withValues(alpha: 0.5)),
+                borderRadius: BorderRadius.circular(3),
+              ),
+              child: Text(t.toUpperCase(),
+                  style: TextStyle(fontSize: 9, color: _dmgColor(t), fontWeight: FontWeight.bold)),
+            )),
+          ]),
         ],
       ),
     );
@@ -232,7 +267,7 @@ class _RewardCard extends StatelessWidget {
         if (claimed)
           const Icon(Icons.check_circle, color: Color(0xFF44aa44), size: 20)
         else ...[
-          Text('🪙${reward.tokenCost}',
+          Text('${reward.tokenCost} Ω',
               style: TextStyle(
                   fontSize: 13,
                   color: canAfford ? color : AppTheme.textMuted,

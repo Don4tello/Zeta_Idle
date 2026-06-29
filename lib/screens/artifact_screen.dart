@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import '../models/artifact.dart';
 import '../services/game_state.dart';
 import '../theme/app_theme.dart';
@@ -12,62 +12,56 @@ class ArtifactScreen extends StatefulWidget {
 }
 
 class _ArtifactScreenState extends State<ArtifactScreen> {
-  String? _selectedArtifactId; // artifact held for placement
-  int?    _highlightedCell;    // cell tapped while no selection
+  String? _selectedArtifactId;
+  int?    _highlightedCell;
 
-  static const _gridCols = 9;
-  static const _gridRows = 9;
+  static const _gridCols = 3;
+  static const _gridRows = 3;
+  static const _maxCells = 9;
 
   void _onCellTap(GameState game, int cell) {
-    final isUnlocked = cell < game.unlockedArtifactCells;
-    if (!isUnlocked) return;
-
+    if (cell >= game.unlockedArtifactCells) return;
     final occupant = game.artifactGrid[cell];
-
     if (_selectedArtifactId != null) {
-      // Place selected artifact into this cell
       game.placeArtifact(cell, _selectedArtifactId!);
       setState(() { _selectedArtifactId = null; _highlightedCell = null; });
     } else if (occupant != null) {
-      // Tap occupied cell → remove artifact
-      setState(() {
-        game.removeArtifactFromGrid(cell);
-      });
+      setState(() { game.removeArtifactFromGrid(cell); });
     } else {
       setState(() => _highlightedCell = _highlightedCell == cell ? null : cell);
     }
   }
 
-  void _onArtifactTap(GameState game, String id) {
-    if (!game.ownedArtifacts.contains(id)) return;
-    if (game.isArtifactEquipped(id)) {
-      // Remove from grid
+  void _onArtifactTap(GameState game, String uid) {
+    if (game.isArtifactEquipped(uid)) {
       final cell = game.artifactGrid.entries
-          .firstWhere((e) => e.value == id, orElse: () => const MapEntry(-1, ''))
+          .firstWhere((e) => e.value == uid, orElse: () => const MapEntry(-1, ''))
           .key;
       if (cell >= 0) game.removeArtifactFromGrid(cell);
       setState(() { _selectedArtifactId = null; });
     } else if (_highlightedCell != null) {
-      // Place directly into highlighted cell
-      game.placeArtifact(_highlightedCell!, id);
+      game.placeArtifact(_highlightedCell!, uid);
       setState(() { _selectedArtifactId = null; _highlightedCell = null; });
     } else {
-      setState(() => _selectedArtifactId = _selectedArtifactId == id ? null : id);
+      setState(() => _selectedArtifactId = _selectedArtifactId == uid ? null : uid);
     }
   }
 
   @override
   Widget build(BuildContext context) {
     final game = GameStateProvider.of(context);
+    final selectedName = _selectedArtifactId != null
+        ? game.artifactByUid(_selectedArtifactId)?.name ?? ''
+        : '';
 
     final header = Container(
       color: const Color(0xFF2A2623),
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       child: Row(children: [
-        Text('ARTIFACT GRID',
+        Text('ARTIFACT TABLE',
             style: AppTheme.pixelHeading(fontSize: 12, letterSpacing: 2)),
         const Spacer(),
-        Text('${game.unlockedArtifactCells}/81 cells',
+        Text('${game.unlockedArtifactCells.clamp(0, _maxCells)}/$_maxCells slots',
             style: const TextStyle(color: AppTheme.textMuted, fontSize: 11)),
         const SizedBox(width: 10),
         _MythrilBadge(mythril: game.mythril),
@@ -76,17 +70,16 @@ class _ArtifactScreenState extends State<ArtifactScreen> {
 
     final body = Column(children: [
       header,
-      if (_selectedArtifactId != null)
-        _PlacementHint(name: Artifact.byId(_selectedArtifactId)?.name ?? ''),
+      if (_selectedArtifactId != null) _PlacementHint(name: selectedName),
       Expanded(
-        flex: 5,
-        child: _buildGrid(game),
-      ),
-      _buildUnlockBar(game),
-      const Divider(height: 1, color: Color(0xFF2a2a3a)),
-      Expanded(
-        flex: 4,
-        child: _buildCollection(game),
+        child: SingleChildScrollView(
+          child: Column(children: [
+            _buildGrid(game),
+            _buildTableBonuses(game),
+            const SizedBox(height: 8),
+            _buildCollection(game),
+          ]),
+        ),
       ),
     ]);
 
@@ -111,129 +104,236 @@ class _ArtifactScreenState extends State<ArtifactScreen> {
   }
 
   Widget _buildGrid(GameState game) {
-    return LayoutBuilder(builder: (ctx, bc) {
-      // Fit the entire 9×9 grid in the available space without scrolling.
-      final byWidth  = (bc.maxWidth  - 16) / _gridCols;
-      final byHeight = bc.maxHeight.isFinite
-          ? (bc.maxHeight - 16) / _gridRows
-          : byWidth;
-      final cellSize = (byWidth < byHeight ? byWidth : byHeight).floorToDouble();
-      return Padding(
-        padding: const EdgeInsets.all(8),
-        child: Wrap(
-          spacing: 2,
-          runSpacing: 2,
-          children: List.generate(_gridCols * _gridRows, (i) {
-            return _GridCell(
+    return Container(
+      margin: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        // Medieval wooden table surface
+        color: const Color(0xFF3a2818),
+        border: Border.all(color: const Color(0xFF5a3a20), width: 3),
+        borderRadius: BorderRadius.circular(6),
+        boxShadow: const [
+          BoxShadow(color: Color(0x44000000), blurRadius: 8, offset: Offset(0, 4)),
+        ],
+      ),
+      child: CustomPaint(
+        painter: _TableGrainPainter(),
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: GridView.builder(
+            physics: const NeverScrollableScrollPhysics(),
+            shrinkWrap: true,
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: _gridCols,
+              crossAxisSpacing: 8,
+              mainAxisSpacing: 8,
+              childAspectRatio: 1.0,
+            ),
+            itemCount: _maxCells,
+            itemBuilder: (ctx, i) => _GridCell(
               index: i,
-              size: cellSize - 2,
-              artifact: Artifact.byId(game.artifactGrid[i]),
-              isUnlocked: i < game.unlockedArtifactCells,
+              artifact: game.artifactByUid(game.artifactGrid[i]),
+              isUnlocked: i < game.unlockedArtifactCells.clamp(0, _maxCells),
               isHighlighted: _highlightedCell == i,
               isSelected: _selectedArtifactId != null &&
                   game.artifactGrid[i] == _selectedArtifactId,
-              isTargetable: _selectedArtifactId != null && i < game.unlockedArtifactCells,
+              isTargetable: _selectedArtifactId != null &&
+                  i < game.unlockedArtifactCells.clamp(0, _maxCells),
               onTap: () => _onCellTap(game, i),
-            );
-          }),
-        ),
-      );
-    });
-  }
-
-  Widget _buildUnlockBar(GameState game) {
-    final cost = game.artifactCellUnlockCost;
-    final canAfford = cost > 0 && game.mythril >= cost;
-    final atMax = game.unlockedArtifactCells >= 81;
-    return Container(
-      color: const Color(0xFF1a1a2a),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      child: Row(children: [
-        Expanded(
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(2),
-            child: LinearProgressIndicator(
-              value: game.unlockedArtifactCells / 81,
-              minHeight: 6,
-              backgroundColor: const Color(0xFF2a2a3a),
-              valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF9966ff)),
             ),
           ),
         ),
-        const SizedBox(width: 10),
-        if (!atMax)
-          TextButton(
-            onPressed: canAfford ? () => game.buyUnlockArtifactCell() : null,
-            style: TextButton.styleFrom(
-              side: BorderSide(
-                  color: canAfford ? const Color(0xFF9966ff) : AppTheme.cardBorder),
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-              minimumSize: Size.zero,
-              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-            ),
-            child: Row(mainAxisSize: MainAxisSize.min, children: [
-              Text('⬡ $cost',
-                  style: TextStyle(
-                      fontSize: 11,
-                      color: canAfford ? const Color(0xFF9966ff) : AppTheme.cardBorder)),
-              const SizedBox(width: 4),
-              Text('UNLOCK',
-                  style: AppTheme.pixelHeading(
-                      fontSize: 10,
-                      color: canAfford ? const Color(0xFF9966ff) : AppTheme.cardBorder)),
-            ]),
-          )
-        else
-          Text('GRID COMPLETE',
-              style: AppTheme.pixelHeading(fontSize: 10, color: const Color(0xFF9966ff))),
-      ]),
+      ),
+    );
+  }
+
+  Widget _buildTableBonuses(GameState game) {
+    final bonuses = <(String, String, int)>[
+      ('⚔', 'ATK', game.artifactAttackBonus),
+      ('🗡', 'DMG', game.artifactDamageBonus),
+      ('🛡', 'ARM', game.artifactAcBonus),
+      ('❤', 'HP%', game.artifactHpPct),
+      ('💰', 'Gold%', game.artifactGoldPct),
+      ('⚡', 'XP%', game.artifactXpPct),
+      ('◆', 'Shard%', game.artifactShardPct),
+    ];
+    final active = bonuses.where((b) => b.$3 > 0).toList();
+    if (active.isEmpty) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        child: Text('Place artifacts on the table to gain bonuses.',
+            style: const TextStyle(fontSize: 10, color: AppTheme.textMuted), textAlign: TextAlign.center),
+      );
+    }
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: const Color(0xFF1a1a2e),
+        border: Border.all(color: const Color(0xFF9966ff).withValues(alpha: 0.3)),
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('TABLE BONUSES', style: AppTheme.pixelHeading(
+              fontSize: 9, letterSpacing: 2, color: const Color(0xFF9966ff))),
+          const SizedBox(height: 6),
+          Wrap(
+            spacing: 12,
+            runSpacing: 4,
+            children: active.map((b) => Text(
+              '${b.$1} +${b.$3}${b.$2.contains('%') ? '' : ''} ${b.$2}',
+              style: const TextStyle(fontSize: 11, color: Color(0xFF9966ff), fontWeight: FontWeight.bold),
+            )).toList(),
+          ),
+        ],
+      ),
     );
   }
 
   Widget _buildCollection(GameState game) {
-    final all = Artifact.all;
+    final owned = game.ownedArtifacts;
+    final cost  = game.forgeCost;
+    final canAfford = game.mythril >= cost;
+
     return ListView(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
       padding: const EdgeInsets.fromLTRB(8, 6, 8, 8),
       children: [
+        // ── Forge section ────────────────────────────────────────────────────
         Padding(
           padding: const EdgeInsets.only(bottom: 6),
-          child: Text('COLLECTION',
+          child: Text('FORGE',
               style: AppTheme.pixelHeading(fontSize: 11, letterSpacing: 2)),
         ),
         Text(
-          'Tap an artifact to select it, then tap an unlocked grid cell to place it.  '
-          'Tap a placed artifact to remove it from the grid.',
-          style: const TextStyle(
-              fontSize: 10, color: AppTheme.textMuted, height: 1.4),
+          'Forge a random artifact from the relics of fallen heroes. '
+          'Higher campaign stage yields stronger items.',
+          style: const TextStyle(fontSize: 10, color: AppTheme.textMuted, height: 1.4),
         ),
         const SizedBox(height: 8),
-        ...all.map((art) {
-          final owned    = game.ownedArtifacts.contains(art.id);
-          final equipped = game.isArtifactEquipped(art.id);
-          final canBuy   = game.mythril >= art.mythrilCost;
-          final selected = _selectedArtifactId == art.id;
-          return _ArtifactRow(
+        // Forge button — shows all 7 type icons as a preview row
+        GestureDetector(
+          onTap: canAfford
+              ? () { game.forgeArtifact(); setState(() {}); }
+              : null,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            decoration: BoxDecoration(
+              gradient: canAfford
+                  ? const LinearGradient(
+                      colors: [Color(0xFF2a1a44), Color(0xFF1a1030)],
+                    )
+                  : null,
+              color: canAfford ? null : const Color(0xFF141420),
+              border: Border.all(
+                  color: canAfford
+                      ? const Color(0xFF9966ff)
+                      : AppTheme.cardBorder,
+                  width: canAfford ? 1.5 : 1),
+              borderRadius: BorderRadius.circular(6),
+              boxShadow: canAfford ? [
+                BoxShadow(
+                  color: const Color(0xFF9966ff).withValues(alpha: 0.3),
+                  blurRadius: 10,
+                  spreadRadius: 1,
+                ),
+              ] : null,
+            ),
+            child: Row(children: [
+              Row(
+                children: ArtifactBaseType.values.map((t) => Padding(
+                  padding: const EdgeInsets.only(right: 4),
+                  child: ArtifactIcon(
+                    type: t,
+                    color: t.color.withValues(alpha: canAfford ? 0.9 : 0.3),
+                    size: 20,
+                  ),
+                )).toList(),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  canAfford ? 'FORGE ARTIFACT' : 'NOT ENOUGH MYTHRIL',
+                  style: AppTheme.pixelHeading(
+                    fontSize: 12,
+                    letterSpacing: 1,
+                    color: canAfford
+                        ? Colors.white
+                        : AppTheme.cardBorder,
+                  ),
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: canAfford
+                      ? const Color(0xFF9966ff).withValues(alpha: 0.25)
+                      : Colors.transparent,
+                  borderRadius: BorderRadius.circular(4),
+                  border: Border.all(
+                      color: canAfford
+                          ? const Color(0xFF9966ff).withValues(alpha: 0.5)
+                          : AppTheme.cardBorder),
+                ),
+                child: Row(mainAxisSize: MainAxisSize.min, children: [
+                  Text('⬡',
+                      style: TextStyle(fontSize: 13,
+                          color: canAfford ? const Color(0xFFcc99ff) : AppTheme.cardBorder)),
+                  const SizedBox(width: 4),
+                  Text('$cost',
+                      style: TextStyle(
+                          fontSize: 13, fontWeight: FontWeight.bold,
+                          color: canAfford ? const Color(0xFFcc99ff) : AppTheme.cardBorder)),
+                ]),
+              ),
+            ]),
+          ),
+        ),
+        const SizedBox(height: 12),
+        const Divider(height: 1, color: Color(0xFF2a2a3a)),
+        const SizedBox(height: 8),
+        // ── Collection ───────────────────────────────────────────────────────
+        Padding(
+          padding: const EdgeInsets.only(bottom: 4),
+          child: Row(children: [
+            Text('COLLECTION',
+                style: AppTheme.pixelHeading(fontSize: 11, letterSpacing: 2)),
+            const SizedBox(width: 8),
+            Text('(${owned.length})',
+                style: const TextStyle(fontSize: 10, color: AppTheme.textMuted)),
+          ]),
+        ),
+        if (owned.isEmpty)
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 12),
+            child: Text('No artifacts forged yet.',
+                style: TextStyle(fontSize: 11, color: AppTheme.textMuted)),
+          )
+        else ...[
+          Text(
+            'Tap to select, then tap a grid cell to equip it.',
+            style: const TextStyle(fontSize: 10, color: AppTheme.textMuted),
+          ),
+          const SizedBox(height: 8),
+          ...owned.map((art) => _ArtifactRow(
             artifact: art,
-            owned: owned,
-            equipped: equipped,
-            selected: selected,
-            canBuy: canBuy,
-            onTap: owned
-                ? () => _onArtifactTap(game, art.id)
-                : (canBuy ? () { game.buyArtifact(art); setState(() {}); } : null),
-          );
-        }),
+            equipped: game.isArtifactEquipped(art.uid),
+            selected: _selectedArtifactId == art.uid,
+            onTap: () => _onArtifactTap(game, art.uid),
+          )),
+        ],
       ],
     );
   }
 }
 
-// ── Grid cell ──────────────────────────────────────────────────────────────────
+// ── Grid cell ─────────────────────────────────────────────────────────────────
 
 class _GridCell extends StatelessWidget {
   const _GridCell({
     required this.index,
-    required this.size,
     required this.isUnlocked,
     required this.onTap,
     this.artifact,
@@ -243,7 +343,6 @@ class _GridCell extends StatelessWidget {
   });
 
   final int       index;
-  final double    size;
   final bool      isUnlocked;
   final Artifact? artifact;
   final bool      isHighlighted;
@@ -251,90 +350,123 @@ class _GridCell extends StatelessWidget {
   final bool      isTargetable;
   final VoidCallback onTap;
 
-  static const _slotColors = {
-    ArtifactSlot.ring:    Color(0xFFffcc44),
-    ArtifactSlot.amulet:  Color(0xFF66aaff),
-    ArtifactSlot.trinket: Color(0xFF88cc44),
-  };
-
   @override
   Widget build(BuildContext context) {
-    if (!isUnlocked) {
-      return SizedBox(
-        width: size, height: size,
+    return LayoutBuilder(builder: (ctx, bc) {
+      final size = bc.maxWidth;
+
+      if (!isUnlocked) {
+        return Container(
+          decoration: BoxDecoration(
+            color: const Color(0xFF1a1208),
+            border: Border.all(color: const Color(0xFF2a1e10), width: 1),
+            borderRadius: BorderRadius.circular(6),
+          ),
+          child: const Center(child: Icon(Icons.lock_outline, size: 18, color: Color(0xFF3a2818))),
+        );
+      }
+
+      final rc = artifact?.rarity.color;
+      final hasArt = artifact != null;
+      final active = isTargetable || isHighlighted;
+      final accentColor = active ? const Color(0xFF9966ff) : (rc ?? const Color(0xFF4a3828));
+
+      return GestureDetector(
+        onTap: onTap,
         child: Container(
           decoration: BoxDecoration(
-            color: const Color(0xFF12121a),
-            border: Border.all(color: const Color(0xFF1a1a28), width: 0.5),
+            // Stone pedestal when filled, dark cloth when empty
+            color: hasArt
+                ? const Color(0xFF2a2420)
+                : active
+                    ? const Color(0xFF2a2040)
+                    : const Color(0xFF1e1810),
+            border: Border.all(
+              color: accentColor.withValues(alpha: hasArt ? 0.8 : 0.4),
+              width: hasArt || active ? 2 : 1,
+            ),
+            borderRadius: BorderRadius.circular(8),
+            boxShadow: hasArt ? [
+              BoxShadow(color: rc!.withValues(alpha: 0.3), blurRadius: 8, spreadRadius: 1),
+            ] : active ? [
+              const BoxShadow(color: Color(0x449966ff), blurRadius: 6),
+            ] : null,
           ),
-          child: size > 28
-              ? const Center(
-                  child: Icon(Icons.lock_outline, size: 10,
-                      color: Color(0xFF2a2a40)))
-              : null,
+          child: hasArt
+              ? _buildFilled(size)
+              : active
+                  ? Center(child: Icon(Icons.add_circle_outline, size: size * 0.35, color: const Color(0xFF9966ff)))
+                  : Center(child: Text('·', style: TextStyle(fontSize: size * 0.3, color: const Color(0xFF3a2818)))),
         ),
       );
-    }
+    });
+  }
 
-    final slotColor = artifact != null
-        ? (_slotColors[artifact!.slot] ?? const Color(0xFF9966ff))
-        : null;
-    final borderColor = isTargetable
-        ? const Color(0xFF9966ff)
-        : isHighlighted
-            ? const Color(0xFF9966ff)
-            : artifact != null
-                ? (slotColor!.withValues(alpha: 0.6))
-                : const Color(0xFF2a2a40);
-    final bgColor = isTargetable
-        ? const Color(0xFF9966ff).withValues(alpha: 0.08)
-        : isHighlighted
-            ? const Color(0xFF9966ff).withValues(alpha: 0.12)
-            : artifact != null
-                ? slotColor!.withValues(alpha: 0.07)
-                : const Color(0xFF14141e);
+  Widget _buildFilled(double size) {
+    final typeColor = artifact!.type.color;
+    final rarityColor = artifact!.rarity.color;
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          ArtifactIcon(type: artifact!.type, color: typeColor, size: size * 0.50, rarity: artifact!.rarity),
+          if (size > 30)
+            Padding(
+              padding: const EdgeInsets.only(top: 1),
+              child: Text(
+                artifact!.base.name,
+                style: TextStyle(
+                    fontSize: (size * 0.15).clamp(5.0, 8.0),
+                    color: rarityColor,
+                    fontWeight: FontWeight.bold,
+                    height: 1.1),
+                textAlign: TextAlign.center,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+        ],
+      ),
+    );
+  }
 
-    return GestureDetector(
-      onTap: onTap,
+  Widget _buildEmptySlot(double size) {
+    if (size < 18) return const SizedBox.shrink();
+    return Center(
       child: SizedBox(
-        width: size, height: size,
-        child: Container(
-          decoration: BoxDecoration(
-            color: bgColor,
-            border: Border.all(color: borderColor, width: artifact != null ? 1.0 : 0.5),
-          ),
-          child: artifact != null
-              ? Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(artifact!.slot.icon,
-                          style: TextStyle(fontSize: size * 0.38)),
-                      if (size > 30)
-                        Text(artifact!.name,
-                            style: TextStyle(
-                                fontSize: 7,
-                                color: slotColor,
-                                fontWeight: FontWeight.bold),
-                            textAlign: TextAlign.center,
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis),
-                    ],
-                  ),
-                )
-              : isTargetable || isHighlighted
-                  ? Center(
-                      child: Icon(Icons.add,
-                          size: size * 0.35, color: const Color(0xFF9966ff)),
-                    )
-                  : null,
-        ),
+        width: size * 0.28,
+        height: size * 0.28,
+        child: CustomPaint(painter: _DiamondPainter()),
       ),
     );
   }
 }
 
-// ── Placement hint banner ─────────────────────────────────────────────────────
+// ── Empty slot diamond ────────────────────────────────────────────────────────
+
+class _DiamondPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = const Color(0xFF2a2a40)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 0.8;
+    final cx = size.width / 2;
+    final cy = size.height / 2;
+    canvas.drawPath(
+      Path()
+        ..moveTo(cx, 0)
+        ..lineTo(size.width, cy)
+        ..lineTo(cx, size.height)
+        ..lineTo(0, cy)
+        ..close(),
+      paint,
+    );
+  }
+  @override bool shouldRepaint(_DiamondPainter old) => false;
+}
+
+// ── Placement hint ────────────────────────────────────────────────────────────
 
 class _PlacementHint extends StatelessWidget {
   const _PlacementHint({required this.name});
@@ -359,45 +491,35 @@ class _PlacementHint extends StatelessWidget {
   }
 }
 
-// ── Artifact row (collection list) ────────────────────────────────────────────
+// ── Artifact row ──────────────────────────────────────────────────────────────
 
 class _ArtifactRow extends StatelessWidget {
   const _ArtifactRow({
     required this.artifact,
-    required this.owned,
     required this.equipped,
     required this.selected,
-    required this.canBuy,
-    this.onTap,
+    required this.onTap,
   });
 
   final Artifact  artifact;
-  final bool      owned;
   final bool      equipped;
   final bool      selected;
-  final bool      canBuy;
-  final VoidCallback? onTap;
-
-  static const _slotColors = {
-    ArtifactSlot.ring:    Color(0xFFffcc44),
-    ArtifactSlot.amulet:  Color(0xFF66aaff),
-    ArtifactSlot.trinket: Color(0xFF88cc44),
-  };
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    final c = _slotColors[artifact.slot] ?? AppTheme.accentGold;
+    final rc = artifact.rarity.color;
+    final tc = artifact.type.color;
+
     final borderColor = selected
         ? const Color(0xFF9966ff)
         : equipped
-            ? c.withValues(alpha: 0.7)
-            : owned
-                ? c.withValues(alpha: 0.3)
-                : AppTheme.cardBorder;
+            ? rc.withValues(alpha: 0.85)
+            : rc.withValues(alpha: 0.35);
     final bgColor = selected
-        ? const Color(0xFF9966ff).withValues(alpha: 0.1)
+        ? const Color(0xFF9966ff).withValues(alpha: 0.10)
         : equipped
-            ? c.withValues(alpha: 0.06)
+            ? rc.withValues(alpha: 0.07)
             : const Color(0xFF1c1a18);
 
     return GestureDetector(
@@ -407,66 +529,73 @@ class _ArtifactRow extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
         decoration: BoxDecoration(
           color: bgColor,
-          border: Border.all(color: borderColor,
-              width: selected || equipped ? 1.5 : 1.0),
+          border: Border.all(color: borderColor, width: selected || equipped ? 1.5 : 1.0),
           borderRadius: BorderRadius.circular(3),
         ),
         child: Row(children: [
-          Text(artifact.slot.icon, style: const TextStyle(fontSize: 19)),
-          const SizedBox(width: 8),
+          // Custom type icon
+          Container(
+            width: 36,
+            height: 36,
+            decoration: BoxDecoration(
+              color: tc.withValues(alpha: 0.10),
+              border: Border.all(color: tc.withValues(alpha: 0.30)),
+              borderRadius: BorderRadius.circular(3),
+            ),
+            child: Center(
+              child: ArtifactIcon(type: artifact.type, color: tc, size: 24, rarity: artifact.rarity),
+            ),
+          ),
+          const SizedBox(width: 10),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                // Full name in rarity color
                 Text(artifact.name,
                     style: TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.bold,
-                        color: owned ? c : Colors.white38)),
-                const SizedBox(height: 2),
+                        fontSize: 12, fontWeight: FontWeight.bold, color: rc)),
+                const SizedBox(height: 3),
+                // Rarity + type + drop level badges
+                Row(children: [
+                  _badge(artifact.rarity.label, rc),
+                  const SizedBox(width: 4),
+                  _badge(artifact.type.label, tc),
+                  const SizedBox(width: 4),
+                  _badge('Lv ${artifact.dropLevel}', AppTheme.textMuted),
+                ]),
+                const SizedBox(height: 3),
+                // Stat chips
                 Wrap(
-                  spacing: 4,
-                  runSpacing: 2,
-                  children: _statChips(artifact, owned ? c : Colors.white24),
+                  spacing: 4, runSpacing: 2,
+                  children: _statChips(artifact, rc),
                 ),
               ],
             ),
           ),
           const SizedBox(width: 8),
-          if (!owned)
-            Row(mainAxisSize: MainAxisSize.min, children: [
-              Text('⬡',
-                  style: TextStyle(
-                      fontSize: 12,
-                      color: canBuy
-                          ? const Color(0xFF9966ff)
-                          : AppTheme.cardBorder)),
-              const SizedBox(width: 3),
-              Text('${artifact.mythrilCost}',
-                  style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
-                      color: canBuy
-                          ? const Color(0xFF9966ff)
-                          : AppTheme.cardBorder)),
-            ])
-          else if (equipped)
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-              decoration: BoxDecoration(
-                color: c.withValues(alpha: 0.15),
-                border: Border.all(color: c),
-                borderRadius: BorderRadius.circular(3),
-              ),
-              child: Text('ON', style: TextStyle(
-                  fontSize: 9, color: c, fontWeight: FontWeight.bold)),
-            )
+          if (equipped)
+            _badge('ON', rc, thick: true)
           else
             Icon(selected ? Icons.touch_app : Icons.add_circle_outline,
                 size: 18,
                 color: selected ? const Color(0xFF9966ff) : AppTheme.textMuted),
         ]),
       ),
+    );
+  }
+
+  Widget _badge(String text, Color c, {bool thick = false}) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+      decoration: BoxDecoration(
+        color: c.withValues(alpha: 0.12),
+        border: Border.all(color: c.withValues(alpha: thick ? 0.8 : 0.45)),
+        borderRadius: BorderRadius.circular(2),
+      ),
+      child: Text(text,
+          style: TextStyle(
+              fontSize: 8, color: c, fontWeight: FontWeight.bold)),
     );
   }
 
@@ -477,8 +606,8 @@ class _ArtifactRow extends StatelessWidget {
       chips.add(Container(
         padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
         decoration: BoxDecoration(
-          color: c.withValues(alpha: 0.1),
-          border: Border.all(color: c.withValues(alpha: 0.4)),
+          color: c.withValues(alpha: 0.10),
+          border: Border.all(color: c.withValues(alpha: 0.40)),
           borderRadius: BorderRadius.circular(2),
         ),
         child: Text('${v > 0 ? "+" : ""}$v $label',
@@ -520,4 +649,54 @@ class _MythrilBadge extends StatelessWidget {
       ]),
     );
   }
+}
+
+// ── Medieval table wood grain background ─────────────────────────────────────
+
+class _TableGrainPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final p = Paint()..style = PaintingStyle.fill;
+    // Horizontal wood planks
+    for (int i = 0; i < 8; i++) {
+      final y = i * size.height / 7;
+      final shade = (i % 2 == 0) ? 0xFF2e1e10 : 0xFF3a2818;
+      p.color = Color(shade);
+      canvas.drawRect(Rect.fromLTWH(0, y, size.width, size.height / 7), p);
+    }
+    // Grain lines
+    p.color = const Color(0xFF4a3420);
+    p.style = PaintingStyle.stroke;
+    p.strokeWidth = 0.5;
+    for (int i = 1; i < 7; i++) {
+      final y = i * size.height / 7;
+      canvas.drawLine(Offset(0, y), Offset(size.width, y), p);
+    }
+    // Knot marks
+    p.style = PaintingStyle.fill;
+    p.color = const Color(0xFF251808);
+    canvas.drawCircle(Offset(size.width * 0.2, size.height * 0.3), 3, p);
+    canvas.drawCircle(Offset(size.width * 0.75, size.height * 0.65), 2.5, p);
+    // Corner metal brackets
+    _drawBracket(canvas, 0, 0, 1, 1);
+    _drawBracket(canvas, size.width, 0, -1, 1);
+    _drawBracket(canvas, 0, size.height, 1, -1);
+    _drawBracket(canvas, size.width, size.height, -1, -1);
+  }
+
+  void _drawBracket(Canvas canvas, double x, double y, double dx, double dy) {
+    final p = Paint()
+      ..color = const Color(0xFF666058)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2;
+    canvas.drawLine(Offset(x, y), Offset(x + dx * 14, y), p);
+    canvas.drawLine(Offset(x, y), Offset(x, y + dy * 14), p);
+    // Rivet
+    p.style = PaintingStyle.fill;
+    p.color = const Color(0xFF888078);
+    canvas.drawCircle(Offset(x + dx * 5, y + dy * 5), 2, p);
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }

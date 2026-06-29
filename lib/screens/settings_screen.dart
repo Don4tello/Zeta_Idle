@@ -48,14 +48,102 @@ class _SettingsScreenState extends State<SettingsScreen> {
             _SectionHeader('AUDIO'),
             _SettingsTile(
               title: 'Sound Effects',
-              subtitle: game.audioService.muted ? 'Muted' : 'On',
+              subtitle: game.audioService.sfxMuted ? 'Muted' : 'On',
               trailing: Switch(
-                value: !game.audioService.muted,
-                onChanged: (_) => setState(() => game.audioService.toggleMute()),
+                value: !game.audioService.sfxMuted,
+                onChanged: (_) => setState(() => game.audioService.toggleSfxMute()),
                 activeColor: AppTheme.accentGold,
                 inactiveTrackColor: AppTheme.cardBorder,
               ),
             ),
+            _SettingsTile(
+              title: 'Background Music',
+              subtitle: game.audioService.musicMuted ? 'Muted' : 'On',
+              trailing: Switch(
+                value: !game.audioService.musicMuted,
+                onChanged: (_) => setState(() => game.audioService.toggleMusicMute()),
+                activeColor: AppTheme.accentGold,
+                inactiveTrackColor: AppTheme.cardBorder,
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+              child: Row(children: [
+                const Text('Volume', style: TextStyle(fontSize: 13, color: AppTheme.textMuted)),
+                Expanded(
+                  child: Slider(
+                    value: game.audioService.musicVolume,
+                    min: 0.0,
+                    max: 1.0,
+                    divisions: 10,
+                    activeColor: AppTheme.accentGold,
+                    inactiveColor: AppTheme.cardBorder,
+                    onChanged: (v) => setState(() => game.audioService.setMusicVolume(v)),
+                  ),
+                ),
+                Text('${(game.audioService.musicVolume * 100).round()}%',
+                    style: const TextStyle(fontSize: 12, color: AppTheme.textMuted)),
+              ]),
+            ),
+            const SizedBox(height: 16),
+
+            // Stats
+            _SectionHeader('STATS'),
+            _SettingsTile(
+              title: 'Total Playtime',
+              subtitle: game.playtimeLabel,
+              trailing: const SizedBox.shrink(),
+            ),
+
+            const SizedBox(height: 16),
+
+            // Auto-Loot
+            _SectionHeader('AUTO-LOOT'),
+            _SettingsTile(
+              title: 'Auto-Disenchant Commons',
+              subtitle: 'Automatically disenchant common drops for shards',
+              trailing: Switch(
+                value: game.autoDisenchantCommon,
+                onChanged: (_) => setState(() => game.toggleAutoDisenchantCommon()),
+                activeColor: AppTheme.accentGold,
+                inactiveTrackColor: AppTheme.cardBorder,
+              ),
+            ),
+            _SettingsTile(
+              title: 'Auto-Equip Upgrades',
+              subtitle: 'Automatically equip items better than current gear',
+              trailing: Switch(
+                value: game.autoEquipUpgrades,
+                onChanged: (_) => setState(() => game.toggleAutoEquipUpgrades()),
+                activeColor: AppTheme.accentGold,
+                inactiveTrackColor: AppTheme.cardBorder,
+              ),
+            ),
+
+            const SizedBox(height: 16),
+
+            // Battle
+            _SectionHeader('BATTLE'),
+            _SettingsTile(
+              title: 'Battle Speed',
+              subtitle: game.battleSpeedLabel,
+              trailing: TextButton(
+                onPressed: () => setState(() => game.cycleBattleSpeed()),
+                child: Text(game.battleSpeedLabel,
+                    style: AppTheme.pixelHeading(fontSize: 14, color: AppTheme.accentGold)),
+              ),
+            ),
+            _SettingsTile(
+              title: 'Auto-Campaign',
+              subtitle: 'Automatically fight campaign battles in the background',
+              trailing: Switch(
+                value: game.autoCampaign,
+                onChanged: (_) => setState(() => game.toggleAutoCampaign()),
+                activeColor: const Color(0xFF44cc88),
+                inactiveTrackColor: AppTheme.cardBorder,
+              ),
+            ),
+
             const SizedBox(height: 16),
 
             // Save section
@@ -167,7 +255,28 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   _AboutRow('Level', '${game.hero.level}'),
                   _AboutRow('Prestige', 'Lv ${game.prestigeLevel}'),
                   _AboutRow('Achievements', '${game.achievements.where((a) => a.claimed).length} / ${game.achievements.length}'),
+                  const SizedBox(height: 10),
+                  const Divider(color: AppTheme.cardBorder, height: 1),
+                  const SizedBox(height: 10),
+                  _AboutRow('Developer', 'Razor Integrations'),
+                  _AboutRow('Contact', 'razorintegrations@gmail.com'),
                 ],
+              ),
+            ),
+            const SizedBox(height: 10),
+            _SettingsTile(
+              title: 'Privacy Policy',
+              subtitle: 'How we handle your data',
+              trailing: TextButton(
+                onPressed: () => context.push(Routes.privacyPolicy),
+                style: TextButton.styleFrom(
+                  foregroundColor: AppTheme.textMuted,
+                  side: const BorderSide(color: AppTheme.cardBorder),
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  minimumSize: const Size(64, 44),
+                ),
+                child: Text('VIEW', style: AppTheme.pixelHeading(
+                    fontSize: 10, color: AppTheme.textMuted)),
               ),
             ),
           ],

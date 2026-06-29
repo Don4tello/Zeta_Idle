@@ -131,7 +131,6 @@ class _LogEntry extends StatelessWidget {
         s.contains('+') && (s.contains('gold') || s.contains('xp'))) {
       return const Color(0xFF66cc44);
     }
-    if (s.contains('critical hit')) return const Color(0xFFffd700);
     if (s.contains('miss.')) return AppTheme.textMuted;
     if (s.contains('unbroken') || s.contains('shadow step') ||
         s.contains('momentum') || s.contains('blade flicker')) {

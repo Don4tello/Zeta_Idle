@@ -1,9 +1,12 @@
 ﻿import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../data/ability_data.dart';
+import '../models/equipment.dart';
 import '../models/hero_ability.dart';
+import '../models/passive_tree.dart';
 import '../services/game_state.dart';
 import '../theme/app_theme.dart';
+import 'main_shell.dart' show TutorialTip;
 
 class AbilityUpgradeScreen extends StatelessWidget {
   const AbilityUpgradeScreen({super.key, this.embedded = false});
@@ -52,14 +55,14 @@ class AbilityUpgradeScreen extends StatelessWidget {
     final sv = game.scaledAbilityValue(a);
     final cd = game.scaledAbilityCooldown(a);
     switch (a.effect) {
-      case AbilityEffect.bonusDamage:      return '+d$sv dmg  •  ${cd}r cd';
+      case AbilityEffect.bonusDamage:      return '~$sv dmg  •  ${cd}r cd';
       case AbilityEffect.heal:             return '+${sv}% HP  •  ${cd}r cd';
       case AbilityEffect.attackBonus:      return '+$sv ATK for ${a.duration}r  •  ${cd}r cd';
       case AbilityEffect.acBonus:          return '+$sv AC for ${a.duration}r  •  ${cd}r cd';
       case AbilityEffect.stun:             return 'Stun ${a.duration}r  •  ${cd}r cd';
       case AbilityEffect.dot:              return '$sv dmg/r for ${a.duration}r  •  ${cd}r cd';
       case AbilityEffect.dodge:            return 'Dodge 1 hit  •  ${cd}r cd';
-      case AbilityEffect.aura:             return '$sv HP/r for ${a.duration}r  •  ${cd}r cd';
+      case AbilityEffect.aura:             return '$sv% max HP/r for ${a.duration}r  •  ${cd}r cd';
       case AbilityEffect.debuffWeaken:     return '−$sv% ATK for ${a.duration}r  •  ${cd}r cd';
       case AbilityEffect.debuffVulnerable: return '+$sv% dmg taken for ${a.duration}r  •  ${cd}r cd';
     }
@@ -67,28 +70,81 @@ class AbilityUpgradeScreen extends StatelessWidget {
 
   String _nextEffectSummary(HeroAbility a, GameState game) {
     final rank = game.abilityRank(a.id);
-    if (rank >= 15) return 'MAX RANK';
+    if (rank >= 100) return 'MAX RANK';
     final nextRank = rank + 1;
     final nv = a.value == 0 ? 0 : a.value + nextRank * (a.value ~/ 8).clamp(1, 9999);
     final ncd = (a.cooldownRounds - nextRank ~/ 3).clamp(2, 99);
     switch (a.effect) {
-      case AbilityEffect.bonusDamage:      return '+d$nv dmg  •  ${ncd}r cd';
+      case AbilityEffect.bonusDamage:      return '~$nv dmg  •  ${ncd}r cd';
       case AbilityEffect.heal:             return '+${nv}% HP  •  ${ncd}r cd';
       case AbilityEffect.attackBonus:      return '+${a.value + nextRank} ATK for ${a.duration}r  •  ${ncd}r cd';
       case AbilityEffect.acBonus:          return '+${a.value + nextRank} AC for ${a.duration}r  •  ${ncd}r cd';
       case AbilityEffect.stun:             return 'Stun ${a.duration}r  •  ${ncd}r cd';
       case AbilityEffect.dot:              return '$nv dmg/r for ${a.duration}r  •  ${ncd}r cd';
       case AbilityEffect.dodge:            return 'Dodge 1 hit  •  ${ncd}r cd';
-      case AbilityEffect.aura:             return '$nv HP/r for ${a.duration}r  •  ${ncd}r cd';
+      case AbilityEffect.aura:             return '$nv% max HP/r for ${a.duration}r  •  ${ncd}r cd';
       case AbilityEffect.debuffWeaken:     return '−$nv% ATK for ${a.duration}r  •  ${ncd}r cd';
       case AbilityEffect.debuffVulnerable: return '+$nv% dmg taken for ${a.duration}r  •  ${ncd}r cd';
+    }
+  }
+
+  // Returns the total Increased % that scales ability damage (allDmg + abilityDmg).
+  int _totalAbilityDmgPct(GameState game) =>
+      game.passiveTree.totalOf(PassiveEffect.allDamage)
+      + game.inventory.totalOf(ItemStat.damagePercent)
+      + game.hero.levelBonusDamagePct
+      + game.passiveTree.totalOf(PassiveEffect.abilityDamage);
+
+  // "~X–Y dmg" for bonusDamage or "~X dmg/r" for dot, null for non-damage effects.
+  String? _scaledDamageSummary(HeroAbility a, GameState game) {
+    final pct  = _totalAbilityDmgPct(game);
+    if (pct == 0) return null;
+    final mult = 1.0 + pct / 100.0;
+    final sv   = game.scaledAbilityValue(a);
+    final mod  = game.hero.damageMod;
+    switch (a.effect) {
+      case AbilityEffect.bonusDamage:
+        final lo = ((1 + mod) * mult).round().clamp(1, 9999);
+        final hi = ((sv + mod) * mult).round().clamp(1, 9999);
+        return '~$lo–$hi dmg  (+$pct% bonuses)';
+      case AbilityEffect.dot:
+        final scaled = (sv * mult).round().clamp(1, 9999);
+        return '~$scaled dmg/r  (+$pct% bonuses)';
+      default:
+        return null;
+    }
+  }
+
+  String? _scaledNextDamageSummary(HeroAbility a, GameState game) {
+    final rank = game.abilityRank(a.id);
+    if (rank >= 100) return null;
+    final pct  = _totalAbilityDmgPct(game);
+    if (pct == 0) return null;
+    final mult    = 1.0 + pct / 100.0;
+    final nextRank = rank + 1;
+    final nv = a.value == 0 ? 0 : a.value + nextRank * (a.value ~/ 8).clamp(1, 9999);
+    final mod = game.hero.damageMod;
+    switch (a.effect) {
+      case AbilityEffect.bonusDamage:
+        final lo = ((1 + mod) * mult).round().clamp(1, 9999);
+        final hi = ((nv + mod) * mult).round().clamp(1, 9999);
+        return '~$lo–$hi dmg';
+      case AbilityEffect.dot:
+        final scaled = (nv * mult).round().clamp(1, 9999);
+        return '~$scaled dmg/r';
+      default:
+        return null;
     }
   }
 
   @override
   Widget build(BuildContext context) {
     final game = GameStateProvider.of(context);
-    final allAbilities = AbilityData.forClass(game.hero.heroClass);
+    final allAbilities = [
+      ...AbilityData.forClass(game.hero.heroClass),
+      if (AbilityData.ultimateFor(game.hero.heroClass) != null)
+        AbilityData.ultimateFor(game.hero.heroClass)!,
+    ];
 
     final shardsRow = Padding(
       padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
@@ -106,6 +162,45 @@ class AbilityUpgradeScreen extends StatelessWidget {
           ),
           const SizedBox(width: 4),
           const Text('shards', style: TextStyle(color: Colors.white38, fontSize: 12)),
+          const Spacer(),
+          GestureDetector(
+            onTap: () async {
+              final ok = await showDialog<bool>(
+                context: context,
+                builder: (ctx) => AlertDialog(
+                  backgroundColor: const Color(0xFF1a1a2e),
+                  title: Text('Respec Abilities?', style: AppTheme.pixelHeading(fontSize: 14, color: AppTheme.accentGold)),
+                  content: Text(
+                    'Reset all ability ranks and milestone choices.\n'
+                    'All shards spent will be refunded.\n\n'
+                    'Cost: 💎 ${GameState.abilityRespecCost} Crystals',
+                    style: const TextStyle(fontSize: 12, color: Colors.white70, height: 1.5),
+                  ),
+                  actions: [
+                    TextButton(onPressed: () => Navigator.pop(ctx, false),
+                        child: const Text('CANCEL', style: TextStyle(color: AppTheme.textMuted))),
+                    TextButton(
+                      onPressed: game.crystals >= GameState.abilityRespecCost
+                          ? () => Navigator.pop(ctx, true) : null,
+                      child: Text('RESPEC (💎 ${GameState.abilityRespecCost})',
+                          style: TextStyle(color: game.crystals >= GameState.abilityRespecCost
+                              ? AppTheme.accentGold : AppTheme.cardBorder)),
+                    ),
+                  ],
+                ),
+              );
+              if (ok == true) game.respecAbilities();
+            },
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                border: Border.all(color: AppTheme.accentGold.withValues(alpha: 0.4)),
+                borderRadius: BorderRadius.circular(3),
+              ),
+              child: Text('RESPEC', style: AppTheme.pixelHeading(
+                  fontSize: 8, color: AppTheme.accentGold.withValues(alpha: 0.7), letterSpacing: 1)),
+            ),
+          ),
         ],
       ),
     );
@@ -113,6 +208,12 @@ class AbilityUpgradeScreen extends StatelessWidget {
     final listBody = ListView(
       padding: const EdgeInsets.all(16),
       children: [
+        if (!embedded)
+          TutorialTip(
+            tutorialKey: 'abilities',
+            game: game,
+            text: 'Abilities fire automatically during combat. Upgrade them with Shards to increase their power and reduce cooldowns.',
+          ),
         Text(
           game.hero.heroClass.displayName.toUpperCase(),
           style: GoogleFonts.cinzel(
@@ -132,6 +233,8 @@ class AbilityUpgradeScreen extends StatelessWidget {
               game: game,
               effectSummary: _effectSummary(a, game),
               nextEffectSummary: _nextEffectSummary(a, game),
+              scaledDmgSummary: _scaledDamageSummary(a, game),
+              scaledNextDmgSummary: _scaledNextDamageSummary(a, game),
               effectColor: _effectColors[a.effect] ?? Colors.grey,
               effectLabel: _effectLabel[a.effect] ?? '',
               categoryColor: _categoryColors[a.category] ?? Colors.grey,
@@ -193,6 +296,8 @@ class _AbilityCard extends StatelessWidget {
     required this.game,
     required this.effectSummary,
     required this.nextEffectSummary,
+    required this.scaledDmgSummary,
+    required this.scaledNextDmgSummary,
     required this.effectColor,
     required this.effectLabel,
     required this.categoryColor,
@@ -203,6 +308,8 @@ class _AbilityCard extends StatelessWidget {
   final GameState game;
   final String effectSummary;
   final String nextEffectSummary;
+  final String? scaledDmgSummary;
+  final String? scaledNextDmgSummary;
   final Color effectColor;
   final String effectLabel;
   final Color categoryColor;
@@ -213,7 +320,7 @@ class _AbilityCard extends StatelessWidget {
     final rank    = game.abilityRank(ability.id);
     final cost    = game.abilityUpgradeCost(ability.id);
     final locked  = game.hero.level < ability.levelRequired;
-    final maxed   = rank >= 15;
+    final maxed   = rank >= 100;
     final canAfford = !locked && !maxed && game.shards >= cost;
 
     return Padding(
@@ -238,17 +345,20 @@ class _AbilityCard extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
                   color: categoryColor.withOpacity(0.15),
-                  child: Text(
-                    categoryLabel,
-                    style: TextStyle(
-                      color: categoryColor,
-                      fontSize: 9,
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: 1,
-                    ),
-                  ),
+                  child: Text(categoryLabel,
+                    style: TextStyle(color: categoryColor, fontSize: 9, fontWeight: FontWeight.bold, letterSpacing: 1)),
                 ),
-                const SizedBox(width: 6),
+                const SizedBox(width: 4),
+                Builder(builder: (_) {
+                  final dt = game.abilityEffectiveDamageType(ability);
+                  return Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                    color: dt.color.withValues(alpha: 0.15),
+                    child: Text('${dt.emoji} ${dt.label.toUpperCase()}',
+                        style: TextStyle(color: dt.color, fontSize: 8, fontWeight: FontWeight.bold)),
+                  );
+                }),
+                const SizedBox(width: 4),
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
                   color: effectColor.withOpacity(0.12),
@@ -299,9 +409,17 @@ class _AbilityCard extends StatelessWidget {
             const SizedBox(height: 8),
             _statRow('Current', effectSummary,
                 locked ? Colors.white24 : effectColor),
+            if (scaledDmgSummary != null && !locked) ...[
+              const SizedBox(height: 2),
+              _statRow('Scaled', scaledDmgSummary!, const Color(0xFFffaa44)),
+            ],
             if (!maxed && !locked) ...[
               const SizedBox(height: 4),
               _statRow('At rank ${rank + 1}', nextEffectSummary, Colors.white54),
+              if (scaledNextDmgSummary != null) ...[
+                const SizedBox(height: 2),
+                _statRow('Scaled', scaledNextDmgSummary!, const Color(0xFFffaa44)),
+              ],
             ],
             // Milestone choosers
             for (final ms in ability.milestones)

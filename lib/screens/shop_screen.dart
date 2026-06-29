@@ -1,7 +1,9 @@
 ﻿import 'package:flutter/material.dart';
 import '../models/equipment.dart';
+import '../utils/format_number.dart';
 import '../services/game_state.dart';
 import '../theme/app_theme.dart';
+import '../widgets/empty_state.dart';
 
 class ShopScreen extends StatefulWidget {
   const ShopScreen({super.key});
@@ -135,9 +137,10 @@ class _SlotTab extends StatelessWidget {
   Widget build(BuildContext context) {
     final items = game.shopItemsForSlot(slot);
     if (items.isEmpty) {
-      return const Center(
-        child: Text('All items in this category sold out.',
-            style: TextStyle(fontSize: 13, color: AppTheme.textMuted)),
+      return const EmptyState(
+        icon: '🛒',
+        title: 'SOLD OUT',
+        subtitle: 'Check back tomorrow or reroll\nthe stock with Shards.',
       );
     }
     return ListView.separated(
@@ -201,6 +204,9 @@ class _ShopItemCard extends StatelessWidget {
                     child: Text(item.rarityLabel,
                         style: TextStyle(fontSize: 10, color: item.rarityColor)),
                   ),
+                  const SizedBox(width: 6),
+                  Text(item.requirementLabel,
+                      style: const TextStyle(fontSize: 9, color: AppTheme.textMuted)),
                 ]),
                 const SizedBox(height: 4),
                 Wrap(
@@ -299,6 +305,8 @@ class _ShopItemCard extends StatelessWidget {
     ItemStat.goldPct         => 'Gold%',
     ItemStat.xpPct           => 'XP%',
     ItemStat.elemPenetration => 'PEN%',
+    ItemStat.hitChance       => 'HIT%',
+    ItemStat.damagePercent   => 'DMG%',
   };
 }
 
@@ -322,7 +330,7 @@ class _GoldBadge extends StatelessWidget {
         children: [
           const Text('💰', style: TextStyle(fontSize: 14)),
           const SizedBox(width: 5),
-          Text(_fmt(gold),
+          Text(AppTheme.fmtNumber(gold),
               style: AppTheme.pixelHeading(fontSize: 13, letterSpacing: 0,
                   color: AppTheme.accentGold)),
         ],
@@ -330,11 +338,6 @@ class _GoldBadge extends StatelessWidget {
     );
   }
 
-  String _fmt(int n) {
-    if (n >= 1000000) return '${(n / 1000000).toStringAsFixed(1)}M';
-    if (n >= 1000) return '${(n / 1000).toStringAsFixed(1)}K';
-    return '$n';
-  }
 }
 
 class _GoldCost extends StatelessWidget {
@@ -350,7 +353,7 @@ class _GoldCost extends StatelessWidget {
       children: [
         Text('💰', style: TextStyle(fontSize: 13, color: color)),
         const SizedBox(width: 3),
-        Text('$gold', style: TextStyle(fontSize: 12, color: color, fontWeight: FontWeight.bold)),
+        Text(fmtNum(gold), style: TextStyle(fontSize: 12, color: color, fontWeight: FontWeight.bold)),
       ],
     );
   }

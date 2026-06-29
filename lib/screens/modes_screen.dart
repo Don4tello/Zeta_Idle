@@ -1,5 +1,7 @@
-﻿import 'package:flutter/material.dart';
+import 'dart:ui' show PointerDeviceKind;
+import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../services/game_state.dart';
 import '../theme/app_theme.dart';
 import 'campaign_screen.dart';
 import 'endless_screen.dart';
@@ -15,8 +17,7 @@ import 'quest_screen.dart';
 import 'bestiary_screen.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
-// ModesScreen — all game modes accessible via a scrollable tab bar.
-// Uses a lazy IndexedStack so each mode preserves its state once first opened.
+// ModesScreen
 // ─────────────────────────────────────────────────────────────────────────────
 
 class ModesScreen extends StatefulWidget {
@@ -27,97 +28,227 @@ class ModesScreen extends StatefulWidget {
 }
 
 class _ModesScreenState extends State<ModesScreen>
-    with SingleTickerProviderStateMixin {
-  static const _labels = [
-    'CAMPAIGN',
-    'ENDLESS',
-    'DAILY',
-    'PVP',
-    'DUNGEON',
-    'GAUNTLET',
-    'BOSS RUSH',
-    'EVENTS',
-    'BOUNTIES',
-    'EXPEDITION',
-    'QUESTS',
-    'BESTIARY',
+    with TickerProviderStateMixin {
+
+  // (label, emoji, unlockRequirement)
+  static const _tabData = [
+    ('CAMPAIGN',          '📜',  0),   // always
+    ('DAILY',             '🎯',  5),   // boss 1
+    ('QUESTS',            '📜', 10),   // boss 2
+    ('DUNGEON',           '🏰', 15),   // boss 3
+    ('BOUNTIES',          '📋', 20),   // boss 4
+    ('BOSS RUSH',         '💀', 25),   // boss 5
+    ('EVENTS',            '🌐', 30),   // boss 6
+    ('TOWER ASCENSION',   '🗼', 35),   // boss 7
+    ('EXPEDITION',        '🗺️', 40),  // boss 8
+    ('GAUNTLET',          '🛡️', 45),  // boss 9
+    ('PVP',               '⚔️', 50),  // boss 10
+    ('BESTIARY',          '🐉', 55),   // boss 11
   ];
 
-  late final TabController _tabs =
-      TabController(length: _labels.length, vsync: this);
-
+  late TabController _tabs;
   int _index = 0;
-  final Set<int> _loaded = {0};
+  int _visibleCount = 0;
+  // Track which ALL-data indices have been loaded (for lazy init).
+  final Set<int> _loadedAll = {0};
+
+  List<int> _unlockedIndices(int stage) => [
+    for (int i = 0; i < _tabData.length; i++)
+      if (stage >= _tabData[i].$3) i,
+  ];
+
+  void _onTabChange() {
+    if (!_tabs.indexIsChanging) {
+      setState(() => _index = _tabs.index);
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        final game = GameStateProvider.of(context);
+        final indices = _unlockedIndices(game.campaignStageIndex);
+        if (_index < indices.length) {
+          final label = _tabData[indices[_index]].$1;
+          game.markModeTabVisited(label);
+        }
+      });
+    }
+  }
+
+  void _rebuildTabs(int newCount) {
+    if (newCount == 0) return;
+    final prev = _index.clamp(0, newCount - 1);
+    _tabs.removeListener(_onTabChange);
+    _tabs.dispose();
+    _tabs = TabController(length: newCount, vsync: this)
+      ..addListener(_onTabChange)
+      ..index = prev;
+    _visibleCount = newCount;
+  }
 
   @override
   void initState() {
     super.initState();
-    _tabs.addListener(() {
-      if (!_tabs.indexIsChanging) {
-        setState(() {
-          _index = _tabs.index;
-          _loaded.add(_index);
-        });
-      }
-    });
+    _tabs = TabController(length: 1, vsync: this)
+      ..addListener(_onTabChange);
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final game = GameStateProvider.of(context);
+    final indices = _unlockedIndices(game.campaignStageIndex);
+    final newCount = indices.isEmpty ? 1 : indices.length;
+    if (newCount != _visibleCount) {
+      _rebuildTabs(newCount);
+    }
   }
 
   @override
   void dispose() {
+    _tabs.removeListener(_onTabChange);
     _tabs.dispose();
     super.dispose();
   }
 
   Widget _screenFor(int i) => switch (i) {
-        0  => const CampaignScreen(),
-        1  => const EndlessScreen(),
-        2  => const DailyScreen(),
-        3  => const PvpScreen(),
-        4  => const DungeonScreen(),
-        5  => const GauntletScreen(),
-        6  => const BossRushScreen(),
-        7  => const WorldEventScreen(),
-        8  => const BountyBoardScreen(),
-        9  => const ExpeditionScreen(),
-        10 => const QuestScreen(),
-        11 => const BestiaryScreen(),
-        _  => const SizedBox.shrink(),
-      };
+    0  => const CampaignScreen(),
+    1  => const DailyScreen(),
+    2  => const QuestScreen(),
+    3  => const DungeonScreen(),
+    4  => const BountyBoardScreen(),
+    5  => const BossRushScreen(),
+    6  => const WorldEventScreen(),
+    7  => const EndlessScreen(),         // Tower Ascension
+    8  => const ExpeditionScreen(),
+    9  => const GauntletScreen(),
+    10 => const PvpScreen(),
+    11 => const BestiaryScreen(),
+    _  => const SizedBox.shrink(),
+  };
 
   @override
   Widget build(BuildContext context) {
+    final game    = GameStateProvider.of(context);
+    final cleared = game.campaignStageIndex;
+    final indices = _unlockedIndices(cleared);
+
+    // Mark current all-data index as loaded.
+    final allIdx = indices[_index.clamp(0, indices.length - 1)];
+    _loadedAll.add(allIdx);
+
     return Scaffold(
       backgroundColor: AppTheme.darkBg,
       body: Column(
         children: [
-          // Scrollable mode selector
+          // ── Tab bar (only unlocked modes shown) ───────────────────────────
           Container(
-            color: AppTheme.cardBg,
-            child: TabBar(
+            decoration: const BoxDecoration(
+              color: Color(0xFF1C1916),
+              border: Border(
+                bottom: BorderSide(color: Color(0xFF3a3020), width: 1),
+              ),
+            ),
+            child: ScrollConfiguration(
+              behavior: ScrollConfiguration.of(context).copyWith(
+                dragDevices: {
+                  ...ScrollConfiguration.of(context).dragDevices,
+                  PointerDeviceKind.mouse,
+                  PointerDeviceKind.touch,
+                },
+              ),
+              child: TabBar(
               controller: _tabs,
               isScrollable: true,
               tabAlignment: TabAlignment.start,
-              labelStyle: GoogleFonts.pixelifySans(
-                  fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 1),
-              unselectedLabelStyle:
-                  GoogleFonts.pixelifySans(fontSize: 10, letterSpacing: 1),
-              labelColor: AppTheme.accentGold,
-              unselectedLabelColor: AppTheme.textMuted,
-              indicatorColor: AppTheme.accentGold,
-              indicatorWeight: 2,
-              tabs: _labels.map((l) => Tab(text: l)).toList(),
+              labelPadding: const EdgeInsets.symmetric(horizontal: 14),
+              indicator: const UnderlineTabIndicator(
+                borderSide: BorderSide(color: AppTheme.accentGold, width: 2.5),
+                insets: EdgeInsets.symmetric(horizontal: 8),
+              ),
+              dividerColor: Colors.transparent,
+              tabs: List.generate(indices.length, (vi) {
+                final i = indices[vi];
+                final (label, emoji, _) = _tabData[i];
+                final isActive = _index == vi;
+                final isNew = !game.visitedModeTabs.contains(label);
+                final hasClaimable = switch (label) {
+                  'DAILY'      => game.hasClaimableDaily,
+                  'EXPEDITION' => game.activeExpeditions.any((e) => e.isComplete),
+                  'BOUNTIES'   => false,
+                  'QUESTS'     => game.questsClaimable > 0 || game.adventureQuestsClaimable > 0,
+                  _            => false,
+                };
+                return Tab(
+                  height: 52,
+                  child: Stack(
+                    clipBehavior: Clip.none,
+                    children: [
+                      Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(emoji,
+                              style: TextStyle(fontSize: isActive ? 17 : 14)),
+                          const SizedBox(height: 3),
+                          Text(label,
+                              style: GoogleFonts.pixelifySans(
+                                fontSize: 9,
+                                fontWeight: isActive
+                                    ? FontWeight.bold
+                                    : FontWeight.normal,
+                                letterSpacing: 1,
+                                color: isActive
+                                    ? AppTheme.accentGold
+                                    : AppTheme.textMuted,
+                              )),
+                        ],
+                      ),
+                      if (isNew)
+                        Positioned(
+                          top: -2,
+                          right: -8,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 1),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFee3333),
+                              borderRadius: BorderRadius.circular(3),
+                            ),
+                            child: const Text(
+                              'NEW',
+                              style: TextStyle(
+                                fontSize: 6,
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                                letterSpacing: 0.5,
+                              ),
+                            ),
+                          ),
+                        ),
+                      if (hasClaimable && !isNew)
+                        Positioned(
+                          top: 0, left: -4,
+                          child: Container(
+                            width: 7, height: 7,
+                            decoration: const BoxDecoration(
+                              color: Color(0xFFFFCC44),
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                );
+              }),
             ),
-          ),
-          // Lazy-loaded mode content
+          )),
+
+          // ── Content ───────────────────────────────────────────────────────
           Expanded(
             child: IndexedStack(
-              index: _index,
-              children: List.generate(
-                _labels.length,
-                (i) => _loaded.contains(i)
+              index: _index.clamp(0, indices.length - 1),
+              children: List.generate(indices.length, (vi) {
+                final i = indices[vi];
+                return _loadedAll.contains(i)
                     ? _screenFor(i)
-                    : const SizedBox.shrink(),
-              ),
+                    : const SizedBox.shrink();
+              }),
             ),
           ),
         ],
@@ -125,3 +256,4 @@ class _ModesScreenState extends State<ModesScreen>
     );
   }
 }
+

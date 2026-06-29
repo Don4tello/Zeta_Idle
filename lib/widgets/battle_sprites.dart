@@ -1,5 +1,6 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
+import '../models/hero_model.dart' show HeroGender;
 import '../models/zone_affix.dart';
 
 // ─────────────────────────────────────────────────────────────
@@ -11,6 +12,7 @@ class BattleSprite extends StatefulWidget {
     super.key,
     required this.spriteId,
     this.facingLeft = false,
+    this.gender,
     this.auraColor,
     this.auraIntensity = 1.0,
     this.colorFilter,
@@ -19,10 +21,10 @@ class BattleSprite extends StatefulWidget {
 
   final String spriteId;
   final bool facingLeft;
+  final HeroGender? gender;
   final Color? auraColor;
   final double auraIntensity;
   final ColorFilter? colorFilter;
-  /// Active buff/debuff glow colors — each adds a pulsing ring around the sprite.
   final List<Color> buffGlows;
 
   /// Returns the aura color for the first matching affix element, or null.
@@ -104,27 +106,12 @@ class BattleSpriteState extends State<BattleSprite>
         final idleY = sin(_idle.value * pi) * 3.0;
         final atkX =
             sin(_attack.value * pi) * (widget.facingLeft ? 14.0 : -14.0);
-        final hitBright = sin(_hit.value * pi);
-
         final size = _sizeFor(widget.spriteId);
         Widget sprite = CustomPaint(
           size: size,
-          painter: _painterFor(widget.spriteId, widget.facingLeft, _attack.value),
+          painter: _painterFor(widget.spriteId, widget.facingLeft, _attack.value, widget.gender),
         );
 
-        if (hitBright > 0.01) {
-          sprite = Stack(children: [
-            sprite,
-            SizedBox.fromSize(
-              size: size,
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(hitBright * 0.6),
-                ),
-              ),
-            ),
-          ]);
-        }
 
         // Palette skin — applied to pixels only, before the aura glow
         if (widget.colorFilter != null) {
@@ -220,32 +207,33 @@ class BattleSpriteState extends State<BattleSprite>
     }
   }
 
-  static CustomPainter _painterFor(String id, bool facingLeft, double t) {
+  static CustomPainter _painterFor(String id, bool facingLeft, double t, HeroGender? gender) {
+    final g = gender ?? HeroGender.male;
     switch (id) {
       case 'hero':
         return _HeroPainter(facingLeft);
       case 'hero_barbarian':
-        return _BarbarianHeroPainter(facingLeft);
+        return _BarbarianHeroPainter(facingLeft, 0.0, g);
       case 'hero_bard':
-        return _BardHeroPainter(facingLeft);
+        return _BardHeroPainter(facingLeft, 0.0, g);
       case 'hero_cleric':
-        return _ClericHeroPainter(facingLeft);
+        return _ClericHeroPainter(facingLeft, 0.0, g);
       case 'hero_druid':
-        return _DruidHeroPainter(facingLeft);
+        return _DruidHeroPainter(facingLeft, 0.0, g);
       case 'hero_fighter':
-        return _FighterHeroPainter(facingLeft);
+        return _FighterHeroPainter(facingLeft, 0.0, g);
       case 'hero_monk':
-        return _MonkHeroPainter(facingLeft);
+        return _MonkHeroPainter(facingLeft, 0.0, g);
       case 'hero_ranger':
-        return _RangerHeroPainter(facingLeft);
+        return _RangerHeroPainter(facingLeft, 0.0, g);
       case 'hero_rogue':
-        return _RogueHeroPainter(facingLeft);
+        return _RogueHeroPainter(facingLeft, 0.0, g);
       case 'hero_sorcerer':
-        return _SorcererHeroPainter(facingLeft);
+        return _SorcererHeroPainter(facingLeft, 0.0, g);
       case 'hero_warlock':
-        return _WarlockHeroPainter(facingLeft);
+        return _WarlockHeroPainter(facingLeft, 0.0, g);
       case 'hero_wizard':
-        return _WizardHeroPainter(facingLeft);
+        return _WizardHeroPainter(facingLeft, 0.0, g);
       case 'crypt_skeleton':
         return _SkeletonPainter(facingLeft);
       case 'shade_warrior':
@@ -299,6 +287,134 @@ class BattleSpriteState extends State<BattleSprite>
       case 'minotaur':        return _MinotaurPainter(facingLeft, t);
       case 'hydra':           return _HydraPainter(facingLeft, t);
       case 'phoenix':         return _PhoenixPainter(facingLeft, t);
+
+      // ── BOSSES (every 5th stage) ──────────────────────────────────────────
+      case 'goblin_warchief':  return _OrcPainter(facingLeft, t);
+      case 'necromancer_vael': return _LichEnemyPainter(facingLeft, t);
+      case 'pharaoh_kethran':  return _MummyPainter(facingLeft, t);
+      case 'the_tyrant_eye':   return _EyeballWatcherPainter(facingLeft, t);
+      case 'lich_emperor':     return _LichEnemyPainter(facingLeft, t);
+      case 'prism_lord':       return _GargoylePainter(facingLeft, t);
+      case 'shadow_king':      return _MindFlayerPainter(facingLeft, t);
+      case 'glacier_wyrm':     return _WyvernPainter(facingLeft, t);
+      case 'king_of_storms':   return _PhoenixPainter(facingLeft, t);
+      case 'leviathan':        return _HydraPainter(facingLeft, t);
+      case 'the_dreaming_god': return _MindFlayerPainter(facingLeft, t);
+      case 'prime_emperor':    return _GolemPainter(facingLeft, t);
+      case 'god_of_rot':       return _ChimeraPainter(facingLeft, t);
+      case 'the_void_god':     return _MindFlayerPainter(facingLeft, t);
+      case 'null_sovereign':   return _LichEnemyPainter(facingLeft, t);
+      case 'the_first_prisoner': return _MinotaurPainter(facingLeft, t);
+      case 'gate_titan':       return _GolemPainter(facingLeft, t);
+      case 'god_eater':        return _HydraPainter(facingLeft, t);
+      case 'world_ender':      return _PhoenixPainter(facingLeft, t);
+      case 'omega_absolute':   return _ChimeraPainter(facingLeft, t);
+
+      // ── Crystal Sanctum (25-29) ───────────────────────────────────────────
+      case 'crystal_shard':    return _PixiePainter(facingLeft, t);
+      case 'prism_wraith':     return _BansheePainter(facingLeft, t);
+      case 'gem_serpent':      return _BasiliskPainter(facingLeft, t);
+      case 'crystal_guardian': return _GolemPainter(facingLeft, t);
+      case 'arcane_colossus':  return _MinotaurPainter(facingLeft, t);
+
+      // ── Shadow Realm (30-34) ──────────────────────────────────────────────
+      case 'shadow_stalker':   return _CultistPainter(facingLeft, t);
+      case 'shade_assassin':   return _GoblinPainter(facingLeft, t);
+      case 'umbral_knight':    return _OrcPainter(facingLeft, t);
+      case 'dark_phantom':     return _GhoulPainter(facingLeft, t);
+      case 'shade_sovereign':  return _LichEnemyPainter(facingLeft, t);
+
+      // ── Frozen Wastes (35-39) ─────────────────────────────────────────────
+      case 'frost_sprite':     return _PixiePainter(facingLeft, t);
+      case 'ice_wraith':       return _BansheePainter(facingLeft, t);
+      case 'glacial_troll':    return _OrcPainter(facingLeft, t);
+      case 'winter_wolf':      return _BasiliskPainter(facingLeft, t);
+      case 'frost_dragon':     return _WyvernPainter(facingLeft, t);
+
+      // ── Storm Heights (40-44) ─────────────────────────────────────────────
+      case 'storm_hawk':         return _HarpyPainter(facingLeft, t);
+      case 'thunder_elemental':  return _EyeballWatcherPainter(facingLeft, t);
+      case 'lightning_drake':    return _WyvernPainter(facingLeft, t);
+      case 'storm_giant':        return _MinotaurPainter(facingLeft, t);
+      case 'storm_titan':        return _GolemPainter(facingLeft, t);
+
+      // ── Abyssal Ocean (45-49) ─────────────────────────────────────────────
+      case 'deep_lurker':    return _GhoulPainter(facingLeft, t);
+      case 'tide_wraith':    return _BansheePainter(facingLeft, t);
+      case 'abyssal_shark':  return _BasiliskPainter(facingLeft, t);
+      case 'sea_colossus':   return _HydraPainter(facingLeft, t);
+      case 'krakentide':     return _ChimeraPainter(facingLeft, t);
+
+      // ── Twilight Labyrinth (50-54) ────────────────────────────────────────
+      case 'mirror_shade':      return _CultistPainter(facingLeft, t);
+      case 'echo_phantom':      return _BansheePainter(facingLeft, t);
+      case 'dream_stalker':     return _MindFlayerPainter(facingLeft, t);
+      case 'nightmare_weaver':  return _SuccubusPainter(facingLeft, t);
+      case 'labyrinth_warden':  return _GargoylePainter(facingLeft, t);
+
+      // ── Forgotten Empire (55-59) ──────────────────────────────────────────
+      case 'archive_scribe':     return _CultistPainter(facingLeft, t);
+      case 'assembly_drone':     return _GolemPainter(facingLeft, t);
+      case 'vault_guardian':     return _GargoylePainter(facingLeft, t);
+      case 'protocol_enforcer':  return _HobgoblinPainter(facingLeft, t);
+      case 'eternal_sentinel':   return _LichEnemyPainter(facingLeft, t);
+
+      // ── Plaguelands (60-64) ───────────────────────────────────────────────
+      case 'plague_rat':          return _GoblinPainter(facingLeft, t);
+      case 'infected_soldier':    return _HobgoblinPainter(facingLeft, t);
+      case 'rot_priest':          return _CultistPainter(facingLeft, t);
+      case 'corruption_beast':    return _BasiliskPainter(facingLeft, t);
+      case 'plague_mother':       return _ChimeraPainter(facingLeft, t);
+
+      // ── Celestial Ruins (65-69) ───────────────────────────────────────────
+      case 'broken_seraph':    return _HarpyPainter(facingLeft, t);
+      case 'divine_wraith':    return _BansheePainter(facingLeft, t);
+      case 'fallen_cherub':    return _PixiePainter(facingLeft, t);
+      case 'halo_specter':     return _EyeballWatcherPainter(facingLeft, t);
+      case 'fallen_archangel': return _PhoenixPainter(facingLeft, t);
+
+      // ── Dark Matter (70-74) ───────────────────────────────────────────────
+      case 'null_sprite':           return _ImpPainter(facingLeft, t);
+      case 'void_crawler':          return _GhoulPainter(facingLeft, t);
+      case 'antimatter_construct':  return _GolemPainter(facingLeft, t);
+      case 'entropy_fiend':         return _MindFlayerPainter(facingLeft, t);
+      case 'null_emperor':          return _LichEnemyPainter(facingLeft, t);
+
+      // ── Eternal Prison (75-79) ────────────────────────────────────────────
+      case 'shackle_beast':     return _BasiliskPainter(facingLeft, t);
+      case 'omega_warden':      return _OrcPainter(facingLeft, t);
+      case 'containment_golem': return _GolemPainter(facingLeft, t);
+      case 'cell_breaker':      return _MinotaurPainter(facingLeft, t);
+      case 'the_unbound':       return _ChimeraPainter(facingLeft, t);
+
+      // ── Abyss Gate (80-84) ────────────────────────────────────────────────
+      case 'gate_crawler':       return _GhoulPainter(facingLeft, t);
+      case 'sentinel_wraith':    return _BansheePainter(facingLeft, t);
+      case 'watcher_construct':  return _EyeballWatcherPainter(facingLeft, t);
+      case 'siege_engine':       return _GolemPainter(facingLeft, t);
+      case 'gate_colossus':      return _MinotaurPainter(facingLeft, t);
+
+      // ── Shattered Realm (85-89) ───────────────────────────────────────────
+      case 'carrion_crawler':         return _GhoulPainter(facingLeft, t);
+      case 'god_shard_elemental':     return _PhoenixPainter(facingLeft, t);
+      case 'necrotic_abomination':    return _ChimeraPainter(facingLeft, t);
+      case 'scar_feeder':             return _HydraPainter(facingLeft, t);
+      case 'the_devourer':            return _MindFlayerPainter(facingLeft, t);
+
+      // ── Final Frontier (90-94) ────────────────────────────────────────────
+      case 'boundary_wraith':    return _BansheePainter(facingLeft, t);
+      case 'no_return_specter':  return _GhoulPainter(facingLeft, t);
+      case 'void_membrane':      return _EyeballWatcherPainter(facingLeft, t);
+      case 'last_light_seraph':  return _HarpyPainter(facingLeft, t);
+      case 'frontier_guardian':  return _LichEnemyPainter(facingLeft, t);
+
+      // ── Omega Throne (95-99) ──────────────────────────────────────────────
+      case 'omega_herald':    return _CultistPainter(facingLeft, t);
+      case 'memory_shade':    return _BansheePainter(facingLeft, t);
+      case 'dark_hour_titan': return _MinotaurPainter(facingLeft, t);
+      case 'throne_sentinel': return _GargoylePainter(facingLeft, t);
+      case 'the_omega':       return _AncientLichPainter(facingLeft);
+
       default:
         return _AncientLichPainter(facingLeft);
     }
@@ -306,13 +422,58 @@ class BattleSpriteState extends State<BattleSprite>
 }
 
 // ─────────────────────────────────────────────────────────────
+// StaticEnemySprite — zero-animation snapshot for map nodes.
+// Scales the sprite to fill a square of [size] px using BoxFit.contain.
+// ─────────────────────────────────────────────────────────────
+
+class StaticEnemySprite extends StatelessWidget {
+  const StaticEnemySprite({super.key, required this.spriteId, required this.size});
+  final String spriteId;
+  final double size;
+
+  @override
+  Widget build(BuildContext context) => CustomPaint(
+        size: Size(size, size),
+        painter: _StaticEnemyPainter(spriteId),
+        isComplex: true,
+        willChange: false,
+      );
+}
+
+class _StaticEnemyPainter extends CustomPainter {
+  const _StaticEnemyPainter(this.spriteId);
+  final String spriteId;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final native = BattleSpriteState._sizeFor(spriteId);
+    final scale  = min(size.width / native.width, size.height / native.height);
+    final dx     = (size.width  - native.width  * scale) / 2;
+    final dy     = (size.height - native.height * scale) / 2;
+    canvas.save();
+    canvas.translate(dx, dy);
+    canvas.scale(scale);
+    BattleSpriteState._painterFor(spriteId, false, 0.0, null).paint(canvas, native);
+    canvas.restore();
+  }
+
+  @override
+  bool shouldRepaint(covariant _StaticEnemyPainter old) =>
+      old.spriteId != spriteId;
+}
+
+// ─────────────────────────────────────────────────────────────
 // Base painter — handles horizontal flip for enemies
 // ─────────────────────────────────────────────────────────────
 
 abstract class _Painter extends CustomPainter {
-  const _Painter(this.facingLeft, [this.t = 0.0]);
+  const _Painter(this.facingLeft, [this.t = 0.0, this.gender = HeroGender.male]);
   final bool facingLeft;
   final double t; // attack progress 0.0 → 1.0
+  final HeroGender gender;
+
+  bool get isFemale    => gender == HeroGender.female;
+  bool get isNonBinary => gender == HeroGender.nonBinary;
 
   static const double s = 5.0; // grid px size
 
@@ -3556,7 +3717,7 @@ class _PhoenixPainter extends _Painter {
 // BARBARIAN HERO  (16 × 24 grid → 80 × 120 canvas)
 // ─────────────────────────────────────────────────────────────
 class _BarbarianHeroPainter extends _Painter {
-  const _BarbarianHeroPainter(super.facingLeft, [super.t = 0.0]);
+  const _BarbarianHeroPainter(super.facingLeft, [super.t = 0.0, super.gender = HeroGender.male]);
   @override
   void draw(Canvas c, Size sz) {
     const SK = 0xFFc8784c; // skin
@@ -3575,12 +3736,21 @@ class _BarbarianHeroPainter extends _Painter {
     b(c, 3, 0, 1, 1, HD); b(c, 12, 0, 1, 1, HD);
     // Skull cap (leather)
     b(c, 3, 1, 10, 3, LE); b(c, 3, 1, 10, 1, LL);
-    b(c, 4, 4, 8, 1, LE); // lower band
+    b(c, 4, 4, 8, 1, LE);
     // Face
-    b(c, 4, 4, 8, 5, SK); b(c, 5, 4, 6, 1, SL); // forehead
-    b(c, 5, 5, 1, 1, K); b(c, 10, 5, 1, 1, K);  // eyes
-    b(c, 5, 5, 1, 1, GR);                         // war paint streak
-    b(c, 5, 8, 6, 1, FU);                          // jaw stubble
+    b(c, 4, 4, 8, 5, SK); b(c, 5, 4, 6, 1, SL);
+    b(c, 5, 5, 1, 1, K); b(c, 10, 5, 1, 1, K);
+    if (isFemale) {
+      b(c, 3, 4, 1, 5, 0xFF8a3010); // long braid left
+      b(c, 12, 4, 1, 5, 0xFF8a3010); // long braid right
+      b(c, 5, 5, 1, 1, GR); // war paint
+    } else if (isNonBinary) {
+      b(c, 3, 3, 1, 4, 0xFF8a3010); // side shave + tuft
+      b(c, 5, 5, 1, 1, GR);
+    } else {
+      b(c, 5, 5, 1, 1, GR); // war paint
+      b(c, 5, 8, 6, 1, FU); // jaw stubble
+    }
     // Neck
     b(c, 6, 9, 4, 1, SK);
     // Wide bare shoulders
@@ -3608,7 +3778,7 @@ class _BarbarianHeroPainter extends _Painter {
 // BARD HERO  (16 × 24)
 // ─────────────────────────────────────────────────────────────
 class _BardHeroPainter extends _Painter {
-  const _BardHeroPainter(super.facingLeft, [super.t = 0.0]);
+  const _BardHeroPainter(super.facingLeft, [super.t = 0.0, super.gender = HeroGender.male]);
   @override
   void draw(Canvas c, Size sz) {
     const HT = 0xFF3c1870; // hat dark
@@ -3629,12 +3799,24 @@ class _BardHeroPainter extends _Painter {
     b(c, 1, 5, 14, 1, HL);
     // Feather (right side)
     b(c, 10, 0, 2, 6, FT); b(c, 11, 0, 1, 4, 0xFFf0e050);
-    // Hair sides (flowing)
-    b(c, 3, 6, 2, 5, BR); b(c, 11, 6, 2, 5, BR);
-    // Face
-    b(c, 5, 6, 6, 4, SK);
-    b(c, 6, 7, 1, 1, 0xFF301818); b(c, 9, 7, 1, 1, 0xFF301818);
-    b(c, 7, 9, 2, 1, 0xFFc05050); // smile
+    // Hair + face
+    if (isFemale) {
+      b(c, 3, 6, 2, 7, BR); b(c, 11, 6, 2, 7, BR); // longer flowing hair
+      b(c, 5, 6, 6, 4, SK);
+      b(c, 6, 7, 1, 1, 0xFF301818); b(c, 9, 7, 1, 1, 0xFF301818);
+      b(c, 7, 9, 2, 1, 0xFFc05050);
+      b(c, 10, 7, 1, 1, 0xFFd4af37); // earring
+    } else if (isNonBinary) {
+      b(c, 3, 6, 2, 5, BR); b(c, 11, 6, 1, 5, BR); // asymmetric
+      b(c, 5, 6, 6, 4, SK);
+      b(c, 6, 7, 1, 1, 0xFF301818); b(c, 9, 7, 1, 1, 0xFF301818);
+      b(c, 7, 9, 2, 1, 0xFFc05050);
+    } else {
+      b(c, 3, 6, 2, 5, BR); b(c, 11, 6, 2, 5, BR);
+      b(c, 5, 6, 6, 4, SK);
+      b(c, 6, 7, 1, 1, 0xFF301818); b(c, 9, 7, 1, 1, 0xFF301818);
+      b(c, 7, 9, 2, 1, 0xFFc05050);
+    }
     // Neck
     b(c, 7, 10, 2, 1, SK);
     // Shoulders (slim)
@@ -3663,7 +3845,7 @@ class _BardHeroPainter extends _Painter {
 // CLERIC HERO  (16 × 24)
 // ─────────────────────────────────────────────────────────────
 class _ClericHeroPainter extends _Painter {
-  const _ClericHeroPainter(super.facingLeft, [super.t = 0.0]);
+  const _ClericHeroPainter(super.facingLeft, [super.t = 0.0, super.gender = HeroGender.male]);
   @override
   void draw(Canvas c, Size sz) {
     const WH = 0xFFd4d4c4; // robe off-white
@@ -3680,10 +3862,15 @@ class _ClericHeroPainter extends _Painter {
     // Bowl helm
     b(c, 5, 0, 6, 5, HM); b(c, 5, 0, 6, 1, HL);
     b(c, 4, 1, 1, 4, 0xFF808898); b(c, 11, 1, 1, 4, 0xFF808898);
-    b(c, 4, 4, 8, 1, 0xFF808898); // chin band
-    // Face (open)
+    b(c, 4, 4, 8, 1, 0xFF808898);
+    // Face
     b(c, 5, 2, 6, 3, SK);
     b(c, 6, 3, 1, 1, K); b(c, 9, 3, 1, 1, K);
+    if (isFemale) {
+      b(c, 4, 4, 1, 4, 0xFFb89060); b(c, 11, 4, 1, 4, 0xFFb89060); // hair under helm
+    } else if (isNonBinary) {
+      b(c, 4, 4, 1, 3, 0xFFb89060); // hair peeking one side
+    }
     // Neck
     b(c, 7, 5, 2, 1, SK);
     // Pauldrons
@@ -3715,7 +3902,7 @@ class _ClericHeroPainter extends _Painter {
 // DRUID HERO  (16 × 24)
 // ─────────────────────────────────────────────────────────────
 class _DruidHeroPainter extends _Painter {
-  const _DruidHeroPainter(super.facingLeft, [super.t = 0.0]);
+  const _DruidHeroPainter(super.facingLeft, [super.t = 0.0, super.gender = HeroGender.male]);
   @override
   void draw(Canvas c, Size sz) {
     const GR = 0xFF284a20; // dark green robe
@@ -3736,17 +3923,30 @@ class _DruidHeroPainter extends _Painter {
     b(c, 3, 0, 1, 1, AL); b(c, 12, 0, 1, 1, AL);
     // Leaf wreath / crown
     b(c, 4, 2, 8, 2, LF); b(c, 5, 2, 6, 1, GG);
-    // Long grey hair sides
-    b(c, 4, 4, 2, 5, WH); b(c, 10, 4, 2, 5, WH);
-    b(c, 3, 5, 2, 4, WH); b(c, 11, 5, 2, 4, WH);
-    // Face (weathered, wise)
-    b(c, 5, 4, 6, 5, SK);
-    b(c, 6, 5, 1, 1, 0xFF2a1808); b(c, 9, 5, 1, 1, 0xFF2a1808);
-    b(c, 6, 8, 4, 1, 0xFFb08050); // beard top
-    // Long beard
-    b(c, 5, 9, 6, 4, WH); b(c, 6, 10, 4, 3, 0xFFe0d8c0);
-    // Neck
-    b(c, 7, 9, 2, 1, SK);
+    // Hair + face
+    if (isFemale) {
+      b(c, 4, 4, 2, 7, WH); b(c, 10, 4, 2, 7, WH); // long flowing hair
+      b(c, 3, 5, 2, 6, WH); b(c, 11, 5, 2, 6, WH);
+      b(c, 5, 4, 6, 5, SK);
+      b(c, 6, 5, 1, 1, 0xFF2a1808); b(c, 9, 5, 1, 1, 0xFF2a1808);
+      b(c, 5, 8, 6, 1, LF); // vine circlet on chin
+      b(c, 7, 9, 2, 1, SK);
+    } else if (isNonBinary) {
+      b(c, 4, 4, 2, 5, WH); b(c, 10, 4, 2, 5, WH);
+      b(c, 3, 5, 2, 4, WH); b(c, 11, 5, 2, 4, WH);
+      b(c, 5, 4, 6, 5, SK);
+      b(c, 6, 5, 1, 1, 0xFF2a1808); b(c, 9, 5, 1, 1, 0xFF2a1808);
+      b(c, 6, 8, 4, 1, 0xFFb08050); // short beard
+      b(c, 7, 9, 2, 1, SK);
+    } else {
+      b(c, 4, 4, 2, 5, WH); b(c, 10, 4, 2, 5, WH);
+      b(c, 3, 5, 2, 4, WH); b(c, 11, 5, 2, 4, WH);
+      b(c, 5, 4, 6, 5, SK);
+      b(c, 6, 5, 1, 1, 0xFF2a1808); b(c, 9, 5, 1, 1, 0xFF2a1808);
+      b(c, 6, 8, 4, 1, 0xFFb08050);
+      b(c, 5, 9, 6, 4, WH); b(c, 6, 10, 4, 3, 0xFFe0d8c0); // long beard
+      b(c, 7, 9, 2, 1, SK);
+    }
     // Shoulders (robed)
     b(c, 3, 9, 3, 3, GL); b(c, 10, 9, 3, 3, GL);
     b(c, 3, 9, 3, 1, GG); b(c, 10, 9, 3, 1, GG);
@@ -3773,7 +3973,7 @@ class _DruidHeroPainter extends _Painter {
 // FIGHTER HERO  (16 × 24)
 // ─────────────────────────────────────────────────────────────
 class _FighterHeroPainter extends _Painter {
-  const _FighterHeroPainter(super.facingLeft, [super.t = 0.0]);
+  const _FighterHeroPainter(super.facingLeft, [super.t = 0.0, super.gender = HeroGender.male]);
   @override
   void draw(Canvas c, Size sz) {
     const IR = 0xFF686870; // iron grey
@@ -3787,9 +3987,16 @@ class _FighterHeroPainter extends _Painter {
     // Great helm (full face cover)
     b(c, 4, 0, 8, 6, IR); b(c, 4, 0, 8, 1, IL);
     b(c, 3, 1, 1, 5, ID); b(c, 12, 1, 1, 5, ID);
-    b(c, 4, 2, 8, 2, ID); // visor zone
-    b(c, 5, 2, 6, 1, 0xFF101020); // visor slit
-    b(c, 4, 4, 8, 1, ID); b(c, 4, 5, 8, 1, GD); // chin + gold trim
+    b(c, 4, 2, 8, 2, ID);
+    b(c, 5, 2, 6, 1, 0xFF101020);
+    b(c, 4, 4, 8, 1, ID); b(c, 4, 5, 8, 1, GD);
+    if (isFemale) {
+      b(c, 7, 0, 2, 1, 0xFFcc3030); // red plume crest
+      b(c, 3, 5, 1, 3, 0xFFb89060); // hair peeking from sides
+      b(c, 12, 5, 1, 3, 0xFFb89060);
+    } else if (isNonBinary) {
+      b(c, 7, 0, 2, 1, 0xFF4080cc); // blue plume crest
+    }
     // Wide pauldrons
     b(c, 0, 5, 5, 4, IR); b(c, 11, 5, 5, 4, IR);
     b(c, 0, 5, 5, 1, IL); b(c, 11, 5, 5, 1, IL);
@@ -3823,7 +4030,7 @@ class _FighterHeroPainter extends _Painter {
 // MONK HERO  (16 × 24)
 // ─────────────────────────────────────────────────────────────
 class _MonkHeroPainter extends _Painter {
-  const _MonkHeroPainter(super.facingLeft, [super.t = 0.0]);
+  const _MonkHeroPainter(super.facingLeft, [super.t = 0.0, super.gender = HeroGender.male]);
   @override
   void draw(Canvas c, Size sz) {
     const SA = 0xFFc89030; // saffron/orange
@@ -3835,14 +4042,30 @@ class _MonkHeroPainter extends _Painter {
     const WT = 0xFFf8f0e0; // wrap highlight
     const K  = 0xFF181010; // outline
 
-    // Shaved head
-    b(c, 5, 0, 6, 3, SK); b(c, 5, 0, 6, 1, SS);
-    b(c, 4, 1, 8, 4, SK);
-    // Face (focused)
-    b(c, 5, 4, 6, 4, SK); b(c, 5, 4, 6, 1, SS);
-    b(c, 6, 5, 1, 1, K);  b(c, 9, 5, 1, 1, K); // eyes (narrow)
-    b(c, 7, 7, 2, 1, 0xFF804030); // mouth
-    // Gi collar wrap (saffron ear wrap)
+    // Head + face
+    if (isFemale) {
+      b(c, 5, 0, 6, 3, SK); b(c, 5, 0, 6, 1, SS);
+      b(c, 4, 1, 8, 4, SK);
+      b(c, 4, 0, 2, 3, 0xFF201008); b(c, 10, 0, 2, 3, 0xFF201008); // short hair sides
+      b(c, 5, 0, 6, 1, 0xFF201008); // top hair
+      b(c, 5, 4, 6, 4, SK); b(c, 5, 4, 6, 1, SS);
+      b(c, 6, 5, 1, 1, K); b(c, 9, 5, 1, 1, K);
+      b(c, 7, 7, 2, 1, 0xFF804030);
+    } else if (isNonBinary) {
+      b(c, 5, 0, 6, 3, SK); b(c, 5, 0, 6, 1, SS);
+      b(c, 4, 1, 8, 4, SK);
+      b(c, 4, 0, 8, 1, SA); // saffron headband
+      b(c, 5, 4, 6, 4, SK); b(c, 5, 4, 6, 1, SS);
+      b(c, 6, 5, 1, 1, K); b(c, 9, 5, 1, 1, K);
+      b(c, 7, 7, 2, 1, 0xFF804030);
+    } else {
+      b(c, 5, 0, 6, 3, SK); b(c, 5, 0, 6, 1, SS);
+      b(c, 4, 1, 8, 4, SK);
+      b(c, 5, 4, 6, 4, SK); b(c, 5, 4, 6, 1, SS);
+      b(c, 6, 5, 1, 1, K); b(c, 9, 5, 1, 1, K);
+      b(c, 7, 7, 2, 1, 0xFF804030);
+    }
+    // Gi collar wrap
     b(c, 4, 2, 2, 5, SA); b(c, 10, 2, 2, 5, SA);
     // Neck
     b(c, 7, 8, 2, 1, SK);
@@ -3873,7 +4096,7 @@ class _MonkHeroPainter extends _Painter {
 // RANGER HERO  (16 × 24)
 // ─────────────────────────────────────────────────────────────
 class _RangerHeroPainter extends _Painter {
-  const _RangerHeroPainter(super.facingLeft, [super.t = 0.0]);
+  const _RangerHeroPainter(super.facingLeft, [super.t = 0.0, super.gender = HeroGender.male]);
   @override
   void draw(Canvas c, Size sz) {
     const HD = 0xFF1a3018; // hood dark
@@ -3887,13 +4110,18 @@ class _RangerHeroPainter extends _Painter {
     const QD = 0xFF3a2010; // quiver dark
     const AR = 0xFFb8a060; // arrow shaft
 
-    // Hood (wide at top, shadowed inside)
+    // Hood
     b(c, 3, 0, 10, 5, HD); b(c, 4, 0, 8, 1, HL);
-    b(c, 5, 1, 6, 2, 0xFF0a1808); // deep shadow inside hood
+    b(c, 5, 1, 6, 2, 0xFF0a1808);
     // Face in shadow
     b(c, 5, 3, 6, 3, SK);
     b(c, 6, 4, 1, 1, 0xFF201008); b(c, 9, 4, 1, 1, 0xFF201008);
-    b(c, 4, 2, 1, 4, HD); b(c, 11, 2, 1, 4, HD); // hood sides shadow
+    b(c, 4, 2, 1, 4, HD); b(c, 11, 2, 1, 4, HD);
+    if (isFemale) {
+      b(c, 3, 5, 2, 5, 0xFF5a3010); b(c, 11, 5, 2, 5, 0xFF5a3010); // long hair under hood
+    } else if (isNonBinary) {
+      b(c, 3, 5, 1, 4, 0xFF5a3010); // hair peeking one side
+    }
     // Hood over shoulders / cloak
     b(c, 2, 5, 12, 4, CL); b(c, 3, 5, 10, 3, CL2);
     b(c, 2, 5, 12, 1, HL);
@@ -3924,7 +4152,7 @@ class _RangerHeroPainter extends _Painter {
 // ROGUE HERO  (16 × 24)
 // ─────────────────────────────────────────────────────────────
 class _RogueHeroPainter extends _Painter {
-  const _RogueHeroPainter(super.facingLeft, [super.t = 0.0]);
+  const _RogueHeroPainter(super.facingLeft, [super.t = 0.0, super.gender = HeroGender.male]);
   @override
   void draw(Canvas c, Size sz) {
     const DK = 0xFF141420; // void dark
@@ -3939,11 +4167,16 @@ class _RogueHeroPainter extends _Painter {
     // Full cowl / hood
     b(c, 4, 0, 8, 6, DK); b(c, 5, 0, 6, 1, DM);
     b(c, 3, 1, 1, 5, DK); b(c, 12, 1, 1, 5, DK);
-    b(c, 5, 2, 6, 3, 0xFF08080f); // deep shadow inside cowl
-    // Glowing eyes in shadow
-    b(c, 6, 3, 1, 1, EY); b(c, 9, 3, 1, 1, EY);
-    // Face mask (just below eyes)
+    b(c, 5, 2, 6, 3, 0xFF08080f);
+    // Glowing eyes
+    final eyeColor = isFemale ? 0xFFe040d0 : isNonBinary ? 0xFFd0e040 : EY;
+    b(c, 6, 3, 1, 1, eyeColor); b(c, 9, 3, 1, 1, eyeColor);
+    // Face mask
     b(c, 5, 5, 6, 2, DM);
+    if (isFemale) {
+      b(c, 3, 5, 1, 4, 0xFF1a1428); // hair strands under cowl
+      b(c, 12, 5, 1, 4, 0xFF1a1428);
+    }
     // Neck
     b(c, 7, 7, 2, 1, SK);
     // Shoulders (sleek)
@@ -3980,7 +4213,7 @@ class _RogueHeroPainter extends _Painter {
 // SORCERER HERO  (16 × 24)
 // ─────────────────────────────────────────────────────────────
 class _SorcererHeroPainter extends _Painter {
-  const _SorcererHeroPainter(super.facingLeft, [super.t = 0.0]);
+  const _SorcererHeroPainter(super.facingLeft, [super.t = 0.0, super.gender = HeroGender.male]);
   @override
   void draw(Canvas c, Size sz) {
     const RB = 0xFF1c1880; // robe dark blue
@@ -3992,19 +4225,38 @@ class _SorcererHeroPainter extends _Painter {
     const EY = 0xFF40a0ff; // glowing eyes blue
     const OM = 0xFFa060ff; // orb purple
 
-    // Wild hair (sides + top)
-    b(c, 3, 0, 2, 6, HR); b(c, 11, 0, 2, 6, HR);
-    b(c, 4, 0, 8, 2, HR); b(c, 5, 0, 6, 1, 0xFFf0e0d0);
-    b(c, 4, 1, 2, 3, HR); b(c, 10, 1, 2, 3, HR);
-    // Gold circlet
-    b(c, 4, 3, 8, 1, GD);
-    // Face
-    b(c, 5, 3, 6, 5, SK); b(c, 5, 3, 6, 1, 0xFFf8e8c0);
-    b(c, 6, 4, 1, 1, EY); b(c, 9, 4, 1, 1, EY);
-    b(c, 7, 7, 2, 1, SK);
+    // Hair + face
+    if (isFemale) {
+      // Long flowing hair past shoulders
+      b(c, 3, 0, 2, 9, HR); b(c, 11, 0, 2, 9, HR);
+      b(c, 4, 0, 8, 2, HR); b(c, 5, 0, 6, 1, 0xFFf0e0d0);
+      b(c, 2, 3, 2, 6, HR); b(c, 12, 3, 2, 6, HR); // extra flowing sides
+      b(c, 4, 3, 8, 1, GD); // circlet
+      b(c, 5, 3, 6, 5, SK); b(c, 5, 3, 6, 1, 0xFFf8e8c0);
+      b(c, 6, 4, 1, 1, EY); b(c, 9, 4, 1, 1, EY);
+      b(c, 7, 6, 2, 1, 0xFFc08080); // lips
+    } else if (isNonBinary) {
+      // Asymmetric: short one side, swept the other
+      b(c, 3, 0, 2, 4, HR); b(c, 11, 0, 2, 7, HR);
+      b(c, 4, 0, 8, 2, HR); b(c, 5, 0, 6, 1, 0xFFf0e0d0);
+      b(c, 12, 3, 1, 4, HR); // long sweep right
+      b(c, 4, 3, 8, 1, GD);
+      b(c, 5, 3, 6, 5, SK); b(c, 5, 3, 6, 1, 0xFFf8e8c0);
+      b(c, 6, 4, 1, 1, EY); b(c, 9, 4, 1, 1, EY);
+      b(c, 7, 7, 2, 1, SK);
+    } else {
+      // Wild hair (default male)
+      b(c, 3, 0, 2, 6, HR); b(c, 11, 0, 2, 6, HR);
+      b(c, 4, 0, 8, 2, HR); b(c, 5, 0, 6, 1, 0xFFf0e0d0);
+      b(c, 4, 1, 2, 3, HR); b(c, 10, 1, 2, 3, HR);
+      b(c, 4, 3, 8, 1, GD);
+      b(c, 5, 3, 6, 5, SK); b(c, 5, 3, 6, 1, 0xFFf8e8c0);
+      b(c, 6, 4, 1, 1, EY); b(c, 9, 4, 1, 1, EY);
+      b(c, 7, 7, 2, 1, SK);
+    }
     // Neck + collar
     b(c, 7, 8, 2, 1, SK);
-    b(c, 5, 8, 6, 1, GD); // gold collar
+    b(c, 5, 8, 6, 1, GD);
     // Robe body
     b(c, 3, 9, 10, 10, RB); b(c, 4, 9, 8, 9, RL);
     b(c, 4, 9, 8, 1, GD); // top trim
@@ -4033,7 +4285,7 @@ class _SorcererHeroPainter extends _Painter {
 // WARLOCK HERO  (16 × 24)
 // ─────────────────────────────────────────────────────────────
 class _WarlockHeroPainter extends _Painter {
-  const _WarlockHeroPainter(super.facingLeft, [super.t = 0.0]);
+  const _WarlockHeroPainter(super.facingLeft, [super.t = 0.0, super.gender = HeroGender.male]);
   @override
   void draw(Canvas c, Size sz) {
     const VD = 0xFF0c0c18; // void black
@@ -4052,8 +4304,13 @@ class _WarlockHeroPainter extends _Painter {
     b(c, 3, 0, 1, 2, EG); b(c, 12, 0, 1, 2, EG); // horn tip glow
     // Visor zone
     b(c, 4, 2, 8, 3, VD);
-    b(c, 5, 3, 2, 1, EL); b(c, 9, 3, 2, 1, EL); // glowing eye slits
-    b(c, 6, 3, 1, 1, EG); b(c, 9, 3, 1, 1, EG);
+    final eyeGlow = isFemale ? 0xFFe020e0 : isNonBinary ? 0xFF20e0e0 : EL;
+    final eyeDark = isFemale ? 0xFF8010a0 : isNonBinary ? 0xFF10a0a0 : EG;
+    b(c, 5, 3, 2, 1, eyeGlow); b(c, 9, 3, 2, 1, eyeGlow);
+    b(c, 6, 3, 1, 1, eyeDark); b(c, 9, 3, 1, 1, eyeDark);
+    if (isFemale) {
+      b(c, 3, 5, 1, 4, 0xFF2a1020); b(c, 12, 5, 1, 4, 0xFF2a1020); // hair under helm
+    }
     // Neck guard
     b(c, 6, 5, 4, 2, DM);
     // Tattered robe body
@@ -4082,7 +4339,7 @@ class _WarlockHeroPainter extends _Painter {
 // WIZARD HERO  (16 × 24)
 // ─────────────────────────────────────────────────────────────
 class _WizardHeroPainter extends _Painter {
-  const _WizardHeroPainter(super.facingLeft, [super.t = 0.0]);
+  const _WizardHeroPainter(super.facingLeft, [super.t = 0.0, super.gender = HeroGender.male]);
   @override
   void draw(Canvas c, Size sz) {
     const HD = 0xFF1c2060; // hat dark blue
@@ -4104,15 +4361,30 @@ class _WizardHeroPainter extends _Painter {
     b(c, 1, 6, 14, 1, HB); b(c, 2, 6, 12, 1, HL); // brim
     // Stars on hat
     b(c, 6, 1, 1, 1, ST); b(c, 8, 3, 1, 1, ST); b(c, 5, 4, 1, 1, ST);
-    // Long grey-white hair (sides)
-    b(c, 4, 7, 2, 7, WB); b(c, 10, 7, 2, 7, WB);
-    b(c, 3, 8, 2, 5, WB); b(c, 11, 8, 2, 5, WB);
-    // Face (old, wise)
-    b(c, 5, 7, 6, 5, SK); b(c, 5, 7, 6, 1, 0xFFF8E8C0);
-    b(c, 6, 8, 1, 1, 0xFF201810); b(c, 9, 8, 1, 1, 0xFF201810);
-    // Long white beard
-    b(c, 5, 11, 6, 5, WB); b(c, 6, 12, 4, 4, 0xFFf0e8d8);
-    b(c, 7, 15, 2, 2, WB); // beard tip
+    // Hair + face
+    if (isFemale) {
+      // Long flowing white hair, no beard
+      b(c, 4, 7, 2, 9, WB); b(c, 10, 7, 2, 9, WB);
+      b(c, 3, 8, 2, 7, WB); b(c, 11, 8, 2, 7, WB);
+      b(c, 5, 7, 6, 5, SK); b(c, 5, 7, 6, 1, 0xFFF8E8C0);
+      b(c, 6, 8, 1, 1, 0xFF201810); b(c, 9, 8, 1, 1, 0xFF201810);
+      b(c, 7, 10, 2, 1, 0xFFc08080); // lips
+    } else if (isNonBinary) {
+      // Medium hair, short beard
+      b(c, 4, 7, 2, 6, WB); b(c, 10, 7, 2, 6, WB);
+      b(c, 3, 8, 2, 4, WB); b(c, 11, 8, 2, 4, WB);
+      b(c, 5, 7, 6, 5, SK); b(c, 5, 7, 6, 1, 0xFFF8E8C0);
+      b(c, 6, 8, 1, 1, 0xFF201810); b(c, 9, 8, 1, 1, 0xFF201810);
+      b(c, 5, 11, 6, 2, WB); b(c, 6, 12, 4, 1, 0xFFf0e8d8); // short beard
+    } else {
+      // Classic long-bearded wizard
+      b(c, 4, 7, 2, 7, WB); b(c, 10, 7, 2, 7, WB);
+      b(c, 3, 8, 2, 5, WB); b(c, 11, 8, 2, 5, WB);
+      b(c, 5, 7, 6, 5, SK); b(c, 5, 7, 6, 1, 0xFFF8E8C0);
+      b(c, 6, 8, 1, 1, 0xFF201810); b(c, 9, 8, 1, 1, 0xFF201810);
+      b(c, 5, 11, 6, 5, WB); b(c, 6, 12, 4, 4, 0xFFf0e8d8);
+      b(c, 7, 15, 2, 2, WB);
+    }
     // Robe body
     b(c, 4, 12, 8, 11, RB); b(c, 5, 13, 6, 9, RL);
     b(c, 4, 12, 8, 1, ST); // collar gold trim

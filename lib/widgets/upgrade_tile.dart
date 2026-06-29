@@ -2,6 +2,7 @@
 import 'package:google_fonts/google_fonts.dart';
 import '../models/upgrade.dart';
 import '../theme/app_theme.dart';
+import '../utils/format_number.dart';
 
 class UpgradeTile extends StatefulWidget {
   const UpgradeTile({
@@ -194,7 +195,7 @@ class _UpgradeTileState extends State<UpgradeTile>
                                   ),
                                   const SizedBox(width: 5),
                                   Text(
-                                    '${widget.upgrade.cost}',
+                                    fmtNum(widget.upgrade.cost),
                                     style: GoogleFonts.pixelifySans(
                                       fontSize: 12,
                                       color: affordable

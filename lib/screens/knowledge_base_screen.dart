@@ -171,9 +171,9 @@ class _SystemsTab extends StatelessWidget {
       icon: '⚔',
       title: 'Combat',
       color: Color(0xFFff6644),
-      body: 'Attack rolls use a d20 + your ATK bonus vs the enemy\'s Armor Class. '
-          'A roll of 20 is always a critical hit (2× damage, 3× with Critical Fury). '
-          'Enemies roll the same way against your AC to land hits.',
+      body: 'Your critical damage is compared against the enemy\'s armor to determine hits. '
+          'Critical hits deal 2× damage (3× with Critical Fury). '
+          'Elemental damage types can exploit enemy weaknesses for bonus damage.',
     ),
     _SystemEntry(
       icon: '💥',

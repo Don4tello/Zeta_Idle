@@ -6,11 +6,63 @@ import '../services/game_state.dart';
 import '../theme/app_theme.dart';
 
 class EndlessUpgradeScreen extends StatelessWidget {
-  const EndlessUpgradeScreen({super.key});
+  const EndlessUpgradeScreen({super.key, this.embedded = false});
+
+  final bool embedded;
 
   @override
   Widget build(BuildContext context) {
     final game = GameStateProvider.of(context);
+
+    final body = ListView(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+      children: [
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+          margin: const EdgeInsets.only(bottom: 14),
+          decoration: BoxDecoration(
+            color: AppTheme.cardBg,
+            border: Border.all(
+                color: const Color(0xFFcc88ff).withValues(alpha: 0.3)),
+          ),
+          child: Row(
+            children: [
+              const Icon(Icons.info_outline,
+                  color: Color(0xFFcc88ff), size: 14),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  'Upgrades are permanent per character. '
+                  'Bonuses apply in all game modes.',
+                  style: GoogleFonts.pixelifySans(
+                    fontSize: 11,
+                    color: AppTheme.textMuted,
+                    height: 1.5,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        ...EndlessNode.values.asMap().entries.map((e) {
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 10),
+            child: _NodeCard(node: e.value, game: game)
+                .animate(delay: (e.key * 60).ms)
+                .fadeIn(duration: 300.ms)
+                .slideX(
+                    begin: 0.06,
+                    duration: 300.ms,
+                    curve: Curves.easeOut),
+          );
+        }),
+        const SizedBox(height: 8),
+        _SynergyPanel(game: game),
+      ],
+    );
+
+    if (embedded) return body;
+
     return Scaffold(
       backgroundColor: AppTheme.darkBg,
       appBar: AppBar(
@@ -18,16 +70,18 @@ class EndlessUpgradeScreen extends StatelessWidget {
         actions: [
           Padding(
             padding: const EdgeInsets.only(right: 16),
-            child: Row(
+            child: Tooltip(
+              message: AppTheme.resourceTooltips['echoes']!,
+              child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Icon(Icons.diamond_outlined,
-                    color: Color(0xFF80d0ff), size: 14),
+                const Text('🔊',
+                    style: TextStyle(fontSize: 14)),
                 const SizedBox(width: 5),
                 Text(
-                  _fmt(game.shards),
+                  AppTheme.fmtNumber(game.echoes),
                   style: GoogleFonts.pixelifySans(
-                    color: const Color(0xFF80d0ff),
+                    color: const Color(0xFFcc88ff),
                     fontSize: 15,
                     fontWeight: FontWeight.bold,
                     letterSpacing: 1,
@@ -35,9 +89,9 @@ class EndlessUpgradeScreen extends StatelessWidget {
                 ),
                 const SizedBox(width: 4),
                 Text(
-                  'SHARDS',
+                  'ECHOES',
                   style: GoogleFonts.pixelifySans(
-                    color: const Color(0xFF80d0ff).withValues(alpha: 0.6),
+                    color: const Color(0xFFcc88ff).withValues(alpha: 0.6),
                     fontSize: 10,
                     letterSpacing: 1,
                   ),
@@ -45,63 +99,13 @@ class EndlessUpgradeScreen extends StatelessWidget {
               ],
             ),
           ),
-        ],
-      ),
-      body: ListView(
-        padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
-        children: [
-          // Info banner
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-            margin: const EdgeInsets.only(bottom: 14),
-            decoration: BoxDecoration(
-              color: AppTheme.cardBg,
-              border: Border.all(
-                  color: const Color(0xFF80d0ff).withValues(alpha: 0.3)),
-            ),
-            child: Row(
-              children: [
-                const Icon(Icons.info_outline,
-                    color: Color(0xFF80d0ff), size: 14),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Text(
-                    'Upgrades are permanent per character. '
-                    'Bonuses apply in all game modes.',
-                    style: GoogleFonts.pixelifySans(
-                      fontSize: 11,
-                      color: AppTheme.textMuted,
-                      height: 1.5,
-                    ),
-                  ),
-                ),
-              ],
-            ),
           ),
-
-          // Node cards
-          ...EndlessNode.values.asMap().entries.map((e) {
-            return Padding(
-              padding: const EdgeInsets.only(bottom: 10),
-              child: _NodeCard(node: e.value, game: game)
-                  .animate(delay: (e.key * 60).ms)
-                  .fadeIn(duration: 300.ms)
-                  .slideX(
-                      begin: 0.06,
-                      duration: 300.ms,
-                      curve: Curves.easeOut),
-            );
-          }),
         ],
       ),
+      body: body,
     );
   }
 
-  static String _fmt(int n) {
-    if (n >= 1000000) return '${(n / 1000000).toStringAsFixed(1)}M';
-    if (n >= 1000) return '${(n / 1000).toStringAsFixed(1)}K';
-    return '$n';
-  }
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -155,7 +159,7 @@ class _NodeCardState extends State<_NodeCard> with SingleTickerProviderStateMixi
     final game      = widget.game;
     final level     = u.levelOf(node);
     final cost      = u.costFor(node);
-    final canAfford = game.shards >= cost;
+    final canAfford = game.echoes >= cost;
     final col       = node.color;
 
     _syncPulse(canAfford);
@@ -263,20 +267,21 @@ class _NodeCardState extends State<_NodeCard> with SingleTickerProviderStateMixi
                     // Shard cost
                     Row(
                       children: [
-                        Icon(
-                          Icons.diamond_outlined,
-                          size: 12,
-                          color: canAfford
-                              ? const Color(0xFF80d0ff)
-                              : AppTheme.textMuted,
+                        Text('🔊',
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: canAfford
+                                ? const Color(0xFFcc88ff)
+                                : AppTheme.textMuted,
+                          ),
                         ),
                         const SizedBox(width: 5),
                         Text(
-                          EndlessUpgradeScreen._fmt(cost),
+                          AppTheme.fmtNumber(cost),
                           style: GoogleFonts.pixelifySans(
                             fontSize: 12,
                             color: canAfford
-                                ? const Color(0xFF80d0ff)
+                                ? const Color(0xFFcc88ff)
                                 : AppTheme.textMuted,
                           ),
                         ),
@@ -438,20 +443,122 @@ class _NodeCardState extends State<_NodeCard> with SingleTickerProviderStateMixi
         final pct = ((u.damageMultiplier - 1) * 100).toStringAsFixed(1);
         return '+$pct% attack damage';
       case EndlessNode.dex:
-        return '+${u.attackRollBonus} to all attack rolls';
+        return '+${u.attackRollBonus} critical damage';
       case EndlessNode.con:
-        final pct = (u.hpRecoveryFraction * 100).toStringAsFixed(1);
-        return '+$pct% HP recovered after each victory';
+        return '-${u.flatDamageReduction} damage taken per hit';
       case EndlessNode.intelligence:
         final pct = ((u.goldMultiplier - 1) * 100).toStringAsFixed(1);
         return '+$pct% gold from battles';
       case EndlessNode.wis:
         final pct = ((u.shardMultiplier - 1) * 100).toStringAsFixed(1);
-        return '+$pct% Shards of Fate earned';
+        return '+$pct% Echoes earned';
       case EndlessNode.cha:
         final pct = ((u.xpMultiplier - 1) * 100).toStringAsFixed(1);
         return '+$pct% XP from victories';
     }
   }
 
+}
+
+// ── Synergy panel ─────────────────────────────────────────────────────────────
+
+class _SynergyPanel extends StatelessWidget {
+  const _SynergyPanel({required this.game});
+  final GameState game;
+
+  @override
+  Widget build(BuildContext context) {
+    final synergies = game.endlessUpgrades.allSynergies;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(bottom: 8),
+          child: Text('SYNERGIES',
+              style: GoogleFonts.pixelifySans(
+                  fontSize: 11,
+                  letterSpacing: 2,
+                  color: const Color(0xFF80d0ff),
+                  fontWeight: FontWeight.bold)),
+        ),
+        ...synergies.map((s) => _SynergyCard(status: s)),
+      ],
+    );
+  }
+}
+
+class _SynergyCard extends StatelessWidget {
+  const _SynergyCard({required this.status});
+  final SynergyStatus status;
+
+  @override
+  Widget build(BuildContext context) {
+    final unlocked = status.unlocked;
+    final color = unlocked ? const Color(0xFF80d0ff) : const Color(0xFF445566);
+    final req = 10;
+    return Container(
+      margin: const EdgeInsets.only(bottom: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: unlocked
+            ? const Color(0xFF0d1f2d)
+            : const Color(0xFF0d1218),
+        border: Border.all(color: color.withValues(alpha: unlocked ? 0.5 : 0.2)),
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 28, height: 28,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(4),
+            ),
+            child: Text(unlocked ? '✦' : '○',
+                style: TextStyle(color: color, fontSize: 14)),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(status.name,
+                    style: GoogleFonts.pixelifySans(
+                        fontSize: 11,
+                        color: unlocked ? const Color(0xFFddeeFF) : const Color(0xFF667788),
+                        fontWeight: FontWeight.bold)),
+                const SizedBox(height: 2),
+                Text(status.effectLabel,
+                    style: TextStyle(
+                        fontSize: 11,
+                        color: unlocked ? color : const Color(0xFF445566))),
+              ],
+            ),
+          ),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Text(status.nodeLabel,
+                  style: TextStyle(
+                      fontSize: 10,
+                      color: color.withValues(alpha: 0.8),
+                      fontWeight: FontWeight.bold)),
+              const SizedBox(height: 2),
+              Text(
+                unlocked
+                    ? 'ACTIVE'
+                    : '${status.node1.statLabel} ${status.level1}/$req  •  ${status.node2.statLabel} ${status.level2}/$req',
+                style: TextStyle(
+                    fontSize: 9,
+                    color: unlocked
+                        ? const Color(0xFF44cc88)
+                        : const Color(0xFF445566)),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
 }

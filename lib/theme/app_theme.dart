@@ -54,6 +54,13 @@ class AppTheme {
   static const Color textMuted    = Color(0xFFB7AE9F);
   static const Color textDisabled = Color(0xFF6F675E);
 
+  // ── Number formatter ─────────────────────────────────────────────────────────
+  static String fmtNumber(int n) {
+    if (n >= 1000000) return '${(n / 1000000).toStringAsFixed(1)}M';
+    if (n >= 1000)    return '${(n / 1000).toStringAsFixed(1)}K';
+    return '$n';
+  }
+
   // ── Typography helper ────────────────────────────────────────────────────────
   static TextStyle pixelHeading({
     double fontSize = 15,
@@ -74,7 +81,6 @@ class AppTheme {
     final pixelText = GoogleFonts.pixelifySansTextTheme(base.textTheme).apply(
       bodyColor: textLight,
       displayColor: accentGold,
-      fontSizeDelta: 1.0,
     );
     return base.copyWith(
       textTheme: pixelText,
@@ -111,7 +117,19 @@ class AppTheme {
         linearMinHeight: 8,
       ),
       dividerColor: cardBorder,
-      dialogBackgroundColor: panelBg,
+      dialogTheme: const DialogThemeData(backgroundColor: panelBg),
     );
   }
+
+  static const resourceTooltips = <String, String>{
+    'gold':       'Gold — Earned from battles, idle, expeditions. Used for stat upgrades and shop.',
+    'shards':     'Shards — From Dungeon treasure rooms and locked chests. Used for Abilities and Allies.',
+    'echoes':     'Echoes — From Challenge Gauntlet runs. Used for permanent Upgrades.',
+    'essence':    'Essence — From campaign kills and Gauntlet. Used for the Passive Tree.',
+    'crystals':   'Crystals — From achievements and daily chests. Used for cosmetics and boosts.',
+    'mythril':    'Mythril — From Boss Rush and Prestige. Used for Artifact Forge.',
+    'gemShards':  'Gem Shards — From PvP Arena battles. Used to craft elemental Gems.',
+    'souls':      'Souls — Earned by Prestiging. Used in the Prestige Shop.',
+    'runeDust':   'Rune Dust — From disenchanting items. Used to craft Runes.',
+  };
 }
