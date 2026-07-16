@@ -1227,11 +1227,9 @@
     <button class="modal-close" onclick="closeContact()" aria-label="Close">&times;</button>
     <h2>Get in Touch</h2>
     <p>Questions, feedback, or bug reports — we'd love to hear from you.</p>
-    <form id="contact-form" onsubmit="submitContact(event)">
-      <!-- Formsubmit.co config -->
-      <input type="hidden" name="_captcha" value="false">
-      <input type="hidden" name="_subject" value="Zeta Idle — Website Contact">
-      <input type="text" name="_honey" style="display:none" tabindex="-1" autocomplete="off">
+    <form id="contact-form" name="contact" netlify netlify-honeypot="bot-field" onsubmit="submitContact(event)">
+      <input type="hidden" name="form-name" value="contact">
+      <input type="text" name="bot-field" style="display:none" tabindex="-1" autocomplete="off">
 
       <div class="form-group">
         <label for="cf-name">Name</label>
@@ -1305,10 +1303,12 @@
     btn.disabled = true;
 
     try {
-      const res = await fetch('https://formsubmit.co/ajax/razorintegrations@gmail.com', {
+      const form = document.getElementById('contact-form');
+      const data = new FormData(form);
+      const res = await fetch('/', {
         method: 'POST',
-        headers: { 'Accept': 'application/json' },
-        body: new FormData(document.getElementById('contact-form')),
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams(data).toString(),
       });
       if (res.ok) {
         document.getElementById('contact-form').style.display = 'none';
