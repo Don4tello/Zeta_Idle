@@ -47,7 +47,7 @@ enum ZoneAffix {
     switch (this) {
       case ZoneAffix.cursedGround:  return 'Hero bleeds 5% max HP each round.';
       case ZoneAffix.volatileDeath: return 'Enemy explodes on death — unavoidable blast.';
-      case ZoneAffix.ironSkin:      return 'All hero damage reduced by 2 (min 1).';
+      case ZoneAffix.ironSkin:      return 'All hero damage reduced by 20%.';
       case ZoneAffix.soulSiphon:    return 'Enemy deals +3 bonus damage per hit.';
       case ZoneAffix.shadowCloak:   return '20% chance to negate any incoming hit.';
       case ZoneAffix.voidCurse:     return 'All hero HP recovery halved.';

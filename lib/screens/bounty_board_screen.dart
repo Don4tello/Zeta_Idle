@@ -1,7 +1,9 @@
 ﻿import 'package:flutter/material.dart';
 import '../models/bounty.dart';
+import '../models/world_zone.dart';
 import '../services/game_state.dart';
 import '../theme/app_theme.dart';
+import '../widgets/zcoin_icon.dart';
 
 class BountyBoardScreen extends StatelessWidget {
   const BountyBoardScreen({super.key});
@@ -24,7 +26,15 @@ class BountyBoardScreen extends StatelessWidget {
           ),
         ],
       ),
-      body: ListView(
+      body: RefreshIndicator(
+        color: AppTheme.accentGold,
+        backgroundColor: const Color(0xFF2A2623),
+        onRefresh: () async {
+          game.refreshDaily();
+          await Future.delayed(const Duration(milliseconds: 400));
+        },
+        child: ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.all(16),
         children: [
           Container(
@@ -41,6 +51,8 @@ class BountyBoardScreen extends StatelessWidget {
               style: TextStyle(fontSize: 11, color: AppTheme.textMuted, height: 1.5),
             ),
           ),
+          _ZoneBannerCard(zone: game.currentZone),
+          const SizedBox(height: 12),
           if (bounties.isEmpty)
             const Center(
               child: Padding(
@@ -52,10 +64,11 @@ class BountyBoardScreen extends StatelessWidget {
           else
             ...bounties.map((b) => Padding(
                   padding: const EdgeInsets.only(bottom: 12),
-                  child: _BountyCard(bounty: b, game: game),
+                  child: _BountyCard(bounty: b, game: game, zoneName: game.currentZone.name),
                 )),
         ],
-      ),
+        ),  // ListView
+      ),    // RefreshIndicator
     );
   }
 }
@@ -86,16 +99,85 @@ class _TimeChip extends StatelessWidget {
   }
 }
 
+class _ZoneBannerCard extends StatelessWidget {
+  const _ZoneBannerCard({required this.zone});
+  final WorldZone zone;
+
+  @override
+  Widget build(BuildContext context) {
+    final themes = BountyPool.themesForZone(zone.name);
+    final typeIcons = themes.map((t) => BountyPool.typeIcon(t)).where((s) => s.isNotEmpty).toList();
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: zone.color.withValues(alpha: 0.08),
+        border: Border.all(color: zone.color.withValues(alpha: 0.35)),
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: Row(
+        children: [
+          Text(zone.icon, style: const TextStyle(fontSize: 20)),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  zone.name.toUpperCase(),
+                  style: TextStyle(
+                    color: zone.color,
+                    fontSize: 11,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 1.2,
+                  ),
+                ),
+                if (typeIcons.isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 2),
+                    child: Text(
+                      'Featured: ${typeIcons.join('  ')}',
+                      style: const TextStyle(color: AppTheme.textMuted, fontSize: 11),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+            decoration: BoxDecoration(
+              color: zone.color.withValues(alpha: 0.15),
+              border: Border.all(color: zone.color.withValues(alpha: 0.4)),
+              borderRadius: BorderRadius.circular(3),
+            ),
+            child: Text(
+              'CURRENT ZONE',
+              style: TextStyle(
+                fontSize: 9,
+                color: zone.color,
+                fontWeight: FontWeight.bold,
+                letterSpacing: 1,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _BountyCard extends StatelessWidget {
-  const _BountyCard({required this.bounty, required this.game});
+  const _BountyCard({required this.bounty, required this.game, required this.zoneName});
   final Bounty bounty;
   final GameState game;
+  final String zoneName;
 
   @override
   Widget build(BuildContext context) {
     final def = bounty.def;
     final progress = bounty.progress.clamp(0, def.target);
     final fraction = progress / def.target;
+    final isZone = BountyPool.isZoneThemed(def.type, zoneName);
 
     return Container(
       padding: const EdgeInsets.all(14),
@@ -147,7 +229,7 @@ class _BountyCard extends StatelessWidget {
                 final parts = <String>[];
                 if (r.gold > 0) parts.add('💰 +${r.gold}');
                 if (r.shards > 0) parts.add('◆ +${r.shards}');
-                if (r.crystals > 0) parts.add('💎 +${r.crystals}');
+                if (r.zcoins > 0) parts.add('🪙 +${r.zcoins}');
                 if (r.xp > 0) parts.add('⚡ +${r.xp} XP');
                 ScaffoldMessenger.of(context).showSnackBar(SnackBar(
                   content: Text('${def.label} claimed! ${parts.join("  ")}',
@@ -157,6 +239,21 @@ class _BountyCard extends StatelessWidget {
                 ));
               }),
           ]),
+          if (isZone) ...[
+            const SizedBox(height: 6),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+              decoration: BoxDecoration(
+                color: const Color(0xFF1a2a10),
+                border: Border.all(color: const Color(0xFF66aa33).withValues(alpha: 0.6)),
+                borderRadius: BorderRadius.circular(3),
+              ),
+              child: Text(
+                '★ ZONE BOUNTY',
+                style: const TextStyle(fontSize: 9, color: Color(0xFF88cc55), fontWeight: FontWeight.bold, letterSpacing: 1),
+              ),
+            ),
+          ],
           const SizedBox(height: 10),
           // Progress bar
           ClipRRect(
@@ -184,7 +281,7 @@ class _BountyCard extends StatelessWidget {
   List<Widget> _rewardChips(BountyReward r) {
     final chips = <Widget>[];
     if (r.gold > 0)     chips.add(_RewardChip(label: '${r.gold} Gold', color: const Color(0xFFffcc44)));
-    if (r.crystals > 0) chips.add(_RewardChip(label: '${r.crystals} 💎', color: const Color(0xFF66aaff)));
+    if (r.zcoins > 0) chips.add(_RewardChip(label: '${r.zcoins}', color: const Color(0xFF66aaff), prefix: const ZCoinIcon(size: 10, animate: false)));
     if (r.shards > 0)   chips.add(_RewardChip(label: '${r.shards} ◆', color: const Color(0xFF88cc44)));
     if (r.xp > 0)       chips.add(_RewardChip(label: '${r.xp} XP', color: const Color(0xFFcc88ff)));
     return chips;
@@ -192,9 +289,10 @@ class _BountyCard extends StatelessWidget {
 }
 
 class _RewardChip extends StatelessWidget {
-  const _RewardChip({required this.label, required this.color});
-  final String label;
-  final Color color;
+  const _RewardChip({required this.label, required this.color, this.prefix});
+  final String  label;
+  final Color   color;
+  final Widget? prefix;
 
   @override
   Widget build(BuildContext context) {
@@ -205,9 +303,10 @@ class _RewardChip extends StatelessWidget {
         border: Border.all(color: color.withValues(alpha: 0.45)),
         borderRadius: BorderRadius.circular(3),
       ),
-      child: Text(label,
-          style: TextStyle(
-              fontSize: 10, color: color, fontWeight: FontWeight.bold)),
+      child: Row(mainAxisSize: MainAxisSize.min, children: [
+        if (prefix != null) ...[prefix!, const SizedBox(width: 3)],
+        Text(label, style: TextStyle(fontSize: 10, color: color, fontWeight: FontWeight.bold)),
+      ]),
     );
   }
 }

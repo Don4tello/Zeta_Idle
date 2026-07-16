@@ -1,6 +1,7 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import '../services/game_state.dart';
 import '../utils/format_number.dart';
+import 'zcoin_icon.dart';
 
 class ResourceBar extends StatelessWidget {
   const ResourceBar({super.key});
@@ -21,8 +22,8 @@ class ResourceBar extends StatelessWidget {
               tooltip: 'Gold — Campaign, Idle, Expeditions, Dungeons, Events.\nUsed for: item upgrades, shop, forge.'),
           _Res(icon: '◆', value: game.shards, color: const Color(0xFF6699ff),
               tooltip: 'Shards — Campaign, Dungeons, Expeditions.\nUsed for: ability upgrades, item upgrades.'),
-          _Res(icon: '💎', value: game.crystals, color: const Color(0xFFcc88ff),
-              tooltip: 'Crystals — Login, Events, Gauntlet, Omega Shop.\nUsed for: full respec, speed boost, premium items.'),
+          _Res(iconWidget: const ZCoinIcon(size: 13), value: game.zcoins, color: const Color(0xFFffcc44),
+              tooltip: 'ZCoins — Login, Events, Gauntlet, Omega Shop.\nUsed for: full respec, speed boost, premium items.'),
           _Res(icon: '🔊', value: game.echoes, color: const Color(0xFF44ccaa),
               tooltip: 'Echoes — Gauntlet runs (scales with modifiers + tier).\nUsed for: Endless upgrades.'),
           _Res(icon: '✦', value: game.essence, color: const Color(0xFF88ccff),
@@ -34,8 +35,9 @@ class ResourceBar extends StatelessWidget {
 }
 
 class _Res extends StatefulWidget {
-  const _Res({required this.icon, required this.value, required this.color, this.tooltip});
-  final String icon;
+  const _Res({this.icon, this.iconWidget, required this.value, required this.color, this.tooltip});
+  final String? icon;
+  final Widget? iconWidget;
   final int value;
   final Color color;
   final String? tooltip;
@@ -75,6 +77,7 @@ class _ResState extends State<_Res> with SingleTickerProviderStateMixin {
   }
 
   bool _isPhone(BuildContext ctx) => MediaQuery.of(ctx).size.width < 600;
+  bool _isNarrow(BuildContext ctx) => MediaQuery.of(ctx).size.width < 380;
 
   @override
   Widget build(BuildContext context) {
@@ -88,14 +91,16 @@ class _ResState extends State<_Res> with SingleTickerProviderStateMixin {
           mainAxisSize: MainAxisSize.min,
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Text(widget.icon, style: TextStyle(fontSize: fs)),
-            const SizedBox(width: 2),
-            Text(fmtNum(widget.value),
-                style: TextStyle(
-                  fontSize: fs,
-                  fontWeight: FontWeight.bold,
-                  color: widget.color,
-                )),
+            widget.iconWidget ?? Text(widget.icon ?? '', style: TextStyle(fontSize: fs)),
+            if (!_isNarrow(context)) ...[
+              const SizedBox(width: 2),
+              Text(fmtNum(widget.value),
+                  style: TextStyle(
+                    fontSize: fs,
+                    fontWeight: FontWeight.bold,
+                    color: widget.color,
+                  )),
+            ],
           ],
         ),
       ),

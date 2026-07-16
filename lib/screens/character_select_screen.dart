@@ -5,6 +5,7 @@ import '../models/dnd_class.dart';
 import '../models/hero_model.dart' show HeroGender;
 import '../models/hero_race.dart';
 import '../models/hero_trait.dart';
+import '../services/game_state.dart';
 import '../services/save_service.dart';
 import '../theme/app_theme.dart';
 import 'character_creation_screen.dart';
@@ -70,21 +71,21 @@ class _CharacterSelectScreenState extends State<CharacterSelectScreen> {
       builder: (ctx) => AlertDialog(
         backgroundColor: AppTheme.cardBg,
         title: Text('Delete "${existing.name}"?',
-            style: GoogleFonts.pixelifySans(color: AppTheme.accentGold)),
+            style: GoogleFonts.rajdhani(color: AppTheme.accentGold)),
         content: Text(
           'Are you sure? Once gone it cannot be stored.',
-          style: GoogleFonts.pixelifySans(color: AppTheme.textMuted),
+          style: GoogleFonts.rajdhani(color: AppTheme.textMuted),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
             child: Text('CANCEL',
-                style: GoogleFonts.pixelifySans(color: AppTheme.textMuted)),
+                style: GoogleFonts.rajdhani(color: AppTheme.textMuted)),
           ),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
             child: Text('DELETE',
-                style: GoogleFonts.pixelifySans(color: AppTheme.accentRed)),
+                style: GoogleFonts.rajdhani(color: AppTheme.accentRed)),
           ),
         ],
       ),
@@ -114,7 +115,7 @@ class _CharacterSelectScreenState extends State<CharacterSelectScreen> {
               const SizedBox(width: 14),
               Text(
                 'ZETA IDLE',
-                style: GoogleFonts.pixelifySans(
+                style: GoogleFonts.rajdhani(
                   fontSize: 37,
                   fontWeight: FontWeight.bold,
                   color: AppTheme.accentGold,
@@ -129,7 +130,7 @@ class _CharacterSelectScreenState extends State<CharacterSelectScreen> {
           const SizedBox(height: 8),
           Text(
             '— SELECT CHARACTER —',
-            style: GoogleFonts.pixelifySans(
+            style: GoogleFonts.rajdhani(
               fontSize: 12,
               color: AppTheme.textMuted,
               letterSpacing: 3,
@@ -147,7 +148,24 @@ class _CharacterSelectScreenState extends State<CharacterSelectScreen> {
                   );
                 }
                 final data  = snap.data!;
-                final chars = data.characters;
+                // Mutable copy so we can patch in live values for the active slot
+                final chars = List<CharacterSummary?>.from(data.characters);
+                // If a slot is currently loaded, its live game-state values are
+                // authoritative — the disk save may not have flushed yet.
+                final game = GameStateProvider.of(ctx);
+                if (game.isSlotLoaded && game.currentSlot < chars.length) {
+                  final live = chars[game.currentSlot];
+                  if (live != null) {
+                    chars[game.currentSlot] = CharacterSummary(
+                      slot: live.slot,
+                      name: live.name,
+                      level: game.hero.level,
+                      heroClass: live.heroClass,
+                      prestigeLevel: game.confirmedPrestigeLevel,
+                      gender: live.gender,
+                    );
+                  }
+                }
                 final showLock = data.extraSlots < 2;
                 final itemCount = chars.length + (showLock ? 1 : 0);
                 return ListView.separated(
@@ -180,7 +198,7 @@ class _CharacterSelectScreenState extends State<CharacterSelectScreen> {
             padding: const EdgeInsets.only(bottom: 24),
             child: Text(
               'Tap the trash icon to delete a character',
-              style: GoogleFonts.pixelifySans(
+              style: GoogleFonts.rajdhani(
                 fontSize: 11,
                 color: AppTheme.textMuted.withValues(alpha: 0.5),
                 letterSpacing: 1,
@@ -232,7 +250,7 @@ class _SlotTile extends StatelessWidget {
               left: 12,
               child: Text(
                 '${index + 1}',
-                style: GoogleFonts.pixelifySans(
+                style: GoogleFonts.rajdhani(
                   fontSize: 12,
                   color: AppTheme.textMuted.withValues(alpha: 0.5),
                 ),
@@ -251,7 +269,7 @@ class _SlotTile extends StatelessWidget {
                 child: Center(
                   child: Text(
                     '>',
-                    style: GoogleFonts.pixelifySans(
+                    style: GoogleFonts.rajdhani(
                       fontSize: 19,
                       color: AppTheme.accentGold.withValues(alpha: 0.7),
                     ),
@@ -288,7 +306,7 @@ class _SlotTile extends StatelessWidget {
         const SizedBox(width: 10),
         Text(
           'NEW CHARACTER',
-          style: GoogleFonts.pixelifySans(
+          style: GoogleFonts.rajdhani(
             fontSize: 15,
             color: AppTheme.textMuted,
             letterSpacing: 2,
@@ -309,7 +327,7 @@ class _SlotTile extends StatelessWidget {
             if (char.gender != null) ...[
               Text(
                 char.gender!.icon,
-                style: GoogleFonts.pixelifySans(
+                style: GoogleFonts.rajdhani(
                   fontSize: 17,
                   color: AppTheme.accentGold.withValues(alpha: 0.7),
                 ),
@@ -318,7 +336,7 @@ class _SlotTile extends StatelessWidget {
             ],
             Text(
               char.name,
-              style: GoogleFonts.pixelifySans(
+              style: GoogleFonts.rajdhani(
                 fontSize: 19,
                 fontWeight: FontWeight.bold,
                 color: AppTheme.textLight,
@@ -334,7 +352,7 @@ class _SlotTile extends StatelessWidget {
             if (classLabel != null) ...[
               Text(
                 classLabel,
-                style: GoogleFonts.pixelifySans(
+                style: GoogleFonts.rajdhani(
                   fontSize: 12,
                   color: AppTheme.textMuted,
                   letterSpacing: 1,
@@ -342,7 +360,7 @@ class _SlotTile extends StatelessWidget {
               ),
               Text(
                 '  ·  ',
-                style: GoogleFonts.pixelifySans(
+                style: GoogleFonts.rajdhani(
                   fontSize: 12,
                   color: AppTheme.cardBorder,
                 ),
@@ -350,7 +368,7 @@ class _SlotTile extends StatelessWidget {
             ],
             Text(
               'Level ${char.level}',
-              style: GoogleFonts.pixelifySans(
+              style: GoogleFonts.rajdhani(
                 fontSize: 13,
                 color: AppTheme.accentGold,
                 letterSpacing: 1,
@@ -358,14 +376,14 @@ class _SlotTile extends StatelessWidget {
             ),
             Text(
               '  ·  ',
-              style: GoogleFonts.pixelifySans(
+              style: GoogleFonts.rajdhani(
                 fontSize: 12,
                 color: AppTheme.cardBorder,
               ),
             ),
             Text(
               '✦ Rebirth ${char.prestigeLevel}',
-              style: GoogleFonts.pixelifySans(
+              style: GoogleFonts.rajdhani(
                 fontSize: 12,
                 color: char.prestigeLevel > 0
                     ? const Color(0xFFcc88ff)
@@ -410,7 +428,7 @@ class _LockedSlotTile extends StatelessWidget {
             children: [
               Text(
                 'LOCKED SLOT',
-                style: GoogleFonts.pixelifySans(
+                style: GoogleFonts.rajdhani(
                   fontSize: 12,
                   color: AppTheme.textMuted,
                   letterSpacing: 2,
@@ -418,8 +436,8 @@ class _LockedSlotTile extends StatelessWidget {
               ),
               const SizedBox(height: 4),
               Text(
-                'Unlock in Cosmetics → Boosts (100 💎)',
-                style: GoogleFonts.pixelifySans(
+                'Unlock in Cosmetics → Boosts (100 ZC)',
+                style: GoogleFonts.rajdhani(
                   fontSize: 10,
                   color: AppTheme.textMuted.withValues(alpha: 0.5),
                 ),

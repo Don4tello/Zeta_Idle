@@ -1,4 +1,4 @@
-import 'dart:async';
+﻿import 'dart:async';
 import 'dart:io' show Platform;
 import 'package:flutter/foundation.dart' show kIsWeb, kDebugMode;
 import 'package:in_app_purchase/in_app_purchase.dart';
@@ -6,17 +6,17 @@ import 'package:in_app_purchase/in_app_purchase.dart';
 class CrystalPackage {
   const CrystalPackage({
     required this.productId,
-    required this.crystals,
+    required this.zcoins,
     required this.fallbackPrice,
     required this.label,
   });
   final String productId;
-  final int crystals;
+  final int zcoins;
   final String fallbackPrice;
   final String label;
 }
 
-typedef PurchaseCallback = void Function(String productId, int crystals);
+typedef PurchaseCallback = void Function(String productId, int zcoins);
 
 class IapService {
   IapService(this._onCrystalsGranted, {this.onPackPurchased, this.onSubscriptionActivated});
@@ -29,14 +29,14 @@ class IapService {
   bool _storeAvailable = false;
 
   static const packages = [
-    CrystalPackage(productId: 'crystals_100',  crystals: 100,  fallbackPrice: '\$0.99',  label: '100 Crystals'),
-    CrystalPackage(productId: 'crystals_550',  crystals: 550,  fallbackPrice: '\$3.99',  label: '550 Crystals  (+10%)'),
-    CrystalPackage(productId: 'crystals_1200', crystals: 1200, fallbackPrice: '\$7.99',  label: '1,200 Crystals  (+20%)'),
-    CrystalPackage(productId: 'crystals_3000', crystals: 3000, fallbackPrice: '\$14.99', label: '3,000 Crystals  (+50%)'),
+    CrystalPackage(productId: 'crystals_100',  zcoins: 100,  fallbackPrice: '\$0.99',  label: '100 ZCoins'),
+    CrystalPackage(productId: 'crystals_550',  zcoins: 550,  fallbackPrice: '\$3.99',  label: '550 ZCoins  (+10%)'),
+    CrystalPackage(productId: 'crystals_1200', zcoins: 1200, fallbackPrice: '\$7.99',  label: '1,200 ZCoins  (+20%)'),
+    CrystalPackage(productId: 'crystals_3000', zcoins: 3000, fallbackPrice: '\$14.99', label: '3,000 ZCoins  (+50%)'),
   ];
 
   static const _allProductIds = {
-    // Consumables (crystals)
+    // Consumables (zcoins)
     'crystals_100', 'crystals_550', 'crystals_1200', 'crystals_3000',
     // Non-consumables (packs)
     'pack_starter', 'pack_hero', 'pack_legend',
@@ -54,17 +54,21 @@ class IapService {
 
   Future<void> init() async {
     if (!platformSupported) return;
-    _storeAvailable = await InAppPurchase.instance.isAvailable();
-    if (!_storeAvailable) return;
+    try {
+      _storeAvailable = await InAppPurchase.instance.isAvailable();
+      if (!_storeAvailable) return;
 
-    _sub = InAppPurchase.instance.purchaseStream.listen(
-      _handlePurchases,
-      onError: (_) {},
-    );
+      _sub = InAppPurchase.instance.purchaseStream.listen(
+        _handlePurchases,
+        onError: (_) {},
+      );
 
-    final result = await InAppPurchase.instance.queryProductDetails(_allProductIds);
-    for (final pd in result.productDetails) {
-      _products[pd.id] = pd;
+      final result = await InAppPurchase.instance.queryProductDetails(_allProductIds);
+      for (final pd in result.productDetails) {
+        _products[pd.id] = pd;
+      }
+    } catch (_) {
+      _storeAvailable = false;
     }
   }
 
@@ -84,7 +88,7 @@ class IapService {
     // Crystal consumables
     final pkg = packages.where((p) => p.productId == productId).firstOrNull;
     if (pkg != null) {
-      _onCrystalsGranted(pkg.crystals);
+      _onCrystalsGranted(pkg.zcoins);
       return;
     }
 

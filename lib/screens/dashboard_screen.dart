@@ -12,6 +12,7 @@ import '../widgets/stats_grid_panel.dart';
 import '../models/login_streak.dart';
 import 'package:go_router/go_router.dart';
 import '../core/routing/app_router.dart';
+import 'main_shell.dart' show TutorialTip;
 
 class DashboardScreen extends StatelessWidget {
   const DashboardScreen({
@@ -62,6 +63,19 @@ class _SheetLayout extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           const _LoginRewardBanner(),
+          Builder(builder: (ctx) {
+            final game = GameStateProvider.of(ctx);
+            if (game.tutorialFirstKillSeen || game.campaignStageIndex == 0) {
+              return const SizedBox.shrink();
+            }
+            return TutorialTip(
+              tutorialKey: 'firstKill',
+              game: game,
+              text: 'First victory! ⚔ Spend your Gold in the Shop to upgrade stats. '
+                  'Check HERO → ABILITIES to power up your attacks. '
+                  'Your next goal: reach Stage 5 and defeat the first Boss!',
+            );
+          }),
           const DashboardHeader()
               .animate()
               .fadeIn(duration: 280.ms)
@@ -71,11 +85,6 @@ class _SheetLayout extends StatelessWidget {
               .animate(delay: 40.ms)
               .fadeIn(duration: 280.ms)
               .slideY(begin: 0.04, duration: 280.ms, curve: Curves.easeOut),
-          const SizedBox(height: 12),
-          const StatsGridPanel()
-              .animate(delay: 70.ms)
-              .fadeIn(duration: 280.ms)
-              .slideY(begin: 0.05, duration: 280.ms, curve: Curves.easeOut),
           const SizedBox(height: 12),
           const CombatStatsPanel()
               .animate(delay: 120.ms)
@@ -250,7 +259,7 @@ class _IncomePanel extends StatelessWidget {
             _IncomeRow('💰', 'Idle gold', hourlyLabel, const Color(0xFFffd700)),
             const SizedBox(width: 16),
             _IncomeRow('⚔', 'Battle/kill',
-                '~${(game.hero.level * 50 + 100).toString()}g',
+                '${(game.hero.level * 50 + 100).toString()}g avg',
                 const Color(0xFFff8866)),
             if (expRewards > 0) ...[
               const SizedBox(width: 16),

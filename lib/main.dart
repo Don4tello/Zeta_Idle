@@ -1,6 +1,9 @@
+import 'dart:async';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'firebase_options.dart';
+import 'package:flutter/services.dart' show SystemChrome, DeviceOrientation;
+import 'services/ad_service.dart';
 import 'theme/app_theme.dart';
 import 'models/dnd_class.dart';
 import 'models/hero_model.dart' show HeroGender;
@@ -10,10 +13,31 @@ import 'screens/loading_screen.dart';
 import 'services/game_state.dart';
 import 'services/debug_logger.dart';
 import 'core/routing/app_router.dart';
+import 'tools/debug_capture_surface.dart';
 
 Future<void> main() async {
+  runZonedGuarded(_appMain, (error, stack) {
+    // Catch any uncaught async exception so Android doesn't kill the process.
+    // ignore: avoid_print
+    print('Uncaught zone error: $error\n$stack');
+    DebugLogger.log('crash', '$error\n$stack');
+  });
+}
+
+Future<void> _appMain() async {
   WidgetsFlutterBinding.ensureInitialized();
   await DebugLogger.init();
+
+  // Suppress known benign Flutter framework warnings.
+  FlutterError.onError = (details) {
+    final msg = details.toString();
+    if (msg.contains('_debugDuringDeviceUpdate') ||
+        msg.contains('parentDataDirty') ||
+        msg.contains('semantics')) { return; }
+    FlutterError.presentError(details);
+    DebugLogger.log('flutter_error', details.toString());
+  };
+
   if (DefaultFirebaseOptions.currentPlatform.apiKey != 'YOUR_API_KEY') {
     try {
       await Firebase.initializeApp(
@@ -22,12 +46,20 @@ Future<void> main() async {
     } catch (e) {
       // ignore: avoid_print
       print('Firebase initialization warning: $e');
+      DebugLogger.log('firebase_init', 'error: $e');
     }
   }
-  FlutterError.onError = (details) {
-    if (details.toString().contains('_debugDuringDeviceUpdate')) return;
-    FlutterError.presentError(details);
-  };
+  SystemChrome.setPreferredOrientations([
+    DeviceOrientation.portraitUp,
+    DeviceOrientation.portraitDown,
+  ]);
+  try {
+    await AdService.initialize();
+  } catch (e) {
+    // ignore: avoid_print
+    print('AdMob initialization warning: $e');
+    DebugLogger.log('admob_init', 'error: $e');
+  }
   runApp(const ZetaIdleApp());
 }
 
@@ -66,6 +98,10 @@ class _ZetaIdleAppState extends State<ZetaIdleApp> with WidgetsBindingObserver {
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.paused || state == AppLifecycleState.hidden) {
       _gameState.audioService.pauseMusic();
+      // Fire-and-forget save after a short delay so audio pause completes first
+      Future.delayed(const Duration(milliseconds: 200), () {
+        if (state == AppLifecycleState.paused) _gameState.saveAndSyncNow();
+      });
     } else if (state == AppLifecycleState.resumed) {
       _gameState.audioService.resumeMusic();
     }
@@ -149,6 +185,8 @@ class _ZetaIdleAppState extends State<ZetaIdleApp> with WidgetsBindingObserver {
         title: 'Zeta Idle',
         theme: AppTheme.darkMedievalTheme(),
         routerConfig: _router,
+        builder: (_, child) =>
+            DebugCaptureSurface(child: child ?? const SizedBox()),
       ),
     );
   }

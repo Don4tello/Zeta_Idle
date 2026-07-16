@@ -1,4 +1,4 @@
-enum AllyMilestone {
+﻿enum AllyMilestone {
   killCount,
   campaignStage,
   prestigeLevel,
@@ -127,7 +127,7 @@ class NpcAllyDef {
   static const int maxLevel = 5;
 
   // Shard + crystal cost to reach the given level (from level - 1)
-  static (int shards, int crystals) levelUpCost(int toLevel) => switch (toLevel) {
+  static (int shards, int zcoins) levelUpCost(int toLevel) => switch (toLevel) {
     2 => (20,  0),
     3 => (50,  5),
     4 => (120, 15),

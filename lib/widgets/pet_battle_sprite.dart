@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import '../models/pet.dart';
+import 'pet_sprites.dart';
 
 // Animated companion sprite shown behind the hero during battle.
 // Flying pets bob vertically; ground pets breathe with a subtle scale pulse.
 class PetBattleSprite extends StatefulWidget {
-  const PetBattleSprite({super.key, required this.pet, this.size = 30});
+  const PetBattleSprite({super.key, required this.pet});
   final PetDefinition pet;
-  final double size;
 
   @override
   State<PetBattleSprite> createState() => _PetBattleSpriteState();
@@ -29,53 +29,48 @@ class _PetBattleSpriteState extends State<PetBattleSprite>
 
   @override
   Widget build(BuildContext context) {
-    final pet = widget.pet;
-    final s   = widget.size;
+    final pet       = widget.pet;
+    final painter   = petPainterFor(pet.id);
+    final spriteSize = petSizeFor(pet.id);
 
     return AnimatedBuilder(
       animation: _anim,
       builder: (_, __) {
         final t         = _anim.value;
         final glowAlpha = 0.18 + 0.30 * t;
-        final offsetY   = pet.isFlying ? -(6.0 * t) : 0.0;
-        final scale     = pet.isFlying ? 1.0 : (1.0 + 0.04 * t);
+        final offsetY   = pet.isFlying ? -(8.0 * t) : 0.0;
+        final scale     = pet.isFlying ? 1.0 : (1.0 + 0.03 * t);
 
-        final circle = Transform.translate(
-          offset: Offset(0, offsetY),
-          child: Transform.scale(
-            scale: scale,
-            child: Container(
-              width: s,
-              height: s,
-              decoration: BoxDecoration(
-                color: pet.color.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(s / 2),
-                boxShadow: [
-                  BoxShadow(
-                    color: pet.color.withValues(alpha: glowAlpha),
-                    blurRadius: 8 + 6 * t,
-                    spreadRadius: 1 + t,
-                  ),
-                ],
+        Widget petSprite = painter != null
+            ? CustomPaint(size: spriteSize, painter: painter)
+            : Text(pet.emoji, style: TextStyle(fontSize: spriteSize.width * 0.56));
+
+        petSprite = Container(
+          decoration: BoxDecoration(
+            boxShadow: [
+              BoxShadow(
+                color: pet.color.withValues(alpha: glowAlpha),
+                blurRadius: 10 + 8 * t,
+                spreadRadius: 2 + t,
               ),
-              child: Center(
-                child: Text(
-                  pet.emoji,
-                  style: TextStyle(fontSize: s * 0.56),
-                ),
-              ),
-            ),
+            ],
           ),
+          child: petSprite,
         );
 
-        // Flying pets occupy extra vertical space at the top so they appear elevated
-        // relative to the hero sprite when placed in a Row(crossAxisAlignment: end).
+        final animated = Transform.translate(
+          offset: Offset(0, offsetY),
+          child: Transform.scale(scale: scale, child: petSprite),
+        );
+
+        // Flying pets occupy extra vertical space so they appear elevated
+        // relative to the hero's base when placed in the battle Stack.
         return SizedBox(
-          width: s + 8,
-          height: pet.isFlying ? s + 30 : s + 8,
+          width: spriteSize.width + 8,
+          height: pet.isFlying ? spriteSize.height + 28 : spriteSize.height + 8,
           child: Align(
             alignment: pet.isFlying ? Alignment.topCenter : Alignment.bottomCenter,
-            child: circle,
+            child: animated,
           ),
         );
       },

@@ -154,6 +154,30 @@ const kPrestigeNodes = <PrestigeNode>[
     soulCost: 6,
     category: PrestigeCategory.mastery,
   ),
+  PrestigeNode(
+    id: 'artifact_vault',
+    name: 'Artifact Vault',
+    description: 'Artifacts and their upgrades survive each Rebirth.',
+    soulCost: 8,
+    category: PrestigeCategory.mastery,
+    prerequisiteId: 'forge_bonus',
+  ),
+  PrestigeNode(
+    id: 'mythril_memory',
+    name: 'Mythril Memory',
+    description: 'Keep 30% of your Mythril after each Rebirth.',
+    soulCost: 5,
+    category: PrestigeCategory.economy,
+    prerequisiteId: 'treasure_sense',
+  ),
+  PrestigeNode(
+    id: 'soul_overdrive',
+    name: 'Soul Overdrive',
+    description: 'After Rebirth, campaign begins at Stage 31.',
+    soulCost: 10,
+    category: PrestigeCategory.progression,
+    prerequisiteId: 'head_start_2',
+  ),
 ];
 
 class PrestigeShop {

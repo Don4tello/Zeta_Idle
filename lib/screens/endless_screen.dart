@@ -1,5 +1,6 @@
 ﻿import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show HapticFeedback;
 import 'package:google_fonts/google_fonts.dart';
 import '../data/campaign_data.dart';
 import '../data/enemy_data.dart';
@@ -8,9 +9,11 @@ import '../widgets/item_drop_badge.dart';
 import '../services/game_state.dart';
 import '../theme/app_theme.dart';
 import '../widgets/affix_chip_row.dart';
+import '../widgets/arena_ability_effect.dart';
 import '../widgets/battle_arena.dart';
 import '../widgets/battle_split_panel.dart';
 import '../widgets/battle_sprites.dart';
+import '../widgets/pet_battle_sprite.dart';
 import '../widgets/level_up_section.dart';
 import '../utils/format_number.dart';
 import 'main_shell.dart' show TutorialTip;
@@ -23,7 +26,8 @@ class EndlessScreen extends StatefulWidget {
 }
 
 class _EndlessScreenState extends State<EndlessScreen> {
-  final _arenaKey = GlobalKey<BattleArenaState>();
+  final _arenaKey  = GlobalKey<BattleArenaState>();
+  final _effectKey = GlobalKey<ArenaAbilityEffectState>();
 
   bool _inBattle      = false;
   bool _busy          = false;
@@ -34,7 +38,8 @@ class _EndlessScreenState extends State<EndlessScreen> {
   int _bossTier = 1;
   int  _rewardGold     = 0;
   int  _rewardExp      = 0;
-  int  _rewardShards   = 0;
+  int  _rewardShards       = 0;
+  int  _rewardTowerShards  = 0;
   int? _rewardMilestone;
   EquipmentItem? _rewardItem;
   LevelUpEvent?  _levelUpEvent;
@@ -66,68 +71,63 @@ class _EndlessScreenState extends State<EndlessScreen> {
     });
   }
 
-  // ── Auto-battle loop ────────────────────────────────────────────
+  // ── Single-battle run (no auto-loop) ────────────────────────────
 
   void _startAutoAttack(GameState game) async {
     if (_autoRunning) return;
     _autoRunning = true;
 
-    while (mounted && _inBattle) {
-      // Fight until enemy dies or hero is defeated.
-      while (mounted && _inBattle && game.currentEnemy != null) {
-        if (!_busy) await _doAttack(game);
-        if (mounted && game.currentEnemy != null) {
-          await Future.delayed(Duration(milliseconds: game.scaledInterval(600)));
-        }
+    // Fight until enemy dies or hero is defeated.
+    while (mounted && _inBattle && game.currentEnemy != null) {
+      if (!_busy) await _doAttack(game);
+      if (mounted && game.currentEnemy != null) {
+        await Future.delayed(Duration(milliseconds: game.scaledInterval(600)));
       }
-
-      if (!mounted || !_inBattle) break;
-
-      // Hero defeated?
-      if (game.heroDefeated) {
-        game.heroDefeated = false;
-        game.stopEndlessMode();
-        await _showDefeatDialog(game.hero.name);
-        if (mounted) {
-          setState(() {
-            _inBattle    = false;
-            _autoRunning = false;
-            _busy        = false;
-          });
-        }
-        break;
-      }
-
-      // Victory — show reward overlay then respawn enemy.
-      if (mounted) {
-        setState(() {
-          _showingReward    = true;
-          _rewardGold       = game.lastRewardGold;
-          _rewardExp        = game.lastRewardExp;
-          _rewardShards     = game.lastShardDrop;
-          _rewardMilestone  = game.lastEndlessMilestone;
-          _rewardItem       = game.lastItemDrop;
-          _levelUpEvent     = game.lastLevelUp;
-        });
-      }
-      await Future.delayed(Duration(seconds: game.lastItemDrop != null ? 3 : 2));
-      if (!mounted || !_inBattle) break;
-      setState(() { _showingReward = false; _rewardItem = null; });
-
-      // Respawn the same enemy and wait for Flutter to re-render the arena
-      // before attacking. Without the frame yield, _arenaKey.currentState is
-      // null (BattleArena hasn't mounted yet), hero attacks instantly with no
-      // animation and kills the new enemy in the same microtask loop.
-      if (_activeBossStage != null) {
-        game.startEndlessBattleAtStage(_activeBossStage!);
-      } else {
-        game.startEndlessBattle();
-      }
-      await WidgetsBinding.instance.endOfFrame;
-      if (!mounted || !_inBattle) break;
     }
 
-    _autoRunning = false;
+    if (!mounted) { _autoRunning = false; return; }
+
+    // Hero defeated?
+    if (game.heroDefeated) {
+      game.heroDefeated = false;
+      game.stopEndlessMode();
+      await _showDefeatDialog(game.hero.name);
+      if (mounted) {
+        setState(() { _inBattle = false; _autoRunning = false; _busy = false; });
+      }
+      _autoRunning = false;
+      return;
+    }
+
+    // Victory — record boss defeat if applicable, show reward, then return to lobby.
+    if (_activeBossStage != null) {
+      game.recordTowerBossDefeated(_activeBossStage!, _bossTier);
+    }
+    if (mounted) {
+      setState(() {
+        _showingReward      = true;
+        _rewardGold         = game.lastRewardGold;
+        _rewardExp          = game.lastRewardExp;
+        _rewardShards       = game.lastShardDrop;
+        _rewardTowerShards  = game.lastTowerShardDrop;
+        _rewardMilestone    = game.lastEndlessMilestone;
+        _rewardItem         = game.lastItemDrop;
+        _levelUpEvent       = game.lastLevelUp;
+      });
+    }
+    await Future.delayed(Duration(seconds: game.lastItemDrop != null ? 3 : 2));
+    if (!mounted) { _autoRunning = false; return; }
+
+    // Return to lobby (no auto-respawn).
+    game.stopEndlessMode();
+    setState(() {
+      _showingReward   = false;
+      _rewardItem      = null;
+      _inBattle        = false;
+      _autoRunning     = false;
+      _busy            = false;
+      _activeBossStage = null;
+    });
   }
 
   Future<void> _doAttack(GameState game) async {
@@ -136,6 +136,12 @@ class _EndlessScreenState extends State<EndlessScreen> {
 
     game.clearPendingFloats();
     game.heroAttack();
+    if (game.lastHeroCrit) game.haptic(HapticFeedback.lightImpact);
+    final firedAbility = game.lastAbilityFired;
+    if (firedAbility != null) {
+      _arenaKey.currentState?.playAbilityBanner(firedAbility.name, firedAbility.effect, id: firedAbility.id);
+      _effectKey.currentState?.playEffect(firedAbility.id);
+    }
     await (_arenaKey.currentState?.playHeroAttack(
           game.lastHeroDamage,
           isCrit: game.lastHeroCrit,
@@ -252,7 +258,7 @@ class _EndlessScreenState extends State<EndlessScreen> {
               const SizedBox(height: 20),
               Text(
                 'TOWER ASCENSION LOCKED',
-                style: GoogleFonts.pixelifySans(
+                style: GoogleFonts.rajdhani(
                   fontSize: 17,
                   color: AppTheme.accentGold,
                   letterSpacing: 3,
@@ -262,7 +268,7 @@ class _EndlessScreenState extends State<EndlessScreen> {
               Text(
                 'Defeat your first enemy in Campaign\nto unlock Tower Ascension.',
                 textAlign: TextAlign.center,
-                style: GoogleFonts.pixelifySans(
+                style: GoogleFonts.rajdhani(
                   fontSize: 13,
                   color: AppTheme.textMuted,
                   height: 1.6,
@@ -286,8 +292,9 @@ class _EndlessScreenState extends State<EndlessScreen> {
           TutorialTip(
             tutorialKey: 'endless',
             game: game,
-            text: 'Tower Ascension lets you farm the enemy you\'re currently facing in campaign. '
-                'Enemies respawn infinitely — earn gold, XP, and gem shards at your own pace.',
+            text: 'Tower Ascension is your personal combat arena. '
+                'Fight enemies from your campaign progress for gold, XP, and shards. '
+                'Challenge unlocked campaign bosses for bonus loot — each boss can be defeated once per day and resets at midnight.',
           ),
           // Personal best
           if (game.endlessPersonalBest > 0)
@@ -323,7 +330,7 @@ class _EndlessScreenState extends State<EndlessScreen> {
               ),
               child: Text(
                 '⚔  ENTER THE TOWER',
-                style: GoogleFonts.pixelifySans(fontSize: 15, letterSpacing: 2),
+                style: GoogleFonts.rajdhani(fontSize: 15, letterSpacing: 2),
               ),
             ),
           ),
@@ -343,7 +350,7 @@ class _EndlessScreenState extends State<EndlessScreen> {
               children: [
                 Text(
                   'YOUR OPPONENT',
-                  style: GoogleFonts.pixelifySans(
+                  style: GoogleFonts.rajdhani(
                     fontSize: 10, color: AppTheme.textMuted, letterSpacing: 3,
                   ),
                 ),
@@ -355,7 +362,7 @@ class _EndlessScreenState extends State<EndlessScreen> {
                 const SizedBox(height: 10),
                 Text(
                   baseEnemy.name.toUpperCase(),
-                  style: GoogleFonts.pixelifySans(
+                  style: GoogleFonts.rajdhani(
                     fontSize: 18, fontWeight: FontWeight.bold,
                     color: const Color(0xFFee4040), letterSpacing: 2,
                   ),
@@ -363,7 +370,7 @@ class _EndlessScreenState extends State<EndlessScreen> {
                 const SizedBox(height: 2),
                 Text(
                   'Level ${baseEnemy.level}',
-                  style: GoogleFonts.pixelifySans(
+                  style: GoogleFonts.rajdhani(
                     fontSize: 12, color: AppTheme.accentGold,
                   ),
                 ),
@@ -380,7 +387,7 @@ class _EndlessScreenState extends State<EndlessScreen> {
                 Text(
                   baseEnemy.description,
                   textAlign: TextAlign.center,
-                  style: GoogleFonts.pixelifySans(
+                  style: GoogleFonts.rajdhani(
                     fontSize: 11, color: AppTheme.textMuted, height: 1.5,
                   ),
                 ),
@@ -405,44 +412,66 @@ class _EndlessScreenState extends State<EndlessScreen> {
                       final boss = EnemyData.enemyForStage(stage);
                       final spriteId = EnemyData.spriteIdForStage(stage);
                       final isSelected = _selectedBossStage == stage;
+                      final isDefeated = game.isTowerBossDefeatedToday(stage, _bossTier);
                       return GestureDetector(
-                        onTap: () => setState(() =>
+                        onTap: isDefeated ? null : () => setState(() =>
                             _selectedBossStage = isSelected ? null : stage),
-                        child: Container(
-                          width: 60,
-                          margin: const EdgeInsets.only(right: 6),
-                          decoration: BoxDecoration(
-                            color: isSelected
-                                ? const Color(0xFF3a0060).withValues(alpha: 0.7)
-                                : const Color(0xFF2a0040).withValues(alpha: 0.5),
-                            border: Border.all(
-                              color: isSelected
-                                  ? const Color(0xFFcc44ff)
-                                  : const Color(0xFFcc44ff).withValues(alpha: 0.3),
-                              width: isSelected ? 2 : 1,
+                        child: Stack(
+                          children: [
+                            Container(
+                              width: 60,
+                              margin: const EdgeInsets.only(right: 6),
+                              decoration: BoxDecoration(
+                                color: isDefeated
+                                    ? const Color(0xFF1a1a1a).withValues(alpha: 0.7)
+                                    : isSelected
+                                        ? const Color(0xFF3a0060).withValues(alpha: 0.7)
+                                        : const Color(0xFF2a0040).withValues(alpha: 0.5),
+                                border: Border.all(
+                                  color: isDefeated
+                                      ? AppTheme.cardBorder
+                                      : isSelected
+                                          ? const Color(0xFFcc44ff)
+                                          : const Color(0xFFcc44ff).withValues(alpha: 0.3),
+                                  width: isSelected ? 2 : 1,
+                                ),
+                                borderRadius: BorderRadius.circular(4),
+                                boxShadow: isSelected && !isDefeated ? [
+                                  BoxShadow(
+                                    color: const Color(0xFFcc44ff).withValues(alpha: 0.3),
+                                    blurRadius: 8,
+                                  ),
+                                ] : null,
+                              ),
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  SizedBox(
+                                    height: 32,
+                                    child: Opacity(
+                                      opacity: isDefeated ? 0.35 : 1.0,
+                                      child: StaticEnemySprite(spriteId: spriteId, size: 30),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Text(boss.name, style: TextStyle(fontSize: 7,
+                                      color: isDefeated ? AppTheme.textMuted :
+                                          isSelected ? const Color(0xFFee88ff) : const Color(0xFFcc88ff)),
+                                      maxLines: 1, overflow: TextOverflow.ellipsis, textAlign: TextAlign.center),
+                                  Text('Lv${boss.level}', style: const TextStyle(fontSize: 7, color: AppTheme.textMuted)),
+                                ],
+                              ),
                             ),
-                            borderRadius: BorderRadius.circular(4),
-                            boxShadow: isSelected ? [
-                              BoxShadow(
-                                color: const Color(0xFFcc44ff).withValues(alpha: 0.3),
-                                blurRadius: 8,
+                            if (isDefeated)
+                              Positioned.fill(
+                                child: Container(
+                                  margin: const EdgeInsets.only(right: 6),
+                                  decoration: BoxDecoration(borderRadius: BorderRadius.circular(4)),
+                                  alignment: Alignment.center,
+                                  child: const Text('✓', style: TextStyle(fontSize: 14, color: Color(0xFF44cc66), fontWeight: FontWeight.bold)),
+                                ),
                               ),
-                            ] : null,
-                          ),
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              SizedBox(
-                                height: 32,
-                                child: StaticEnemySprite(spriteId: spriteId, size: 30),
-                              ),
-                              const SizedBox(height: 2),
-                              Text(boss.name, style: TextStyle(fontSize: 7,
-                                  color: isSelected ? const Color(0xFFee88ff) : const Color(0xFFcc88ff)),
-                                  maxLines: 1, overflow: TextOverflow.ellipsis, textAlign: TextAlign.center),
-                              Text('Lv${boss.level}', style: const TextStyle(fontSize: 7, color: AppTheme.textMuted)),
-                            ],
-                          ),
+                          ],
                         ),
                       );
                     }),
@@ -555,28 +584,43 @@ class _EndlessScreenState extends State<EndlessScreen> {
                       ]),
                     ),
                     const SizedBox(height: 10),
-                    SizedBox(
-                      width: double.infinity,
-                      height: 48,
-                      child: ElevatedButton(
-                        onPressed: () {
-                          _activeBossStage = _selectedBossStage;
-                          game.startEndlessBattleAtStage(_selectedBossStage!);
-                          setState(() {
-                            _selectedBossStage = null;
-                            _inBattle = true;
-                          });
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF4a1070),
-                          foregroundColor: Colors.white,
-                          side: const BorderSide(color: Color(0xFFcc44ff), width: 1.5),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+                    Builder(builder: (_) {
+                      final alreadyDefeated = game.isTowerBossDefeatedToday(
+                          _selectedBossStage!, _bossTier);
+                      return SizedBox(
+                        width: double.infinity,
+                        height: 48,
+                        child: ElevatedButton(
+                          onPressed: alreadyDefeated ? null : () {
+                            _activeBossStage = _selectedBossStage;
+                            game.startEndlessBattleAtStage(_selectedBossStage!);
+                            setState(() {
+                              _selectedBossStage = null;
+                              _inBattle = true;
+                            });
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: alreadyDefeated
+                                ? const Color(0xFF222222)
+                                : const Color(0xFF4a1070),
+                            foregroundColor: Colors.white,
+                            side: BorderSide(
+                                color: alreadyDefeated
+                                    ? AppTheme.cardBorder
+                                    : const Color(0xFFcc44ff),
+                                width: 1.5),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+                          ),
+                          child: Text(
+                            alreadyDefeated ? '✓  DEFEATED TODAY' : '⚔  ENTER BOSS BATTLE',
+                            style: GoogleFonts.rajdhani(
+                                fontSize: 14,
+                                letterSpacing: 2,
+                                color: alreadyDefeated ? AppTheme.textMuted : Colors.white),
+                          ),
                         ),
-                        child: Text('⚔  ENTER BOSS BATTLE',
-                            style: GoogleFonts.pixelifySans(fontSize: 14, letterSpacing: 2)),
-                      ),
-                    ),
+                      );
+                    }),
                   ]),
                 );
               }),
@@ -596,7 +640,7 @@ class _EndlessScreenState extends State<EndlessScreen> {
               children: [
                 Text(
                   'VICTORY REWARDS',
-                  style: GoogleFonts.pixelifySans(
+                  style: GoogleFonts.rajdhani(
                     fontSize: 9, color: AppTheme.accentGold, letterSpacing: 2,
                   ),
                 ),
@@ -641,7 +685,7 @@ class _EndlessScreenState extends State<EndlessScreen> {
                 const SizedBox(width: 8),
                 Text(
                   '${AppTheme.fmtNumber(game.shards)}  Shards of Fate',
-                  style: GoogleFonts.pixelifySans(
+                  style: GoogleFonts.rajdhani(
                     fontSize: 13, color: const Color(0xFF80d0ff), letterSpacing: 1,
                   ),
                 ),
@@ -660,13 +704,13 @@ class _EndlessScreenState extends State<EndlessScreen> {
       children: [
         Text(
           label,
-          style: GoogleFonts.pixelifySans(
+          style: GoogleFonts.rajdhani(
               fontSize: 10, color: AppTheme.textMuted, letterSpacing: 1),
         ),
         const SizedBox(height: 2),
         Text(
           value,
-          style: GoogleFonts.pixelifySans(
+          style: GoogleFonts.rajdhani(
             fontSize: 17,
             fontWeight: FontWeight.bold,
             color: AppTheme.textLight,
@@ -705,6 +749,7 @@ class _EndlessScreenState extends State<EndlessScreen> {
 
   static List<Color> _heroBuffGlows(GameState game) {
     final glows = <Color>[];
+    if (game.heroAbsorbShield > 0) glows.add(const Color(0xFF88ccff));
     if (game.buffAttackBonus > 0)  glows.add(const Color(0xFFffcc00));
     if (game.buffAcBonus > 0)      glows.add(const Color(0xFF66aaff));
     if (game.dodgeNextHit)         glows.add(const Color(0xFF44ddcc));
@@ -714,9 +759,13 @@ class _EndlessScreenState extends State<EndlessScreen> {
 
   static List<Color> _enemyDebuffGlows(GameState game) {
     final glows = <Color>[];
-    if (game.dotRoundsLeft > 0)     glows.add(const Color(0xFF88dd00));
-    if (game.enemyStunRounds > 0)   glows.add(const Color(0xFFcc44ff));
-    if (game.enemyWeakenRounds > 0) glows.add(const Color(0xFFff4488));
+    if (game.dotRoundsLeft > 0)          glows.add(const Color(0xFF88dd00));
+    if (game.enemyStunRounds > 0)        glows.add(const Color(0xFFcc44ff));
+    if (game.stunApplicationCount >= 2)  glows.add(const Color(0xFF665577));
+    if (game.enemySilenceRounds > 0)     glows.add(const Color(0xFFffdd00));
+    if (game.enemyMissChanceRounds > 0)  glows.add(const Color(0xFFaaaaff));
+    if (game.enemyWeakenRounds > 0)      glows.add(const Color(0xFFff4488));
+    if (game.enemyVulnerableRounds > 0)  glows.add(const Color(0xFFff8800));
     return glows;
   }
 
@@ -729,38 +778,54 @@ class _EndlessScreenState extends State<EndlessScreen> {
     return Column(
       children: [
         Expanded(
-          child: BattleArena(
-            key: _arenaKey,
-            heroName:          game.hero.name,
-            heroLevel:         game.hero.level,
-            heroCurrentHp:     game.hero.currentHealth,
-            heroMaxHp:         game.hero.maxHealth,
-            heroAttack:        game.hero.attack,
-            heroSpriteId:      game.hero.spriteId,
-            heroGender:        game.hero.gender,
-            heroAuraColor:     game.heroAuraColor,
-            heroAuraIntensity: game.heroAuraIntensity,
-            heroColorFilter:   game.heroSkinFilter,
-            enemyName:    enemy.name,
-            enemyLevel:   enemy.level,
-            enemyCurrentHp: enemy.currentHealth,
-            enemyMaxHp:   enemy.maxHealth,
-            enemyAttack:  enemy.attack,
-            enemyId:      enemy.id,
-            stageIndex:   game.campaignStageIndex,
-            affixWidget: game.activeAffixes.isNotEmpty
-                ? AffixChipRow(affixes: game.activeAffixes)
-                : null,
-            enemyAuraColor:   BattleSprite.auraColorFor(game.activeAffixes),
-            heroDamageType:   game.hero.activeDamageType,
-            enemyAttackType:  enemy.attackType,
-            enemyResistances: enemy.resistances,
-            heroBuffGlows:    _heroBuffGlows(game),
-            enemyDebuffGlows: _enemyDebuffGlows(game),
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              BattleArena(
+                key: _arenaKey,
+                heroName:          game.hero.name,
+                heroLevel:         game.hero.level,
+                heroCurrentHp:     game.hero.currentHealth,
+                heroMaxHp:         game.hero.maxHealth,
+                heroAttack:        game.hero.attack,
+                heroSpriteId:      game.hero.spriteId,
+                heroGender:        game.hero.gender,
+                heroRace:          game.heroRace,
+                heroAuraColor:     game.heroAuraColor,
+                heroAuraIntensity: game.heroAuraIntensity,
+                heroColorFilter:   game.heroSkinFilter,
+                heroPet: game.equippedPet != null
+                    ? PetBattleSprite(pet: game.equippedPet!)
+                    : null,
+                enemyName:    enemy.name,
+                enemyLevel:   enemy.level,
+                enemyCurrentHp: enemy.currentHealth,
+                enemyMaxHp:   enemy.maxHealth,
+                enemyAttack:  enemy.attack,
+                enemyId:      enemy.id,
+                headerLabel:  _activeBossStage != null
+                    ? '⚔  TOWER BOSS  ⚔'
+                    : '⚔  TOWER FLOOR ${game.endlessStageIndex + 1}  ⚔',
+                isBoss:       _activeBossStage != null || game.isBossStage,
+                isBossEnraged: game.isBossEnraged,
+                affixWidget: game.activeAffixes.isNotEmpty
+                    ? AffixChipRow(affixes: game.activeAffixes)
+                    : null,
+                enemyAuraColor:   BattleSprite.auraColorFor(game.activeAffixes),
+                heroDamageType:   game.hero.activeDamageType,
+                enemyAttackType:  enemy.attackType,
+                enemyResistances: enemy.resistances,
+                heroBuffGlows:    _heroBuffGlows(game),
+                enemyDebuffGlows: _enemyDebuffGlows(game),
+                heroCritPct:  game.totalCritChancePct,
+                heroArmor:    game.heroArmorValue,
+              ),
+              ArenaAbilityEffect(key: _effectKey),
+            ],
           ),
         ),
 
-        const BattleIconBar(),
+        const SafeArea(top: false, child: BattleIconBar()),
       ],
     );
   }
@@ -818,6 +883,21 @@ class _EndlessScreenState extends State<EndlessScreen> {
                       letterSpacing: 1,
                     )),
                 ]),
+                if (_rewardTowerShards > 0) ...[
+                  const SizedBox(height: 4),
+                  Row(mainAxisSize: MainAxisSize.min, children: [
+                    const Text('🔮', style: TextStyle(fontSize: 14)),
+                    const SizedBox(width: 6),
+                    Text(
+                      '+$_rewardTowerShards TOWER SHARDS',
+                      style: const TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFFcc88ff),
+                        letterSpacing: 1,
+                      )),
+                  ]),
+                ],
                 if (_rewardMilestone != null) ...[
                   const SizedBox(height: 12),
                   const Divider(color: Color(0xFF3a1a00), height: 1),

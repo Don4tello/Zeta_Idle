@@ -1,4 +1,4 @@
-﻿import 'dart:async';
+import 'dart:async';
 import 'dart:math';
 import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
@@ -12,10 +12,12 @@ import 'main_shell.dart' show TutorialTip;
 import '../models/passive_tree.dart';
 import '../services/game_state.dart';
 import '../theme/app_theme.dart';
+import '../widgets/arena_ability_effect.dart';
 import '../widgets/battle_arena.dart';
 import '../widgets/tier_selector.dart';
 import '../widgets/battle_split_panel.dart';
 import '../widgets/pet_battle_sprite.dart';
+import '../widgets/zcoin_icon.dart';
 
 const _kGauntletEnemies = 10;
 const _kMaxModifiers = 3;
@@ -35,15 +37,16 @@ class GauntletScreen extends StatefulWidget {
 class _GauntletScreenState extends State<GauntletScreen> {
   _Phase _phase = _Phase.pick;
 
-  final _arenaKey = GlobalKey<BattleArenaState>();
+  final _arenaKey  = GlobalKey<BattleArenaState>();
+  final _effectKey = GlobalKey<ArenaAbilityEffectState>();
 
-  // ── Modifier selection ───────────────────────────────────────────────────
+  // -- Modifier selection ---------------------------------------------------
   final Set<String> _selectedIds = {};
   int _selectedTier = 1;
   bool _autoRepeat = false;
   Timer? _autoRestartTimer;
 
-  // ── Battle state ─────────────────────────────────────────────────────────
+  // -- Battle state ---------------------------------------------------------
   int _waveIndex  = 0;
   int _heroHp     = 0;
   int _heroMaxHp  = 0;
@@ -66,7 +69,7 @@ class _GauntletScreenState extends State<GauntletScreen> {
   double _heroHpMult    = 1.0;
   int    _essenceBonusPerKill = 0;
 
-  // ── Local ability state ───────────────────────────────────────────────────
+  // -- Local ability state ---------------------------------------------------
   final _rng = Random();
   int _gAbilityRound = 0;
   final Map<String, int> _gCooldownUntil = {};
@@ -78,7 +81,7 @@ class _GauntletScreenState extends State<GauntletScreen> {
   int _enemyWeakenRem = 0;
   int _enemyVulnRem   = 0;
 
-  // ── Result ───────────────────────────────────────────────────────────────
+  // -- Result ---------------------------------------------------------------
   GauntletResult? _result;
   GameState? _game;
 
@@ -113,7 +116,7 @@ class _GauntletScreenState extends State<GauntletScreen> {
       ..addAll(all.take(_kMaxModifiers));
   }
 
-  // ── Modifier pick ─────────────────────────────────────────────────────────
+  // -- Modifier pick ---------------------------------------------------------
 
   void _toggleModifier(String id) {
     setState(() {
@@ -155,7 +158,7 @@ class _GauntletScreenState extends State<GauntletScreen> {
         + game.runeAtkBonus
         + game.ascAtkBonus;
 
-    _heroDmgMod = game.hero.damageMod
+    _heroDmgMod = game.hero.baseDmg
         + game.passiveTree.totalOf(PassiveEffect.damageFlat)
         + game.inventory.totalOf(ItemStat.damageBonus)
         + game.questDamageBonus
@@ -190,7 +193,7 @@ class _GauntletScreenState extends State<GauntletScreen> {
       _heroHp     = baseMaxHp;
       _log.clear();
     });
-    _log.add('⚔ GAUNTLET STARTS — ${_kGauntletEnemies} enemies await!');
+    _log.add('? GAUNTLET STARTS � ${_kGauntletEnemies} enemies await!');
     _spawnEnemy();
 
     _game = game;
@@ -226,7 +229,7 @@ class _GauntletScreenState extends State<GauntletScreen> {
     if (enemy == null) return;
     final game = GameStateProvider.of(context);
 
-    // ── Tick abilities ────────────────────────────────────────────────────
+    // -- Tick abilities ----------------------------------------------------
     _gAbilityRound++;
     for (final ability in game.unlockedAbilities) {
       final readyAt = _gCooldownUntil[ability.id] ?? 0;
@@ -245,6 +248,9 @@ class _GauntletScreenState extends State<GauntletScreen> {
             _endRun(heroWon: true);
             return;
           }
+          final heal = (_heroMaxHp * 0.10).round();
+          _heroHp = (_heroHp + heal).clamp(0, _heroMaxHp);
+          _log.add('⚕ Recovered $heal HP.');
           setState(() {});
           _spawnEnemy();
           return;
@@ -252,7 +258,7 @@ class _GauntletScreenState extends State<GauntletScreen> {
       }
     }
 
-    // ── Tick temp buffs ───────────────────────────────────────────────────
+    // -- Tick temp buffs ---------------------------------------------------
     if (_tempAtkRounds > 0) {
       _tempAtkRounds--;
       if (_tempAtkRounds == 0) _tempAtkBonus = 0;
@@ -262,7 +268,7 @@ class _GauntletScreenState extends State<GauntletScreen> {
       if (_tempAcRounds == 0) _tempAcBonus = 0;
     }
 
-    // ── Hero attacks ──────────────────────────────────────────────────────
+    // -- Hero attacks ------------------------------------------------------
     final effectiveAtk = _heroAtk + _tempAtkBonus;
     final heroRoll     = _rng.nextInt(20) + 1;
     final crit         = heroRoll == 20;
@@ -293,15 +299,18 @@ class _GauntletScreenState extends State<GauntletScreen> {
         _endRun(heroWon: true);
         return;
       }
+      final heal = (_heroMaxHp * 0.10).round();
+      _heroHp = (_heroHp + heal).clamp(0, _heroMaxHp);
+      _log.add('⚕ Recovered $heal HP.');
       setState(() {});
       _spawnEnemy();
       return;
     }
 
-    // ── Enemy attacks back ────────────────────────────────────────────────
+    // -- Enemy attacks back ------------------------------------------------
     if (_enemyStunned) {
       _enemyStunned = false;
-      _log.add('Enemy is stunned — skips attack!');
+      _log.add('Enemy is stunned � skips attack!');
       setState(() {});
       return;
     }
@@ -332,58 +341,72 @@ class _GauntletScreenState extends State<GauntletScreen> {
   }
 
   void _applyAbilityEffect(GameState game, HeroAbility ability) {
+    _arenaKey.currentState?.playAbilityBanner(ability.name, ability.effect, id: ability.id);
+    _effectKey.currentState?.playEffect(ability.id);
     final sv = game.scaledAbilityValue(ability);
     switch (ability.effect) {
       case AbilityEffect.bonusDamage:
         final dmg = (sv * 0.5).round().clamp(1, 9999);
         _enemyHp -= dmg;
-        _log.add('✦ ${ability.name}: $dmg ability damage!');
+        _log.add('? ${ability.name}: $dmg ability damage!');
         _arenaKey.currentState?.addExtraFloat(dmg);
 
       case AbilityEffect.heal:
         final h = sv.clamp(1, 9999);
         setState(() => _heroHp = (_heroHp + h).clamp(0, _heroMaxHp));
-        _log.add('✦ ${ability.name}: healed $h HP.');
+        _log.add('? ${ability.name}: healed $h HP.');
         _arenaKey.currentState?.addExtraFloat(h, isHeal: true);
 
       case AbilityEffect.attackBonus:
         _tempAtkBonus  = sv;
         _tempAtkRounds = ability.duration > 0 ? ability.duration : 3;
-        _log.add('✦ ${ability.name}: +$sv ATK for $_tempAtkRounds rounds.');
+        _log.add('? ${ability.name}: +$sv DMG for $_tempAtkRounds rounds.');
 
       case AbilityEffect.acBonus:
         _tempAcBonus  = sv;
         _tempAcRounds = ability.duration > 0 ? ability.duration : 3;
-        _log.add('✦ ${ability.name}: +$sv AC for $_tempAcRounds rounds.');
+        _log.add('? ${ability.name}: +$sv AC for $_tempAcRounds rounds.');
 
       case AbilityEffect.stun:
         _enemyStunned = true;
-        _log.add('✦ ${ability.name}: enemy stunned!');
+        _log.add('? ${ability.name}: enemy stunned!');
 
       case AbilityEffect.dot:
         final dmg = (sv * 0.6).round().clamp(1, 9999);
         _enemyHp -= dmg;
-        _log.add('✦ ${ability.name}: $dmg DoT damage!');
+        _log.add('? ${ability.name}: $dmg DoT damage!');
         _arenaKey.currentState?.addExtraFloat(dmg);
 
       case AbilityEffect.dodge:
         _tempAcBonus  = 6;
         _tempAcRounds = 1;
-        _log.add('✦ ${ability.name}: dodge — +6 AC this round.');
+        _log.add('? ${ability.name}: dodge � +6 AC this round.');
 
       case AbilityEffect.aura:
         final h = (sv * 0.5).round().clamp(1, 9999);
         setState(() => _heroHp = (_heroHp + h).clamp(0, _heroMaxHp));
-        _log.add('✦ ${ability.name}: aura healed $h HP.');
+        _log.add('? ${ability.name}: aura healed $h HP.');
         _arenaKey.currentState?.addExtraFloat(h, isHeal: true);
 
       case AbilityEffect.debuffWeaken:
         _enemyWeakenRem = 3;
-        _log.add('✦ ${ability.name}: enemy weakened for 3 rounds!');
+        _log.add('? ${ability.name}: enemy weakened for 3 rounds!');
 
       case AbilityEffect.debuffVulnerable:
         _enemyVulnRem = 3;
-        _log.add('✦ ${ability.name}: enemy vulnerable for 3 rounds!');
+        _log.add('? ${ability.name}: enemy vulnerable for 3 rounds!');
+
+      case AbilityEffect.silence:
+        _enemyStunned = true;
+        _log.add('? ${ability.name}: enemy silenced!');
+
+      case AbilityEffect.absorbShield:
+        setState(() => _heroHp = (_heroHp + sv).clamp(0, _heroMaxHp));
+        _log.add('? ${ability.name}: +$sv HP barrier!');
+
+      case AbilityEffect.missChance:
+        _enemyWeakenRem = ability.duration > 0 ? ability.duration : 2;
+        _log.add('? ${ability.name}: enemy miss chance applied!');
     }
   }
 
@@ -391,7 +414,7 @@ class _GauntletScreenState extends State<GauntletScreen> {
     _autoTimer?.cancel();
     final game = GameStateProvider.of(context);
 
-    // Score: kills × (1 + modifier count) × 100 × tier, +2000 for a clear
+    // Score: kills � (1 + modifier count) � 100 � tier, +2000 for a clear
     final modCount = _selectedIds.length;
     final tierMult = 1.0 + (_selectedTier - 1) * 0.3;
     final baseScore = (_kills * (1 + modCount) * 100 * tierMult).round();
@@ -400,7 +423,7 @@ class _GauntletScreenState extends State<GauntletScreen> {
 
     // Rewards: scale with tier
     final essence = (_kills * (5 + _essenceBonusPerKill) * tierMult).round();
-    final crystals = heroWon ? (10 + modCount * 5) * _selectedTier : 0;
+    final zcoins = heroWon ? (10 + modCount * 5) * _selectedTier : 0;
     final echoMult = (1.0 + modCount * 0.25) * tierMult;
     final echoReward = ((_kills * 8 + (heroWon ? 40 + modCount * 20 : 0)) * echoMult).round();
 
@@ -410,7 +433,7 @@ class _GauntletScreenState extends State<GauntletScreen> {
       cleared:         heroWon,
       score:           score,
       essenceEarned:   essence,
-      crystalsEarned:  crystals,
+      zcoinsEarned:  zcoins,
       echoesEarned:    echoReward,
       modifierIds:     _selectedIds.toList(),
     );
@@ -431,7 +454,7 @@ class _GauntletScreenState extends State<GauntletScreen> {
     }
   }
 
-  // ── Build ─────────────────────────────────────────────────────────────────
+  // -- Build -----------------------------------------------------------------
 
   @override
   Widget build(BuildContext context) {
@@ -458,7 +481,7 @@ class _GauntletScreenState extends State<GauntletScreen> {
     );
   }
 
-  // ── Phase 1: Modifier Pick ────────────────────────────────────────────────
+  // -- Phase 1: Modifier Pick ------------------------------------------------
 
   Widget _buildPickPhase() {
     final game = GameStateProvider.of(context);
@@ -501,7 +524,7 @@ class _GauntletScreenState extends State<GauntletScreen> {
         TutorialTip(
           tutorialKey: 'gauntlet',
           game: game,
-          text: 'The Gauntlet is a combat challenge — pick modifiers to increase difficulty '
+          text: 'The Gauntlet is a combat challenge � pick modifiers to increase difficulty '
               'and earn more Echoes. Echoes are used to purchase permanent Upgrades.',
         ),
         const SizedBox(height: 12),
@@ -523,7 +546,7 @@ class _GauntletScreenState extends State<GauntletScreen> {
           Padding(
             padding: const EdgeInsets.only(top: 4),
             child: Text(
-              '🔊 Echo bonus: +${(_selectedIds.length * 25)}%',
+              '?? Echo bonus: +${(_selectedIds.length * 25)}%',
               style: AppTheme.pixelHeading(
                   fontSize: 9, letterSpacing: 1, color: const Color(0xFFcc88ff)),
             ),
@@ -556,7 +579,7 @@ class _GauntletScreenState extends State<GauntletScreen> {
                 .rewardShardBonus)
             .reduce((a, b) => a + b);
     final essence   = _kGauntletEnemies * (5 + essenceBonus);
-    final crystals = 10 + modCount * 5;
+    final zcoins = 10 + modCount * 5;
     final scoreMult = 1 + modCount;
 
     return Container(
@@ -574,18 +597,18 @@ class _GauntletScreenState extends State<GauntletScreen> {
                   fontSize: 10, letterSpacing: 1, color: AppTheme.textMuted)),
           const SizedBox(height: 10),
           Row(children: [
-            _RewardChip('✦ $essence essence', const Color(0xFF44dd88)),
+            _RewardChip('? $essence essence', const Color(0xFF44dd88)),
             const SizedBox(width: 8),
-            _RewardChip('💎 $crystals crystals', const Color(0xFF44ccaa)),
+            _RewardChip('$zcoins ZCoins', const Color(0xFF44ccaa), prefix: const ZCoinIcon(size: 11, animate: false)),
             const SizedBox(width: 8),
-            _RewardChip('Score ×$scoreMult', AppTheme.accentGold),
+            _RewardChip('Score �$scoreMult', AppTheme.accentGold),
           ]),
         ],
       ),
     );
   }
 
-  // ── Phase 2: Battle ───────────────────────────────────────────────────────
+  // -- Phase 2: Battle -------------------------------------------------------
 
   Widget _buildBattlePhase() {
     final enemy = _currentEnemy;
@@ -601,52 +624,65 @@ class _GauntletScreenState extends State<GauntletScreen> {
         ),
         // Full battle arena
         Expanded(
-          child: BattleArena(
-            key: _arenaKey,
-            heroName:         game.hero.name,
-            heroLevel:        game.hero.level,
-            heroCurrentHp:    _heroHp,
-            heroMaxHp:        _heroMaxHp,
-            heroAttack:       _heroAtk,
-            heroSpriteId:     game.hero.spriteId,
-            heroGender:       game.hero.gender,
-            heroAuraColor:    game.heroAuraColor,
-            heroAuraIntensity: game.heroAuraIntensity,
-            heroColorFilter:  game.heroSkinFilter,
-            heroPet: game.equippedPet != null
-                ? PetBattleSprite(pet: game.equippedPet!, size: 28)
-                : null,
-            enemyName:     enemy.name,
-            enemyLevel:    enemy.level,
-            enemyCurrentHp: _enemyHp,
-            enemyMaxHp:    _enemyMaxHp,
-            enemyAttack:   enemy.attack,
-            enemyId:       enemy.id,
-            heroBuffGlows: [
-              if (_tempAtkBonus > 0) const Color(0xFFffcc00),
-              if (_tempAcBonus  > 0) const Color(0xFF66aaff),
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              BattleArena(
+                key: _arenaKey,
+                heroName:         game.hero.name,
+                heroLevel:        game.hero.level,
+                heroCurrentHp:    _heroHp,
+                heroMaxHp:        _heroMaxHp,
+                heroAttack:       _heroAtk,
+                heroSpriteId:     game.hero.spriteId,
+                heroGender:       game.hero.gender,
+                heroRace:         game.heroRace,
+                heroAuraColor:    game.heroAuraColor,
+                heroAuraIntensity: game.heroAuraIntensity,
+                heroColorFilter:  game.heroSkinFilter,
+                heroPet: game.equippedPet != null
+                    ? PetBattleSprite(pet: game.equippedPet!)
+                    : null,
+                enemyName:     enemy.name,
+                enemyLevel:    enemy.level,
+                enemyCurrentHp: _enemyHp,
+                enemyMaxHp:    _enemyMaxHp,
+                enemyAttack:   enemy.attack,
+                enemyId:       enemy.id,
+                headerLabel:   '⚔  GAUNTLET  ⚔',
+                heroBuffGlows: [
+                  if (_tempAtkBonus > 0) const Color(0xFFffcc00),
+                  if (_tempAcBonus  > 0) const Color(0xFF66aaff),
+                ],
+                enemyDebuffGlows: [
+                  if (_enemyStunned)       const Color(0xFFcc44ff),
+                  if (_enemyWeakenRem > 0) const Color(0xFFff4488),
+                  if (_enemyVulnRem   > 0) const Color(0xFFff8800),
+                ],
+                heroDamageType: game.hero.activeDamageType,
+                heroCritPct:   game.totalCritChancePct,
+                heroArmor:     game.heroArmorValue,
+              ),
+              ArenaAbilityEffect(key: _effectKey),
             ],
-            enemyDebuffGlows: [
-              if (_enemyStunned)      const Color(0xFFcc44ff),
-              if (_enemyWeakenRem > 0) const Color(0xFFff4488),
-              if (_enemyVulnRem   > 0) const Color(0xFFff8800),
-            ],
-            heroDamageType: game.hero.activeDamageType,
           ),
         ),
-        BattleIconBar(
-          localCooldownResolver: (id) {
-            final totalCd = game.scaledAbilityCooldown(
-                game.unlockedAbilities.firstWhere((a) => a.id == id));
-            final readyAt = _gCooldownUntil[id] ?? 0;
-            return (readyAt - _gAbilityRound).clamp(0, totalCd);
-          },
+        SafeArea(
+          top: false,
+          child: BattleIconBar(
+            localCooldownResolver: (id) {
+              final totalCd = game.scaledAbilityCooldown(
+                  game.unlockedAbilities.firstWhere((a) => a.id == id));
+              final readyAt = _gCooldownUntil[id] ?? 0;
+              return (readyAt - _gAbilityRound).clamp(0, totalCd);
+            },
+          ),
         ),
       ],
     );
   }
 
-  // ── Phase 3: Results ──────────────────────────────────────────────────────
+  // -- Phase 3: Results ------------------------------------------------------
 
   Widget _buildResultsPhase() {
     final r    = _result!;
@@ -657,7 +693,7 @@ class _GauntletScreenState extends State<GauntletScreen> {
       child: Column(
         children: [
           Text(
-            r.cleared ? '✦  GAUNTLET CLEARED  ✦' : '✦  RUN OVER  ✦',
+            r.cleared ? '?  GAUNTLET CLEARED  ?' : '?  RUN OVER  ?',
             style: AppTheme.pixelHeading(
               fontSize: 17,
               letterSpacing: 2,
@@ -671,13 +707,14 @@ class _GauntletScreenState extends State<GauntletScreen> {
           _ResultRow('High Score',       '${game.gauntletHighScore}'),
           const Divider(color: AppTheme.cardBorder, height: 24),
           if (r.essenceEarned > 0)
-            _ResultRow('Essence Earned',  '✦ ${r.essenceEarned}',
+            _ResultRow('Essence Earned',  '? ${r.essenceEarned}',
                 color: const Color(0xFF44dd88)),
-          if (r.crystalsEarned > 0)
-            _ResultRow('Crystals Earned', '💎 ${r.crystalsEarned}',
-                color: const Color(0xFF44ccaa)),
+          if (r.zcoinsEarned > 0)
+            _ResultRow('ZCoins Earned', '${r.zcoinsEarned}',
+                color: const Color(0xFF44ccaa),
+                valuePrefix: const ZCoinIcon(size: 14, animate: false)),
           if (r.echoesEarned > 0)
-            _ResultRow('Echoes Earned', '🔊 ${r.echoesEarned}',
+            _ResultRow('Echoes Earned', '?? ${r.echoesEarned}',
                 color: const Color(0xFFcc88ff)),
           const Spacer(),
           // AUTO toggle
@@ -692,7 +729,7 @@ class _GauntletScreenState extends State<GauntletScreen> {
                 borderRadius: BorderRadius.circular(4),
               ),
               child: Center(
-                child: Text('AUTO — restarting with random modifiers…',
+                child: Text('AUTO � restarting with random modifiers�',
                     style: AppTheme.pixelHeading(
                         fontSize: 10, color: const Color(0xFF44dd88), letterSpacing: 1)),
               ),
@@ -760,7 +797,7 @@ class _GauntletScreenState extends State<GauntletScreen> {
   }
 }
 
-// ── Wave Progress Header ──────────────────────────────────────────────────────
+// -- Wave Progress Header ------------------------------------------------------
 
 class _WaveProgressHeader extends StatefulWidget {
   const _WaveProgressHeader({
@@ -796,7 +833,7 @@ class _WaveProgressHeaderState extends State<_WaveProgressHeader>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // ── Top row: label + kill count ─────────────────────────────────
+          // -- Top row: label + kill count ---------------------------------
           Row(children: [
             Text('WAVE ${widget.waveIndex + 1} / ${widget.totalWaves}',
                 style: AppTheme.pixelHeading(
@@ -807,7 +844,7 @@ class _WaveProgressHeaderState extends State<_WaveProgressHeader>
                     fontSize: 11, color: AppTheme.textMuted)),
           ]),
           const SizedBox(height: 8),
-          // ── Pip row ─────────────────────────────────────────────────────
+          // -- Pip row -----------------------------------------------------
           Row(
             children: List.generate(widget.totalWaves, (i) {
               final defeated = i < widget.waveIndex;
@@ -845,7 +882,7 @@ class _WaveProgressHeaderState extends State<_WaveProgressHeader>
                         ),
                         alignment: Alignment.center,
                         child: Text(
-                          defeated ? '✓' : active ? '⚔' : '${i + 1}',
+                          defeated ? '?' : active ? '?' : '${i + 1}',
                           style: TextStyle(
                             fontSize: defeated ? 13 : active ? 14 : 10,
                             color: defeated
@@ -863,7 +900,7 @@ class _WaveProgressHeaderState extends State<_WaveProgressHeader>
               );
             }),
           ),
-          // ── Modifier chips ───────────────────────────────────────────────
+          // -- Modifier chips -----------------------------------------------
           if (widget.selectedIds.isNotEmpty) ...[
             const SizedBox(height: 6),
             Row(children: [
@@ -891,7 +928,7 @@ class _WaveProgressHeaderState extends State<_WaveProgressHeader>
   }
 }
 
-// ── Shared widgets ────────────────────────────────────────────────────────────
+// -- Shared widgets ------------------------------------------------------------
 
 class _InfoBox extends StatelessWidget {
   const _InfoBox(this.text);
@@ -999,9 +1036,10 @@ class _ModifierPickCard extends StatelessWidget {
 }
 
 class _RewardChip extends StatelessWidget {
-  const _RewardChip(this.label, this.color);
-  final String label;
-  final Color color;
+  const _RewardChip(this.label, this.color, {this.prefix});
+  final String  label;
+  final Color   color;
+  final Widget? prefix;
 
   @override
   Widget build(BuildContext context) {
@@ -1012,18 +1050,20 @@ class _RewardChip extends StatelessWidget {
         border: Border.all(color: color.withValues(alpha: 0.5)),
         borderRadius: BorderRadius.circular(3),
       ),
-      child: Text(label,
-          style: TextStyle(
-              fontSize: 11, color: color, fontWeight: FontWeight.bold)),
+      child: Row(mainAxisSize: MainAxisSize.min, children: [
+        if (prefix != null) ...[prefix!, const SizedBox(width: 3)],
+        Text(label, style: TextStyle(fontSize: 11, color: color, fontWeight: FontWeight.bold)),
+      ]),
     );
   }
 }
 
 class _ResultRow extends StatelessWidget {
-  const _ResultRow(this.label, this.value, {this.color});
-  final String label;
-  final String value;
-  final Color? color;
+  const _ResultRow(this.label, this.value, {this.color, this.valuePrefix});
+  final String  label;
+  final String  value;
+  final Color?  color;
+  final Widget? valuePrefix;
 
   @override
   Widget build(BuildContext context) {
@@ -1033,6 +1073,7 @@ class _ResultRow extends StatelessWidget {
         Text(label,
             style: const TextStyle(fontSize: 13, color: AppTheme.textMuted)),
         const Spacer(),
+        if (valuePrefix != null) ...[valuePrefix!, const SizedBox(width: 4)],
         Text(value,
             style: TextStyle(
                 fontSize: 14,
@@ -1043,7 +1084,7 @@ class _ResultRow extends StatelessWidget {
   }
 }
 
-// ── Shared speed button used in AppBar during battle ─────────────────────────
+// -- Shared speed button used in AppBar during battle -------------------------
 
 class _GauntletStartSection extends StatelessWidget {
   const _GauntletStartSection({required this.onStart});
@@ -1053,7 +1094,7 @@ class _GauntletStartSection extends StatelessWidget {
   Widget build(BuildContext context) {
     final game      = GameStateProvider.of(context);
     final remaining = game.gauntletAttemptsRemaining;
-    final canAfford = game.crystals >= GameState.kGauntletExtraCost;
+    final canAfford = game.zcoins >= GameState.kGauntletExtraCost;
     return Column(children: [
       Row(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -1104,13 +1145,14 @@ class _GauntletStartSection extends StatelessWidget {
               padding: const EdgeInsets.symmetric(vertical: 10),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
             ),
-            child: Text(
-              '💎 ${GameState.kGauntletExtraCost} crystals — Buy 1 extra attempt',
-              style: TextStyle(
-                fontSize: 12,
-                color: canAfford ? const Color(0xFF88ccff) : Colors.white24,
+            child: Row(mainAxisSize: MainAxisSize.min, children: [
+              ZCoinIcon(size: 13, animate: false),
+              const SizedBox(width: 5),
+              Text(
+                '${GameState.kGauntletExtraCost} zcoins � Buy 1 extra attempt',
+                style: TextStyle(fontSize: 12, color: canAfford ? const Color(0xFF88ccff) : Colors.white24),
               ),
-            ),
+            ]),
           ),
         ),
       ],
@@ -1129,8 +1171,8 @@ class _InlineSpeedButton extends StatelessWidget {
   final bool isDebug;
   final VoidCallback onCycle;
 
-  static const _debugLabels = ['1×', '1.5×', '5×', '10×'];
-  static const _prodLabels  = ['1×', '1.5×', '2×'];
+  static const _debugLabels = ['1�', '1.5�', '5�', '10�'];
+  static const _prodLabels  = ['1�', '1.5�', '2�'];
 
   String get _label => isDebug
       ? _debugLabels[(speedTier - 1).clamp(0, 3)]

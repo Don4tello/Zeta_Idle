@@ -1,9 +1,10 @@
-import 'dart:math';
+﻿import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../models/npc_ally.dart';
 import '../services/game_state.dart';
 import '../theme/app_theme.dart';
+import '../widgets/zcoin_icon.dart';
 import 'main_shell.dart' show TutorialTip;
 
 class NpcAllyScreen extends StatelessWidget {
@@ -23,7 +24,9 @@ class NpcAllyScreen extends StatelessWidget {
           TutorialTip(
             tutorialKey: 'mercs',
             game: game,
-            text: 'Recruit mercenaries by completing milestones. Mercs provide passive battle bonuses and can be sent on Expeditions for gold, shards, and more.',
+            text: 'Mercenaries are companions who join permanently when you hit '
+                'certain milestones. 🤝 Each one provides passive combat bonuses '
+                'in every battle and can synergise with others for extra power.',
           ),
         _ActiveBonusBar(game: game),
         const SizedBox(height: 16),
@@ -341,7 +344,7 @@ class _AllyCard extends StatelessWidget {
     final (costS, costC) = unlocked && !maxed
         ? NpcAllyDef.levelUpCost(level + 1)
         : (0, 0);
-    final canAfford = costS <= game.shards && costC <= game.crystals;
+    final canAfford = costS <= game.shards && costC <= game.zcoins;
 
     final borderColor = milestoneReady
         ? const Color(0xFF44cc88)
@@ -570,7 +573,7 @@ class _CardContent extends StatelessWidget {
                 costShards:   costS,
                 costCrystals: costC,
                 canAfford:    canAfford,
-                onTap:        () => game.upgradeAlly(def.id),
+                onTap:        () { game.upgradeAlly(def.id); game.audioService.playUiConfirm(); },
               ),
           ]),
         ],
@@ -940,7 +943,9 @@ class _UpgradeButtonState extends State<_UpgradeButton> {
                         fontWeight: FontWeight.bold)),
                 if (widget.costCrystals > 0) ...[
                   const SizedBox(width: 6),
-                  Text('💎${widget.costCrystals}',
+                  ZCoinIcon(size: 10, animate: false),
+                  const SizedBox(width: 2),
+                  Text('${widget.costCrystals}',
                       style: TextStyle(
                           fontSize: 10,
                           color: color,
@@ -952,7 +957,7 @@ class _UpgradeButtonState extends State<_UpgradeButton> {
                 return Padding(
                   padding: const EdgeInsets.only(top: 3),
                   child: Text(
-                    'Have: ◆${g.shards}${widget.costCrystals > 0 ? "  💎${g.crystals}" : ""}',
+                    'Have: ◆${g.shards}${widget.costCrystals > 0 ? "  💎${g.zcoins}" : ""}',
                     style: const TextStyle(fontSize: 8, color: Color(0xFFcc4444)),
                   ),
                 );

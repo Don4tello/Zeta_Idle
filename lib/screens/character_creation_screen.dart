@@ -108,6 +108,7 @@ class _CharacterCreationScreenState extends State<CharacterCreationScreen> {
                   1 => _ClassStep(
                       key: const ValueKey(1),
                       selectedClass: _selectedClass,
+                      selectedGender: _selectedGender,
                       onClassSelected: (c) => setState(() => _selectedClass = c),
                       onConfirm: _goToRace,
                     ),
@@ -212,10 +213,10 @@ class _NameStep extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 60),
+    return SingleChildScrollView(
+      padding: const EdgeInsets.fromLTRB(60, 64, 60, 32),
       child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
+        mainAxisSize: MainAxisSize.min,
         children: [
           Text(
             'FORGE YOUR LEGEND',
@@ -227,7 +228,7 @@ class _NameStep extends StatelessWidget {
           const SizedBox(height: 8),
           Text(
             '— NAME YOUR WARRIOR —',
-            style: GoogleFonts.pixelifySans(
+            style: GoogleFonts.rajdhani(
               fontSize: 12,
               color: AppTheme.textMuted,
               letterSpacing: 3,
@@ -239,11 +240,11 @@ class _NameStep extends StatelessWidget {
             autofocus: true,
             maxLength: 20,
             textAlign: TextAlign.center,
-            style: GoogleFonts.pixelifySans(
+            style: GoogleFonts.rajdhani(
                 color: AppTheme.textLight, fontSize: 23),
             cursorColor: AppTheme.accentGold,
             decoration: InputDecoration(
-              counterStyle: GoogleFonts.pixelifySans(
+              counterStyle: GoogleFonts.rajdhani(
                   color: AppTheme.textMuted, fontSize: 13),
               contentPadding: const EdgeInsets.symmetric(vertical: 16, horizontal: 8),
               enabledBorder: const UnderlineInputBorder(
@@ -290,7 +291,7 @@ class _NameStep extends StatelessWidget {
                           )),
                       const SizedBox(height: 4),
                       Text(g.label.toUpperCase(),
-                          style: GoogleFonts.pixelifySans(
+                          style: GoogleFonts.rajdhani(
                             fontSize: 9,
                             color: active ? AppTheme.accentGold : AppTheme.textMuted,
                             letterSpacing: 1,
@@ -308,7 +309,7 @@ class _NameStep extends StatelessWidget {
               onPressed: onNext,
               child: Text(
                 'CHOOSE CLASS  →',
-                style: GoogleFonts.pixelifySans(
+                style: GoogleFonts.rajdhani(
                     fontSize: 15, letterSpacing: 2),
               ),
             ),
@@ -325,11 +326,13 @@ class _ClassStep extends StatelessWidget {
   const _ClassStep({
     super.key,
     required this.selectedClass,
+    required this.selectedGender,
     required this.onClassSelected,
     required this.onConfirm,
   });
 
-  final DndClass? selectedClass;
+  final DndClass?  selectedClass;
+  final HeroGender selectedGender;
   final ValueChanged<DndClass> onClassSelected;
   final VoidCallback onConfirm;
 
@@ -345,7 +348,7 @@ class _ClassStep extends StatelessWidget {
         const SizedBox(height: 4),
         Text(
           '— SELECT YOUR PATH —',
-          style: GoogleFonts.pixelifySans(
+          style: GoogleFonts.rajdhani(
             fontSize: 12,
             color: AppTheme.textMuted,
             letterSpacing: 3,
@@ -367,6 +370,7 @@ class _ClassStep extends StatelessWidget {
               return _ClassCard(
                 dndClass: cls,
                 selected: selectedClass == cls,
+                gender: selectedGender,
                 onTap: () => onClassSelected(cls),
               )
                   .animate(delay: (i * 30).ms)
@@ -375,7 +379,7 @@ class _ClassStep extends StatelessWidget {
             },
           ),
         ),
-        if (selectedClass != null) _buildStatsPreview(selectedClass!),
+        if (selectedClass != null) _buildStatsPreview(selectedClass!, selectedGender),
         Padding(
           padding: const EdgeInsets.fromLTRB(20, 8, 20, 20),
           child: SizedBox(
@@ -390,7 +394,7 @@ class _ClassStep extends StatelessWidget {
                 selectedClass != null
                     ? 'CHOOSE RACE  →'
                     : 'SELECT A CLASS',
-                style: GoogleFonts.pixelifySans(
+                style: GoogleFonts.rajdhani(
                     fontSize: 15, letterSpacing: 2),
               ),
             ),
@@ -400,7 +404,7 @@ class _ClassStep extends StatelessWidget {
     );
   }
 
-  Widget _buildStatsPreview(DndClass cls) {
+  Widget _buildStatsPreview(DndClass cls, HeroGender gender) {
     final info = cls.info;
     final stats = [
       ('PWR', info.str),
@@ -428,8 +432,12 @@ class _ClassStep extends StatelessWidget {
               border: Border.all(
                   color: AppTheme.accentGold.withValues(alpha: 0.4)),
             ),
-            child: Center(
-              child: BattleSprite(spriteId: cls.spriteId, facingLeft: false),
+            child: FittedBox(
+              fit: BoxFit.contain,
+              child: SizedBox(
+                width: 80, height: 120,
+                child: BattleSprite(spriteId: cls.spriteId, facingLeft: false, gender: gender),
+              ),
             ),
           ),
           const SizedBox(width: 12),
@@ -446,7 +454,7 @@ class _ClassStep extends StatelessWidget {
                   children: [
                     Text(
                       s.$1,
-                      style: GoogleFonts.pixelifySans(
+                      style: GoogleFonts.rajdhani(
                         fontSize: 10,
                         color: isPrimary
                             ? AppTheme.accentGold
@@ -457,7 +465,7 @@ class _ClassStep extends StatelessWidget {
                     const SizedBox(height: 2),
                     Text(
                       '${s.$2}',
-                      style: GoogleFonts.pixelifySans(
+                      style: GoogleFonts.rajdhani(
                         fontSize: 15,
                         fontWeight: FontWeight.bold,
                         color: isPrimary
@@ -467,7 +475,7 @@ class _ClassStep extends StatelessWidget {
                     ),
                     Text(
                       modStr,
-                      style: GoogleFonts.pixelifySans(
+                      style: GoogleFonts.rajdhani(
                         fontSize: 10,
                         color: mod >= 0
                             ? AppTheme.accentGold.withValues(alpha: 0.7)
@@ -504,11 +512,13 @@ class _ClassCard extends StatelessWidget {
   const _ClassCard({
     required this.dndClass,
     required this.selected,
+    required this.gender,
     required this.onTap,
   });
 
-  final DndClass dndClass;
-  final bool selected;
+  final DndClass  dndClass;
+  final bool      selected;
+  final HeroGender gender;
   final VoidCallback onTap;
 
   // The two damage types this class specialises in.
@@ -556,7 +566,7 @@ class _ClassCard extends StatelessWidget {
                 Expanded(
                   child: Text(
                     info.displayName.toUpperCase(),
-                    style: GoogleFonts.pixelifySans(
+                    style: GoogleFonts.rajdhani(
                       fontSize: 11, fontWeight: FontWeight.bold, letterSpacing: 1,
                       color: selected ? AppTheme.accentGold : AppTheme.textLight,
                     ),
@@ -567,16 +577,25 @@ class _ClassCard extends StatelessWidget {
             ),
             const SizedBox(height: 2),
             Text('${info.likes} · ${info.primaryAbility}',
-                style: GoogleFonts.pixelifySans(fontSize: 8, color: AppTheme.textMuted),
+                style: GoogleFonts.rajdhani(fontSize: 8, color: AppTheme.textMuted),
                 overflow: TextOverflow.ellipsis),
             const SizedBox(height: 6),
 
             // ── Sprite + damage types ────────────────────────────────
             Row(
               children: [
-                SizedBox(
-                  width: 40, height: 50,
-                  child: BattleSprite(spriteId: dndClass.spriteId, facingLeft: false),
+                ClipRect(
+                  child: SizedBox(
+                    width: 52, height: 68,
+                    child: FittedBox(
+                      fit: BoxFit.contain,
+                      alignment: Alignment.bottomCenter,
+                      child: SizedBox(
+                        width: 80, height: 120,
+                        child: BattleSprite(spriteId: dndClass.spriteId, facingLeft: false, gender: gender),
+                      ),
+                    ),
+                  ),
                 ),
                 const SizedBox(width: 8),
                 Expanded(child: Column(
@@ -593,9 +612,9 @@ class _ClassCard extends StatelessWidget {
                         for (final e in [('PWR', stats[0]), ('AGI', stats[1]), ('VIT', stats[2])])
                           Expanded(child: Column(mainAxisSize: MainAxisSize.min, children: [
                             Text(e.$1, textAlign: TextAlign.center,
-                                style: GoogleFonts.pixelifySans(fontSize: 7, color: AppTheme.textMuted)),
+                                style: GoogleFonts.rajdhani(fontSize: 7, color: AppTheme.textMuted)),
                             Text('${e.$2}', textAlign: TextAlign.center,
-                                style: GoogleFonts.pixelifySans(fontSize: 10, fontWeight: FontWeight.bold,
+                                style: GoogleFonts.rajdhani(fontSize: 10, fontWeight: FontWeight.bold,
                                     color: e.$2 >= 15 ? AppTheme.accentGold : e.$2 <= 9 ? const Color(0xFF886655) : AppTheme.textLight)),
                           ])),
                       ],
@@ -606,9 +625,9 @@ class _ClassCard extends StatelessWidget {
                         for (final e in [('ARC', stats[3]), ('FOC', stats[4]), ('FOR', stats[5])])
                           Expanded(child: Column(mainAxisSize: MainAxisSize.min, children: [
                             Text(e.$1, textAlign: TextAlign.center,
-                                style: GoogleFonts.pixelifySans(fontSize: 7, color: AppTheme.textMuted)),
+                                style: GoogleFonts.rajdhani(fontSize: 7, color: AppTheme.textMuted)),
                             Text('${e.$2}', textAlign: TextAlign.center,
-                                style: GoogleFonts.pixelifySans(fontSize: 10, fontWeight: FontWeight.bold,
+                                style: GoogleFonts.rajdhani(fontSize: 10, fontWeight: FontWeight.bold,
                                     color: e.$2 >= 15 ? AppTheme.accentGold : e.$2 <= 9 ? const Color(0xFF886655) : AppTheme.textLight)),
                           ])),
                       ],
@@ -620,24 +639,43 @@ class _ClassCard extends StatelessWidget {
 
             const Spacer(),
 
+            // ── Beginner tag ─────────────────────────────────────────
+            if (info.complexity == DndComplexity.low) ...[
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(vertical: 3),
+                margin: const EdgeInsets.only(bottom: 4),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF1a3a1a),
+                  border: Border.all(color: const Color(0xFF44cc66).withValues(alpha: 0.6)),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+                child: Text('★ RECOMMENDED FOR BEGINNERS',
+                    textAlign: TextAlign.center,
+                    style: GoogleFonts.rajdhani(
+                        fontSize: 7, color: const Color(0xFF44cc66),
+                        fontWeight: FontWeight.bold, letterSpacing: 0.5)),
+              ),
+            ],
+
             // ── Complexity ────────────────────────────────────────────
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text('COMPLEXITY',
-                    style: GoogleFonts.pixelifySans(
+                    style: GoogleFonts.rajdhani(
                         fontSize: 7, color: AppTheme.textMuted,
                         letterSpacing: 0.5)),
                 Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Text(info.complexityDots,
-                        style: GoogleFonts.pixelifySans(
+                        style: GoogleFonts.rajdhani(
                             fontSize: 10, color: _complexityColor(info.complexity),
                             letterSpacing: 2)),
                     const SizedBox(width: 4),
                     Text(info.complexityLabel.toUpperCase(),
-                        style: GoogleFonts.pixelifySans(
+                        style: GoogleFonts.rajdhani(
                             fontSize: 8, color: _complexityColor(info.complexity),
                             letterSpacing: 0.5)),
                   ],
@@ -675,7 +713,7 @@ class _DmgPill extends StatelessWidget {
         const SizedBox(width: 2),
         Text(
           type.label,
-          style: GoogleFonts.pixelifySans(
+          style: GoogleFonts.rajdhani(
             fontSize: 8,
             color: type.color,
             fontWeight: FontWeight.bold,
@@ -754,7 +792,7 @@ class _RaceStepState extends State<_RaceStep> {
         const SizedBox(height: 4),
         Text(
           '— YOUR HERITAGE DEFINES YOU —',
-          style: GoogleFonts.pixelifySans(
+          style: GoogleFonts.rajdhani(
             fontSize: 12,
             color: AppTheme.textMuted,
             letterSpacing: 3,
@@ -790,7 +828,7 @@ class _RaceStepState extends State<_RaceStep> {
                 widget.selectedRace != null
                     ? 'BEGIN YOUR JOURNEY'
                     : 'SELECT A RACE',
-                style: GoogleFonts.pixelifySans(fontSize: 15, letterSpacing: 2),
+                style: GoogleFonts.rajdhani(fontSize: 15, letterSpacing: 2),
               ),
             ),
           ),
@@ -852,7 +890,7 @@ class _RaceListRow extends StatelessWidget {
                       children: [
                         Text(
                           info.displayName.toUpperCase(),
-                          style: GoogleFonts.pixelifySans(
+                          style: GoogleFonts.rajdhani(
                             fontSize: 12,
                             fontWeight: FontWeight.bold,
                             color: selected ? AppTheme.accentGold : Colors.white70,
@@ -862,7 +900,7 @@ class _RaceListRow extends StatelessWidget {
                         if (trait != null)
                           Text(
                             trait.name,
-                            style: GoogleFonts.pixelifySans(
+                            style: GoogleFonts.rajdhani(
                               fontSize: 9,
                               color: AppTheme.textMuted,
                             ),
@@ -878,7 +916,7 @@ class _RaceListRow extends StatelessWidget {
                               padding: const EdgeInsets.only(left: 6),
                               child: Text(
                                 b.value,
-                                style: GoogleFonts.pixelifySans(
+                                style: GoogleFonts.rajdhani(
                                   fontSize: 11,
                                   fontWeight: FontWeight.bold,
                                   color: b.color,
@@ -944,7 +982,7 @@ class _RaceListRow extends StatelessWidget {
                         padding: const EdgeInsets.fromLTRB(16, 2, 16, 8),
                         child: Text(
                           trait.description,
-                          style: GoogleFonts.pixelifySans(
+                          style: GoogleFonts.rajdhani(
                             fontSize: 10,
                             color: AppTheme.textMuted,
                             height: 1.5,

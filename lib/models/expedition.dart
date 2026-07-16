@@ -48,9 +48,9 @@ enum LocationBiome {
     LocationBiome.temple     => '✦ Essence · 💰 Gold',
     LocationBiome.fortress   => '💰 Gold · ⬡ Mythril',
     LocationBiome.ruin       => 'All resources (balanced)',
-    LocationBiome.dungeon    => '◆ Shards · 💎 Crystals',
+    LocationBiome.dungeon    => '◆ Shards · 🪙 ZCoins',
     LocationBiome.catacombs  => '✦ Essence · ◆ Shards',
-    LocationBiome.sanctum    => '✦ Essence · 💎 Crystals',
+    LocationBiome.sanctum    => '✦ Essence · 🪙 ZCoins',
     LocationBiome.barrows    => '💰 Gold · ✦ Essence',
     LocationBiome.highPass   => '⬡ Mythril · 🔊 Echoes',
   };

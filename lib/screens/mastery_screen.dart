@@ -207,7 +207,7 @@ class _MasteryCard extends StatelessWidget {
               sublabel: 'FREE',
               color: color,
               enabled: true,
-              onTap: () => game.unlockMastery(mastery),
+              onTap: () { game.unlockMastery(mastery); game.audioService.playUiConfirm(); },
             )
           else if (unlocked && !atMax)
             _ActionButton(
@@ -215,7 +215,7 @@ class _MasteryCard extends StatelessWidget {
               sublabel: '💰 $upgradeCost',
               color: color,
               enabled: canAfford,
-              onTap: canAfford ? () => game.upgradeMastery(mastery) : null,
+              onTap: canAfford ? () { game.upgradeMastery(mastery); game.audioService.playUiConfirm(); } : null,
             ),
         ],
       ),

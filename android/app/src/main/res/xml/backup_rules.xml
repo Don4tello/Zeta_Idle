@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Android 6–11 full-backup rules.
+  Includes all SharedPreferences used by SaveService so that game saves
+  survive a fresh APK install as long as the user is signed into Google.
+-->
+<full-backup-content>
+    <include domain="sharedpref" path="FlutterSharedPreferences.xml" />
+</full-backup-content>

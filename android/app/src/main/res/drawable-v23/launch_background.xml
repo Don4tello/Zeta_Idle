@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Black background -->
+    <item android:drawable="@android:color/black" />
+
+    <!-- Red border frame, centered, 4dp larger than icon on each side -->
+    <item
+        android:gravity="center"
+        android:width="172dp"
+        android:height="172dp">
+        <shape android:shape="rectangle">
+            <stroke android:width="3dp" android:color="#cc2200" />
+            <corners android:radius="14dp" />
+        </shape>
+    </item>
+
+    <!-- Icon centered inside the border -->
+    <item
+        android:gravity="center"
+        android:width="164dp"
+        android:height="164dp">
+        <bitmap
+            android:gravity="fill"
+            android:src="@mipmap/ic_launcher" />
+    </item>
+</layer-list>

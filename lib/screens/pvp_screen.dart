@@ -7,10 +7,12 @@ import '../services/auth_service.dart';
 import '../services/game_state.dart';
 import '../services/pvp_service.dart';
 import '../theme/app_theme.dart';
+import '../widgets/arena_ability_effect.dart';
 import '../widgets/battle_arena.dart';
 import '../widgets/battle_sprites.dart';
 import '../widgets/empty_state.dart';
 import '../widgets/battle_split_panel.dart' show BattleIconBar;
+import '../widgets/zcoin_icon.dart';
 import 'pvp_sim_screen.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -33,7 +35,6 @@ class _PvpScreenState extends State<PvpScreen> {
   final _authService = AuthService();
 
   List<PvpSnapshot>? _board;
-  List<PvpSnapshot>  _devOpponents = [];
   bool _boardLoading = true;
   bool _matchBusy    = false;
   Timer? _ticker;
@@ -45,8 +46,6 @@ class _PvpScreenState extends State<PvpScreen> {
       final game = GameStateProvider.of(context);
       game.tickPvpStamina();
       _loadBoard();
-      setState(() => _devOpponents =
-          generateDevOpponents(game.hero.level, game.pvpRating));
     });
     _ticker = Timer.periodic(const Duration(seconds: 15), (_) {
       if (!mounted) return;
@@ -78,9 +77,42 @@ class _PvpScreenState extends State<PvpScreen> {
   void _buildLocalBoard(GameState game) {
     final mySnap = game.buildPvpSnapshot(
         _authService.currentUser?.uid ?? 'local_player');
-    final board = <PvpSnapshot>[mySnap, ..._devOpponents];
-    board.sort((a, b) => b.rating.compareTo(a.rating));
+    final board = <PvpSnapshot>[mySnap];
     setState(() { _board = board; _boardLoading = false; });
+  }
+
+  /// Returns up to 3 leaderboard players ranked just above the current player.
+  List<PvpSnapshot> _getNearbyRivals() {
+    final board = _board ?? [];
+    if (board.isEmpty) return [];
+    final uid   = _authService.currentUser?.uid ?? '';
+    final myIdx = board.indexWhere((p) => p.userId == uid);
+    if (myIdx <= 0) {
+      // Unranked or already #1 — show the top 3 (excluding self)
+      return board.where((p) => p.userId != uid).take(3).toList();
+    }
+    // Players at board[0..myIdx-1] are ranked above; take at most 3
+    final start = max(0, myIdx - 3);
+    return board.sublist(start, myIdx).reversed.toList();
+  }
+
+  Future<void> _challengePlayer(
+      BuildContext ctx, GameState game, PvpSnapshot opponent) async {
+    if (!game.spendPvpStamina()) {
+      if (ctx.mounted) {
+        ScaffoldMessenger.of(ctx).showSnackBar(const SnackBar(
+          content: Text('No stamina! Recharges 1 every 45 minutes.'),
+          duration: Duration(seconds: 2),
+        ));
+      }
+      return;
+    }
+    final mySnap = game.buildPvpSnapshot(
+        _authService.currentUser?.uid ?? 'local_challenger');
+    final (won, log) = simulatePvpBattle(mySnap, opponent, Random());
+    game.recordPvpResult(won);
+    _loadBoard();
+    if (mounted) await _showResult(ctx, game, won, opponent, log);
   }
 
   Future<void> _startMatch(BuildContext context, GameState game) async {
@@ -136,26 +168,6 @@ class _PvpScreenState extends State<PvpScreen> {
     }
   }
 
-  Future<void> _fightDevOpponent(
-      BuildContext ctx, GameState game, PvpSnapshot opponent) async {
-    if (!game.spendPvpStamina()) {
-      if (ctx.mounted) {
-        ScaffoldMessenger.of(ctx).showSnackBar(
-          const SnackBar(content: Text('No stamina! Recharges 1 every 45 minutes.'), duration: Duration(seconds: 2)),
-        );
-      }
-      return;
-    }
-    final mySnap = game.buildPvpSnapshot(
-        _authService.currentUser?.uid ?? 'local_dev');
-    final (won, log) = simulatePvpBattle(mySnap, opponent, Random());
-    game.recordPvpResult(won);
-    // Regenerate opponents with fresh level/rating after the result.
-    _devOpponents = generateDevOpponents(game.hero.level, game.pvpRating);
-    _buildLocalBoard(game);
-    if (mounted) await _showResult(ctx, game, won, opponent, log);
-  }
-
   Future<void> _showResult(
     BuildContext context,
     GameState game,
@@ -204,10 +216,10 @@ class _PvpScreenState extends State<PvpScreen> {
         children: [
           _StaminaBar(game: game),
           _RatingCard(game: game),
-          if (_devOpponents.isNotEmpty)
-            _BotPanel(
-              opponents: _devOpponents,
-              onFight: (opp) => _fightDevOpponent(context, game, opp),
+          if (!_boardLoading && _getNearbyRivals().isNotEmpty)
+            _NearbyRivalsPanel(
+              rivals: _getNearbyRivals(),
+              onChallenge: (opp) => _challengePlayer(context, game, opp),
             ),
           const Padding(
             padding: EdgeInsets.symmetric(horizontal: 16, vertical: 6),
@@ -284,21 +296,25 @@ class _PvpScreenState extends State<PvpScreen> {
                   width: double.infinity,
                   height: 48,
                   child: ElevatedButton(
-                    onPressed: game.crystals >= game.pvpRefillCost!
+                    onPressed: game.zcoins >= game.pvpRefillCost!
                         ? () { game.buyPvpStamina(); setState(() {}); }
                         : null,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFF2a1040),
                       foregroundColor: const Color(0xFFcc88ff),
-                      side: BorderSide(color: game.crystals >= game.pvpRefillCost!
+                      side: BorderSide(color: game.zcoins >= game.pvpRefillCost!
                           ? const Color(0xFFcc88ff) : AppTheme.cardBorder),
                     ),
-                    child: Text(
-                      '💎 BUY +5 STAMINA  (${game.pvpRefillCost} Crystals)',
-                      style: AppTheme.pixelHeading(fontSize: 12, letterSpacing: 1,
-                          color: game.crystals >= game.pvpRefillCost!
-                              ? const Color(0xFFcc88ff) : AppTheme.textMuted),
-                    ),
+                    child: Row(mainAxisSize: MainAxisSize.min, children: [
+                      ZCoinIcon(size: 13, animate: false),
+                      const SizedBox(width: 5),
+                      Text(
+                        'BUY +5 STAMINA  (${game.pvpRefillCost} ZCoins)',
+                        style: AppTheme.pixelHeading(fontSize: 12, letterSpacing: 1,
+                            color: game.zcoins >= game.pvpRefillCost!
+                                ? const Color(0xFFcc88ff) : AppTheme.textMuted),
+                      ),
+                    ]),
                   ),
                 ),
               ],
@@ -398,7 +414,7 @@ class _PvpScreenState extends State<PvpScreen> {
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
                     Text('★${p.rating}',
-                        style: GoogleFonts.pixelifySans(
+                        style: GoogleFonts.rajdhani(
                             fontSize: 15,
                             color: AppTheme.accentGold,
                             fontWeight: FontWeight.bold)),
@@ -517,7 +533,7 @@ class _Stat extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           Text(value,
-              style: GoogleFonts.pixelifySans(
+              style: GoogleFonts.rajdhani(
                   fontSize: 17, color: color, fontWeight: FontWeight.bold)),
           const SizedBox(height: 2),
           Text(label,
@@ -527,12 +543,12 @@ class _Stat extends StatelessWidget {
       );
 }
 
-// ─── Bot challengers panel ────────────────────────────────────────────────────
+// ─── Nearby rivals panel ─────────────────────────────────────────────────────
 
-class _BotPanel extends StatelessWidget {
-  const _BotPanel({required this.opponents, required this.onFight});
-  final List<PvpSnapshot> opponents;
-  final void Function(PvpSnapshot) onFight;
+class _NearbyRivalsPanel extends StatelessWidget {
+  const _NearbyRivalsPanel({required this.rivals, required this.onChallenge});
+  final List<PvpSnapshot> rivals;
+  final void Function(PvpSnapshot) onChallenge;
 
   @override
   Widget build(BuildContext context) {
@@ -540,8 +556,8 @@ class _BotPanel extends StatelessWidget {
       decoration: BoxDecoration(
         color: const Color(0xFF1E1C14),
         border: Border(
-          top:    BorderSide(color: AppTheme.accentGold.withValues(alpha: 0.3)),
-          bottom: BorderSide(color: AppTheme.accentGold.withValues(alpha: 0.3)),
+          top:    BorderSide(color: const Color(0xFFcc4444).withValues(alpha: 0.3)),
+          bottom: BorderSide(color: const Color(0xFFcc4444).withValues(alpha: 0.3)),
         ),
       ),
       child: Column(
@@ -550,25 +566,28 @@ class _BotPanel extends StatelessWidget {
           Padding(
             padding: const EdgeInsets.fromLTRB(14, 8, 14, 4),
             child: Row(children: [
-              const Text('⚔', style: TextStyle(fontSize: 12)),
+              const Text('🎯', style: TextStyle(fontSize: 12)),
               const SizedBox(width: 6),
-              Text('CHALLENGERS',
+              Text('NEAR YOUR RANK',
                   style: AppTheme.pixelHeading(
                       fontSize: 10,
                       letterSpacing: 2,
-                      color: AppTheme.accentGold)),
+                      color: const Color(0xFFcc4444))),
+              const SizedBox(width: 6),
+              Text('— players just above you',
+                  style: const TextStyle(fontSize: 9, color: AppTheme.textMuted)),
             ]),
           ),
           SizedBox(
-            height: 104,
+            height: 100,
             child: ListView.separated(
               scrollDirection: Axis.horizontal,
               padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
-              itemCount: opponents.length,
+              itemCount: rivals.length,
               separatorBuilder: (_, __) => const SizedBox(width: 8),
-              itemBuilder: (_, i) => _BotCard(
-                snap: opponents[i],
-                onFight: () => onFight(opponents[i]),
+              itemBuilder: (_, i) => _RivalCard(
+                snap: rivals[i],
+                onChallenge: () => onChallenge(rivals[i]),
               ),
             ),
           ),
@@ -578,24 +597,20 @@ class _BotPanel extends StatelessWidget {
   }
 }
 
-class _BotCard extends StatelessWidget {
-  const _BotCard({required this.snap, required this.onFight});
+class _RivalCard extends StatelessWidget {
+  const _RivalCard({required this.snap, required this.onChallenge});
   final PvpSnapshot snap;
-  final VoidCallback onFight;
+  final VoidCallback onChallenge;
 
   @override
   Widget build(BuildContext context) {
-    // heroName format: "ClassName · icon TraitName"
-    final parts     = snap.heroName.split(' · ');
-    final className = parts.first;
-    final traitLabel = parts.length > 1 ? parts[1] : '';
     final cls = snap.heroClass[0].toUpperCase() + snap.heroClass.substring(1);
     return Container(
-      width: 148,
+      width: 160,
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
-        color: const Color(0xFF252318),
-        border: Border.all(color: AppTheme.accentGold.withValues(alpha: 0.35)),
+        color: const Color(0xFF1e1818),
+        border: Border.all(color: const Color(0xFFcc4444).withValues(alpha: 0.35)),
         borderRadius: BorderRadius.circular(4),
       ),
       child: Column(
@@ -603,45 +618,46 @@ class _BotCard extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              SizedBox(width: 36, height: 40,
-                  child: StaticEnemySprite(spriteId: 'hero_${snap.heroClass}', size: 36)),
+              StaticEnemySprite(spriteId: 'hero_${snap.heroClass}', size: 32),
               const SizedBox(width: 6),
               Expanded(child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(className,
+                  Text(snap.heroName,
                       style: const TextStyle(
-                          fontSize: 12,
+                          fontSize: 11,
                           fontWeight: FontWeight.bold,
                           color: AppTheme.textLight),
-                      overflow: TextOverflow.ellipsis),
-                  Text(traitLabel,
-                      style: const TextStyle(fontSize: 10, color: AppTheme.textMuted),
-                      overflow: TextOverflow.ellipsis),
-                  Text(
-                    'Lv${snap.level}  HP:${snap.maxHp}  ARM:${snap.armorClass}',
-                    style: const TextStyle(fontSize: 9, color: AppTheme.textMuted),
-                  ),
+                      overflow: TextOverflow.ellipsis,
+                      maxLines: 1),
+                  Text('$cls  Lv${snap.level}',
+                      style: const TextStyle(fontSize: 9, color: AppTheme.textMuted)),
+                  Text('★${snap.rating}',
+                      style: GoogleFonts.rajdhani(
+                          fontSize: 11,
+                          color: AppTheme.accentGold,
+                          fontWeight: FontWeight.bold)),
                 ],
               )),
             ],
           ),
           SizedBox(
             width: double.infinity,
-            height: 24,
+            height: 26,
             child: ElevatedButton(
-              onPressed: onFight,
+              onPressed: onChallenge,
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF2E2A18),
-                side: BorderSide(color: AppTheme.accentGold.withValues(alpha: 0.6), width: 1),
+                backgroundColor: const Color(0xFF2a1010),
+                side: BorderSide(
+                    color: const Color(0xFFcc4444).withValues(alpha: 0.7), width: 1),
                 padding: EdgeInsets.zero,
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(3)),
               ),
-              child: Text('FIGHT $cls',
+              child: Text('CHALLENGE',
                   style: AppTheme.pixelHeading(
-                      fontSize: 9, color: AppTheme.accentGold)),
+                      fontSize: 9, color: const Color(0xFFcc4444))),
             ),
           ),
         ],
@@ -717,7 +733,8 @@ class _PvpBattleFullScreen extends StatefulWidget {
 
 class _PvpBattleFullScreenState extends State<_PvpBattleFullScreen>
     with TickerProviderStateMixin {
-  final _arenaKey = GlobalKey<BattleArenaState>();
+  final _arenaKey  = GlobalKey<BattleArenaState>();
+  final _effectKey = GlobalKey<ArenaAbilityEffectState>();
   bool _showResult = false;
   bool _fighting = true;
   bool _autoRunning = false;
@@ -745,6 +762,11 @@ class _PvpBattleFullScreenState extends State<_PvpBattleFullScreen>
 
       game.clearPendingFloats();
       game.heroAttack();
+      final firedAbility = game.lastAbilityFired;
+      if (firedAbility != null) {
+        _arenaKey.currentState?.playAbilityBanner(firedAbility.name, firedAbility.effect, id: firedAbility.id);
+        _effectKey.currentState?.playEffect(firedAbility.id);
+      }
 
       await (_arenaKey.currentState?.playHeroAttack(
             game.lastHeroDamage,
@@ -815,29 +837,56 @@ class _PvpBattleFullScreenState extends State<_PvpBattleFullScreen>
         children: [
           // Arena — same as campaign
           Expanded(
-            child: BattleArena(
-              key: _arenaKey,
-              heroName:      widget.game.hero.name,
-              heroLevel:     widget.game.hero.level,
-              heroCurrentHp: widget.game.hero.currentHealth,
-              heroMaxHp:     widget.game.hero.maxHealth,
-              heroAttack:    widget.game.hero.attack,
-              heroSpriteId:  widget.game.hero.spriteId,
-              heroGender:    widget.game.hero.gender,
-              heroColorFilter: widget.game.heroSkinFilter,
-              heroDamageType: widget.game.hero.activeDamageType,
-              enemyName:     opp.heroName,
-              enemyLevel:    opp.level,
-              enemyCurrentHp: widget.game.currentEnemy?.currentHealth ?? 0,
-              enemyMaxHp:    opp.maxHp,
-              enemyAttack:   opp.attackBonus,
-              enemyId:       oppSprite,
-              headerLabel:   '⚔  PVP ARENA  ⚔',
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                BattleArena(
+                  key: _arenaKey,
+                  heroName:         widget.game.hero.name,
+                  heroLevel:        widget.game.hero.level,
+                  heroCurrentHp:    widget.game.hero.currentHealth,
+                  heroMaxHp:        widget.game.hero.maxHealth,
+                  heroAttack:       widget.game.hero.attack,
+                  heroSpriteId:     widget.game.hero.spriteId,
+                  heroGender:       widget.game.hero.gender,
+                  heroRace:         widget.game.heroRace,
+                  heroAuraColor:    widget.game.heroAuraColor,
+                  heroAuraIntensity: widget.game.heroAuraIntensity,
+                  heroColorFilter:  widget.game.heroSkinFilter,
+                  heroDamageType:   widget.game.hero.activeDamageType,
+                  enemyName:     opp.heroName,
+                  enemyLevel:    opp.level,
+                  enemyCurrentHp: widget.game.currentEnemy?.currentHealth ?? 0,
+                  enemyMaxHp:    opp.maxHp,
+                  enemyAttack:   opp.attackBonus,
+                  enemyId:       oppSprite,
+                  headerLabel:   '⚔  PVP ARENA  ⚔',
+                  heroBuffGlows: [
+                    if (widget.game.heroAbsorbShield > 0) const Color(0xFF88ccff),
+                    if (widget.game.buffAttackBonus > 0)  const Color(0xFFffcc00),
+                    if (widget.game.buffAcBonus > 0)      const Color(0xFF66aaff),
+                    if (widget.game.dodgeNextHit)          const Color(0xFF44ddcc),
+                    if (widget.game.auraRoundsLeft > 0)   const Color(0xFF55ee88),
+                  ],
+                  enemyDebuffGlows: [
+                    if (widget.game.dotRoundsLeft > 0)         const Color(0xFF88dd00),
+                    if (widget.game.enemyStunRounds > 0)       const Color(0xFFcc44ff),
+                    if (widget.game.stunApplicationCount >= 2) const Color(0xFF665577),
+                    if (widget.game.enemySilenceRounds > 0)    const Color(0xFFffdd00),
+                    if (widget.game.enemyMissChanceRounds > 0) const Color(0xFFaaaaff),
+                    if (widget.game.enemyWeakenRounds > 0)     const Color(0xFFff4488),
+                    if (widget.game.enemyVulnerableRounds > 0) const Color(0xFFff8800),
+                  ],
+                  heroCritPct: widget.game.totalCritChancePct,
+                  heroArmor:   widget.game.heroArmorValue,
+                ),
+                ArenaAbilityEffect(key: _effectKey),
+              ],
             ),
           ),
 
           // Ability icon bar
-          if (_fighting) const BattleIconBar(),
+          if (_fighting) const SafeArea(top: false, child: BattleIconBar()),
 
           // Result overlay
           if (_showResult)

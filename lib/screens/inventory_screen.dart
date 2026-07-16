@@ -1,10 +1,12 @@
 ﻿import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show HapticFeedback;
 import '../models/equipment.dart';
 import '../models/gem.dart';
 import '../models/hero_ability.dart';
 import '../services/game_state.dart';
 import '../theme/app_theme.dart';
 import '../widgets/item_sprites.dart';
+import '../widgets/zcoin_icon.dart';
 
 class InventoryScreen extends StatefulWidget {
   const InventoryScreen({super.key, this.embedded = false});
@@ -13,10 +15,15 @@ class InventoryScreen extends StatefulWidget {
   State<InventoryScreen> createState() => _InventoryScreenState();
 }
 
+enum _SortOrder { newest, power, rarity }
+enum _SlotFilter { all, weapon, armor, gloves, pants, boots, ring, amulet, offHand, helmet, relic }
+
 class _InventoryScreenState extends State<InventoryScreen>
     with TickerProviderStateMixin {
   late TabController _outerTabs; // EQUIPMENT | BAG
   late TabController _tabs; // stash pages within BAG
+  _SortOrder   _sort   = _SortOrder.newest;
+  _SlotFilter  _filter = _SlotFilter.all;
 
   @override
   void initState() {
@@ -71,7 +78,7 @@ class _InventoryScreenState extends State<InventoryScreen>
                 borderRadius: BorderRadius.circular(3),
               ),
               child: Row(mainAxisSize: MainAxisSize.min, children: [
-                const Text('💎', style: TextStyle(fontSize: 11)),
+                const ZCoinIcon(size: 11, animate: false),
                 const SizedBox(width: 4),
                 Text('+ TAB  ${game.nextStashTabCost}',
                     style: AppTheme.pixelHeading(
@@ -114,7 +121,41 @@ class _InventoryScreenState extends State<InventoryScreen>
 
   // ── BAG tab — stash grid with optional stash-page sub-tabs ───────────────
 
+  // Returns the bag after applying current filter + sort
+  List<EquipmentItem> _filtered(List<dynamic> raw) {
+    var items = raw.whereType<EquipmentItem>().toList();
+    if (_filter != _SlotFilter.all) {
+      final slot = _slotFor(_filter);
+      if (slot != null) items = items.where((i) => i.slot == slot).toList();
+    }
+    switch (_sort) {
+      case _SortOrder.newest: break; // bag order = insertion order
+      case _SortOrder.power:
+        int pw(EquipmentItem i) => i.bonuses.fold(0, (s, b) => s + b.value)
+            + i.baseDamage + i.upgradeTier * 10 + i.levelRequired;
+        items.sort((a, b) => pw(b).compareTo(pw(a)));
+      case _SortOrder.rarity:
+        items.sort((a, b) => b.rarity.index.compareTo(a.rarity.index));
+    }
+    return items;
+  }
+
+  ItemSlot? _slotFor(_SlotFilter f) => switch (f) {
+    _SlotFilter.all     => null,
+    _SlotFilter.weapon  => ItemSlot.weapon,
+    _SlotFilter.armor   => ItemSlot.armor,
+    _SlotFilter.gloves  => ItemSlot.gloves,
+    _SlotFilter.pants   => ItemSlot.pants,
+    _SlotFilter.boots   => ItemSlot.boots,
+    _SlotFilter.ring    => ItemSlot.ring,
+    _SlotFilter.amulet  => ItemSlot.amulet,
+    _SlotFilter.offHand => ItemSlot.offHand,
+    _SlotFilter.helmet  => ItemSlot.helmet,
+    _SlotFilter.relic   => ItemSlot.relic,
+  };
+
   Widget _bagTab(GameState game, int tabCount, List<dynamic> bag, int cap) {
+    final filtered = _filtered(bag);
     final stashBar = tabCount > 1
         ? TabBar(
             controller: _tabs,
@@ -131,20 +172,18 @@ class _InventoryScreenState extends State<InventoryScreen>
         : null;
 
     return Column(children: [
+      _FilterSortBar(
+        sort: _sort,
+        filter: _filter,
+        onSort:   (s) => setState(() => _sort   = s),
+        onFilter: (f) => setState(() => _filter = f),
+      ),
       if (stashBar != null) stashBar,
       Expanded(
-        child: tabCount > 1
-            ? TabBarView(
-                controller: _tabs,
-                children: List.generate(
-                    tabCount,
-                    (i) => _BagGrid(
-                          game: game,
-                          startIndex: i * 20,
-                          endIndex: ((i + 1) * 20).clamp(0, cap),
-                        )),
-              )
-            : _BagGrid(game: game, startIndex: 0, endIndex: 20),
+        child: _BagGrid(
+          game: game,
+          items: filtered,
+        ),
       ),
     ]);
   }
@@ -242,7 +281,7 @@ class _InventoryScreenState extends State<InventoryScreen>
                     borderRadius: BorderRadius.circular(3),
                   ),
                   child: Row(mainAxisSize: MainAxisSize.min, children: [
-                    const Text('💎', style: TextStyle(fontSize: 12)),
+                    const ZCoinIcon(size: 12, animate: false),
                     const SizedBox(width: 4),
                     Text('+ TAB  ${game.nextStashTabCost}',
                         style: AppTheme.pixelHeading(
@@ -409,21 +448,13 @@ class _PaperDollSlot extends StatelessWidget {
 }
 
 class _BagGrid extends StatelessWidget {
-  const _BagGrid(
-      {required this.game, required this.startIndex, required this.endIndex});
+  const _BagGrid({required this.game, required this.items});
   final GameState game;
-  final int startIndex;
-  final int endIndex;
+  final List<EquipmentItem> items;
 
   @override
   Widget build(BuildContext context) {
-    final bag = game.inventory.bag;
-    // Items in this tab's range
-    final items = <EquipmentItem?>[];
-    for (var i = startIndex; i < endIndex; i++) {
-      items.add(i < bag.length ? bag[i] : null);
-    }
-    if (items.isEmpty || items.every((e) => e == null)) {
+    if (items.isEmpty) {
       return Center(
         child: Padding(
           padding: const EdgeInsets.all(24),
@@ -443,57 +474,103 @@ class _BagGrid extends StatelessWidget {
       itemCount: items.length,
       itemBuilder: (context, i) {
         final item = items[i];
-        if (item == null) {
-          return Container(
-            decoration: BoxDecoration(
-              color: const Color(0xFF080c1e),
-              border:
-                  Border.all(color: AppTheme.cardBorder.withValues(alpha: 0.3)),
-              borderRadius: BorderRadius.circular(4),
-            ),
-          );
-        }
-        final bagIndex = startIndex + i;
+        final bagIndex = game.inventory.bag.indexOf(item);
         return GestureDetector(
           onTap: () => _showBagOptions(context, game, bagIndex, item),
-          onLongPress: () async {
-            if (item.locked) return;
-            final confirm = await showDialog<bool>(
-              context: context,
-              builder: (ctx) => AlertDialog(
-                backgroundColor: AppTheme.cardBg,
-                title: Text('Disenchant ${item.name}?',
-                    style: const TextStyle(
-                        color: AppTheme.accentGold, fontSize: 14)),
-                content: Text('This will destroy the item for shards.',
-                    style: const TextStyle(
-                        color: AppTheme.textMuted, fontSize: 12)),
-                actions: [
-                  TextButton(
-                      onPressed: () => Navigator.pop(ctx, false),
-                      child: const Text('CANCEL',
-                          style: TextStyle(color: AppTheme.textMuted))),
-                  TextButton(
-                      onPressed: () => Navigator.pop(ctx, true),
-                      child: const Text('DISENCHANT',
-                          style: TextStyle(color: Color(0xFFff4444)))),
-                ],
-              ),
-            );
-            if (confirm == true) {
-              final shards = game.disenchantItems([item]);
-              if (shards > 0 && context.mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                  content: Text('Disenchanted ${item.name} → +$shards ◆'),
-                  duration: const Duration(seconds: 2),
-                ));
-              }
-            }
+          onLongPress: () {
+            game.haptic(HapticFeedback.mediumImpact);
+            _showQuickActions(context, game, bagIndex, item);
           },
           child:
               _ItemTile(item: item, slotLabel: item.slot.label.toUpperCase()),
         );
       },
+    );
+  }
+
+  void _showQuickActions(BuildContext context, GameState game, int index, EquipmentItem item) {
+    final canEquip = game.canEquip(item);
+    final shardValue = game.disenchantValue(item);
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (_) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF2A2623),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Column(mainAxisSize: MainAxisSize.min, children: [
+                  // Title row
+                  Row(children: [
+                    Expanded(child: Text(item.name,
+                        style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold,
+                            color: item.rarityColor))),
+                    Text(item.rarityLabel,
+                        style: TextStyle(fontSize: 10, color: item.rarityColor.withValues(alpha: 0.7))),
+                  ]),
+                  const SizedBox(height: 12),
+                  // Action buttons row
+                  Row(children: [
+                    if (canEquip) Expanded(child: _QuickBtn(
+                      icon: Icons.check_circle_outline,
+                      label: 'EQUIP',
+                      color: const Color(0xFF44cc88),
+                      onTap: () {
+                        game.equipItem(item);
+                        Navigator.pop(context);
+                        game.haptic(HapticFeedback.lightImpact);
+                      },
+                    )),
+                    if (canEquip) const SizedBox(width: 8),
+                    Expanded(child: _QuickBtn(
+                      icon: Icons.auto_awesome,
+                      label: 'UPGRADE',
+                      color: AppTheme.accentGold,
+                      onTap: () {
+                        Navigator.pop(context);
+                        _showBagOptions(context, game, index, item);
+                      },
+                    )),
+                    const SizedBox(width: 8),
+                    Expanded(child: _QuickBtn(
+                      icon: Icons.broken_image_outlined,
+                      label: '+$shardValue ◆',
+                      color: const Color(0xFFff5544),
+                      onTap: () {
+                        Navigator.pop(context);
+                        game.haptic(HapticFeedback.lightImpact);
+                        game.disenchantItems([item]);
+                      },
+                    )),
+                  ]),
+                ]),
+              ),
+              const SizedBox(height: 6),
+              GestureDetector(
+                onTap: () => Navigator.pop(context),
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF2A2623),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Text('CANCEL',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(fontSize: 13, color: AppTheme.textMuted)),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 
@@ -604,7 +681,7 @@ class _ItemTile extends StatelessWidget {
   String _statLabel(ItemStat stat) {
     switch (stat) {
       case ItemStat.attackBonus:
-        return 'ATK';
+        return 'CRIT';
       case ItemStat.damageBonus:
         return 'DMG';
       case ItemStat.armorClass:
@@ -681,7 +758,7 @@ class _ItemDetailSheetState extends State<_ItemDetailSheet> {
         left: 20,
         right: 20,
         top: 20,
-        bottom: MediaQuery.of(context).viewInsets.bottom + 20,
+        bottom: MediaQuery.of(context).viewInsets.bottom + MediaQuery.of(context).padding.bottom + 20,
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -811,7 +888,7 @@ class _ItemDetailSheetState extends State<_ItemDetailSheet> {
                 modParts.add(switch (xe) {
                   AbilityEffect.stun => 'Stun ${xd}r',
                   AbilityEffect.dot => 'DoT $xv%/r for ${xd}r',
-                  AbilityEffect.attackBonus => '+$xv ATK for ${xd}r',
+                  AbilityEffect.attackBonus => '+$xv DMG for ${xd}r',
                   AbilityEffect.acBonus => '+$xv AC for ${xd}r',
                   AbilityEffect.aura => 'Aura $xv% HP/r for ${xd}r',
                   AbilityEffect.debuffWeaken => 'Weaken $xv% for ${xd}r',
@@ -819,6 +896,9 @@ class _ItemDetailSheetState extends State<_ItemDetailSheet> {
                   AbilityEffect.dodge => 'Dodge next hit',
                   AbilityEffect.heal => 'Heal $xv% HP',
                   AbilityEffect.bonusDamage => '+$xv bonus dmg',
+                  AbilityEffect.silence => 'Silence ${xd}r',
+                  AbilityEffect.absorbShield => '$xv HP barrier',
+                  AbilityEffect.missChance => '$xv% miss for ${xd}r',
                 });
               }
               return Container(
@@ -1060,7 +1140,7 @@ class _ItemDetailSheetState extends State<_ItemDetailSheet> {
         ItemStat.intelligence => 'ARC',
         ItemStat.wisdom => 'FOC',
         ItemStat.charisma => 'FOR',
-        ItemStat.attackBonus => 'ATK',
+        ItemStat.attackBonus => 'CRIT',
         ItemStat.damageBonus => 'DMG',
         ItemStat.armorClass => 'AC',
         ItemStat.maxHpPct => 'MaxHP%',
@@ -1334,4 +1414,121 @@ class _GemSocketRow extends StatelessWidget {
       ),
     );
   }
+}
+
+// ── Filter + sort bar for the bag ────────────────────────────────────────────
+
+class _FilterSortBar extends StatelessWidget {
+  const _FilterSortBar({
+    required this.sort,
+    required this.filter,
+    required this.onSort,
+    required this.onFilter,
+  });
+  final _SortOrder  sort;
+  final _SlotFilter filter;
+  final ValueChanged<_SortOrder>  onSort;
+  final ValueChanged<_SlotFilter> onFilter;
+
+  static const _slots = <_SlotFilter, String>{
+    _SlotFilter.all:     'All',
+    _SlotFilter.weapon:  '⚔',
+    _SlotFilter.armor:   '🛡',
+    _SlotFilter.helmet:  '🪖',
+    _SlotFilter.gloves:  '🧤',
+    _SlotFilter.pants:   '👖',
+    _SlotFilter.boots:   '👢',
+    _SlotFilter.ring:    '💍',
+    _SlotFilter.amulet:  '📿',
+    _SlotFilter.offHand: '🔰',
+    _SlotFilter.relic:   '🏺',
+  };
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      color: const Color(0xFF0d1020),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        // Sort row
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: Row(children: [
+            const Text('Sort:', style: TextStyle(fontSize: 9, color: AppTheme.textMuted)),
+            const SizedBox(width: 6),
+            for (final s in _SortOrder.values)
+              _Chip(
+                label: s.name[0].toUpperCase() + s.name.substring(1),
+                active: sort == s,
+                onTap: () => onSort(s),
+              ),
+            const SizedBox(width: 12),
+            const Text('Filter:', style: TextStyle(fontSize: 9, color: AppTheme.textMuted)),
+            const SizedBox(width: 6),
+            for (final f in _slots.entries)
+              _Chip(
+                label: _slots[f.key]!,
+                active: filter == f.key,
+                onTap: () => onFilter(f.key),
+              ),
+          ]),
+        ),
+      ]),
+    );
+  }
+}
+
+class _Chip extends StatelessWidget {
+  const _Chip({required this.label, required this.active, required this.onTap});
+  final String   label;
+  final bool     active;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) => GestureDetector(
+    onTap: onTap,
+    child: Container(
+      margin: const EdgeInsets.only(right: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+      decoration: BoxDecoration(
+        color: active ? AppTheme.accentGold.withValues(alpha: 0.15) : Colors.transparent,
+        border: Border.all(color: active ? AppTheme.accentGold : AppTheme.cardBorder),
+        borderRadius: BorderRadius.circular(3),
+      ),
+      child: Text(label, style: TextStyle(
+          fontSize: 9,
+          color: active ? AppTheme.accentGold : AppTheme.textMuted,
+          fontWeight: active ? FontWeight.bold : FontWeight.normal)),
+    ),
+  );
+}
+
+// ── Quick-action button used in the long-press context sheet ─────────────────
+
+class _QuickBtn extends StatelessWidget {
+  const _QuickBtn({required this.icon, required this.label,
+      required this.color, required this.onTap});
+  final IconData icon;
+  final String   label;
+  final Color    color;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) => GestureDetector(
+    onTap: onTap,
+    child: Container(
+      padding: const EdgeInsets.symmetric(vertical: 12),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.10),
+        border: Border.all(color: color.withValues(alpha: 0.5)),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Column(mainAxisSize: MainAxisSize.min, children: [
+        Icon(icon, size: 20, color: color),
+        const SizedBox(height: 4),
+        Text(label, style: TextStyle(fontSize: 10, color: color,
+            fontWeight: FontWeight.bold)),
+      ]),
+    ),
+  );
 }

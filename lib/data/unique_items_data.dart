@@ -24,7 +24,7 @@ class UniqueItemsData {
     // ── BARBARIAN ─────────────────────────────────────────────────────────────
     EquipmentItem(
       id: 'unique_barb_1', name: 'Bloodstorm Axe',
-      slot: ItemSlot.weapon, rarity: ItemRarity.legendary,
+      slot: ItemSlot.weapon, rarity: ItemRarity.unique,
       bonuses: [StatBonus(ItemStat.attackBonus, 4), StatBonus(ItemStat.damageBonus, 3)],
       levelRequired: 10,
       requiredClass: DndClass.barbarian, uniqueAbilityId: 'barbarian_1',
@@ -33,7 +33,7 @@ class UniqueItemsData {
     ),
     EquipmentItem(
       id: 'unique_barb_2', name: "Warlord's Helm",
-      slot: ItemSlot.helmet, rarity: ItemRarity.legendary,
+      slot: ItemSlot.helmet, rarity: ItemRarity.unique,
       bonuses: [StatBonus(ItemStat.armorClass, 4), StatBonus(ItemStat.strength, 3)],
       levelRequired: 10,
       requiredClass: DndClass.barbarian, uniqueAbilityId: 'barbarian_2',
@@ -42,7 +42,7 @@ class UniqueItemsData {
     ),
     EquipmentItem(
       id: 'unique_barb_3', name: 'Heart of Rage',
-      slot: ItemSlot.amulet, rarity: ItemRarity.legendary,
+      slot: ItemSlot.amulet, rarity: ItemRarity.unique,
       bonuses: [StatBonus(ItemStat.maxHpPct, 10), StatBonus(ItemStat.constitution, 3)],
       levelRequired: 15,
       requiredClass: DndClass.barbarian, uniqueAbilityId: 'barbarian_4',
@@ -53,7 +53,7 @@ class UniqueItemsData {
     // ── BARD ─────────────────────────────────────────────────────────────────
     EquipmentItem(
       id: 'unique_bard_1', name: 'Songblade of Discord',
-      slot: ItemSlot.weapon, rarity: ItemRarity.legendary,
+      slot: ItemSlot.weapon, rarity: ItemRarity.unique,
       bonuses: [StatBonus(ItemStat.attackBonus, 4), StatBonus(ItemStat.damageBonus, 3)],
       levelRequired: 10,
       requiredClass: DndClass.bard, uniqueAbilityId: 'bard_1',
@@ -62,7 +62,7 @@ class UniqueItemsData {
     ),
     EquipmentItem(
       id: 'unique_bard_2', name: 'Echo Chamber Lute',
-      slot: ItemSlot.relic, rarity: ItemRarity.legendary,
+      slot: ItemSlot.relic, rarity: ItemRarity.unique,
       bonuses: [StatBonus(ItemStat.maxHpPct, 8), StatBonus(ItemStat.charisma, 3)],
       levelRequired: 15,
       requiredClass: DndClass.bard, uniqueAbilityId: 'bard_4',
@@ -71,7 +71,7 @@ class UniqueItemsData {
     ),
     EquipmentItem(
       id: 'unique_bard_3', name: 'Mocking Mask',
-      slot: ItemSlot.helmet, rarity: ItemRarity.legendary,
+      slot: ItemSlot.helmet, rarity: ItemRarity.unique,
       bonuses: [StatBonus(ItemStat.armorClass, 3), StatBonus(ItemStat.charisma, 4)],
       levelRequired: 20,
       requiredClass: DndClass.bard, uniqueAbilityId: 'bard_5',
@@ -82,7 +82,7 @@ class UniqueItemsData {
     // ── CLERIC ───────────────────────────────────────────────────────────────
     EquipmentItem(
       id: 'unique_cleric_1', name: 'Staff of Sacred Flame',
-      slot: ItemSlot.weapon, rarity: ItemRarity.legendary,
+      slot: ItemSlot.weapon, rarity: ItemRarity.unique,
       bonuses: [StatBonus(ItemStat.attackBonus, 4), StatBonus(ItemStat.damageBonus, 4)],
       levelRequired: 10,
       requiredClass: DndClass.cleric, uniqueAbilityId: 'cleric_1',
@@ -91,7 +91,7 @@ class UniqueItemsData {
     ),
     EquipmentItem(
       id: 'unique_cleric_2', name: 'Chalice of Eternity',
-      slot: ItemSlot.relic, rarity: ItemRarity.legendary,
+      slot: ItemSlot.relic, rarity: ItemRarity.unique,
       bonuses: [StatBonus(ItemStat.maxHpPct, 10), StatBonus(ItemStat.wisdom, 3)],
       levelRequired: 10,
       requiredClass: DndClass.cleric, uniqueAbilityId: 'cleric_2',
@@ -100,7 +100,7 @@ class UniqueItemsData {
     ),
     EquipmentItem(
       id: 'unique_cleric_3', name: 'Veil of the Void',
-      slot: ItemSlot.helmet, rarity: ItemRarity.legendary,
+      slot: ItemSlot.helmet, rarity: ItemRarity.unique,
       bonuses: [StatBonus(ItemStat.armorClass, 5), StatBonus(ItemStat.wisdom, 4)],
       levelRequired: 15,
       requiredClass: DndClass.cleric, uniqueAbilityId: 'cleric_4',
@@ -111,7 +111,7 @@ class UniqueItemsData {
     // ── DRUID ────────────────────────────────────────────────────────────────
     EquipmentItem(
       id: 'unique_druid_1', name: 'Thornweave Gauntlets',
-      slot: ItemSlot.gloves, rarity: ItemRarity.legendary,
+      slot: ItemSlot.gloves, rarity: ItemRarity.unique,
       bonuses: [StatBonus(ItemStat.attackBonus, 3), StatBonus(ItemStat.constitution, 3)],
       levelRequired: 10,
       requiredClass: DndClass.druid, uniqueAbilityId: 'druid_1',
@@ -120,7 +120,7 @@ class UniqueItemsData {
     ),
     EquipmentItem(
       id: 'unique_druid_2', name: 'Glacier Heart',
-      slot: ItemSlot.amulet, rarity: ItemRarity.legendary,
+      slot: ItemSlot.amulet, rarity: ItemRarity.unique,
       bonuses: [StatBonus(ItemStat.damageBonus, 4), StatBonus(ItemStat.intelligence, 3)],
       levelRequired: 10,
       requiredClass: DndClass.druid, uniqueAbilityId: 'druid_3',
@@ -129,7 +129,7 @@ class UniqueItemsData {
     ),
     EquipmentItem(
       id: 'unique_druid_3', name: 'Ancient Grove Crown',
-      slot: ItemSlot.helmet, rarity: ItemRarity.legendary,
+      slot: ItemSlot.helmet, rarity: ItemRarity.unique,
       bonuses: [StatBonus(ItemStat.maxHpPct, 10), StatBonus(ItemStat.wisdom, 4)],
       levelRequired: 15,
       requiredClass: DndClass.druid, uniqueAbilityId: 'druid_4',
@@ -140,7 +140,7 @@ class UniqueItemsData {
     // ── FIGHTER ──────────────────────────────────────────────────────────────
     EquipmentItem(
       id: 'unique_fighter_1', name: 'Thunderstrike Gauntlets',
-      slot: ItemSlot.gloves, rarity: ItemRarity.legendary,
+      slot: ItemSlot.gloves, rarity: ItemRarity.unique,
       bonuses: [StatBonus(ItemStat.attackBonus, 5), StatBonus(ItemStat.strength, 3)],
       levelRequired: 10,
       requiredClass: DndClass.fighter, uniqueAbilityId: 'fighter_1',
@@ -149,7 +149,7 @@ class UniqueItemsData {
     ),
     EquipmentItem(
       id: 'unique_fighter_2', name: "Warlord's Bulwark",
-      slot: ItemSlot.offHand, rarity: ItemRarity.legendary,
+      slot: ItemSlot.offHand, rarity: ItemRarity.unique,
       bonuses: [StatBonus(ItemStat.armorClass, 6), StatBonus(ItemStat.strength, 3)],
       levelRequired: 10,
       requiredClass: DndClass.fighter, uniqueAbilityId: 'fighter_2',
@@ -158,7 +158,7 @@ class UniqueItemsData {
     ),
     EquipmentItem(
       id: 'unique_fighter_3', name: 'Standard of Battle',
-      slot: ItemSlot.relic, rarity: ItemRarity.legendary,
+      slot: ItemSlot.relic, rarity: ItemRarity.unique,
       bonuses: [StatBonus(ItemStat.maxHpPct, 10), StatBonus(ItemStat.constitution, 4)],
       levelRequired: 15,
       requiredClass: DndClass.fighter, uniqueAbilityId: 'fighter_4',
@@ -169,7 +169,7 @@ class UniqueItemsData {
     // ── MONK ─────────────────────────────────────────────────────────────────
     EquipmentItem(
       id: 'unique_monk_1', name: 'Fists of Heaven',
-      slot: ItemSlot.gloves, rarity: ItemRarity.legendary,
+      slot: ItemSlot.gloves, rarity: ItemRarity.unique,
       bonuses: [StatBonus(ItemStat.attackBonus, 5), StatBonus(ItemStat.dexterity, 3)],
       levelRequired: 10,
       requiredClass: DndClass.monk, uniqueAbilityId: 'monk_1',
@@ -178,7 +178,7 @@ class UniqueItemsData {
     ),
     EquipmentItem(
       id: 'unique_monk_2', name: 'Iron Mantle of Ki',
-      slot: ItemSlot.armor, rarity: ItemRarity.legendary,
+      slot: ItemSlot.armor, rarity: ItemRarity.unique,
       bonuses: [StatBonus(ItemStat.armorClass, 6), StatBonus(ItemStat.constitution, 3)],
       levelRequired: 10,
       requiredClass: DndClass.monk, uniqueAbilityId: 'monk_2',
@@ -187,7 +187,7 @@ class UniqueItemsData {
     ),
     EquipmentItem(
       id: 'unique_monk_3', name: "Void Monk's Cincture",
-      slot: ItemSlot.amulet, rarity: ItemRarity.legendary,
+      slot: ItemSlot.amulet, rarity: ItemRarity.unique,
       bonuses: [StatBonus(ItemStat.damageBonus, 5), StatBonus(ItemStat.wisdom, 3)],
       levelRequired: 10,
       requiredClass: DndClass.monk, uniqueAbilityId: 'monk_3',
@@ -198,7 +198,7 @@ class UniqueItemsData {
     // ── PALADIN ──────────────────────────────────────────────────────────────
     EquipmentItem(
       id: 'unique_paladin_1', name: 'Hammer of the Righteous',
-      slot: ItemSlot.weapon, rarity: ItemRarity.legendary,
+      slot: ItemSlot.weapon, rarity: ItemRarity.unique,
       bonuses: [StatBonus(ItemStat.attackBonus, 4), StatBonus(ItemStat.damageBonus, 4)],
       levelRequired: 10,
       requiredClass: DndClass.paladin, uniqueAbilityId: 'paladin_1',
@@ -207,7 +207,7 @@ class UniqueItemsData {
     ),
     EquipmentItem(
       id: 'unique_paladin_2', name: 'Holy Grail',
-      slot: ItemSlot.relic, rarity: ItemRarity.legendary,
+      slot: ItemSlot.relic, rarity: ItemRarity.unique,
       bonuses: [StatBonus(ItemStat.maxHpPct, 12), StatBonus(ItemStat.wisdom, 4)],
       levelRequired: 10,
       requiredClass: DndClass.paladin, uniqueAbilityId: 'paladin_2',
@@ -216,7 +216,7 @@ class UniqueItemsData {
     ),
     EquipmentItem(
       id: 'unique_paladin_3', name: 'Bulwark of Light',
-      slot: ItemSlot.offHand, rarity: ItemRarity.legendary,
+      slot: ItemSlot.offHand, rarity: ItemRarity.unique,
       bonuses: [StatBonus(ItemStat.armorClass, 6), StatBonus(ItemStat.maxHpPct, 8)],
       levelRequired: 15,
       requiredClass: DndClass.paladin, uniqueAbilityId: 'paladin_4',
@@ -227,7 +227,7 @@ class UniqueItemsData {
     // ── RANGER ───────────────────────────────────────────────────────────────
     EquipmentItem(
       id: 'unique_ranger_1', name: 'Venom Quiver',
-      slot: ItemSlot.weapon, rarity: ItemRarity.legendary,
+      slot: ItemSlot.weapon, rarity: ItemRarity.unique,
       bonuses: [StatBonus(ItemStat.attackBonus, 4), StatBonus(ItemStat.damageBonus, 3)],
       levelRequired: 10,
       requiredClass: DndClass.ranger, uniqueAbilityId: 'ranger_1',
@@ -236,7 +236,7 @@ class UniqueItemsData {
     ),
     EquipmentItem(
       id: 'unique_ranger_2', name: "Predator's Eye",
-      slot: ItemSlot.helmet, rarity: ItemRarity.legendary,
+      slot: ItemSlot.helmet, rarity: ItemRarity.unique,
       bonuses: [StatBonus(ItemStat.attackBonus, 5), StatBonus(ItemStat.dexterity, 4)],
       levelRequired: 10,
       requiredClass: DndClass.ranger, uniqueAbilityId: 'ranger_2',
@@ -245,7 +245,7 @@ class UniqueItemsData {
     ),
     EquipmentItem(
       id: 'unique_ranger_3', name: 'Cloak of the Woodland',
-      slot: ItemSlot.armor, rarity: ItemRarity.legendary,
+      slot: ItemSlot.armor, rarity: ItemRarity.unique,
       bonuses: [StatBonus(ItemStat.armorClass, 5), StatBonus(ItemStat.dexterity, 3)],
       levelRequired: 15,
       requiredClass: DndClass.ranger, uniqueAbilityId: 'ranger_4',
@@ -256,7 +256,7 @@ class UniqueItemsData {
     // ── ROGUE ────────────────────────────────────────────────────────────────
     EquipmentItem(
       id: 'unique_rogue_1', name: 'Shadowfang Daggers',
-      slot: ItemSlot.weapon, rarity: ItemRarity.legendary,
+      slot: ItemSlot.weapon, rarity: ItemRarity.unique,
       bonuses: [StatBonus(ItemStat.attackBonus, 5), StatBonus(ItemStat.damageBonus, 4)],
       levelRequired: 10,
       requiredClass: DndClass.rogue, uniqueAbilityId: 'rogue_1',
@@ -265,7 +265,7 @@ class UniqueItemsData {
     ),
     EquipmentItem(
       id: 'unique_rogue_2', name: 'Phantom Cloak',
-      slot: ItemSlot.armor, rarity: ItemRarity.legendary,
+      slot: ItemSlot.armor, rarity: ItemRarity.unique,
       bonuses: [StatBonus(ItemStat.armorClass, 4), StatBonus(ItemStat.dexterity, 4)],
       levelRequired: 10,
       requiredClass: DndClass.rogue, uniqueAbilityId: 'rogue_2',
@@ -274,7 +274,7 @@ class UniqueItemsData {
     ),
     EquipmentItem(
       id: 'unique_rogue_3', name: "Void Assassin's Hood",
-      slot: ItemSlot.helmet, rarity: ItemRarity.legendary,
+      slot: ItemSlot.helmet, rarity: ItemRarity.unique,
       bonuses: [StatBonus(ItemStat.damageBonus, 5), StatBonus(ItemStat.dexterity, 4)],
       levelRequired: 10,
       requiredClass: DndClass.rogue, uniqueAbilityId: 'rogue_3',
@@ -285,7 +285,7 @@ class UniqueItemsData {
     // ── SORCERER ─────────────────────────────────────────────────────────────
     EquipmentItem(
       id: 'unique_sorc_1', name: 'Draconic Orb',
-      slot: ItemSlot.relic, rarity: ItemRarity.legendary,
+      slot: ItemSlot.relic, rarity: ItemRarity.unique,
       bonuses: [StatBonus(ItemStat.damageBonus, 4), StatBonus(ItemStat.intelligence, 3)],
       levelRequired: 10,
       requiredClass: DndClass.sorcerer, uniqueAbilityId: 'sorcerer_1',
@@ -294,7 +294,7 @@ class UniqueItemsData {
     ),
     EquipmentItem(
       id: 'unique_sorc_2', name: 'Dragonblood Mantle',
-      slot: ItemSlot.armor, rarity: ItemRarity.legendary,
+      slot: ItemSlot.armor, rarity: ItemRarity.unique,
       bonuses: [StatBonus(ItemStat.maxHpPct, 10), StatBonus(ItemStat.intelligence, 4)],
       levelRequired: 10,
       requiredClass: DndClass.sorcerer, uniqueAbilityId: 'sorcerer_2',
@@ -303,7 +303,7 @@ class UniqueItemsData {
     ),
     EquipmentItem(
       id: 'unique_sorc_3', name: 'Glacial Spire',
-      slot: ItemSlot.weapon, rarity: ItemRarity.legendary,
+      slot: ItemSlot.weapon, rarity: ItemRarity.unique,
       bonuses: [StatBonus(ItemStat.damageBonus, 5), StatBonus(ItemStat.intelligence, 3)],
       levelRequired: 10,
       requiredClass: DndClass.sorcerer, uniqueAbilityId: 'sorcerer_3',
@@ -314,7 +314,7 @@ class UniqueItemsData {
     // ── WARLOCK ──────────────────────────────────────────────────────────────
     EquipmentItem(
       id: 'unique_warlock_1', name: "Patron's Tome",
-      slot: ItemSlot.relic, rarity: ItemRarity.legendary,
+      slot: ItemSlot.relic, rarity: ItemRarity.unique,
       bonuses: [StatBonus(ItemStat.damageBonus, 4), StatBonus(ItemStat.charisma, 3)],
       levelRequired: 10,
       requiredClass: DndClass.warlock, uniqueAbilityId: 'warlock_1',
@@ -323,7 +323,7 @@ class UniqueItemsData {
     ),
     EquipmentItem(
       id: 'unique_warlock_2', name: 'Dark Covenant Seal',
-      slot: ItemSlot.amulet, rarity: ItemRarity.legendary,
+      slot: ItemSlot.amulet, rarity: ItemRarity.unique,
       bonuses: [StatBonus(ItemStat.maxHpPct, 10), StatBonus(ItemStat.charisma, 4)],
       levelRequired: 10,
       requiredClass: DndClass.warlock, uniqueAbilityId: 'warlock_2',
@@ -332,7 +332,7 @@ class UniqueItemsData {
     ),
     EquipmentItem(
       id: 'unique_warlock_3', name: 'Void Pact Mantle',
-      slot: ItemSlot.armor, rarity: ItemRarity.legendary,
+      slot: ItemSlot.armor, rarity: ItemRarity.unique,
       bonuses: [StatBonus(ItemStat.armorClass, 4), StatBonus(ItemStat.charisma, 4)],
       levelRequired: 20,
       requiredClass: DndClass.warlock, uniqueAbilityId: 'warlock_5',
@@ -343,7 +343,7 @@ class UniqueItemsData {
     // ── WIZARD ───────────────────────────────────────────────────────────────
     EquipmentItem(
       id: 'unique_wizard_1', name: "Archmage's Staff",
-      slot: ItemSlot.weapon, rarity: ItemRarity.legendary,
+      slot: ItemSlot.weapon, rarity: ItemRarity.unique,
       bonuses: [StatBonus(ItemStat.attackBonus, 4), StatBonus(ItemStat.damageBonus, 4)],
       levelRequired: 10,
       requiredClass: DndClass.wizard, uniqueAbilityId: 'wizard_1',
@@ -352,7 +352,7 @@ class UniqueItemsData {
     ),
     EquipmentItem(
       id: 'unique_wizard_2', name: 'Spellweaver Robes',
-      slot: ItemSlot.armor, rarity: ItemRarity.legendary,
+      slot: ItemSlot.armor, rarity: ItemRarity.unique,
       bonuses: [StatBonus(ItemStat.armorClass, 5), StatBonus(ItemStat.intelligence, 4)],
       levelRequired: 10,
       requiredClass: DndClass.wizard, uniqueAbilityId: 'wizard_2',
@@ -361,7 +361,7 @@ class UniqueItemsData {
     ),
     EquipmentItem(
       id: 'unique_wizard_3', name: 'Tome of Absolute Zero',
-      slot: ItemSlot.relic, rarity: ItemRarity.legendary,
+      slot: ItemSlot.relic, rarity: ItemRarity.unique,
       bonuses: [StatBonus(ItemStat.damageBonus, 5), StatBonus(ItemStat.intelligence, 4)],
       levelRequired: 10,
       requiredClass: DndClass.wizard, uniqueAbilityId: 'wizard_3',
@@ -411,5 +411,8 @@ class UniqueItemsData {
       AbilityEffect.dodge           => 'Dodge next hit',
       AbilityEffect.heal            => 'Heal $xv% HP',
       AbilityEffect.bonusDamage     => '+${xv}d bonus',
+      AbilityEffect.silence         => 'Silence ${xd}r',
+      AbilityEffect.absorbShield    => '$xv HP barrier',
+      AbilityEffect.missChance      => '$xv% miss for ${xd}r',
     };
 }

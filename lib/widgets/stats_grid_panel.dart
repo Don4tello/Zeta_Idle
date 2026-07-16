@@ -56,7 +56,7 @@ class StatsGridPanel extends StatelessWidget {
               canAfford:   canAfford,
               isKeyAbility: keyStats.contains(d.abbr),
               hero:        hero,
-              onUpgrade:   canAfford ? () => game.purchaseUpgrade(upgrade!) : null,
+              onUpgrade:   canAfford ? () { game.purchaseUpgrade(upgrade!); game.audioService.playUiConfirm(); } : null,
             ),
           ),
         );
@@ -390,7 +390,7 @@ class _StatCardState extends State<_StatCard>
                           ),
                           Text(
                             '${widget.score}',
-                            style: GoogleFonts.pixelifySans(
+                            style: GoogleFonts.rajdhani(
                               fontSize: 19,
                               fontWeight: FontWeight.bold,
                               color: AppTheme.textLight,
@@ -495,7 +495,7 @@ class _PlusButton extends StatelessWidget {
             ? Text(
                 '+',
                 textAlign: TextAlign.center,
-                style: GoogleFonts.pixelifySans(
+                style: GoogleFonts.rajdhani(
                   fontSize: 19,
                   fontWeight: FontWeight.bold,
                   color: color,
@@ -535,7 +535,7 @@ class CombatStatsPanel extends StatelessWidget {
         + inv.totalOf(ItemStat.attackBonus)
         + inv.totalOf(ItemStat.strength)
         + game.petAttackBonus + game.skinAttackBonus + game.auraAttackBonus
-        + game.questAttackBonus + game.artifactAttackBonus
+        + game.questAttackBonus + game.artifactPowerBonus
         + game.ascAtkBonus + game.runeAtkBonus + game.allyAtkBonus;
 
     final dmgFlat   = h.damageMod
@@ -543,7 +543,7 @@ class CombatStatsPanel extends StatelessWidget {
         + inv.totalOf(ItemStat.damageBonus)
         + inv.totalOf(ItemStat.strength)
         + game.petDamage + game.skinDamage + game.auraDamage
-        + game.questDamageBonus + game.artifactDamageBonus
+        + game.questDamageBonus + game.artifactPowerBonus
         + game.ascDmgBonus + game.runeDmgBonus + game.allyDmgBonus;
 
     final dmgPct    = pt.totalOf(PassiveEffect.allDamage)
@@ -574,7 +574,7 @@ class CombatStatsPanel extends StatelessWidget {
     final dps = (avgBase * (1.0 + dmgPct / 100.0) * critFactor).round();
 
     final stats = [
-      _CS('Est. DPS',   '~$dps / hit',                     const Color(0xFFff4488)),
+      _CS('Est. DPS',   '$dps / hit',                      const Color(0xFFff4488)),
       _CS('Power',      '+$power',                        const Color(0xFFff6644)),
       _CS('DMG Mult',   '+$dmgPct%',                      const Color(0xFFff6633)),
       _CS('Armor',      '$acTotal',                        const Color(0xFF66aaff)),

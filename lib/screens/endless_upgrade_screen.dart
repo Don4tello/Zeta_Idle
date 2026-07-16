@@ -4,6 +4,8 @@ import 'package:google_fonts/google_fonts.dart';
 import '../models/endless_upgrades.dart';
 import '../services/game_state.dart';
 import '../theme/app_theme.dart';
+import '../widgets/hold_repeat_button.dart';
+import 'main_shell.dart' show TutorialTip;
 
 class EndlessUpgradeScreen extends StatelessWidget {
   const EndlessUpgradeScreen({super.key, this.embedded = false});
@@ -17,6 +19,13 @@ class EndlessUpgradeScreen extends StatelessWidget {
     final body = ListView(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
       children: [
+        TutorialTip(
+          tutorialKey: 'upgrade',
+          game: game,
+          text: 'Gauntlet runs earn Echoes 🔊 — spend them here on permanent '
+              'combat upgrades that stack across every rebirth. '
+              'These are some of the most powerful bonuses in the game.',
+        ),
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
           margin: const EdgeInsets.only(bottom: 14),
@@ -34,7 +43,7 @@ class EndlessUpgradeScreen extends StatelessWidget {
                 child: Text(
                   'Upgrades are permanent per character. '
                   'Bonuses apply in all game modes.',
-                  style: GoogleFonts.pixelifySans(
+                  style: GoogleFonts.rajdhani(
                     fontSize: 11,
                     color: AppTheme.textMuted,
                     height: 1.5,
@@ -80,7 +89,7 @@ class EndlessUpgradeScreen extends StatelessWidget {
                 const SizedBox(width: 5),
                 Text(
                   AppTheme.fmtNumber(game.echoes),
-                  style: GoogleFonts.pixelifySans(
+                  style: GoogleFonts.rajdhani(
                     color: const Color(0xFFcc88ff),
                     fontSize: 15,
                     fontWeight: FontWeight.bold,
@@ -90,7 +99,7 @@ class EndlessUpgradeScreen extends StatelessWidget {
                 const SizedBox(width: 4),
                 Text(
                   'ECHOES',
-                  style: GoogleFonts.pixelifySans(
+                  style: GoogleFonts.rajdhani(
                     color: const Color(0xFFcc88ff).withValues(alpha: 0.6),
                     fontSize: 10,
                     letterSpacing: 1,
@@ -195,7 +204,7 @@ class _NodeCardState extends State<_NodeCard> with SingleTickerProviderStateMixi
             child: Center(
               child: Text(
                 node.statLabel,
-                style: GoogleFonts.pixelifySans(
+                style: GoogleFonts.rajdhani(
                   fontSize: 14,
                   fontWeight: FontWeight.bold,
                   color: col,
@@ -217,7 +226,7 @@ class _NodeCardState extends State<_NodeCard> with SingleTickerProviderStateMixi
                   children: [
                     Text(
                       node.displayName.toUpperCase(),
-                      style: GoogleFonts.pixelifySans(
+                      style: GoogleFonts.rajdhani(
                         fontSize: 13,
                         fontWeight: FontWeight.bold,
                         color: AppTheme.textLight,
@@ -238,7 +247,7 @@ class _NodeCardState extends State<_NodeCard> with SingleTickerProviderStateMixi
                       ),
                       child: Text(
                         'Lv $level',
-                        style: GoogleFonts.pixelifySans(
+                        style: GoogleFonts.rajdhani(
                           fontSize: 11,
                           color: level > 0 ? col : AppTheme.textMuted,
                           letterSpacing: 1,
@@ -252,7 +261,7 @@ class _NodeCardState extends State<_NodeCard> with SingleTickerProviderStateMixi
                 // Current bonus or base description
                 Text(
                   level > 0 ? _bonusText(node, u) : node.effectLabel,
-                  style: GoogleFonts.pixelifySans(
+                  style: GoogleFonts.rajdhani(
                     fontSize: 11,
                     color:
                         level > 0 ? AppTheme.accentGold : AppTheme.textMuted,
@@ -278,7 +287,7 @@ class _NodeCardState extends State<_NodeCard> with SingleTickerProviderStateMixi
                         const SizedBox(width: 5),
                         Text(
                           AppTheme.fmtNumber(cost),
-                          style: GoogleFonts.pixelifySans(
+                          style: GoogleFonts.rajdhani(
                             fontSize: 12,
                             color: canAfford
                                 ? const Color(0xFFcc88ff)
@@ -288,7 +297,7 @@ class _NodeCardState extends State<_NodeCard> with SingleTickerProviderStateMixi
                         const SizedBox(width: 4),
                         Text(
                           'for Lv ${level + 1}',
-                          style: GoogleFonts.pixelifySans(
+                          style: GoogleFonts.rajdhani(
                             fontSize: 10,
                             color: AppTheme.textMuted,
                           ),
@@ -296,9 +305,9 @@ class _NodeCardState extends State<_NodeCard> with SingleTickerProviderStateMixi
                       ],
                     ),
                     // Upgrade button — pulses when affordable
-                    GestureDetector(
-                      onTap: canAfford
-                          ? () => game.purchaseEndlessUpgrade(node)
+                    HoldRepeatButton(
+                      onPressed: canAfford
+                          ? () { game.purchaseEndlessUpgrade(node); game.audioService.playUiConfirm(); }
                           : null,
                       child: AnimatedBuilder(
                         animation: _pulse,
@@ -325,7 +334,7 @@ class _NodeCardState extends State<_NodeCard> with SingleTickerProviderStateMixi
                               ],
                               Text(
                                 canAfford ? 'UPGRADE' : 'UPGRADE',
-                                style: GoogleFonts.pixelifySans(
+                                style: GoogleFonts.rajdhani(
                                   fontSize: 11,
                                   fontWeight: FontWeight.bold,
                                   color: canAfford ? col : AppTheme.textMuted,
@@ -369,7 +378,7 @@ class _NodeCardState extends State<_NodeCard> with SingleTickerProviderStateMixi
                           ),
                           child: Text(
                             'Lv${perk.levelRequired}',
-                            style: GoogleFonts.pixelifySans(
+                            style: GoogleFonts.rajdhani(
                               fontSize: 9,
                               color:
                                   unlocked ? col : AppTheme.textMuted,
@@ -396,7 +405,7 @@ class _NodeCardState extends State<_NodeCard> with SingleTickerProviderStateMixi
                                   const SizedBox(width: 4),
                                   Text(
                                     perk.name,
-                                    style: GoogleFonts.pixelifySans(
+                                    style: GoogleFonts.rajdhani(
                                       fontSize: 11,
                                       fontWeight: FontWeight.bold,
                                       color: unlocked
@@ -411,7 +420,7 @@ class _NodeCardState extends State<_NodeCard> with SingleTickerProviderStateMixi
                                 padding: const EdgeInsets.only(left: 13),
                                 child: Text(
                                   perk.description,
-                                  style: GoogleFonts.pixelifySans(
+                                  style: GoogleFonts.rajdhani(
                                     fontSize: 10,
                                     color: unlocked
                                         ? AppTheme.textLight
@@ -475,7 +484,7 @@ class _SynergyPanel extends StatelessWidget {
         Padding(
           padding: const EdgeInsets.only(bottom: 8),
           child: Text('SYNERGIES',
-              style: GoogleFonts.pixelifySans(
+              style: GoogleFonts.rajdhani(
                   fontSize: 11,
                   letterSpacing: 2,
                   color: const Color(0xFF80d0ff),
@@ -524,7 +533,7 @@ class _SynergyCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(status.name,
-                    style: GoogleFonts.pixelifySans(
+                    style: GoogleFonts.rajdhani(
                         fontSize: 11,
                         color: unlocked ? const Color(0xFFddeeFF) : const Color(0xFF667788),
                         fontWeight: FontWeight.bold)),

@@ -21,7 +21,9 @@ class PrestigeScreen extends StatelessWidget {
             TutorialTip(
               tutorialKey: 'prestige',
               game: game,
-              text: 'Prestige resets your hero but grants permanent multipliers and Souls for the Prestige Shop. Available at Rebirth Gates (stages 25, 50, 75, 100).',
+              text: 'You can now Rebirth! ✦ Prestige your hero to reset progress '
+                  'but earn permanent Souls ☠ and multipliers that stack forever. '
+                  'Each rebirth makes every future run significantly stronger.',
             ),
           _RebirthPanel(game: game),
           const SizedBox(height: 20),
@@ -114,13 +116,7 @@ class _RebirthPanel extends StatelessWidget {
     final canPrestige  = game.canPrestige;
     final soulsPreview = (game.campaignStageIndex / 5).floor().clamp(1, 200)
         + game.prestigeSoulConduit;
-    final stage        = game.campaignStageIndex + 1;
-
-    // Find next rebirth gate
-    final nextGate = [25, 50, 75, 100].firstWhere(
-      (g) => game.campaignStageIndex < g,
-      orElse: () => 100,
-    );
+    final stageIndex   = game.campaignStageIndex;
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -145,8 +141,8 @@ class _RebirthPanel extends StatelessWidget {
           ]),
           const SizedBox(height: 8),
           const Text(
-            'Start over as a stronger hero. Reset your progress in exchange for '
-            'permanent power — each Rebirth makes every future run faster and more powerful.',
+            'Complete all 100 campaign stages and defeat the Omega Absolute, then Rebirth to start over as a stronger hero. '
+            'Each Rebirth makes future runs faster, more powerful, and unlocks stronger item drops.',
             style: TextStyle(fontSize: 12, color: AppTheme.textMuted, height: 1.5),
           ),
           const SizedBox(height: 10),
@@ -177,6 +173,8 @@ class _RebirthPanel extends StatelessWidget {
                     style: const TextStyle(fontSize: 10, color: AppTheme.textMuted)),
                 Text('⬡ +10 Mythril',
                     style: const TextStyle(fontSize: 11, color: Color(0xFF9966ff))),
+                Text('⚔ Stronger item drops  (+10% weapon power  •  +1 stat per item)',
+                    style: const TextStyle(fontSize: 10, color: Color(0xFF88dd88))),
               ],
             ),
           ),
@@ -242,8 +240,8 @@ class _RebirthPanel extends StatelessWidget {
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
-                    'Next Rebirth at Stage $nextGate.  '
-                    '(Stage $stage / $nextGate)',
+                    'Complete Stage 100 — Defeat the Omega Absolute to unlock Rebirth.  '
+                    '(Stage ${stageIndex + 1} / 100)',
                     style: const TextStyle(fontSize: 13, color: AppTheme.textMuted),
                   ),
                 ),
@@ -290,9 +288,10 @@ class _RebirthPanel extends StatelessWidget {
                 style: AppTheme.pixelHeading(fontSize: 11, color: AppTheme.textMuted)),
           ),
           TextButton(
-            onPressed: () {
+            onPressed: () async {
+              if (!game.canPrestige) return;
               Navigator.pop(context);
-              game.prestige();
+              await game.prestige();
             },
             child: Text('REBIRTH',
                 style: AppTheme.pixelHeading(fontSize: 11, color: const Color(0xFFcc8844))),
@@ -376,6 +375,9 @@ class _BonusPanel extends StatelessWidget {
     if (s.isUnlocked('idle_bonus'))     chips.add('+10 Idle Rate');
     if (s.isUnlocked('forge_bonus'))    chips.add('Forge: 2 items');
     if (s.isUnlocked('soul_conduit'))   chips.add('+3 Souls/Rebirth');
+    if (s.isUnlocked('artifact_vault')) chips.add('Artifacts persist');
+    if (s.isUnlocked('mythril_memory')) chips.add('Keep 30% Mythril');
+    if (s.isUnlocked('soul_overdrive')) chips.add('Start at Stage 31');
 
     if (chips.isEmpty) return const SizedBox.shrink();
 
@@ -602,7 +604,7 @@ class _ShopNode extends StatelessWidget {
                 const SizedBox(height: 6),
                 TextButton(
                   onPressed: canBuy
-                      ? () => game.purchasePrestigeNode(node.id)
+                      ? () { game.purchasePrestigeNode(node.id); game.audioService.playUiConfirm(); }
                       : null,
                   style: TextButton.styleFrom(
                     foregroundColor: const Color(0xFFcc8844),

@@ -18,6 +18,7 @@ import '../../screens/quest_screen.dart';
 import '../../screens/bestiary_screen.dart';
 import '../../screens/battle_screen.dart';
 import '../../screens/ability_upgrade_screen.dart';
+import '../../screens/ability_scores_screen.dart';
 import '../../screens/passive_tree_screen.dart';
 import '../../screens/inventory_screen.dart';
 import '../../screens/aura_shop_screen.dart';
@@ -37,7 +38,10 @@ import '../../screens/login_streak_screen.dart';
 import '../../screens/rune_screen.dart';
 import '../../screens/npc_ally_screen.dart';
 import '../../screens/account_screen.dart';
+import '../../screens/armory_screen.dart';
+import '../../screens/hero_hub_screen.dart';
 import '../../screens/privacy_policy_screen.dart';
+import '../../tools/sprite_export_screen.dart';
 import '../../models/dnd_class.dart';
 import '../../models/hero_race.dart';
 import '../../models/hero_trait.dart';
@@ -83,6 +87,7 @@ abstract final class Routes {
   // Hero tooling (pushed over shell)
   static const battle         = '/game/battle';
   static const abilityUpgrades = '/game/ability-upgrades';
+  static const abilityScores  = '/game/ability-scores';
   static const passiveTree    = '/game/passive-tree';
   static const mastery        = '/game/mastery';
   static const prestige       = '/game/prestige';
@@ -106,8 +111,11 @@ abstract final class Routes {
   static const knowledgeBase = '/game/knowledge-base';
   static const settings      = '/game/settings';
   static const privacyPolicy = '/game/privacy-policy';
+  static const armory        = '/game/armory';
+  static const heroHub       = '/game/hero-hub';
   static const worldEvent   = '/game/world-event';
   static const guild        = '/game/guild';
+  static const spriteExport = '/game/sprite-export';
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -209,6 +217,7 @@ GoRouter buildRouter({
 
           // Hero tooling
           _route('ability-upgrades', const AbilityUpgradeScreen()),
+          _route('ability-scores',   const AbilityScoresScreen()),
           _route('passive-tree',     const PassiveTreeScreen()),
           _route('mastery',          const MasteryScreen()),
           _route('prestige',         const PrestigeScreen()),
@@ -232,8 +241,11 @@ GoRouter buildRouter({
           _route('knowledge-base',const KnowledgeBaseScreen()),
           _route('settings',       const SettingsScreen()),
           _route('privacy-policy', const PrivacyPolicyScreen()),
+          _route('armory',         const ArmoryScreen()),
+          _route('hero-hub',       const HeroHubScreen()),
           _route('world-event',   const WorldEventScreen()),
           _route('guild',         const GuildScreen()),
+          _route('sprite-export', const SpriteExportScreen()),
         ],
       ),
     ],

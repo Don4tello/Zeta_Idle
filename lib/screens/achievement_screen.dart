@@ -1,15 +1,59 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import '../models/achievement.dart';
 import '../services/game_state.dart';
 import '../theme/app_theme.dart';
+import 'main_shell.dart' show TutorialTip;
 
-class AchievementScreen extends StatelessWidget {
+class AchievementScreen extends StatefulWidget {
   const AchievementScreen({super.key});
+
+  static bool _isCombat(AchievementCondition c) => const {
+    AchievementCondition.totalBattleWins,
+    AchievementCondition.totalKills,
+    AchievementCondition.totalBossKills,
+    AchievementCondition.totalDamageDealt,
+    AchievementCondition.survivedAt1HP,
+  }.contains(c);
+
+  static bool _isProgression(AchievementCondition c) => const {
+    AchievementCondition.heroLevel,
+    AchievementCondition.campaignStage,
+    AchievementCondition.prestigeLevel,
+    AchievementCondition.subclassChosen,
+  }.contains(c);
+
+  @override
+  State<AchievementScreen> createState() => _AchievementScreenState();
+}
+
+class _AchievementScreenState extends State<AchievementScreen> {
+  final ScrollController _scrollCtrl       = ScrollController();
+  final GlobalKey        _firstClaimableKey = GlobalKey();
+
+  @override
+  void dispose() {
+    _scrollCtrl.dispose();
+    super.dispose();
+  }
+
+  void _scrollToFirstClaimable() {
+    final ctx = _firstClaimableKey.currentContext;
+    if (ctx == null) return;
+    Scrollable.ensureVisible(
+      ctx,
+      duration: const Duration(milliseconds: 400),
+      curve: Curves.easeOut,
+      alignment: 0.1,
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
     final game      = GameStateProvider.of(context);
     final claimable = game.achievementsClaimable;
+
+    final combatClaimable      = game.achievements.any((a) =>  AchievementScreen._isCombat(a.condition)      && a.unlocked && !a.claimed);
+    final progressionClaimable = game.achievements.any((a) =>  AchievementScreen._isProgression(a.condition) && a.unlocked && !a.claimed);
 
     return Scaffold(
       backgroundColor: const Color(0xFF1B1A17),
@@ -35,65 +79,59 @@ class AchievementScreen extends StatelessWidget {
         ],
       ),
       body: SingleChildScrollView(
+        controller: _scrollCtrl,
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Summary bar
-            _SummaryBar(game: game),
+            TutorialTip(
+              tutorialKey: 'achievements',
+              game: game,
+              text: 'You defeated your first boss! 🏆 Achievements track milestones '
+                  'and reward ZCoins, Shards and Essence — claim them here and check back often.',
+            ),
+            _SummaryBar(
+              game: game,
+              onScrollToClaimable: claimable > 0 ? _scrollToFirstClaimable : null,
+            ),
             const SizedBox(height: 16),
-
-            // Group by category
             _CategorySection(
               title: 'COMBAT',
               achievements: game.achievements
-                  .where((a) => _isCombat(a.condition))
+                  .where((a) => AchievementScreen._isCombat(a.condition))
                   .toList(),
               game: game,
+              firstClaimableKey: combatClaimable ? _firstClaimableKey : null,
             ),
             const SizedBox(height: 14),
             _CategorySection(
               title: 'PROGRESSION',
               achievements: game.achievements
-                  .where((a) => _isProgression(a.condition))
+                  .where((a) => AchievementScreen._isProgression(a.condition))
                   .toList(),
               game: game,
+              firstClaimableKey: !combatClaimable && progressionClaimable ? _firstClaimableKey : null,
             ),
             const SizedBox(height: 14),
             _CategorySection(
               title: 'ECONOMY & SYSTEMS',
               achievements: game.achievements
-                  .where((a) => _isEconomy(a.condition))
+                  .where((a) => !AchievementScreen._isCombat(a.condition) && !AchievementScreen._isProgression(a.condition))
                   .toList(),
               game: game,
+              firstClaimableKey: !combatClaimable && !progressionClaimable ? _firstClaimableKey : null,
             ),
           ],
         ),
       ),
     );
   }
-
-  static bool _isCombat(AchievementCondition c) => const {
-    AchievementCondition.totalBattleWins,
-    AchievementCondition.totalKills,
-    AchievementCondition.totalBossKills,
-    AchievementCondition.totalDamageDealt,
-    AchievementCondition.survivedAt1HP,
-  }.contains(c);
-
-  static bool _isProgression(AchievementCondition c) => const {
-    AchievementCondition.heroLevel,
-    AchievementCondition.campaignStage,
-    AchievementCondition.prestigeLevel,
-    AchievementCondition.subclassChosen,
-  }.contains(c);
-
-  static bool _isEconomy(AchievementCondition c) => !_isCombat(c) && !_isProgression(c);
 }
 
 class _SummaryBar extends StatelessWidget {
-  const _SummaryBar({required this.game});
+  const _SummaryBar({required this.game, this.onScrollToClaimable});
   final GameState game;
+  final VoidCallback? onScrollToClaimable;
 
   @override
   Widget build(BuildContext context) {
@@ -127,15 +165,23 @@ class _SummaryBar extends StatelessWidget {
           ),
           if (unlocked > claimed) ...[
             const SizedBox(height: 8),
-            Row(children: [
-              Container(
-                width: 8, height: 8,
-                decoration: const BoxDecoration(shape: BoxShape.circle, color: Color(0xFFaacc44)),
-              ),
-              const SizedBox(width: 6),
-              Text('${unlocked - claimed} achievement${unlocked - claimed == 1 ? '' : 's'} ready to claim!',
-                  style: const TextStyle(fontSize: 12, color: Color(0xFFaacc44))),
-            ]),
+            GestureDetector(
+              onTap: onScrollToClaimable,
+              behavior: HitTestBehavior.opaque,
+              child: Row(children: [
+                Container(
+                  width: 8, height: 8,
+                  decoration: const BoxDecoration(shape: BoxShape.circle, color: Color(0xFFaacc44)),
+                ),
+                const SizedBox(width: 6),
+                Text('${unlocked - claimed} achievement${unlocked - claimed == 1 ? '' : 's'} ready to claim!',
+                    style: const TextStyle(fontSize: 12, color: Color(0xFFaacc44))),
+                if (onScrollToClaimable != null) ...[
+                  const SizedBox(width: 6),
+                  const Icon(Icons.arrow_downward_rounded, size: 12, color: Color(0xFFaacc44)),
+                ],
+              ]),
+            ),
           ],
         ],
       ),
@@ -148,10 +194,12 @@ class _CategorySection extends StatelessWidget {
     required this.title,
     required this.achievements,
     required this.game,
+    this.firstClaimableKey,
   });
   final String title;
   final List<Achievement> achievements;
   final GameState game;
+  final GlobalKey? firstClaimableKey;
 
   static int _sortKey(Achievement a) {
     if (a.unlocked && !a.claimed) return 0;
@@ -163,6 +211,7 @@ class _CategorySection extends StatelessWidget {
   Widget build(BuildContext context) {
     final sorted = [...achievements]..sort((a, b) => _sortKey(a).compareTo(_sortKey(b)));
     final done = achievements.where((a) => a.claimed).length;
+    bool keyAssigned = false;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -173,10 +222,15 @@ class _CategorySection extends StatelessWidget {
               style: const TextStyle(fontSize: 11, color: AppTheme.textMuted)),
         ]),
         const SizedBox(height: 8),
-        ...sorted.map((a) => Padding(
-          padding: const EdgeInsets.only(bottom: 6),
-          child: _AchievementTile(a: a, game: game),
-        )),
+        ...sorted.map((a) {
+          final attachKey = !keyAssigned && firstClaimableKey != null && a.unlocked && !a.claimed;
+          if (attachKey) keyAssigned = true;
+          return Padding(
+            key: attachKey ? firstClaimableKey : null,
+            padding: const EdgeInsets.only(bottom: 6),
+            child: _AchievementTile(a: a, game: game),
+          );
+        }),
       ],
     );
   }
@@ -213,7 +267,6 @@ class _AchievementTile extends StatelessWidget {
       ),
       child: Row(
         children: [
-          // Emoji + claimed overlay
           SizedBox(
             width: 36,
             child: Stack(
@@ -269,7 +322,6 @@ class _AchievementTile extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 8),
-          // Reward chip or claim button
           if (isReady)
             TextButton(
               onPressed: () => game.claimAchievement(a.id),
@@ -295,7 +347,6 @@ class _AchievementTile extends StatelessWidget {
       ),
     );
   }
-
 }
 
 class _RewardBadge extends StatelessWidget {

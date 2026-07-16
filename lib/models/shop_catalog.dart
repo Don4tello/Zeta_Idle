@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 
 // ── Starter/Hero Packs (one-time purchase) ───────────────────────────────────
 
@@ -29,7 +29,7 @@ class StarterPack {
       productId: 'pack_starter',
       description: 'Perfect for new heroes — a boost to get you started.',
       contents: {
-        'crystals': 500,
+        'zcoins': 500,
         'gold': 10000,
         'shards': 100,
         'essence': 50,
@@ -45,7 +45,7 @@ class StarterPack {
       productId: 'pack_hero',
       description: 'For the ambitious — premium gear and resources.',
       contents: {
-        'crystals': 1500,
+        'zcoins': 1500,
         'gold': 30000,
         'shards': 300,
         'essence': 200,
@@ -63,7 +63,7 @@ class StarterPack {
       productId: 'pack_legend',
       description: 'The ultimate bundle — dominate from day one.',
       contents: {
-        'crystals': 4000,
+        'zcoins': 4000,
         'gold': 100000,
         'shards': 800,
         'essence': 500,
@@ -86,63 +86,63 @@ class CosmeticItem {
     required this.name,
     required this.type,
     required this.icon,
-    required this.crystalCost,
+    required this.zcoinCost,
     required this.color,
     this.description = '',
   });
 
   final String id, name, icon, description;
   final CosmeticType type;
-  final int crystalCost;
+  final int zcoinCost;
   final Color color;
 
   static const all = [
     // Titles
     CosmeticItem(id: 'title_champion', name: 'Champion', type: CosmeticType.title,
-      icon: '🏆', crystalCost: 100, color: Color(0xFFFFD700),
+      icon: '🏆', zcoinCost: 100, color: Color(0xFFFFD700),
       description: 'Display "Champion" below your name.'),
     CosmeticItem(id: 'title_slayer', name: 'Slayer', type: CosmeticType.title,
-      icon: '⚔', crystalCost: 100, color: Color(0xFFcc4444),
+      icon: '⚔', zcoinCost: 100, color: Color(0xFFcc4444),
       description: 'Display "Slayer" below your name.'),
     CosmeticItem(id: 'title_archmage', name: 'Archmage', type: CosmeticType.title,
-      icon: '🔮', crystalCost: 150, color: Color(0xFF6688ff),
+      icon: '🔮', zcoinCost: 150, color: Color(0xFF6688ff),
       description: 'Display "Archmage" below your name.'),
     CosmeticItem(id: 'title_immortal', name: 'Immortal', type: CosmeticType.title,
-      icon: '✦', crystalCost: 200, color: Color(0xFFcc88ff),
+      icon: '✦', zcoinCost: 200, color: Color(0xFFcc88ff),
       description: 'Display "Immortal" below your name.'),
     CosmeticItem(id: 'title_godslayer', name: 'Godslayer', type: CosmeticType.title,
-      icon: '👑', crystalCost: 500, color: Color(0xFFff44ff),
+      icon: '👑', zcoinCost: 500, color: Color(0xFFff44ff),
       description: 'Display "Godslayer" below your name.'),
 
     // Name Colors
     CosmeticItem(id: 'color_gold', name: 'Golden Name', type: CosmeticType.nameColor,
-      icon: '✨', crystalCost: 150, color: Color(0xFFFFD700),
+      icon: '✨', zcoinCost: 150, color: Color(0xFFFFD700),
       description: 'Your name glows gold.'),
     CosmeticItem(id: 'color_crimson', name: 'Crimson Name', type: CosmeticType.nameColor,
-      icon: '🔴', crystalCost: 150, color: Color(0xFFcc2222),
+      icon: '🔴', zcoinCost: 150, color: Color(0xFFcc2222),
       description: 'Your name burns crimson.'),
     CosmeticItem(id: 'color_arcane', name: 'Arcane Name', type: CosmeticType.nameColor,
-      icon: '🟣', crystalCost: 150, color: Color(0xFFcc44ff),
+      icon: '🟣', zcoinCost: 150, color: Color(0xFFcc44ff),
       description: 'Your name pulses with arcane energy.'),
     CosmeticItem(id: 'color_frost', name: 'Frost Name', type: CosmeticType.nameColor,
-      icon: '🔵', crystalCost: 150, color: Color(0xFF44bbff),
+      icon: '🔵', zcoinCost: 150, color: Color(0xFF44bbff),
       description: 'Your name shimmers with frost.'),
     CosmeticItem(id: 'color_nature', name: 'Nature Name', type: CosmeticType.nameColor,
-      icon: '🟢', crystalCost: 150, color: Color(0xFF44cc44),
+      icon: '🟢', zcoinCost: 150, color: Color(0xFF44cc44),
       description: 'Your name grows with nature.'),
 
     // Frames
     CosmeticItem(id: 'frame_gold', name: 'Golden Frame', type: CosmeticType.frame,
-      icon: '🖼', crystalCost: 200, color: Color(0xFFFFD700),
+      icon: '🖼', zcoinCost: 200, color: Color(0xFFFFD700),
       description: 'A gilded frame around your hero portrait.'),
     CosmeticItem(id: 'frame_fire', name: 'Flame Frame', type: CosmeticType.frame,
-      icon: '🔥', crystalCost: 200, color: Color(0xFFff6633),
+      icon: '🔥', zcoinCost: 200, color: Color(0xFFff6633),
       description: 'Flames dance around your portrait.'),
     CosmeticItem(id: 'frame_void', name: 'Void Frame', type: CosmeticType.frame,
-      icon: '🌑', crystalCost: 300, color: Color(0xFFaa44ff),
+      icon: '🌑', zcoinCost: 300, color: Color(0xFFaa44ff),
       description: 'Void energy swirls around your portrait.'),
     CosmeticItem(id: 'frame_celestial', name: 'Celestial Frame', type: CosmeticType.frame,
-      icon: '⭐', crystalCost: 500, color: Color(0xFFffcc44),
+      icon: '⭐', zcoinCost: 500, color: Color(0xFFffcc44),
       description: 'Stars orbit your portrait.'),
   ];
 }
@@ -177,7 +177,7 @@ class SubscriptionTier {
         '2× battle speed permanently',
         'Auto-Campaign enabled',
         '+25% idle gold',
-        '100 bonus crystals/month',
+        '100 bonus zcoins/month',
       ],
     ),
     SubscriptionTier(
@@ -194,7 +194,8 @@ class SubscriptionTier {
         'Auto-Campaign enabled',
         '+50% idle gold',
         'Exclusive "Premium" title',
-        '300 bonus crystals/month',
+        '300 bonus zcoins/month',
+        'Battle Sim — replay any past stage instantly',
       ],
     ),
   ];

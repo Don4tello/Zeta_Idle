@@ -1,4 +1,4 @@
-import 'dnd_class.dart';
+﻿import 'dnd_class.dart';
 
 enum QuestCondition {
   killEnemies,
@@ -30,7 +30,7 @@ class QuestReward {
   const QuestReward({
     this.gold = 0,
     this.shards = 0,
-    this.crystals = 0,
+    this.zcoins = 0,
     this.echoes = 0,
     this.essence = 0,
     this.mythril = 0,
@@ -39,7 +39,7 @@ class QuestReward {
     this.permanentDamageBonus = 0,
     this.title,
   });
-  final int gold, shards, crystals, echoes, essence, mythril;
+  final int gold, shards, zcoins, echoes, essence, mythril;
   final int permanentACBonus;
   final int permanentAttackBonus;
   final int permanentDamageBonus;
@@ -52,7 +52,7 @@ class QuestReward {
     final parts = <String>[];
     if (gold > 0) parts.add('💰 $gold');
     if (shards > 0) parts.add('◆ $shards');
-    if (crystals > 0) parts.add('💎 $crystals');
+    if (zcoins > 0) parts.add('🪙 $zcoins');
     if (echoes > 0) parts.add('🔊 $echoes');
     if (essence > 0) parts.add('✦ $essence');
     if (mythril > 0) parts.add('⬡ $mythril');
@@ -118,7 +118,7 @@ class AdventureQuest {
       condition: QuestCondition.upgradeAbility, target: 1,
       reward: QuestReward(gold: 600, shards: 20)),
     AdventureQuest(id: 'adv_06', chapter: 'Growing Stronger', questIndex: 5,
-      title: 'Into the Depths', hint: 'Enter the Dungeon from the Modes tab.',
+      title: 'Into the Depths', hint: 'Enter the Dungeon from the Play tab.',
       description: 'Brave the dungeon and survive at least 3 floors.',
       condition: QuestCondition.dungeonClears, target: 1,
       reward: QuestReward(gold: 800, essence: 50)),
@@ -136,7 +136,7 @@ class AdventureQuest {
       title: 'Pathfinder', hint: 'Keep progressing in Campaign.',
       description: 'Reach campaign stage 15.',
       condition: QuestCondition.reachStage, target: 15,
-      reward: QuestReward(gold: 1500, shards: 30, crystals: 5)),
+      reward: QuestReward(gold: 1500, shards: 30, zcoins: 5)),
 
     // ── Chapter 3: Diversify (Stage 15–30) ─────────────────────────────────
     AdventureQuest(id: 'adv_10', chapter: 'Diversify', questIndex: 9,
@@ -160,15 +160,15 @@ class AdventureQuest {
       condition: QuestCondition.socketGem, target: 1,
       reward: QuestReward(gold: 1000, shards: 40)),
     AdventureQuest(id: 'adv_14', chapter: 'Diversify', questIndex: 13,
-      title: 'The Gauntlet', hint: 'Enter the Gauntlet from the Modes tab.',
+      title: 'The Gauntlet', hint: 'Enter the Gauntlet from the Play tab.',
       description: 'Score 1000+ in the Challenge Gauntlet.',
       condition: QuestCondition.gauntletScore, target: 1000,
-      reward: QuestReward(echoes: 100, crystals: 10)),
+      reward: QuestReward(echoes: 100, zcoins: 10)),
     AdventureQuest(id: 'adv_15', chapter: 'Diversify', questIndex: 14,
       title: 'Halfway There', hint: 'Push through Campaign.',
       description: 'Reach campaign stage 30.',
       condition: QuestCondition.reachStage, target: 30,
-      reward: QuestReward(gold: 3000, shards: 50, crystals: 10)),
+      reward: QuestReward(gold: 3000, shards: 50, zcoins: 10)),
 
     // ── Chapter 4: Mastery (Stage 30–50) ───────────────────────────────────
     AdventureQuest(id: 'adv_16', chapter: 'Mastery', questIndex: 15,
@@ -180,7 +180,7 @@ class AdventureQuest {
       title: 'Boss Rush Champion', hint: 'Enter Boss Rush from Modes.',
       description: 'Clear a full Boss Rush run.',
       condition: QuestCondition.bossRushClears, target: 1,
-      reward: QuestReward(mythril: 15, crystals: 15)),
+      reward: QuestReward(mythril: 15, zcoins: 15)),
     AdventureQuest(id: 'adv_18', chapter: 'Mastery', questIndex: 17,
       title: 'The Smith', hint: 'Use the Forge in the Inventory tab.',
       description: 'Reforge an item at the Forge.',
@@ -195,14 +195,14 @@ class AdventureQuest {
       title: 'Veteran', hint: 'Campaign stage 50 is the halfway mark.',
       description: 'Reach campaign stage 50.',
       condition: QuestCondition.reachStage, target: 50,
-      reward: QuestReward(gold: 8000, crystals: 25, echoes: 100, title: 'Veteran')),
+      reward: QuestReward(gold: 8000, zcoins: 25, echoes: 100, title: 'Veteran')),
 
     // ── Chapter 5: Endgame (Stage 50–75) ───────────────────────────────────
     AdventureQuest(id: 'adv_21', chapter: 'Endgame', questIndex: 20,
       title: 'Arena Legend', hint: 'Win PvP matches consistently.',
       description: 'Win 25 PvP battles.',
       condition: QuestCondition.pvpWins, target: 25,
-      reward: QuestReward(gold: 5000, crystals: 20, echoes: 150)),
+      reward: QuestReward(gold: 5000, zcoins: 20, echoes: 150)),
     AdventureQuest(id: 'adv_22', chapter: 'Endgame', questIndex: 21,
       title: 'Dungeon Delver', hint: 'Clear dungeon runs at higher tiers.',
       description: 'Clear 10 dungeon runs.',
@@ -212,17 +212,17 @@ class AdventureQuest {
       title: 'Wealth Hoarder', hint: 'Gold from kills, expeditions, and events.',
       description: 'Accumulate 100,000 total gold earned.',
       condition: QuestCondition.earnGold, target: 100000,
-      reward: QuestReward(crystals: 30, shards: 100)),
+      reward: QuestReward(zcoins: 30, shards: 100)),
     AdventureQuest(id: 'adv_24', chapter: 'Endgame', questIndex: 23,
       title: 'Deep Diver', hint: 'Push your Endless Mode record.',
       description: 'Reach stage 25 in Endless Mode.',
       condition: QuestCondition.endlessStage, target: 25,
-      reward: QuestReward(echoes: 200, crystals: 20)),
+      reward: QuestReward(echoes: 200, zcoins: 20)),
     AdventureQuest(id: 'adv_25', chapter: 'Endgame', questIndex: 24,
       title: 'The Long Road', hint: 'Almost there — push to stage 75.',
       description: 'Reach campaign stage 75.',
       condition: QuestCondition.reachStage, target: 75,
-      reward: QuestReward(gold: 15000, crystals: 40, mythril: 20, title: 'Champion')),
+      reward: QuestReward(gold: 15000, zcoins: 40, mythril: 20, title: 'Champion')),
 
     // ── Chapter 6: Transcendence (Stage 75–100) ────────────────────────────
     AdventureQuest(id: 'adv_26', chapter: 'Transcendence', questIndex: 25,
@@ -239,17 +239,17 @@ class AdventureQuest {
       title: 'Gauntlet Legend', hint: 'Push for a high score with modifiers.',
       description: 'Score 10,000+ in the Gauntlet.',
       condition: QuestCondition.gauntletScore, target: 10000,
-      reward: QuestReward(echoes: 300, crystals: 50)),
+      reward: QuestReward(echoes: 300, zcoins: 50)),
     AdventureQuest(id: 'adv_29', chapter: 'Transcendence', questIndex: 28,
       title: 'Rebirth', hint: 'Reach level 100 and stage 100 to Prestige.',
       description: 'Achieve your first Prestige (Rebirth).',
       condition: QuestCondition.prestigeReach, target: 1,
-      reward: QuestReward(gold: 20000, crystals: 75, mythril: 30, permanentAttackBonus: 2, title: 'Reborn')),
+      reward: QuestReward(gold: 20000, zcoins: 75, mythril: 30, permanentAttackBonus: 2, title: 'Reborn')),
     AdventureQuest(id: 'adv_30', chapter: 'Transcendence', questIndex: 29,
       title: 'Journey\'s End', hint: 'The final challenge — reach stage 100.',
       description: 'Reach campaign stage 100. The realm is saved... for now.',
       condition: QuestCondition.reachStage, target: 100,
-      reward: QuestReward(gold: 50000, crystals: 100, mythril: 50, echoes: 500, permanentDamageBonus: 3, permanentAttackBonus: 3, title: 'Legend')),
+      reward: QuestReward(gold: 50000, zcoins: 100, mythril: 50, echoes: 500, permanentDamageBonus: 3, permanentAttackBonus: 3, title: 'Legend')),
   ];
 }
 

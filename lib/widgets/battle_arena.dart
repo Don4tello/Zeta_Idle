@@ -1,10 +1,13 @@
 ﻿import 'dart:math';
 import 'package:flutter/material.dart';
 import '../models/damage_type.dart';
+import '../models/hero_ability.dart' show AbilityEffect;
+import '../services/game_state.dart';
 import '../models/dnd_class.dart';
 import '../models/hero_model.dart' show HeroGender;
+import '../models/hero_race.dart';
 import '../theme/app_theme.dart';
-import 'attack_effect.dart';
+import 'ability_icon.dart';
 import 'battle_backgrounds.dart';
 import 'battle_sprites.dart';
 import 'pixel_health_bar.dart';
@@ -32,6 +35,7 @@ class BattleArena extends StatefulWidget {
     required this.heroAttack,
     required this.heroSpriteId,
     this.heroGender,
+    this.heroRace,
     this.heroAuraColor,
     this.heroAuraIntensity = 1.0,
     this.heroColorFilter,
@@ -55,10 +59,14 @@ class BattleArena extends StatefulWidget {
     this.enemyResistances = const {},
     this.heroBuffGlows = const [],
     this.enemyDebuffGlows = const [],
+    this.heroCritPct,
+    this.heroArmor,
   });
 
+
   final String heroName, heroSpriteId;
-  final HeroGender?    heroGender;
+  final HeroGender? heroGender;
+  final HeroRace?   heroRace;
   final int    heroLevel, heroCurrentHp, heroMaxHp, heroAttack;
   final Color?       heroAuraColor;
   final double       heroAuraIntensity;
@@ -78,6 +86,8 @@ class BattleArena extends StatefulWidget {
   final Map<DamageType, int> enemyResistances;
   final List<Color> heroBuffGlows;
   final List<Color> enemyDebuffGlows;
+  final int? heroCritPct;
+  final int? heroArmor;
 
   @override
   State<BattleArena> createState() => BattleArenaState();
@@ -86,7 +96,6 @@ class BattleArena extends StatefulWidget {
 class BattleArenaState extends State<BattleArena> with TickerProviderStateMixin {
   final _heroKey   = GlobalKey<BattleSpriteState>();
   final _enemyKey  = GlobalKey<BattleSpriteState>();
-  final _effectKey = GlobalKey<AttackEffectState>();
 
   late final AnimationController _shakeCtrl = AnimationController(
       vsync: this, duration: const Duration(milliseconds: 280));
@@ -109,6 +118,29 @@ class BattleArenaState extends State<BattleArena> with TickerProviderStateMixin 
   late final AnimationController _enemyFadeCtrl = AnimationController(
       vsync: this, duration: const Duration(milliseconds: 220), value: 1.0);
 
+  // Ability banner + edge flash
+  late final AnimationController _bannerCtrl = AnimationController(
+      vsync: this, duration: const Duration(milliseconds: 700));
+  String _bannerText  = '';
+  String _bannerId    = '';
+  Color  _bannerColor = Colors.white;
+
+  static Color _effectColor(AbilityEffect e) => switch (e) {
+    AbilityEffect.bonusDamage      => const Color(0xFFff6633),
+    AbilityEffect.heal             => const Color(0xFF44cc66),
+    AbilityEffect.attackBonus      => const Color(0xFFffcc00),
+    AbilityEffect.acBonus          => const Color(0xFF66aaff),
+    AbilityEffect.stun             => const Color(0xFFcc44ff),
+    AbilityEffect.dot              => const Color(0xFF88dd00),
+    AbilityEffect.dodge            => const Color(0xFF44ddcc),
+    AbilityEffect.aura             => const Color(0xFF55eebb),
+    AbilityEffect.debuffWeaken     => const Color(0xFFff8844),
+    AbilityEffect.debuffVulnerable => const Color(0xFFdd44aa),
+    AbilityEffect.silence          => const Color(0xFFffdd00),
+    AbilityEffect.absorbShield     => const Color(0xFF66bbff),
+    AbilityEffect.missChance       => const Color(0xFFaaaaff),
+  };
+
   Future<void> fadeEnemyOut() async {
     await _enemyFadeCtrl.animateTo(0.0, curve: Curves.easeIn);
   }
@@ -125,6 +157,7 @@ class BattleArenaState extends State<BattleArena> with TickerProviderStateMixin 
     _vsCtrl.dispose();
     _bossFlashCtrl.dispose();
     _enemyFadeCtrl.dispose();
+    _bannerCtrl.dispose();
     for (final f in _floaters) f.ctrl.dispose();
     super.dispose();
   }
@@ -158,7 +191,6 @@ class BattleArenaState extends State<BattleArena> with TickerProviderStateMixin 
       {bool isCrit = false, DndClass? heroClass,
        DamageType damageType = DamageType.physical}) async {
     _heroKey.currentState?.playAttack();
-    if (heroClass != null) _effectKey.currentState?.trigger(heroClass);
     final isWeak = (widget.enemyResistances[damageType] ?? 0) < 0;
     _spawnFloat(damage, isCrit: isCrit, onEnemy: true, damageType: damageType, isWeak: isWeak);
     if (isCrit) _shakeCtrl.forward(from: 0.6);
@@ -205,6 +237,13 @@ class BattleArenaState extends State<BattleArena> with TickerProviderStateMixin 
     _shakeCtrl.forward(from: 0);
   }
 
+  void playAbilityBanner(String name, AbilityEffect effect, {String id = ''}) {
+    _bannerText  = name.toUpperCase();
+    _bannerId    = id;
+    _bannerColor = _effectColor(effect);
+    _bannerCtrl.forward(from: 0);
+  }
+
   // ── Internal ─────────────────────────────────────────────────────────────────
 
   void _spawnFloat(int damage,
@@ -212,15 +251,19 @@ class BattleArenaState extends State<BattleArena> with TickerProviderStateMixin 
        DamageType damageType = DamageType.physical,
        bool isWeak = false}) {
     if (damage <= 0) return;
+    if (!GameStateProvider.of(context).showDamageNumbers) return;
     final Color baseColor;
     if (isCrit) {
-      baseColor = const Color(0xFFffdd00);
+      // Crits: bright gold with slight type tint
+      baseColor = damageType != DamageType.physical
+          ? Color.lerp(const Color(0xFFffdd00), damageType.color, 0.3)!
+          : const Color(0xFFffdd00);
     } else if (isWeak) {
       baseColor = Color.lerp(damageType.color, Colors.white, 0.35)!;
     } else if (damageType != DamageType.physical) {
       baseColor = damageType.color;
     } else {
-      baseColor = onEnemy ? const Color(0xFFff6666) : const Color(0xFF88ddff);
+      baseColor = onEnemy ? const Color(0xFFff6644) : const Color(0xFF88ccff);
     }
     final ctrl = AnimationController(
         vsync: this, duration: const Duration(milliseconds: 1000));
@@ -375,6 +418,7 @@ class BattleArenaState extends State<BattleArena> with TickerProviderStateMixin 
                             spriteId: widget.heroSpriteId,
                             facingLeft: false,
                             gender: widget.heroGender,
+                            race: widget.heroRace,
                             auraColor: widget.heroAuraColor,
                             auraIntensity: widget.heroAuraIntensity,
                             colorFilter: widget.heroColorFilter,
@@ -383,7 +427,8 @@ class BattleArenaState extends State<BattleArena> with TickerProviderStateMixin 
                           petWidget: widget.heroPet,
                           nameColor: const Color(0xFF4ad46a),
                           alignRight: false,
-                          // damageType omitted — shown on dashboard instead
+                          critPct: widget.heroCritPct,
+                          armor: widget.heroArmor,
                         ),
                         // Step 4 — VS bounce on new enemy
                         Padding(
@@ -457,10 +502,106 @@ class BattleArenaState extends State<BattleArena> with TickerProviderStateMixin 
                   );
                 },
               ),
-              // Attack effect overlay
-              Positioned.fill(
-                  child: IgnorePointer(
-                      child: AttackEffect(key: _effectKey))),
+              // Ability name banner
+              AnimatedBuilder(
+                animation: _bannerCtrl,
+                builder: (_, __) {
+                  final t = _bannerCtrl.value;
+                  if (t <= 0 || !_bannerCtrl.isAnimating && t >= 1) {
+                    return const SizedBox.shrink();
+                  }
+                  // Phase 0–0.25: scale in (elastic), 0.25–0.65: hold, 0.65–1.0: rise + fade
+                  final scaleT = (t / 0.25).clamp(0.0, 1.0);
+                  final scale  = Curves.elasticOut.transform(scaleT).clamp(0.0, 1.5);
+                  final fadeT  = ((t - 0.65) / 0.35).clamp(0.0, 1.0);
+                  final opacity = (1.0 - fadeT).clamp(0.0, 1.0);
+                  final riseY  = fadeT * 28.0;
+                  return Positioned(
+                    left: 0, right: 0,
+                    top: _arenaSize.height * 0.42 - riseY,
+                    child: IgnorePointer(
+                      child: Opacity(
+                        opacity: opacity,
+                        child: Transform.scale(
+                          scale: scale,
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              if (_bannerId.isNotEmpty) ...[
+                                Container(
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: _bannerColor.withValues(alpha: 0.6),
+                                        blurRadius: 14,
+                                        spreadRadius: 2,
+                                      ),
+                                    ],
+                                  ),
+                                  child: AbilityIcon(abilityId: _bannerId, size: 52),
+                                ),
+                                const SizedBox(height: 6),
+                              ],
+                              // Glow halo behind text
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 18, vertical: 6),
+                                decoration: BoxDecoration(
+                                  color: _bannerColor.withValues(alpha: 0.12),
+                                  border: Border.symmetric(
+                                    horizontal: BorderSide(
+                                        color: _bannerColor.withValues(alpha: 0.55),
+                                        width: 1),
+                                  ),
+                                ),
+                                child: Text(
+                                  _bannerText,
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(
+                                    fontSize: 17,
+                                    fontWeight: FontWeight.bold,
+                                    color: _bannerColor,
+                                    letterSpacing: 2.5,
+                                    shadows: [
+                                      Shadow(
+                                          color: _bannerColor.withValues(alpha: 0.9),
+                                          blurRadius: 12),
+                                      const Shadow(
+                                          color: Colors.black,
+                                          blurRadius: 4,
+                                          offset: Offset(1, 1)),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  );
+                },
+              ),
+              // Edge flash matching ability color
+              AnimatedBuilder(
+                animation: _bannerCtrl,
+                builder: (_, __) {
+                  final t = _bannerCtrl.value;
+                  if (t <= 0 || t >= 0.45) return const SizedBox.shrink();
+                  final alpha = t < 0.15
+                      ? (t / 0.15) * 0.22
+                      : ((0.45 - t) / 0.30) * 0.22;
+                  return Positioned.fill(
+                    child: IgnorePointer(
+                      child: CustomPaint(
+                        painter: _AbilityEdgeFlashPainter(
+                            _bannerColor, alpha.clamp(0.0, 0.22)),
+                      ),
+                    ),
+                  );
+                },
+              ),
               // Death burst overlay
               if (_burstCtrl.isAnimating || _burstCtrl.value > 0)
                 Positioned.fill(
@@ -507,7 +648,14 @@ class BattleArenaState extends State<BattleArena> with TickerProviderStateMixin 
             ? sin(t * pi * 5) * (1 - min(1.0, t * 3.5)) * 0.18
             : 0.0;
 
-        final cx = _arenaSize.width  * (f.onEnemy ? 0.72 : 0.28);
+        // Derive sprite centers from actual panel layout:
+        // Row(spaceEvenly) with hero(140dp) + VS(~32dp) + enemy(140dp)
+        const panelW = 140.0;
+        const vsW    = 32.0;
+        final gap   = (_arenaSize.width - 2 * panelW - vsW) / 4;
+        final heroX  = gap + panelW / 2;
+        final enemyX = _arenaSize.width - gap - panelW / 2;
+        final cx = f.onEnemy ? enemyX : heroX;
         final cy = _arenaSize.height * 0.62 - rise;
 
         return Positioned(
@@ -526,9 +674,11 @@ class BattleArenaState extends State<BattleArena> with TickerProviderStateMixin 
                       fontSize: f.isCrit ? 28 : 18,
                       fontWeight: FontWeight.bold,
                       color: f.color,
-                      shadows: const [
-                        Shadow(color: Colors.black, blurRadius: 4, offset: Offset(1, 1)),
-                        Shadow(color: Colors.black, blurRadius: 4, offset: Offset(-1, -1)),
+                      shadows: [
+                        const Shadow(color: Colors.black, blurRadius: 4, offset: Offset(1, 1)),
+                        const Shadow(color: Colors.black, blurRadius: 4, offset: Offset(-1, -1)),
+                        if (f.isCrit)
+                          Shadow(color: f.color.withValues(alpha: 0.7), blurRadius: 12),
                       ],
                     ),
                   ),
@@ -665,6 +815,8 @@ class _CombatantPanel extends StatelessWidget {
     this.petWidget,
     this.damageType,
     this.resistances,
+    this.critPct,
+    this.armor,
   });
 
   final String  name;
@@ -673,19 +825,28 @@ class _CombatantPanel extends StatelessWidget {
   final Color   nameColor;
   final bool    alignRight;
   final Widget? petWidget;
-  final DamageType?              damageType;
+  final DamageType?           damageType;
   final Map<DamageType, int>? resistances;
+  final int?    critPct;   // shown on hero panel
+  final int?    armor;     // shown on hero panel
 
   @override
   Widget build(BuildContext context) {
-    final spriteRow = Row(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.end,
-      children: [
-        if (petWidget != null) petWidget!,
-        sprite,
-      ],
-    );
+    final Widget spriteRow;
+    if (petWidget != null) {
+      // Pet renders in front of the hero (higher z-order — last in Stack).
+      // Clip.none lets the pet overflow left without affecting layout sizing.
+      spriteRow = Stack(
+        clipBehavior: Clip.none,
+        alignment: Alignment.bottomCenter,
+        children: [
+          sprite,
+          Positioned(bottom: 0, right: 42, child: petWidget!),
+        ],
+      );
+    } else {
+      spriteRow = sprite;
+    }
 
     // Resistance badges (only non-zero entries, sorted strongest first)
     final resList = (resistances?.entries.toList() ?? [])
@@ -733,13 +894,23 @@ class _CombatantPanel extends StatelessWidget {
                   style: const TextStyle(fontSize: 12, color: AppTheme.textLight)),
               if (damageType != null) ...[
                 const SizedBox(width: 5),
-                Text(
-                  damageType!.emoji,
-                  style: TextStyle(fontSize: 12, color: damageType!.color),
-                ),
+                Text(damageType!.emoji,
+                    style: TextStyle(fontSize: 12, color: damageType!.color)),
               ],
             ],
           ),
+          // Hero-side stat chips: crit chance and armor
+          if (critPct != null || armor != null) ...[
+            const SizedBox(height: 3),
+            Row(mainAxisSize: MainAxisSize.min, children: [
+              if (critPct != null)
+                _StatChip('⚡ ${critPct}% crit', const Color(0xFFffcc44)),
+              if (critPct != null && armor != null)
+                const SizedBox(width: 4),
+              if (armor != null && armor! > 0)
+                _StatChip('🛡 $armor arm', const Color(0xFF88aacc)),
+            ]),
+          ],
           // Resistance/vulnerability row (shown for enemy panel)
           if (resBadges.isNotEmpty) ...[
             const SizedBox(height: 2),
@@ -887,6 +1058,35 @@ class _DangerVignettePainter extends CustomPainter {
   bool shouldRepaint(_DangerVignettePainter old) => old.t != t;
 }
 
+// ── Ability edge flash painter ────────────────────────────────────────────────
+
+class _AbilityEdgeFlashPainter extends CustomPainter {
+  const _AbilityEdgeFlashPainter(this.color, this.alpha);
+  final Color  color;
+  final double alpha;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final rect = Rect.fromLTWH(0, 0, size.width, size.height);
+    canvas.drawRect(
+      rect,
+      Paint()
+        ..shader = RadialGradient(
+          center: Alignment.center,
+          radius: 0.9,
+          colors: [
+            Colors.transparent,
+            color.withValues(alpha: alpha),
+          ],
+        ).createShader(rect),
+    );
+  }
+
+  @override
+  bool shouldRepaint(_AbilityEdgeFlashPainter old) =>
+      old.alpha != alpha || old.color != color;
+}
+
 // ── Step 5: Boss intro flash painter ─────────────────────────────────────────
 
 class _BossFlashPainter extends CustomPainter {
@@ -937,4 +1137,24 @@ class _BossFlashPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(_BossFlashPainter old) => old.t != t;
+}
+
+// ── Small stat chip used in the hero combatant panel ─────────────────────────
+
+class _StatChip extends StatelessWidget {
+  const _StatChip(this.label, this.color);
+  final String label;
+  final Color  color;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+    decoration: BoxDecoration(
+      color: color.withValues(alpha: 0.12),
+      border: Border.all(color: color.withValues(alpha: 0.5), width: 0.5),
+      borderRadius: BorderRadius.circular(3),
+    ),
+    child: Text(label,
+        style: TextStyle(fontSize: 8, color: color, fontWeight: FontWeight.bold)),
+  );
 }

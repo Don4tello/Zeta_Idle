@@ -48,7 +48,8 @@ class BestiaryScreen extends StatelessWidget {
           TutorialTip(
             tutorialKey: 'bestiary',
             game: game,
-            text: 'Every enemy you defeat is recorded here. Kill milestones at 10, 50, and 100 grant gold rewards. Complete a full chapter for bonus loot!',
+            text: 'Your Bestiary is filling up! 🐉 Each enemy type unlocks lore and '
+                'permanent damage bonuses against that creature. More kills = stronger you.',
           ),
           // ── Summary header ────────────────────────────────────────────────
           Container(
@@ -72,6 +73,10 @@ class BestiaryScreen extends StatelessWidget {
                   'ATK BONUS',
                   '+$atkBonus',
                   const Color(0xFFff6633))),
+              Expanded(child: _Stat(
+                  'MASTERY',
+                  game.bestiaryMasteryAtkBonus > 0 ? '+${game.bestiaryMasteryAtkBonus} ATK' : '—',
+                  const Color(0xFFffaaff))),
             ]),
           ),
 
@@ -86,8 +91,9 @@ class BestiaryScreen extends StatelessWidget {
             ),
             child: const Text(
               'Each discovered enemy grants +1 permanent ATK.\n'
-              'Kill count increases your damage bonus against that enemy: '
-              '+1% per 10 kills, up to +10% at 100 kills.',
+              'Kill milestones reward gold, shards & essence — and at 250+ kills, '
+              'permanent ATK bonuses.\nKill count also boosts gold from that enemy: '
+              '+2% at 50 kills → +15% at 500 kills.',
               style: TextStyle(fontSize: 11, color: AppTheme.textMuted, height: 1.5),
             ),
           ),
@@ -220,7 +226,7 @@ class _ZoneHeader extends StatelessWidget {
                   borderRadius: BorderRadius.circular(3),
                 ),
                 child: const Text(
-                  'CLAIM REWARD  •  +500g  +15✦  +5💎',
+                  'CLAIM REWARD  •  +500g  +15✦  +5🪙',
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     fontSize: 10, fontWeight: FontWeight.bold,
@@ -252,8 +258,17 @@ class _BestiaryCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final discovered = kills > 0;
     final dmgPct = discovered ? (kills ~/ 10).clamp(0, 10) : 0;
-    final nextThreshold = discovered ? ((kills ~/ 10) + 1) * 10 : 10;
-    final maxed = dmgPct >= 10;
+    final dmgMaxed = dmgPct >= 10;
+    // Next meaningful threshold: dmg caps at 100, then gold bonus tiers at 250 / 500
+    final nextThreshold = discovered
+        ? (kills < 100 ? ((kills ~/ 10) + 1) * 10
+           : kills < 250 ? 250
+           : kills < 500 ? 500
+           : 500)
+        : 10;
+    final fullyMaxed = kills >= 500;
+    // Gold bonus pct for display
+    final goldBonusPct = kills >= 500 ? 15 : kills >= 250 ? 10 : kills >= 100 ? 5 : kills >= 50 ? 2 : 0;
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
@@ -320,13 +335,29 @@ class _BestiaryCard extends StatelessWidget {
                     ),
                     const SizedBox(width: 4),
                     Text(
-                      maxed ? '+10% dmg ✓' : '+$dmgPct% dmg',
+                      dmgMaxed ? '+10% dmg ✓' : '+$dmgPct% dmg',
                       style: TextStyle(
                           fontSize: 9,
-                          color: maxed
+                          color: dmgMaxed
                               ? const Color(0xFFffcc44)
                               : weaknessColor.withValues(alpha: 0.7)),
                     ),
+                    // Gold bonus badge
+                    if (goldBonusPct > 0) ...[
+                      const SizedBox(width: 4),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFffdd44).withValues(alpha: 0.12),
+                          border: Border.all(color: const Color(0xFFffdd44).withValues(alpha: 0.5)),
+                          borderRadius: BorderRadius.circular(3),
+                        ),
+                        child: Text(
+                          '+$goldBonusPct% 💰',
+                          style: const TextStyle(fontSize: 8, color: Color(0xFFffdd44), fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                    ],
                   ],
                 ]),
                 const SizedBox(height: 4),
@@ -342,8 +373,8 @@ class _BestiaryCard extends StatelessWidget {
                     height: 1.4,
                   ),
                 ),
-                // Kill progress bar (only when discovered and not maxed)
-                if (discovered && !maxed) ...[
+                // Kill progress bar (hidden only when fully maxed at 500)
+                if (discovered && !fullyMaxed) ...[
                   const SizedBox(height: 6),
                   _KillProgress(kills: kills, nextAt: nextThreshold, color: weaknessColor),
                 ],
@@ -352,15 +383,17 @@ class _BestiaryCard extends StatelessWidget {
                   const SizedBox(height: 4),
                   Builder(builder: (ctx) {
                     final game = GameStateProvider.of(ctx);
-                    return Row(
+                    return Wrap(
+                      spacing: 4,
+                      runSpacing: 4,
                       children: GameState.bestiaryMilestones.map((m) {
-                        final reached = kills >= m;
-                        final claimed = game.isBestiaryMilestoneClaimed(entry.enemyId, m);
+                        final reached  = kills >= m;
+                        final claimed  = game.isBestiaryMilestoneClaimed(entry.enemyId, m);
                         final canClaim = reached && !claimed;
+                        final label    = _milestoneLabel(m);
                         return GestureDetector(
                           onTap: canClaim ? () => game.claimBestiaryMilestone(entry.enemyId, m) : null,
                           child: Container(
-                            margin: const EdgeInsets.only(right: 4),
                             padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
                             decoration: BoxDecoration(
                               color: canClaim
@@ -378,7 +411,7 @@ class _BestiaryCard extends StatelessWidget {
                               borderRadius: BorderRadius.circular(3),
                             ),
                             child: Text(
-                              canClaim ? '$m ★' : claimed ? '$m ✓' : '$m',
+                              claimed ? '$m ✓' : canClaim ? '$m ★ $label' : '$m',
                               style: TextStyle(
                                 fontSize: 8,
                                 fontWeight: canClaim ? FontWeight.bold : FontWeight.normal,
@@ -413,10 +446,10 @@ class _BestiaryCard extends StatelessWidget {
               if (discovered) ...[
                 const SizedBox(height: 2),
                 Text(
-                  maxed ? '⭐ MAX' : '→$nextThreshold',
+                  fullyMaxed ? '⭐ MAX' : '→$nextThreshold',
                   style: TextStyle(
                       fontSize: 9,
-                      color: maxed
+                      color: fullyMaxed
                           ? const Color(0xFFffcc44)
                           : AppTheme.textMuted.withValues(alpha: 0.6)),
                 ),
@@ -428,6 +461,15 @@ class _BestiaryCard extends StatelessWidget {
     );
   }
 }
+
+String _milestoneLabel(int m) => switch (m) {
+  10  => '+100g',
+  50  => '+300g +5◆',
+  100 => '+800g +10◆ +5✦',
+  250 => '+1500g +20◆ +10✦ +1ATK',
+  500 => '+3000g +30◆ +20✦ +2ATK',
+  _   => '',
+};
 
 class _KillProgress extends StatelessWidget {
   const _KillProgress({required this.kills, required this.nextAt, required this.color});

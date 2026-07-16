@@ -32,11 +32,11 @@ class Enemy {
     required this.maxHealth,
     required this.attack,
     required this.level,
-    this.armorClass = 10,
+    this.armorClass = 0,
     this.attackType = DamageType.physical,
     this.resistances = const {},
     this.namedBoss = false,
-    this.dodge = 0.0,
+    this.dodge = 0.0, // kept for save compat, no longer used in combat
     this.abilities = const [],
     int? currentHealth,
   }) : currentHealth = currentHealth ?? maxHealth;

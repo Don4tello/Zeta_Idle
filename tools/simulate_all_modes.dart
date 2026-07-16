@@ -1,5 +1,6 @@
 /// Zeta Idle — All-Modes Balance Simulator
 /// Run with: dart run tools/simulate_all_modes.dart
+// ignore_for_file: avoid_print
 library;
 
 import 'dart:math';
@@ -121,7 +122,7 @@ bool simulateEndlessFight(Hero hero, EndlessEnemy e, AffixMode affix, Random rng
     final hCrit  = hRoll == 20;
     if (hCrit || hTotal >= eAc) {
       var dmg = (hCrit ? (rng.nextInt(8) + 1) * 2 : rng.nextInt(8) + 1) + hero.damageMod;
-      if (affix == AffixMode.ironSkin) dmg = (dmg - 2).clamp(1, 9999);
+      if (affix == AffixMode.ironSkin) dmg = (dmg * 0.80).round().clamp(1, 9999);
       if (affix == AffixMode.soulSiphon) eHp += (dmg * 0.15).round(); // siphon heals enemy
       eHp -= dmg;
     }
@@ -164,7 +165,7 @@ void runEndlessSim() {
   print('\nAFFIX: Cursed Ground (5% HP drain/round — active from depth 8)');
   _endlessTable(depths, AffixMode.cursedGround);
 
-  print('\nAFFIX: Iron Skin (–2 to all damage output)');
+  print('\nAFFIX: Iron Skin (–20% to all damage output)');
   _endlessTable(depths, AffixMode.ironSkin);
 
   print('\nAFFIX: Abyssal Roar (+3 to enemy attack rolls — active from depth 33)');
@@ -217,8 +218,9 @@ class DungeonEnemy {
     if (isBoss) {
       final bossStageIdx = ((floor - 1) * 2).clamp(0, 24);
       final be    = campaign[bossStageIdx];
+      final bossAtkMult = (1.2 + (floor - 1) * 0.025).clamp(1.2, 1.6);
       hp  = (be.hp * 2.5 * mult).round();
-      atk = (be.atk * 1.6 * mult).round();
+      atk = (be.atk * bossAtkMult * mult).round();
       ac  = be.ac + 2 + (floor / 5).clamp(0, 8).round();
     } else {
       hp  = (e.hp * mult).round();
@@ -320,17 +322,46 @@ void runDungeonSim() {
 }
 
 // ═══════════════════════════════════════════════════════════════
+// ABILITY MODEL (fires every N rounds during any combat)
+// ═══════════════════════════════════════════════════════════════
+
+class AbilityModel {
+  const AbilityModel({
+    required this.fireEvery,
+    required this.bonusDamage,
+    required this.healAmount,
+  });
+
+  final int fireEvery;
+  final int bonusDamage; // flat extra damage on fire
+  final int healAmount;  // flat HP restore on fire
+
+  // Based on scaledAbilityValue() in game_state.dart (lvl * factor + base)
+  // Early: one unlocked ability, low level (~Lv5 ability)
+  static const none  = AbilityModel(fireEvery: 999, bonusDamage: 0, healAmount: 0);
+  static const early = AbilityModel(fireEvery: 5,   bonusDamage: 6,  healAmount: 0);
+  static const mid   = AbilityModel(fireEvery: 5,   bonusDamage: 14, healAmount: 8);
+  static const late  = AbilityModel(fireEvery: 4,   bonusDamage: 25, healAmount: 15);
+}
+
+// ═══════════════════════════════════════════════════════════════
 // MODE 3: PvP
 // ═══════════════════════════════════════════════════════════════
 
 class PvpBot {
   PvpBot(int myRating, Random rng) {
     final level = max(1, myRating ~/ 80);
-    rating  = (myRating + rng.nextInt(200) - 100).clamp(100, 9999);
-    maxHp   = (10 + level * 5).clamp(10, 999);
-    atkBonus = (2 + level / 3).clamp(1.0, 20.0).round();
-    dmgMod  = (level / 4).clamp(0.0, 10.0).round();
-    ac      = (10 + level / 4).clamp(10.0, 20.0).round();
+    rating   = (myRating + rng.nextInt(200) - 100).clamp(100, 9999);
+    // Mirrored variance from pvp.dart generateBotOpponent:
+    // 0–4 flat variance on ATK/AC, 0–3 on DMG, proportional on HP.
+    final atkVar = rng.nextInt(5);
+    final acVar  = rng.nextInt(5);
+    final dmgVar = rng.nextInt(4);
+    final hpVar  = rng.nextInt(max(1, level * 2 + 5));
+    maxHp    = (10 + level * 5 + hpVar).clamp(10, 999);
+    atkBonus = (2 + level ~/ 3 + atkVar).clamp(1, 22);
+    dmgMod   = (level ~/ 4 + dmgVar).clamp(0, 12);
+    ac       = (10 + level ~/ 4 + acVar).clamp(10, 23);
   }
   late final int rating, maxHp, atkBonus, dmgMod, ac;
 }
@@ -423,11 +454,6 @@ void runDailySim() {
   print('═' * 90);
   print('');
 
-  // Assumptions: ~2 rounds/battle on avg, 3 ability uses/battle, 10 idle collects/session
-  const roundsPerBattle = 2.0;
-  const abilitiesPerBattle = 3.0;
-  const idleCollectsPerMin = 0.2; // one collect every 5 min via timer
-
   final challenges = [
     ('Kill Enemies (Easy)',   'Kill 10',  '~5 battles',   '5-10 min'),
     ('Kill Enemies (Hard)',   'Kill 15',  '~8 battles',   '8-15 min'),
@@ -458,6 +484,301 @@ void runDailySim() {
 }
 
 // ═══════════════════════════════════════════════════════════════
+// MODE 5: GAUNTLET — 10 sequential enemies, HP persists between waves
+// Stages from gauntlet_screen.dart: [3,7,10,13,16,18,20,22,23,24]
+// ═══════════════════════════════════════════════════════════════
+
+const _gauntletStages = [3, 7, 10, 13, 16, 18, 20, 22, 23, 24];
+
+// Returns (killCount, cleared).
+// HP is NOT restored between enemies. Ability fires every N rounds.
+(int, bool) _simulateGauntletRun(
+    Hero hero, double enemyHpMult, double enemyAtkMult, AbilityModel ability, Random rng) {
+  var hHp        = hero.maxHP;
+  int abilRound  = 0;
+
+  for (int wi = 0; wi < _gauntletStages.length; wi++) {
+    final e   = campaign[_gauntletStages[wi]];
+    var eHp   = (e.hp * enemyHpMult).round();
+    final eAtk = (e.atk * enemyAtkMult).round();
+    final eAc  = e.ac;
+    bool killed = false;
+
+    for (int r = 0; r < kMaxRounds; r++) {
+      abilRound++;
+      // Ability fires
+      if (abilRound % ability.fireEvery == 0) {
+        eHp -= ability.bonusDamage;
+        hHp  = (hHp + ability.healAmount).clamp(0, hero.maxHP);
+      }
+      if (eHp <= 0) { killed = true; break; }
+
+      // Hero attacks
+      final hRoll = rng.nextInt(20) + 1;
+      final hCrit = hRoll == 20;
+      if (hCrit || hRoll + hero.attackBonus >= eAc) {
+        final dieDmg = hCrit
+            ? (rng.nextInt(8) + 1) + (rng.nextInt(8) + 1)
+            : rng.nextInt(8) + 1;
+        eHp -= max(1, dieDmg + hero.damageMod);
+      }
+      if (eHp <= 0) { killed = true; break; }
+
+      // Enemy attacks
+      final eRoll  = rng.nextInt(20) + 1;
+      final eBonus = e.level ~/ 2;
+      if (eRoll == 20 || eRoll + eBonus >= hero.ac) {
+        var rawDmg = rng.nextInt(max(1, eAtk)) + 1;
+        if (eRoll == 20) rawDmg *= 2;
+        hHp -= rawDmg;
+      }
+      if (hHp <= 0) return (wi, false);
+    }
+
+    if (!killed) return (wi, false); // round-cap timeout
+    // 10% HP restore between waves (matches gauntlet_screen.dart)
+    if (wi < _gauntletStages.length - 1) {
+      hHp = min(hero.maxHP, hHp + (hero.maxHP * 0.10).round());
+    }
+  }
+  return (_gauntletStages.length, true);
+}
+
+void runGauntletSim() {
+  print('\n${'═' * 90}');
+  print('MODE 5: GAUNTLET  (10 sequential enemies, HP persists, $kSims sims)');
+  print('═' * 90);
+  print('Stages: ${_gauntletStages.map((s) => campaign[s].name).join(' → ')}');
+
+  final rng     = Random(501);
+  final heroes  = [earlyHero(), midHero(), lateHero()];
+  final hlabels = ['Early', 'Mid  ', 'Late '];
+  final abils   = [AbilityModel.early, AbilityModel.mid, AbilityModel.late];
+
+  final modifiers = [
+    ('No Modifier',   1.0, 1.0),
+    ('Iron Skin',     1.5, 1.0),  // +50% enemy HP
+    ('Cursed Ground', 1.0, 1.0),  // handled via drain below (approximated as +25% eff HP)
+    ('Abyssal Roar',  1.0, 1.25), // +25% enemy ATK
+    ('Soul Siphon',   1.2, 1.0),  // enemy regains some HP (approximated as +20% HP)
+  ];
+
+  for (int hi = 0; hi < heroes.length; hi++) {
+    final hero  = heroes[hi];
+    final abil  = abils[hi];
+    final label = hlabels[hi];
+    print('\nHero: $label  ATK${hero.attackBonus} DMG+${hero.damageMod} '
+        'AC${hero.ac} HP${hero.maxHP}  Ability: ${abil.bonusDamage}dmg+${abil.healAmount}heal/~${abil.fireEvery}rds');
+    print('${'Modifier'.padRight(18)} ${'ClearRate'.padRight(12)} ${'AvgKills'.padRight(10)} Score(clear)');
+    print('-' * 55);
+
+    for (final (modName, hpMult, atkMult) in modifiers) {
+      int clears = 0;
+      int totalKills = 0;
+      for (int i = 0; i < kSims; i++) {
+        final (kills, cleared) = _simulateGauntletRun(
+            hero, hpMult, atkMult, abil, Random(rng.nextInt(1 << 32)));
+        totalKills += kills;
+        if (cleared) clears++;
+      }
+      final clearPct  = clears / kSims * 100;
+      final avgKills  = totalKills / kSims;
+      // Score formula: kills × (1+modCount) × 100 × tierMult + clearBonus
+      // Here: no mods (0), tier 1 → clearBonus = 2000 if cleared
+      final simScore  = clears > 0
+          ? (avgKills * 100 + (clearPct / 100) * 2000).round()
+          : (avgKills * 100).round();
+      print('${modName.padRight(18)} ${clearPct.toStringAsFixed(1).padLeft(7)}%     '
+          '${avgKills.toStringAsFixed(1).padLeft(6)}      ~$simScore');
+    }
+  }
+
+  print('');
+  print('Iron Will weekly: need 3 cleared runs (reduced from 5). Achievable at Late hero stats.');
+  print('Tier mult: each tier adds +30% difficulty. Tier 3 needs Late-tier stats.');
+}
+
+// ═══════════════════════════════════════════════════════════════
+// MODE 6: BOSS RUSH — 5 sequential bosses, HP persists
+// Boss stages (0-indexed): [4, 9, 14, 19, 24]
+// Boss stats: HP×2, ATK×1.25, AC+2 (tier-1 baseline)
+// ═══════════════════════════════════════════════════════════════
+
+const _bossRushStages = [4, 9, 14, 19, 24];
+
+(int, bool) _simulateBossRushRun(Hero hero, int tier, AbilityModel ability, Random rng) {
+  var hHp       = hero.maxHP;
+  int abilRound = 0;
+  final tierHpMult  = 1.0 + (tier - 1) * 0.40;
+  final tierAtkMult = 1.0 + (tier - 1) * 0.25;
+  final tierAcBonus = (tier - 1) ~/ 2;
+
+  for (int bi = 0; bi < _bossRushStages.length; bi++) {
+    final base = campaign[_bossRushStages[bi]];
+    var bHp    = (base.hp * 2 * tierHpMult).round();
+    final bAtk = (base.atk * 1.25 * tierAtkMult).round();
+    final bAc  = base.ac + 2 + tierAcBonus;
+    // At 50% HP boss enrages (+3 ATK bonus to-hit)
+    bool enraged = false;
+    bool killed  = false;
+
+    for (int r = 0; r < kMaxRounds; r++) {
+      abilRound++;
+      if (abilRound % ability.fireEvery == 0) {
+        bHp -= ability.bonusDamage;
+        hHp  = (hHp + ability.healAmount).clamp(0, hero.maxHP);
+      }
+      if (bHp <= 0) { killed = true; break; }
+
+      final hRoll = rng.nextInt(20) + 1;
+      final hCrit = hRoll == 20;
+      if (hCrit || hRoll + hero.attackBonus >= bAc) {
+        final dieDmg = hCrit
+            ? (rng.nextInt(8) + 1) + (rng.nextInt(8) + 1)
+            : rng.nextInt(8) + 1;
+        bHp -= max(1, dieDmg + hero.damageMod);
+      }
+      if (bHp <= 0) { killed = true; break; }
+
+      // Enrage at 30% HP: 2× damage (matches boss_rush_screen.dart)
+      if (!enraged && bHp <= (base.hp * 2 * tierHpMult * 0.30).round()) enraged = true;
+      final eRoll  = rng.nextInt(20) + 1;
+      final bossLevel = base.level + 2 + (tier - 1);
+      final eBonus = bossLevel ~/ 2;
+      if (eRoll == 20 || eRoll + eBonus >= hero.ac) {
+        var rawDmg = rng.nextInt(max(1, bAtk)) + 1;
+        if (enraged) rawDmg = (rawDmg * 2.0).round();
+        if (eRoll == 20) rawDmg *= 2;
+        hHp -= rawDmg;
+      }
+      if (hHp <= 0) return (bi, false);
+    }
+
+    if (!killed) return (bi, false);
+    // 25% HP restore between bosses (matches boss_rush_screen.dart)
+    if (bi < _bossRushStages.length - 1) {
+      hHp = min(hero.maxHP, hHp + (hero.maxHP * 0.25).round());
+    }
+  }
+  return (_bossRushStages.length, true);
+}
+
+void runBossRushSim() {
+  print('\n${'═' * 90}');
+  print('MODE 6: BOSS RUSH  (5 bosses, HP persists + 25% heal between bosses, enrage at 30%, $kSims sims)');
+  print('═' * 90);
+  print('Bosses: ${_bossRushStages.map((s) => campaign[s].name).join(' → ')}');
+
+  final rng     = Random(602);
+  final heroes  = [earlyHero(), midHero(), lateHero()];
+  final hlabels = ['Early', 'Mid  ', 'Late '];
+  final abils   = [AbilityModel.early, AbilityModel.mid, AbilityModel.late];
+
+  for (int tier = 1; tier <= 3; tier++) {
+    print('\n── Tier $tier (HP×${(2 * (1 + (tier-1)*0.40)).toStringAsFixed(2)}, '
+        'ATK×${(1.25*(1+(tier-1)*0.25)).toStringAsFixed(2)}, AC+${2 + (tier-1)~/2}) ──');
+    print('${'Hero'.padRight(8)} ${'ClearRate'.padRight(12)} ${'AvgBosses'.padRight(12)} '
+        '${'EstRank(clear)'.padRight(16)} AbilityImpact');
+    print('-' * 70);
+
+    for (int hi = 0; hi < heroes.length; hi++) {
+      final hero  = heroes[hi];
+      final label = hlabels[hi];
+
+      // Without abilities
+      int clearsNo = 0; int bossesNo = 0;
+      // With abilities
+      int clearsWith = 0; int bossesWith = 0;
+
+      for (int i = 0; i < kSims; i++) {
+        final r1 = Random(rng.nextInt(1 << 32));
+        final (b1, c1) = _simulateBossRushRun(hero, tier, AbilityModel.none, r1);
+        bossesNo += b1; if (c1) clearsNo++;
+
+        final r2 = Random(rng.nextInt(1 << 32));
+        final (b2, c2) = _simulateBossRushRun(hero, tier, abils[hi], r2);
+        bossesWith += b2; if (c2) clearsWith++;
+      }
+
+      final pctNo   = clearsNo   / kSims * 100;
+      final pctWith = clearsWith / kSims * 100;
+      final avgNo   = bossesNo   / kSims;
+      final avgWith = bossesWith / kSims;
+
+      // Approximate rank using score formula (ignoring time/HP bonus for simplicity)
+      String scoreRank(double pct, double avg) {
+        final score = (avg * 1000 + (pct / 100) * 1000) * tier;
+        if (score >= 4500) return 'S';
+        if (score >= 3500) return 'A';
+        if (score >= 2500) return 'B';
+        if (score >= 1500) return 'C';
+        return 'D';
+      }
+
+      final rankNo   = scoreRank(pctNo,   avgNo);
+      final rankWith = scoreRank(pctWith, avgWith);
+      final impactStr = '+${(pctWith - pctNo).toStringAsFixed(1)}% clear';
+      print('${label.padRight(8)} '
+          '${pctNo.toStringAsFixed(1).padLeft(5)}% / ${pctWith.toStringAsFixed(1).padLeft(5)}%  '
+          '${avgNo.toStringAsFixed(1).padLeft(5)} / ${avgWith.toStringAsFixed(1).padLeft(5)}    '
+          '$rankNo/$rankWith               $impactStr');
+    }
+  }
+
+  print('');
+  print('Format: NoAbility% / WithAbility%  |  AvgBosses  |  Rank  |  AbilityImpact');
+  print('2 attempts/day (buyable with 50 ZCoins each). Timed mode: faster = higher score.');
+}
+
+// ═══════════════════════════════════════════════════════════════
+// MODE 7: WEEKLY CHALLENGES — effort estimate (5 of 8 active per week)
+// ═══════════════════════════════════════════════════════════════
+
+void runWeeklySim() {
+  print('\n${'═' * 90}');
+  print('MODE 7: WEEKLY CHALLENGES — effort estimate (5 of 8 rotate each Monday)');
+  print('═' * 90);
+  print('');
+
+  final challenges = [
+    // (id,        display name,     target desc,   effort desc,              est. time)
+    ('w_kills',    'Slaughter',      '500 kills',   '~250-350 battles',       '4-7 hr active'),
+    ('w_pvp',      'Arena Legend',   '20 PvP wins', '25-35 matches',          '1-2 hr'),
+    ('w_dungeon',  'Depths',         '30 floors',   '~30 dungeon runs',       '2-4 hr'),
+    ('w_gold',     'Midas Touch',    '50 000 gold', 'idle farm + battles',    '3-6 hr idle'),
+    ('w_boss',     'Boss Hunter',    '10 bosses',   '10 campaign bosses',     '2-4 hr'),
+    ('w_gauntlet', 'Iron Will',      '3 clears',    '3-6 gauntlet runs',      '45-90 min'),
+    ('w_stages',   'Pathfinder',     '25 stages',   '25 campaign stages',     '1-3 hr'),
+    ('w_craft',    'Artisan',        '10 crafts',   '10 reforge/craft ops',   '30-90 min'),
+  ];
+
+  final rewards = <String, String>{
+    'w_kills':    'Echoes ×200 + ZCoins ×30',
+    'w_pvp':      'GemShards ×100 + ZCoins ×25',
+    'w_dungeon':  'Essence ×300 + Mythril ×15',
+    'w_gold':     'ZCoins ×40 + Echoes ×100',
+    'w_boss':     'Mythril ×20 + Echoes ×150',
+    'w_gauntlet': 'Echoes ×250 + ZCoins ×20',
+    'w_stages':   'Shards ×150 + ZCoins ×35',
+    'w_craft':    'Essence ×200 + Mythril ×10',
+  };
+
+  print('${'Name'.padRight(16)} ${'Target'.padRight(14)} ${'Effort'.padRight(24)} ${'Est. Time'.padRight(16)} Rewards');
+  print('-' * 100);
+  for (final (id, name, target, effort, time) in challenges) {
+    final reward = rewards[id] ?? '';
+    print('${name.padRight(16)} ${target.padRight(14)} ${effort.padRight(24)} ${time.padRight(16)} $reward');
+  }
+
+  print('');
+  print('5 of 8 challenges are active each week (seeded by week number — consistent per player).');
+  print('Easiest weekly set : w_craft + w_pvp + w_stages + w_boss + w_gauntlet  (~6-10 hr total)');
+  print('Hardest weekly set : w_kills + w_dungeon + w_gold + w_boss + w_gauntlet (~12-20 hr total)');
+  print('Full 8-challenge clear (all weeks combined): ~15-30 hr over multiple weeks.');
+  print('Mythril and Echoes are the primary rewards — critical for ability upgrades and auras.');
+}
+
+// ═══════════════════════════════════════════════════════════════
 // MAIN
 // ═══════════════════════════════════════════════════════════════
 
@@ -477,6 +798,9 @@ void main() {
   runDungeonSim();
   runPvpSim();
   runDailySim();
+  runGauntletSim();
+  runBossRushSim();
+  runWeeklySim();
 
   print('\n' + '═' * 90);
   print('END OF REPORT');

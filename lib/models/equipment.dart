@@ -5,7 +5,7 @@ import 'dnd_class.dart';
 import 'hero_ability.dart';
 
 enum ItemSlot { weapon, offHand, helmet, armor, gloves, pants, boots, ring, ring2, amulet, relic }
-enum ItemRarity { common, rare, epic, legendary, set }
+enum ItemRarity { common, uncommon, rare, epic, legendary, mythic, set, unique }
 enum ItemStat {
   strength, dexterity, constitution, intelligence, wisdom, charisma,
   attackBonus, damageBonus, armorClass, maxHpPct, goldPct, xpPct,
@@ -14,7 +14,7 @@ enum ItemStat {
 
 extension ItemStatInfo on ItemStat {
   String get shortLabel => switch (this) {
-    ItemStat.attackBonus  => 'ATK',
+    ItemStat.attackBonus  => 'CRIT',
     ItemStat.damageBonus  => 'DMG',
     ItemStat.armorClass   => 'AC',
     ItemStat.strength     => 'PWR',
@@ -156,56 +156,151 @@ class ItemSet {
 }
 
 const kSetCatalog = <ItemSet>[
-  // ── Shadowstalker: speed & precision (gloves, boots, armor, helmet) ───────
+
+  // ── Shadowstalker: Assassination & Critical Precision ───────────────────────
+  // Theme: every strike counts — crit-focused, massive burst damage on full set
   ItemSet(
     id: 'shadowstalker', name: 'Shadowstalker',
-    color: Color(0xFF00cc88),
-    slots: [ItemSlot.gloves, ItemSlot.boots, ItemSlot.armor, ItemSlot.helmet],
+    color: Color(0xFF00ee88),
+    slots: [ItemSlot.weapon, ItemSlot.gloves, ItemSlot.boots, ItemSlot.armor, ItemSlot.helmet, ItemSlot.pants],
     tiers: [
-      SetBonus(piecesRequired: 2, bonuses: [StatBonus(ItemStat.attackBonus, 2), StatBonus(ItemStat.dexterity, 2)]),
-      SetBonus(piecesRequired: 4, bonuses: [StatBonus(ItemStat.attackBonus, 5), StatBonus(ItemStat.dexterity, 5), StatBonus(ItemStat.damageBonus, 3)]),
+      SetBonus(piecesRequired: 2, bonuses: [
+        StatBonus(ItemStat.attackBonus, 4),    // +8% crit chance
+        StatBonus(ItemStat.dexterity, 5),
+      ]),
+      SetBonus(piecesRequired: 4, bonuses: [
+        StatBonus(ItemStat.attackBonus, 10),   // +20% crit chance (total +28%)
+        StatBonus(ItemStat.dexterity, 10),
+        StatBonus(ItemStat.damageBonus, 20),
+        StatBonus(ItemStat.hitChance, 8),      // +16% more crit
+      ]),
+      SetBonus(piecesRequired: 6, bonuses: [
+        StatBonus(ItemStat.attackBonus, 18),   // +36% crit (total +64% crit)
+        StatBonus(ItemStat.dexterity, 18),
+        StatBonus(ItemStat.damageBonus, 45),
+        StatBonus(ItemStat.damagePercent, 40), // +40% all damage
+        StatBonus(ItemStat.hitChance, 15),     // +30% more crit
+      ]),
     ],
   ),
-  // ── Ironclad: defense & endurance (helmet, armor, pants, off-hand) ────────
+
+  // ── Ironclad: Unbreakable Fortress ─────────────────────────────────────────
+  // Theme: survive anything — massive armor, HP, and regen; enemies barely dent you
   ItemSet(
     id: 'ironclad', name: 'Ironclad',
-    color: Color(0xFF6699cc),
-    slots: [ItemSlot.helmet, ItemSlot.armor, ItemSlot.pants, ItemSlot.offHand],
+    color: Color(0xFF88bbee),
+    slots: [ItemSlot.helmet, ItemSlot.armor, ItemSlot.pants, ItemSlot.offHand, ItemSlot.boots, ItemSlot.gloves],
     tiers: [
-      SetBonus(piecesRequired: 2, bonuses: [StatBonus(ItemStat.armorClass, 4), StatBonus(ItemStat.constitution, 2)]),
-      SetBonus(piecesRequired: 4, bonuses: [StatBonus(ItemStat.armorClass, 9), StatBonus(ItemStat.constitution, 5)]),
+      SetBonus(piecesRequired: 2, bonuses: [
+        StatBonus(ItemStat.armorClass, 10),
+        StatBonus(ItemStat.constitution, 8),
+        StatBonus(ItemStat.maxHpPct, 10),
+      ]),
+      SetBonus(piecesRequired: 4, bonuses: [
+        StatBonus(ItemStat.armorClass, 22),
+        StatBonus(ItemStat.constitution, 15),
+        StatBonus(ItemStat.maxHpPct, 25),
+        StatBonus(ItemStat.damagePercent, 15), // "strength through endurance"
+      ]),
+      SetBonus(piecesRequired: 6, bonuses: [
+        StatBonus(ItemStat.armorClass, 40),    // 40 flat DR — nearly immune to normals
+        StatBonus(ItemStat.constitution, 25),
+        StatBonus(ItemStat.maxHpPct, 50),      // +50% max HP
+        StatBonus(ItemStat.damagePercent, 30),
+        StatBonus(ItemStat.damageBonus, 20),   // "wall of iron strikes back"
+      ]),
     ],
   ),
-  // ── Goldweaver: wealth & growth (ring, ring2, amulet, relic) ─────────────
+
+  // ── Goldweaver: Fortune's Favorite ──────────────────────────────────────────
+  // Theme: obscene wealth generation — gold, XP, shards all massively boosted
   ItemSet(
     id: 'goldweaver', name: 'Goldweaver',
-    color: Color(0xFFddaa00),
-    slots: [ItemSlot.ring, ItemSlot.ring2, ItemSlot.amulet, ItemSlot.relic],
+    color: Color(0xFFffcc00),
+    slots: [ItemSlot.ring, ItemSlot.ring2, ItemSlot.amulet, ItemSlot.relic, ItemSlot.helmet, ItemSlot.boots],
     tiers: [
-      SetBonus(piecesRequired: 2, bonuses: [StatBonus(ItemStat.goldPct, 20), StatBonus(ItemStat.xpPct, 10)]),
-      SetBonus(piecesRequired: 4, bonuses: [StatBonus(ItemStat.goldPct, 40), StatBonus(ItemStat.xpPct, 25), StatBonus(ItemStat.charisma, 3)]),
+      SetBonus(piecesRequired: 2, bonuses: [
+        StatBonus(ItemStat.goldPct, 40),
+        StatBonus(ItemStat.xpPct, 25),
+        StatBonus(ItemStat.charisma, 5),
+      ]),
+      SetBonus(piecesRequired: 4, bonuses: [
+        StatBonus(ItemStat.goldPct, 90),
+        StatBonus(ItemStat.xpPct, 60),
+        StatBonus(ItemStat.charisma, 12),
+        StatBonus(ItemStat.attackBonus, 5),    // "fortune fuels power" +10% crit
+      ]),
+      SetBonus(piecesRequired: 6, bonuses: [
+        StatBonus(ItemStat.goldPct, 175),      // +175% gold (nearly triple)
+        StatBonus(ItemStat.xpPct, 120),        // +120% XP (more than double)
+        StatBonus(ItemStat.charisma, 20),
+        StatBonus(ItemStat.attackBonus, 12),   // +24% crit — "lucky strikes"
+        StatBonus(ItemStat.damagePercent, 25), // "wealth empowers"
+        StatBonus(ItemStat.maxHpPct, 20),
+      ]),
     ],
   ),
-  // ── Stormcaller: raw power (weapon, gloves, helmet) ──────────────────────
+
+  // ── Stormcaller: Elemental Devastation ──────────────────────────────────────
+  // Theme: pure elemental destruction — bypasses armor, massive damage multipliers
   ItemSet(
     id: 'stormcaller', name: 'Stormcaller',
-    color: Color(0xFFddcc00),
-    slots: [ItemSlot.weapon, ItemSlot.gloves, ItemSlot.helmet],
+    color: Color(0xFFeecc00),
+    slots: [ItemSlot.weapon, ItemSlot.offHand, ItemSlot.helmet, ItemSlot.armor, ItemSlot.amulet, ItemSlot.ring],
     tiers: [
-      SetBonus(piecesRequired: 2, bonuses: [StatBonus(ItemStat.damageBonus, 3), StatBonus(ItemStat.strength, 2)]),
-      SetBonus(piecesRequired: 3, bonuses: [StatBonus(ItemStat.damageBonus, 7), StatBonus(ItemStat.strength, 5), StatBonus(ItemStat.attackBonus, 2)]),
+      SetBonus(piecesRequired: 2, bonuses: [
+        StatBonus(ItemStat.damageBonus, 15),
+        StatBonus(ItemStat.strength, 8),
+        StatBonus(ItemStat.elemPenetration, 10),
+      ]),
+      SetBonus(piecesRequired: 4, bonuses: [
+        StatBonus(ItemStat.damageBonus, 35),
+        StatBonus(ItemStat.strength, 15),
+        StatBonus(ItemStat.elemPenetration, 20),
+        StatBonus(ItemStat.damagePercent, 25),
+      ]),
+      SetBonus(piecesRequired: 6, bonuses: [
+        StatBonus(ItemStat.damageBonus, 70),   // massive flat damage
+        StatBonus(ItemStat.strength, 25),
+        StatBonus(ItemStat.elemPenetration, 35), // 35 armor pen — ignores most DR
+        StatBonus(ItemStat.damagePercent, 55),  // +55% all damage
+        StatBonus(ItemStat.attackBonus, 8),     // +16% crit
+        StatBonus(ItemStat.maxHpPct, 15),
+      ]),
     ],
   ),
-  // ── Wraithbound: void mastery (weapon, off-hand, boots, pants) ───────────
+
+  // ── Wraithbound: Void Ascendant ──────────────────────────────────────────────
+  // Theme: mystical void power — elemental mastery, arcane penetration, wisdom
   ItemSet(
     id: 'wraithbound', name: 'Wraithbound',
-    color: Color(0xFF8844cc),
-    slots: [ItemSlot.weapon, ItemSlot.offHand, ItemSlot.boots, ItemSlot.pants],
+    color: Color(0xFFaa44ff),
+    slots: [ItemSlot.weapon, ItemSlot.pants, ItemSlot.boots, ItemSlot.ring2, ItemSlot.relic, ItemSlot.gloves],
     tiers: [
-      SetBonus(piecesRequired: 2, bonuses: [StatBonus(ItemStat.attackBonus, 2), StatBonus(ItemStat.wisdom, 2)]),
-      SetBonus(piecesRequired: 4, bonuses: [StatBonus(ItemStat.attackBonus, 5), StatBonus(ItemStat.wisdom, 5), StatBonus(ItemStat.damageBonus, 3)]),
+      SetBonus(piecesRequired: 2, bonuses: [
+        StatBonus(ItemStat.attackBonus, 5),    // +10% crit
+        StatBonus(ItemStat.wisdom, 8),
+        StatBonus(ItemStat.elemPenetration, 8),
+      ]),
+      SetBonus(piecesRequired: 4, bonuses: [
+        StatBonus(ItemStat.attackBonus, 12),   // +24% crit
+        StatBonus(ItemStat.wisdom, 15),
+        StatBonus(ItemStat.elemPenetration, 18),
+        StatBonus(ItemStat.damagePercent, 20),
+        StatBonus(ItemStat.intelligence, 10),
+      ]),
+      SetBonus(piecesRequired: 6, bonuses: [
+        StatBonus(ItemStat.attackBonus, 22),   // +44% crit — "void sight"
+        StatBonus(ItemStat.wisdom, 25),
+        StatBonus(ItemStat.elemPenetration, 30), // 30 armor pen — void bypasses everything
+        StatBonus(ItemStat.damagePercent, 45),
+        StatBonus(ItemStat.intelligence, 18),
+        StatBonus(ItemStat.damageBonus, 35),
+        StatBonus(ItemStat.maxHpPct, 20),
+      ]),
     ],
   ),
+
 ];
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -265,10 +360,13 @@ class EquipmentItem {
 
   String get rarityLabel => switch (rarity) {
     ItemRarity.common    => 'Common',
+    ItemRarity.uncommon  => 'Uncommon',
     ItemRarity.rare      => 'Rare',
     ItemRarity.epic      => 'Epic',
     ItemRarity.legendary => 'Legendary',
+    ItemRarity.mythic    => 'Mythic',
     ItemRarity.set       => 'Set',
+    ItemRarity.unique    => 'Unique',
   };
 
   // ── Upgrade system (tier 0-10) ──────────────────────────────────────────────
@@ -320,10 +418,13 @@ class EquipmentItem {
 
   Color get rarityColor => switch (rarity) {
     ItemRarity.common    => const Color(0xFFaaaaaa),
+    ItemRarity.uncommon  => const Color(0xFF55cc55),
     ItemRarity.rare      => const Color(0xFF6699ff),
     ItemRarity.epic      => const Color(0xFFcc44ff),
     ItemRarity.legendary => const Color(0xFFFFD700),
+    ItemRarity.mythic    => const Color(0xFFDD1111),
     ItemRarity.set       => itemSet?.color ?? const Color(0xFF00cc88),
+    ItemRarity.unique    => const Color(0xFFE8A0FF),
   };
 
   Map<String, dynamic> toJson() => {
@@ -462,25 +563,38 @@ class ItemLootTable {
 
   // ── Name builder ──────────────────────────────────────────────────────────
   static String _buildName(List<StatBonus> bonuses, ItemRarity rarity, String baseName, [ItemKeyword? keyword]) {
-    if (rarity == ItemRarity.legendary && keyword != null) return '${_keywordTitle[keyword]!} $baseName';
+    if ((rarity == ItemRarity.legendary || rarity == ItemRarity.mythic) && keyword != null) {
+      return rarity == ItemRarity.mythic
+          ? '${_keywordTitle[keyword]!} Mythic $baseName'
+          : '${_keywordTitle[keyword]!} $baseName';
+    }
     if (bonuses.isEmpty) return baseName;
     final primary = bonuses.first.stat;
     switch (rarity) {
       case ItemRarity.common:
         final pfx = _prefixCommon[primary] ?? '';
         return pfx.isEmpty ? baseName : '$pfx $baseName';
+      case ItemRarity.uncommon:
+        final pfx = _prefixRare[primary] ?? 'Fine';
+        return '$pfx $baseName';
       case ItemRarity.rare:
         final pfx = _prefixRare[primary] ?? 'Rare';
         final sfx = bonuses.length > 1 ? (_suffixRare[bonuses.last.stat] ?? 'Power') : '';
-        return sfx.isEmpty ? '$pfx $baseName' : '$pfx $baseName of $sfx';
+        final base = sfx.isNotEmpty ? baseName.split(' of ').first : baseName;
+        return sfx.isEmpty ? '$pfx $base' : '$pfx $base of $sfx';
       case ItemRarity.epic:
         final pfx = _prefixEpic[primary] ?? 'Epic';
         final sfx = bonuses.length > 1 ? (_suffixEpic[bonuses.last.stat] ?? 'the Abyss') : '';
-        return sfx.isEmpty ? '$pfx $baseName' : '$pfx $baseName of $sfx';
+        final base = sfx.isNotEmpty ? baseName.split(' of ').first : baseName;
+        return sfx.isEmpty ? '$pfx $base' : '$pfx $base of $sfx';
       case ItemRarity.legendary:
+        return 'Ancient $baseName';
+      case ItemRarity.mythic:
         return 'Mythic $baseName';
       case ItemRarity.set:
         return baseName; // caller provides the set-prefixed name
+      case ItemRarity.unique:
+        return baseName; // unique items have explicit names
     }
   }
 
@@ -518,14 +632,15 @@ class ItemLootTable {
     if (rng.nextDouble() * 100 >= dropChance) return null;
 
     final rarityRoll = rng.nextInt(100);
-    final rarity = rarityRoll < 5  ? ItemRarity.epic
-                 : rarityRoll < 25 ? ItemRarity.rare
+    final rarity = rarityRoll < 3  ? ItemRarity.epic
+                 : rarityRoll < 12 ? ItemRarity.rare
+                 : rarityRoll < 37 ? ItemRarity.uncommon
                  : ItemRarity.common;
 
     final slot     = ItemSlot.values[rng.nextInt(ItemSlot.values.length)];
     final pool     = _statsFor(slot);
     final baseName = _namesFor(slot)[rng.nextInt(_namesFor(slot).length)];
-    final count    = rarity == ItemRarity.common ? 1 : 2;
+    final count    = rarity == ItemRarity.common || rarity == ItemRarity.uncommon ? 1 : 2;
     final bonuses  = _pickBonuses(pool, count, rarity, enemyLevel, rng);
 
     return EquipmentItem(
@@ -565,7 +680,7 @@ class ItemLootTable {
     final slot     = set.slots[rng.nextInt(set.slots.length)];
     final pool     = _statsFor(slot);
     final baseName = '${set.name} ${_namesFor(slot)[rng.nextInt(_namesFor(slot).length)]}';
-    final count    = min(2, pool.length);
+    final count    = min(3, pool.length); // 6-piece sets get 3 stats per piece
     final bonuses  = _pickBonuses(pool, count, ItemRarity.epic, heroLevel, rng);
 
     return EquipmentItem(
@@ -576,6 +691,25 @@ class ItemLootTable {
     );
   }
 
+  // ── tryDropMythic: 0.5% chance on boss kills — rarest procedural tier ──────
+  static EquipmentItem? tryDropMythic(int heroLevel, Random rng) {
+    if (rng.nextInt(1000) >= 5) return null;
+
+    final slot     = ItemSlot.values[rng.nextInt(ItemSlot.values.length)];
+    final pool     = _statsFor(slot);
+    final baseName = _namesFor(slot)[rng.nextInt(_namesFor(slot).length)];
+    final keyword  = ItemKeyword.values[rng.nextInt(ItemKeyword.values.length)];
+    final count    = min(3, pool.length);
+    final bonuses  = _pickBonuses(pool, count, ItemRarity.mythic, heroLevel, rng);
+
+    return EquipmentItem(
+      id: '${slot.name}_mythic_${rng.nextInt(999999)}',
+      name: _buildName(bonuses, ItemRarity.mythic, baseName, keyword),
+      slot: slot, rarity: ItemRarity.mythic, bonuses: bonuses,
+      levelRequired: max(1, heroLevel - 2), keyword: keyword,
+    );
+  }
+
   // ── craftAt: forge / shop / dungeon-chest ─────────────────────────────────
   static EquipmentItem craftAt(ItemSlot slot, ItemRarity rarity, int heroLevel, Random rng,
       {int rebirthLevel = 0}) {
@@ -583,15 +717,18 @@ class ItemLootTable {
     final baseName = _namesFor(slot)[rng.nextInt(_namesFor(slot).length)];
     // Base bonus count from rarity + extra from rebirth
     final baseCount = switch (rarity) {
+      ItemRarity.mythic    => 4,
       ItemRarity.legendary => 3,
+      ItemRarity.unique    => 3,
       ItemRarity.epic      => 2,
       ItemRarity.rare      => 2,
-      ItemRarity.common    => 1,
       ItemRarity.set       => 2,
+      ItemRarity.uncommon  => 1,
+      ItemRarity.common    => 1,
     };
     final count = min(baseCount + rebirthLevel, pool.length);
     ItemKeyword? keyword;
-    if (rarity == ItemRarity.legendary) {
+    if (rarity == ItemRarity.legendary || rarity == ItemRarity.mythic) {
       keyword = ItemKeyword.values[rng.nextInt(ItemKeyword.values.length)];
     }
     final bonuses = _pickBonuses(pool, count, rarity, heroLevel, rng);
@@ -632,10 +769,13 @@ class ItemLootTable {
     // Rebirth adds +10% per rebirth level
     final rarityMult = switch (rarity) {
       ItemRarity.common    => 1.0,
+      ItemRarity.uncommon  => 1.1,
       ItemRarity.rare      => 1.2,
       ItemRarity.epic      => 1.5,
       ItemRarity.legendary => 2.0,
+      ItemRarity.mythic    => 2.5,
       ItemRarity.set       => 1.6,
+      ItemRarity.unique    => 2.0,
     };
     final base = 5.0 + level * 1.5;
     final slotMult = slot == ItemSlot.offHand ? 0.6 : 1.0;
@@ -645,10 +785,13 @@ class ItemLootTable {
 
   static int _baseValue(ItemStat stat, ItemRarity rarity, int level, Random rng) {
     final m = switch (rarity) {
+      ItemRarity.mythic    => 4,
       ItemRarity.legendary => 3,
+      ItemRarity.unique    => 3,
       ItemRarity.set       => 2,
       ItemRarity.epic      => 2,
       ItemRarity.rare      => 1,
+      ItemRarity.uncommon  => 1,
       ItemRarity.common    => 0,
     };
     // Level scaling: stats grow with item level
@@ -683,14 +826,20 @@ class ItemLootTable {
 
   static ({int gold, int shards}) reforgeCost(ItemRarity rarity) =>
       switch (rarity) {
+        ItemRarity.uncommon  => (gold: 80,   shards: 8),
         ItemRarity.rare      => (gold: 200,  shards: 20),
         ItemRarity.epic      => (gold: 600,  shards: 50),
         ItemRarity.legendary => (gold: 1800, shards: 120),
+        ItemRarity.mythic    => (gold: 5000, shards: 300),
         _                    => (gold: 0,    shards: 0),
       };
 
   static bool canReforge(ItemRarity rarity) =>
-      rarity == ItemRarity.rare || rarity == ItemRarity.epic || rarity == ItemRarity.legendary;
+      rarity == ItemRarity.uncommon  ||
+      rarity == ItemRarity.rare      ||
+      rarity == ItemRarity.epic      ||
+      rarity == ItemRarity.legendary ||
+      rarity == ItemRarity.mythic;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

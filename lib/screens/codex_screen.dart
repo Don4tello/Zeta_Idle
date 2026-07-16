@@ -1,8 +1,10 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import '../models/dnd_class.dart';
 import '../models/hero_race.dart';
 import '../models/hero_trait.dart';
+import '../services/game_state.dart';
 import '../theme/app_theme.dart';
+import 'main_shell.dart' show TutorialTip;
 
 class CodexScreen extends StatelessWidget {
   const CodexScreen({super.key, this.embedded = false});
@@ -10,11 +12,18 @@ class CodexScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final game = GameStateProvider.of(context);
     final body = ListView(
       padding: const EdgeInsets.all(14),
-      children: const [
-        _CodexHeader(),
-        SizedBox(height: 10),
+      children: [
+        TutorialTip(
+          tutorialKey: 'codex',
+          game: game,
+          text: 'The Codex explains every game system — currencies, mechanics, '
+              'modes and stats. 📖 A good read whenever something feels confusing.',
+        ),
+        const _CodexHeader(),
+        const SizedBox(height: 10),
         _Section(
           icon: '⚔',
           title: 'GAME MODES',
@@ -266,7 +275,7 @@ class _GameModesContent extends StatelessWidget {
           body: 'Wave-based combat with challenge modifiers.\n'
               'Tiers 1-10 scale enemies like Campaign (T1=Lv1-10, etc.).\n'
               'More modifiers = higher echo multiplier (+25% per modifier).\n'
-              'Rewards scale with tier: Echoes, Essence, Crystals.\n'
+              'Rewards scale with tier: Echoes, Essence, ZCoins.\n'
               'Guaranteed rune drop on full clear. Kills count toward all tracking.',
         ),
         _Entry(
@@ -276,7 +285,7 @@ class _GameModesContent extends StatelessWidget {
           body: 'Fight a chain of progressively harder bosses within a chosen tier.\n'
               'No healing between bosses — resource management is critical.\n'
               'Bosses enrage at 30% HP (deal 3× damage) and have 2 unique abilities.\n'
-              'Rewards: Shards (◆), Echoes (🔊), Mythril (⬡), and Crystals (💎).\n'
+              'Rewards: Shards (◆), Echoes (🔊), Mythril (⬡), and ZCoins (🪙).\n'
               'Higher tiers: each tier adds +40% boss HP and +25% boss attack.',
         ),
         _Entry(
@@ -346,7 +355,7 @@ class _ProgressionContent extends StatelessWidget {
               'Keystones: powerful capstone at the end of each branch (rank 1 only).\n'
               'Cross-branch connectors unlock when you invest in 2+ branches.\n'
               'Class-specific nodes visible only for your class.\n'
-              'Respec: per-branch (free, 75% refund) or full reset (50 💎, 60% refund).',
+              'Respec: per-branch (free, 75% refund) or full reset (50 🪙, 60% refund).',
         ),
         _Entry(
           icon: '🏆',
@@ -390,7 +399,7 @@ class _ProgressionContent extends StatelessWidget {
           color: Color(0xFF44ddcc),
           body: 'Companions that permanently join your roster when you hit a milestone (kills, stage, dungeon clears, etc.).\n'
               'Each merc has a passive bonus that scales per level (max 5) and a unique active ability that triggers in battle.\n'
-              'Level up with Shards ◆ + Crystals 💎 — costs rise steeply at higher levels.\n'
+              'Level up with Shards ◆ + ZCoins 🪙 — costs rise steeply at higher levels.\n'
               'Pair certain mercs at the required level to activate Synergy bonuses (bonus ATK, Gold%, etc.).\n'
               'All merc bonuses are visible in HERO → BONUSES → MERCENARIES section.',
         ),
@@ -810,7 +819,7 @@ class _ItemsRunesContent extends StatelessWidget {
           body: '11 gear slots: Weapon, Off Hand, Helmet, Armor, Gauntlets, Leg Guards, Ring ×2, Amulet, Boots, Relic.\n'
               'Weapons have Base Damage that scales with level and rarity.\n'
               'Base Damage replaces the old d8 roll — higher weapons = higher floor damage.\n'
-              'Auto-Equip and Auto-Disenchant toggles available in Settings.',
+              'Auto-Equip and Auto-Salvage toggles available in Settings.',
         ),
         _Entry(
           icon: '⬆',
@@ -820,7 +829,7 @@ class _ItemsRunesContent extends StatelessWidget {
               'Each tier boosts ALL stat bonuses by 8% + weapon base damage.\n'
               '+5: earns a "Refined" prefix (Refined, Honed, Tempered, Polished, Hardened).\n'
               '+10: earns a "Masterwork" prefix (Masterwork, Exalted, Perfected, Ascendant, Mythforged).\n'
-              'Costs Gold + Shards per tier. Disenchanting refunds 33% of upgrade costs.',
+              'Costs Gold + Shards per tier. Salvaging refunds 33% of upgrade costs.',
         ),
         _Entry(
           icon: '💎',
@@ -847,7 +856,7 @@ class _ItemsRunesContent extends StatelessWidget {
           body: '7 types: Idol, Cross, Book, Sword, Gemstone, Charm, Tapestry.\n'
               '3 rarities: Common, Magic, Rare — each with unique art.\n'
               'Place in a 3×3 grid for permanent passive bonuses.\n'
-              'Forge with Mythril (⬡). Disenchant for 33% Mythril refund.',
+              'Forge with Mythril (⬡). Salvage for 33% Mythril refund.',
         ),
         _Entry(
           icon: '◈',
@@ -879,7 +888,7 @@ class _EventsEconomyContent extends StatelessWidget {
           body: '13 weekly events, each with 2 damage types and unique enemies.\n'
               'Event enemies have a 15% chance to spawn during any battle.\n'
               'Killing them awards Omega Tokens (Ω) for the event shop.\n'
-              'Omega Shop: currency rewards (gold, crystals, essence, mythril) +\n'
+              'Omega Shop: currency rewards (gold, zcoins, essence, mythril) +\n'
               'level-appropriate Epic and Legendary gear. Resets weekly.',
         ),
         _Entry(
@@ -914,12 +923,12 @@ class _EventsEconomyContent extends StatelessWidget {
           color: Color(0xFFdaa520),
           body: '💰 Gold — kills, idle, expeditions. Buys gear, upgrades, shop items.\n'
               '◆ Shards — dungeon, campaign. Upgrades abilities and items.\n'
-              '💎 Crystals — login, events, gauntlet. Premium purchases.\n'
+              '🪙 ZCoins — login, events, gauntlet. Premium purchases.\n'
               '🔊 Echoes — gauntlet runs. Buys endless upgrades.\n'
               '✦ Essence — dungeons, expeditions. Unlocks passive nodes.\n'
               '⬡ Mythril — boss rush, events. Forges artifacts.\n'
               'Ω Omega Tokens — world event kills. Event shop currency.\n'
-              '🔮 Rune Dust — disenchanting gear + duplicate runes.',
+              '🔮 Rune Dust — salvaging gear + duplicate runes.',
         ),
         _Entry(
           icon: '⚜',

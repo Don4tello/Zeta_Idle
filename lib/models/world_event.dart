@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 
 import 'equipment.dart';
 
@@ -11,7 +11,7 @@ class WorldEventReward {
     required this.description,
     required this.tokenCost,
     required this.icon,
-    this.crystals = 0,
+    this.zcoins = 0,
     this.gold = 0,
     this.shards = 0,
     this.essence = 0,
@@ -27,7 +27,7 @@ class WorldEventReward {
   final String description;
   final int tokenCost;
   final String icon;
-  final int crystals, gold, shards, essence, mythril, echoes;
+  final int zcoins, gold, shards, essence, mythril, echoes;
   final String? auraId;
   final ItemSlot? gearSlot;
   final ItemRarity? gearRarity;
@@ -38,9 +38,9 @@ class WorldEventReward {
     return [
       // Currency rewards
       WorldEventReward(id: 'omega_gold', name: 'Gold Purse', description: '💰 +${2000 + lvl * 50} Gold', tokenCost: 8, icon: '💰', gold: 2000 + lvl * 50),
-      WorldEventReward(id: 'omega_crystals_10', name: 'Crystal Cache', description: '💎 +10 Crystals', tokenCost: 12, icon: '💎', crystals: 10),
+      WorldEventReward(id: 'omega_crystals_10', name: 'ZCoin Cache', description: '🪙 +10 ZCoins', tokenCost: 12, icon: '🪙', zcoins: 10),
       WorldEventReward(id: 'omega_essence', name: 'Essence Vial', description: '✦ +${50 + lvl * 3} Essence', tokenCost: 10, icon: '✦', essence: 50 + lvl * 3),
-      WorldEventReward(id: 'omega_crystals_25', name: 'Crystal Hoard', description: '💎 +25 Crystals', tokenCost: 25, icon: '💎', crystals: 25),
+      WorldEventReward(id: 'omega_crystals_25', name: 'ZCoin Hoard', description: '🪙 +25 ZCoins', tokenCost: 25, icon: '🪙', zcoins: 25),
       WorldEventReward(id: 'omega_mythril', name: 'Mythril Ingot', description: '⬡ +${5 + lvl ~/ 5} Mythril', tokenCost: 20, icon: '⬡', mythril: 5 + lvl ~/ 5),
       // Gear rewards — level-appropriate
       WorldEventReward(id: 'omega_epic_weapon', name: 'Epic Weapon', description: '⚔ Epic weapon at Lv$lvl', tokenCost: 30, icon: '⚔', type: EventRewardType.gear, gearSlot: ItemSlot.weapon, gearRarity: ItemRarity.epic),
@@ -79,8 +79,8 @@ class WorldEventDef {
   static const _rewards25 = 22;
 
   static List<WorldEventReward> _shopFor(String prefix, String name10, String name25) => [
-    WorldEventReward(id: '${prefix}_10', name: name10, description: '💎 +10 Crystals', tokenCost: _rewards10, icon: '💎', crystals: 10),
-    WorldEventReward(id: '${prefix}_25', name: name25, description: '💎 +25 Crystals', tokenCost: _rewards25, icon: '💎', crystals: 25),
+    WorldEventReward(id: '${prefix}_10', name: name10, description: '🪙 +10 ZCoins', tokenCost: _rewards10, icon: '🪙', zcoins: 10),
+    WorldEventReward(id: '${prefix}_25', name: name25, description: '💎 +25 ZCoins', tokenCost: _rewards25, icon: '💎', zcoins: 25),
   ];
 
   static final all = <WorldEventDef>[

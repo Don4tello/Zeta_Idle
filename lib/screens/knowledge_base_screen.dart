@@ -227,7 +227,7 @@ class _SystemsTab extends StatelessWidget {
       icon: '🧪',
       title: 'Waystones',
       color: Color(0xFF66aaff),
-      body: 'Consumable boosts bought with Crystals. Activate one to multiply idle gold '
+      body: 'Consumable boosts bought with ZCoins. Activate one to multiply idle gold '
           'for 4 hours (Basic: 2×) or 12 hours (Grand: 3×). Only one can be active '
           'at a time. The multiplier also applies to offline earnings.',
     ),
@@ -235,7 +235,7 @@ class _SystemsTab extends StatelessWidget {
       icon: '🐾',
       title: 'Pet Evolution',
       color: Color(0xFF88cc44),
-      body: 'Owned pets can be evolved up to 2 times using Crystals. '
+      body: 'Owned pets can be evolved up to 2 times using ZCoins. '
           'Each evolution level multiplies the pet\'s bonus: 1× → 1.5× → 2×. '
           'Evolution is permanent and applies to whichever slot the pet occupies.',
     ),
@@ -370,9 +370,9 @@ class _CurrenciesTab extends StatelessWidget {
       use: 'Upgrade ability scores, buy items in the Shop.',
     ),
     _CurrencyEntry(
-      icon: '💎',
-      name: 'Crystals',
-      color: Color(0xFF66aaff),
+      icon: '🪙',
+      name: 'ZCoins',
+      color: Color(0xFFffcc44),
       source: 'Purchased via IAP or earned from achievements and bounties.',
       use: 'Buy cosmetics, pets, waystones, attack effects, pet evolutions, and extra character slots.',
     ),

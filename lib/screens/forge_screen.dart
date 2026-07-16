@@ -46,7 +46,7 @@ class _ForgeScreenState extends State<ForgeScreen>
               '• Legendary → 60 ◆\n'
               '• Set → 100 ◆',
           preferBelow: false,
-          child: Text('DISENCHANT'),
+          child: Text('SALVAGE'),
         )),
         Tab(child: Tooltip(
           message: 'Upgrade an item from +0 to +10.\n'
@@ -258,10 +258,13 @@ class _DisenchantTabState extends State<_DisenchantTab> {
       .where((i) => _selected.contains(i.id))
       .fold(0, (sum, i) => sum + switch (i.rarity) {
         ItemRarity.common    => 3,
+        ItemRarity.uncommon  => 5,
         ItemRarity.rare      => 8,
         ItemRarity.epic      => 20,
         ItemRarity.legendary => 60,
+        ItemRarity.mythic    => 150,
         ItemRarity.set       => 100,
+        ItemRarity.unique    => 80,
       });
 
   @override
@@ -287,7 +290,7 @@ class _DisenchantTabState extends State<_DisenchantTab> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Text('DISENCHANT RATES',
+                    const Text('SALVAGE RATES',
                         style: TextStyle(fontSize: 11, color: AppTheme.textMuted,
                             fontWeight: FontWeight.bold, letterSpacing: 1)),
                     if (_selected.isNotEmpty)
@@ -301,7 +304,7 @@ class _DisenchantTabState extends State<_DisenchantTab> {
                           minimumSize: Size.zero,
                           tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                         ),
-                        child: Text('DISENCHANT  ${_selected.length}  (+$_shardPreview ◆)',
+                        child: Text('SALVAGE  ${_selected.length}  (+$_shardPreview ◆)',
                             style: AppTheme.pixelHeading(fontSize: 10, letterSpacing: 1,
                                 color: const Color(0xFFcc4444))),
                       ),
@@ -379,7 +382,7 @@ class _DisenchantTabState extends State<_DisenchantTab> {
     if (context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Disenchanted: +$earned ◆',
+          content: Text('Salvaged: +$earned ◆',
               style: const TextStyle(color: AppTheme.accentGold)),
           backgroundColor: const Color(0xFF2A2623),
           duration: const Duration(seconds: 2),
@@ -518,10 +521,13 @@ class _ForgeItemTile extends StatelessWidget {
 
   int get _shards => switch (item.rarity) {
     ItemRarity.common    => 3,
+    ItemRarity.uncommon  => 5,
     ItemRarity.rare      => 8,
     ItemRarity.epic      => 20,
     ItemRarity.legendary => 60,
+    ItemRarity.mythic    => 150,
     ItemRarity.set       => 100,
+    ItemRarity.unique    => 80,
   };
 
   @override
@@ -1246,6 +1252,7 @@ class _UpgradeTabState extends State<_UpgradeTab> {
               return TextButton(
                 onPressed: canAfford ? () {
                   game.upgradeItem(_selected!);
+                  game.audioService.playUiConfirm();
                   if (!_selected!.canUpgrade) _selected = null;
                   setState(() {});
                 } : null,
@@ -1272,7 +1279,7 @@ class _UpgradeTabState extends State<_UpgradeTab> {
   }
 
   String _sn(ItemStat s) => switch (s) {
-    ItemStat.attackBonus  => 'ATK',
+    ItemStat.attackBonus  => 'CRIT',
     ItemStat.damageBonus  => 'DMG',
     ItemStat.armorClass   => 'AC',
     ItemStat.strength     => 'PWR',

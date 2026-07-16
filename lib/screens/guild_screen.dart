@@ -1,4 +1,4 @@
-import 'dart:math';
+﻿import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../models/dnd_class.dart';
@@ -168,18 +168,25 @@ class _GuildScreenState extends State<GuildScreen> {
                 const Text('🪙', style: TextStyle(fontSize: 14)),
                 const SizedBox(width: 4),
                 Text('${game.guildCoins}',
-                    style: GoogleFonts.pixelifySans(
+                    style: GoogleFonts.rajdhani(
                         fontSize: 15, fontWeight: FontWeight.bold,
                         color: AppTheme.accentGold)),
               ]),
             ),
         ],
       ),
-      body: _loading
-          ? Center(child: const SnakeLoader())
-          : _guild != null
-              ? _buildGuildView(game)
-              : _buildNoGuild(game),
+      body: RefreshIndicator(
+        color: AppTheme.accentGold,
+        backgroundColor: const Color(0xFF2A2623),
+        onRefresh: () => _load(),
+        child: _loading
+            ? const Center(child: SnakeLoader())
+            : _guild != null
+                ? _buildGuildView(game)
+                : SingleChildScrollView(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    child: _buildNoGuild(game)),
+      ),
     );
   }
 
@@ -778,7 +785,7 @@ class _GuildScreenState extends State<GuildScreen> {
 
   Future<void> _attackBoss(GameState game) async {
     if (game.guildId == null || _guild == null) return;
-    final damage = (game.hero.damageMod + game.hero.attackBonus + game.hero.level) * 10;
+    final damage = (game.hero.baseDmg + game.hero.level) * 10;
     final coins = (damage ~/ 100).clamp(1, 50);
 
     if (game.guildId!.startsWith('dev_guild_')) {
@@ -943,7 +950,7 @@ class _GuildScreenState extends State<GuildScreen> {
               const Text('🪙', style: TextStyle(fontSize: 18)),
               const SizedBox(width: 8),
               Text('${game.guildCoins}',
-                  style: GoogleFonts.pixelifySans(fontSize: 17, fontWeight: FontWeight.bold, color: AppTheme.accentGold)),
+                  style: GoogleFonts.rajdhani(fontSize: 17, fontWeight: FontWeight.bold, color: AppTheme.accentGold)),
               const SizedBox(width: 6),
               const Text('Guild Coins', style: TextStyle(fontSize: 12, color: AppTheme.textMuted)),
             ]),
@@ -1001,7 +1008,7 @@ class _GuildScreenState extends State<GuildScreen> {
       case 'guild_mythril_ore':   game.mythril  += 10;
       case 'guild_gem_dust':      game.gemShards += 25;
       case 'guild_essence_vial':  game.essence  += 100;
-      case 'guild_crystal_chest': game.crystals += 20;
+      case 'guild_crystal_chest': game.zcoins += 20;
       case 'guild_xp_scroll':    game.hero.gainExperience(game.hero.experienceToNextLevel ~/ 2);
       default: break;
     }
@@ -1103,15 +1110,16 @@ class _GuildBossBattleState extends State<_GuildBossBattle> {
     _bossHp = widget.boss.hp.clamp(1, widget.boss.maxHp);
     _bossMaxHp = widget.boss.maxHp;
     _log.add('⚔ ${hero.name} challenges ${widget.boss.name}!');
-    _startFight();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _startFight());
   }
 
   Future<void> _startFight() async {
+    if (!mounted) return;
     await Future.delayed(const Duration(milliseconds: 500));
 
     while (mounted && _fighting && _heroHp > 0 && _bossHp > 0) {
       // Hero attacks
-      final heroDmg = (widget.game.hero.damageMod + widget.game.hero.attackBonus +
+      final heroDmg = (widget.game.hero.baseDmg +
           widget.game.inventory.equippedWeaponDamage + _rng.nextInt(8) + 1)
           .clamp(1, 9999);
       _bossHp = (_bossHp - heroDmg).clamp(0, _bossMaxHp);
@@ -1123,12 +1131,12 @@ class _GuildBossBattleState extends State<_GuildBossBattle> {
         final coins = (_totalDamage ~/ 50).clamp(5, 100);
         final crystalReward = 10;
         widget.game.guildCoins += coins;
-        widget.game.crystals += crystalReward;
+        widget.game.zcoins += crystalReward;
         widget.game.rollRuneDrop();
         widget.game.saveToLocal();
         setState(() { _won = true; _fighting = false; });
         _log.add('✦ BOSS DEFEATED! Total damage: $_totalDamage');
-        _log.add('🪙 +$coins Guild Coins  💎 +$crystalReward Crystals');
+        _log.add('🪙 +$coins Guild Coins  🪙 +$crystalReward ZCoins');
         break;
       }
 

@@ -94,7 +94,7 @@ class _UpgradeTileState extends State<UpgradeTile>
                     child: Center(
                       child: Text(
                         widget.upgrade.type.label,
-                        style: GoogleFonts.pixelifySans(
+                        style: GoogleFonts.rajdhani(
                           fontSize: 14,
                           fontWeight: FontWeight.bold,
                           color: maxed
@@ -119,7 +119,7 @@ class _UpgradeTileState extends State<UpgradeTile>
                             Flexible(
                               child: Text(
                                 widget.upgrade.name.toUpperCase(),
-                                style: GoogleFonts.pixelifySans(
+                                style: GoogleFonts.rajdhani(
                                   fontSize: 12,
                                   fontWeight: FontWeight.bold,
                                   color: maxed
@@ -151,7 +151,7 @@ class _UpgradeTileState extends State<UpgradeTile>
                                 maxed
                                     ? 'MAXED'
                                     : 'Lv ${widget.upgrade.level}/${widget.upgrade.maxLevel}',
-                                style: GoogleFonts.pixelifySans(
+                                style: GoogleFonts.rajdhani(
                                   fontSize: 10,
                                   letterSpacing: 1,
                                   color: maxed
@@ -169,7 +169,7 @@ class _UpgradeTileState extends State<UpgradeTile>
                         // Description
                         Text(
                           widget.upgrade.description,
-                          style: GoogleFonts.pixelifySans(
+                          style: GoogleFonts.rajdhani(
                             fontSize: 13,
                             color: widget.upgrade.level > 0
                                 ? AppTheme.accentGold
@@ -196,7 +196,7 @@ class _UpgradeTileState extends State<UpgradeTile>
                                   const SizedBox(width: 5),
                                   Text(
                                     fmtNum(widget.upgrade.cost),
-                                    style: GoogleFonts.pixelifySans(
+                                    style: GoogleFonts.rajdhani(
                                       fontSize: 12,
                                       color: affordable
                                           ? AppTheme.accentGold
@@ -206,7 +206,7 @@ class _UpgradeTileState extends State<UpgradeTile>
                                   const SizedBox(width: 4),
                                   Text(
                                     'gold',
-                                    style: GoogleFonts.pixelifySans(
+                                    style: GoogleFonts.rajdhani(
                                       fontSize: 10,
                                       color: AppTheme.textMuted,
                                     ),
@@ -237,7 +237,7 @@ class _UpgradeTileState extends State<UpgradeTile>
                                   ),
                                   child: Text(
                                     'UPGRADE',
-                                    style: GoogleFonts.pixelifySans(
+                                    style: GoogleFonts.rajdhani(
                                       fontSize: 14,
                                       fontWeight: FontWeight.bold,
                                       color: affordable
@@ -262,7 +262,7 @@ class _UpgradeTileState extends State<UpgradeTile>
                                 ),
                                 child: Text(
                                   'MAXED',
-                                  style: GoogleFonts.pixelifySans(
+                                  style: GoogleFonts.rajdhani(
                                     fontSize: 14,
                                     fontWeight: FontWeight.bold,
                                     color: const Color(0xFF4a8020),

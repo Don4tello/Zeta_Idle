@@ -101,8 +101,8 @@ class _AttackEffectPainter extends CustomPainter {
 
   // ── Helpers ───────────────────────────────────────────────
 
-  Offset _hero(Size sz)  => Offset(sz.width * 0.28, sz.height * 0.72);
-  Offset _enemy(Size sz) => Offset(sz.width * 0.72, sz.height * 0.72);
+  Offset _hero(Size sz)  => Offset(sz.width * 0.28, sz.height * 0.80);
+  Offset _enemy(Size sz) => Offset(sz.width * 0.72, sz.height * 0.80);
 
   void _circle(Canvas c, Offset pos, double r, Color col,
       {bool stroke = false, double sw = 2, double blur = 0}) {
@@ -363,7 +363,7 @@ class _AttackEffectPainter extends CustomPainter {
   void _axeSwing(Canvas c, Size sz, double t) {
     final heroX = sz.width * 0.25;
     final enemyX = sz.width * 0.75;
-    final midY = sz.height * 0.72;
+    final midY = sz.height * 0.80;
     const axeGrey  = Color(0xFF909098);
     const blade    = Color(0xFFD0D8E0);
     const handle   = Color(0xFF7a5020);
@@ -421,7 +421,7 @@ class _AttackEffectPainter extends CustomPainter {
   void _swordSlash(Canvas c, Size sz, double t, Color col, bool holy) {
     final heroX = sz.width * 0.27;
     final targetX = sz.width * 0.73;
-    final midY = sz.height * 0.72;
+    final midY = sz.height * 0.80;
     const travelEnd = 0.72;
 
     if (t < travelEnd) {
@@ -449,7 +449,7 @@ class _AttackEffectPainter extends CustomPainter {
   // ── Dagger flash (Rogue) ──────────────────────────────────
   void _daggerFlash(Canvas c, Size sz, double t) {
     final targetX = sz.width * 0.72;
-    final midY = sz.height * 0.72;
+    final midY = sz.height * 0.80;
     const blade = Color(0xFF8898c8);
     const dark = Color(0xFF3c3858);
     const gold = Color(0xFFc8a020);
@@ -495,7 +495,7 @@ class _AttackEffectPainter extends CustomPainter {
   // ── Ki strike (Monk) ─────────────────────────────────────
   void _kiStrike(Canvas c, Size sz, double t) {
     final targetX = sz.width * 0.72;
-    final midY = sz.height * 0.72;
+    final midY = sz.height * 0.80;
     final heroX = sz.width * 0.28;
     final pos = Offset(targetX, midY);
     const saffron = Color(0xFFE8B040);

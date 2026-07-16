@@ -87,7 +87,7 @@ enum DndClass {
 
   String get spriteId {
     switch (this) {
-      case DndClass.paladin:   return 'hero';
+      case DndClass.paladin:   return 'hero_paladin';
       case DndClass.barbarian: return 'hero_barbarian';
       case DndClass.bard:      return 'hero_bard';
       case DndClass.cleric:    return 'hero_cleric';
@@ -121,8 +121,8 @@ const _infos = <DndClass, DndClassInfo>{
     flavor: 'Primal fury channels into devastating melee strikes.',
     str: 15, dex: 13, con: 14, intelligence: 8,  wis: 12, cha: 10,
     icon: Icons.bolt,
-    classElement: DamageType.fire,        // primal rage ignites
-    secondaryElement: DamageType.fire,    // Physical+Fire pairing; Dual Mastery repeats
+    classElement: DamageType.poison,      // venom-infused primal strikes
+    secondaryElement: DamageType.lightning, // storm warrior path
   ),
   DndClass.bard: DndClassInfo(
     displayName: 'Bard',
@@ -132,8 +132,8 @@ const _infos = <DndClass, DndClassInfo>{
     flavor: 'Words and melody weave powerful magic into battle.',
     str: 8,  dex: 14, con: 13, intelligence: 10, wis: 12, cha: 15,
     icon: Icons.music_note,
-    classElement: DamageType.lightning,   // bardic shock
-    secondaryElement: DamageType.cold,
+    classElement: DamageType.void_,        // eldritch harmonic
+    secondaryElement: DamageType.lightning, // bardic shock
   ),
   DndClass.cleric: DndClassInfo(
     displayName: 'Cleric',
@@ -144,7 +144,7 @@ const _infos = <DndClass, DndClassInfo>{
     str: 13, dex: 8,  con: 14, intelligence: 10, wis: 15, cha: 12,
     icon: Icons.brightness_high,
     classElement: DamageType.fire,        // radiant / holy flame
-    secondaryElement: DamageType.lightning,
+    secondaryElement: DamageType.void_,   // sacred void judgment
   ),
   DndClass.druid: DndClassInfo(
     displayName: 'Druid',
@@ -155,7 +155,7 @@ const _infos = <DndClass, DndClassInfo>{
     str: 8,  dex: 12, con: 14, intelligence: 13, wis: 15, cha: 10,
     icon: Icons.eco,
     classElement: DamageType.poison,      // nature toxins
-    secondaryElement: DamageType.poison,  // Physical+Poison pairing; Dual Mastery repeats
+    secondaryElement: DamageType.cold,    // winter's grasp
   ),
   DndClass.fighter: DndClassInfo(
     displayName: 'Fighter',
@@ -165,8 +165,8 @@ const _infos = <DndClass, DndClassInfo>{
     flavor: 'Master of arms with unmatched combat training.',
     str: 15, dex: 13, con: 14, intelligence: 8,  wis: 12, cha: 10,
     icon: Icons.shield,
-    classElement: DamageType.void_,       // void strike
-    secondaryElement: DamageType.void_,   // Physical+Void pairing; Dual Mastery repeats
+    classElement: DamageType.lightning,   // battle-hardened thunder strike
+    secondaryElement: DamageType.fire,    // martial fire mastery
   ),
   DndClass.monk: DndClassInfo(
     displayName: 'Monk',
@@ -177,7 +177,7 @@ const _infos = <DndClass, DndClassInfo>{
     str: 12, dex: 15, con: 13, intelligence: 8,  wis: 14, cha: 10,
     icon: Icons.self_improvement,
     classElement: DamageType.lightning,   // ki energy discharge
-    secondaryElement: DamageType.lightning, // Physical+Lightning pairing; Dual Mastery repeats
+    secondaryElement: DamageType.void_,   // inner void mastery
   ),
   DndClass.paladin: DndClassInfo(
     displayName: 'Paladin',
@@ -188,7 +188,7 @@ const _infos = <DndClass, DndClassInfo>{
     str: 15, dex: 10, con: 13, intelligence: 8,  wis: 12, cha: 14,
     icon: Icons.shield_outlined,
     classElement: DamageType.fire,        // divine smite / radiant fire
-    secondaryElement: DamageType.void_,
+    secondaryElement: DamageType.cold,    // glacial verdict
   ),
   DndClass.ranger: DndClassInfo(
     displayName: 'Ranger',
@@ -199,7 +199,7 @@ const _infos = <DndClass, DndClassInfo>{
     str: 12, dex: 15, con: 13, intelligence: 10, wis: 14, cha: 8,
     icon: Icons.gps_fixed,
     classElement: DamageType.poison,      // toxin-tipped arrows
-    secondaryElement: DamageType.lightning,
+    secondaryElement: DamageType.cold,    // frost arrow path
   ),
   DndClass.rogue: DndClassInfo(
     displayName: 'Rogue',
@@ -242,7 +242,7 @@ const _infos = <DndClass, DndClassInfo>{
     flavor: 'Vast arcane knowledge unlocks limitless spells.',
     str: 8,  dex: 12, con: 13, intelligence: 15, wis: 14, cha: 10,
     icon: Icons.menu_book,
-    classElement: DamageType.lightning,   // arcane discharge
-    secondaryElement: DamageType.void_,
+    classElement: DamageType.cold,        // arcane frost
+    secondaryElement: DamageType.void_,  // void mastery
   ),
 };

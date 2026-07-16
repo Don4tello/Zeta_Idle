@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../models/damage_type.dart';
 import '../models/endless_upgrades.dart';
@@ -6,8 +6,10 @@ import '../models/equipment.dart';
 import '../models/npc_ally.dart';
 import '../models/passive_tree.dart';
 import '../models/pet.dart';
+import '../models/subclass.dart';
 import '../services/game_state.dart';
 import '../theme/app_theme.dart';
+import 'main_shell.dart' show TutorialTip;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // HeroStatsScreen — full breakdown of every bonus source on the hero.
@@ -46,9 +48,15 @@ class _StatsBody extends StatelessWidget {
     return ListView(
       padding: const EdgeInsets.fromLTRB(10, 8, 10, 24),
       children: [
+        TutorialTip(
+          tutorialKey: 'bonus',
+          game: game,
+          text: 'Curious where your stats come from? 📊 The Bonuses sheet breaks '
+              'down every source — gear, passives, pets, artifacts and more. '
+              'Track what\'s boosting your power here.',
+        ),
         _currenciesSection(),
         if (game.prestigeLevel > 0) _prestigeSection(),
-        _section('ABILITY SCORES', _abilityScoreRows()),
         _section('DAMAGE TYPES',  _damageTypeRows()),
         if (game.endlessUpgrades.levelOf(EndlessNode.str) > 0 ||
             game.endlessUpgrades.levelOf(EndlessNode.dex) > 0)
@@ -142,10 +150,10 @@ class _StatsBody extends StatelessWidget {
         ],
       ),
       _StatRow(
-        label: 'Crystals 💎',
+        label: 'ZCoins 🪙',
         icon: Icons.water_drop_outlined,
         color: const Color(0xFF88ddff),
-        total: AppTheme.fmtNumber(game.crystals),
+        total: AppTheme.fmtNumber(game.zcoins),
         sources: [
           _Source('Daily Chest', 'complete all 7 daily challenges'),
           _Source('Achievements', 'milestone rewards'),
@@ -227,11 +235,11 @@ class _StatsBody extends StatelessWidget {
                     style: TextStyle(fontSize: 14, color: Color(0xFFcc88ff))),
                 const SizedBox(width: 8),
                 Text('Rebirths',
-                    style: GoogleFonts.pixelifySans(
+                    style: GoogleFonts.rajdhani(
                         fontSize: 12, color: Colors.white54)),
                 const Spacer(),
                 Text('${game.prestigeLevel}',
-                    style: GoogleFonts.pixelifySans(
+                    style: GoogleFonts.rajdhani(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
                         color: game.prestigeLevel > 0
@@ -242,7 +250,7 @@ class _StatsBody extends StatelessWidget {
                   const Text('🌀', style: TextStyle(fontSize: 12)),
                   const SizedBox(width: 4),
                   Text('Ascension ${game.ascensionLevel}',
-                      style: GoogleFonts.pixelifySans(
+                      style: GoogleFonts.rajdhani(
                           fontSize: 11,
                           color: const Color(0xFF88ffdd))),
                 ],
@@ -340,20 +348,6 @@ class _StatsBody extends StatelessWidget {
     );
   }
 
-  // ── Ability Score rows ───────────────────────────────────────────────────────
-
-  List<_StatRow> _abilityScoreRows() {
-    final h = game.hero;
-    return [
-      _StatRow(label: 'Strength (PWR)',     icon: Icons.fitness_center,  color: const Color(0xFFe05030), total: '${h.strength}',     sources: [_Source('Base', '${h.strength}')]),
-      _StatRow(label: 'Dexterity (AGI)',    icon: Icons.directions_run,  color: const Color(0xFF40b060), total: '${h.dexterity}',    sources: [_Source('Base', '${h.dexterity}')]),
-      _StatRow(label: 'Constitution (VIT)', icon: Icons.favorite,        color: const Color(0xFF4488cc), total: '${h.constitution}', sources: [_Source('Base', '${h.constitution}')]),
-      _StatRow(label: 'Intelligence (ARC)', icon: Icons.psychology,      color: const Color(0xFFC9A35A), total: '${h.intelligence}', sources: [_Source('Base', '${h.intelligence}')]),
-      _StatRow(label: 'Wisdom (FOC)',       icon: Icons.visibility,      color: const Color(0xFF9060c0), total: '${h.wisdom}',       sources: [_Source('Base', '${h.wisdom}')]),
-      _StatRow(label: 'Charisma (FOR)',     icon: Icons.theater_comedy,  color: const Color(0xFFc06080), total: '${h.charisma}',     sources: [_Source('Base', '${h.charisma}')]),
-    ];
-  }
-
   // ── Damage Type rows ──────────────────────────────────────────────────────────
 
   List<_StatRow> _damageTypeRows() {
@@ -410,7 +404,7 @@ class _StatsBody extends StatelessWidget {
 
   List<_StatRow> _damageBreakdownRows() {
     final weaponDmg = game.inventory.equippedWeaponDamage;
-    final heroDmg = game.hero.damageMod;
+    final heroDmg = game.hero.baseDmg;
     final passiveDmg = game.passiveTree.totalOf(PassiveEffect.damageFlat);
     final equipDmg = game.inventory.totalOf(ItemStat.damageBonus)
         + game.inventory.totalOf(ItemStat.strength);
@@ -420,7 +414,7 @@ class _StatsBody extends StatelessWidget {
     final skinDmg = game.skinDamage;
     final allyDmg = game.allyDmgBonus;
     final questDmg = game.questDamageBonus;
-    final artifactDmg = game.artifactDamageBonus;
+    final artifactDmg = game.artifactPowerBonus;
     final runeDmg = game.runeDmgBonus;
     final ascDmg = game.ascDmgBonus;
     final total = weaponDmg + heroDmg + passiveDmg + equipDmg + setDmg
@@ -543,23 +537,43 @@ class _StatsBody extends StatelessWidget {
         ],
       ),
       _StatRow(
-        label: 'Pierce (ignore AC)',
+        label: 'Pierce (Armor Pen)',
         icon: Icons.compare_arrows,
         color: const Color(0xFFffaa44),
-        total: '$pierce AC ignored',
+        total: '$pierce flat armor ignored',
         sources: [
-          _Source('Passives', '$pierce'),
+          _Source('Passives', '+$pierce'),
+          _Source('Effect', 'Reduces enemy flat armor before damage is applied (physical only)'),
           _Source('How to get', 'Pierce passive nodes'),
         ],
       ),
       _StatRow(
-        label: 'Crit Chance bonus',
+        label: 'Crit Chance',
         icon: Icons.star_outline,
         color: const Color(0xFFffee44),
-        total: '+$critPass%',
+        total: '${game.totalCritChancePct}%  (cap 75%)',
         sources: [
-          _Source('Passives', '+$critPass%'),
-          _Source('How to get', 'Critical passive nodes'),
+          _Source('Passives (crit nodes)', '+$critPass%'),
+          _Source('ATK stat (items ×2)', '+${(game.inventory.totalOf(ItemStat.attackBonus) + game.inventorySetTotal(ItemStat.attackBonus)) * 2}%'),
+          _Source('Passives (ATK flat ×2)', '+${pt.totalOf(PassiveEffect.attackFlat) * 2}%'),
+          _Source('Pets / Skin / Aura', '+${(atkPets + atkSkin) * 2}%'),
+          _Source('Prestige: Killing Blow', '+${game.prestigeCritBonus}%'),
+          if (game.subclassEffect == SubclassEffect.champion) _Source('Champion subclass', '+15%'),
+          if (game.endlessUpgrades.ironGrip) _Source('Iron Grip upgrade', '+5%'),
+          if (game.endlessUpgrades.keenEdge) _Source('Keen Edge upgrade', '+10%'),
+          _Source('Active buff (ATK ability)', '+${game.buffAttackBonus}%'),
+        ],
+      ),
+      _StatRow(
+        label: 'Crit Damage',
+        icon: Icons.flash_on_outlined,
+        color: const Color(0xFFff8844),
+        total: '${game.totalCritDamageMult.toStringAsFixed(1)}× damage',
+        sources: [
+          _Source('Base', '2.0× (hits deal double damage)'),
+          if (game.prestigeCritDamageMult > 1.0) _Source("Prestige: Death's Edge", '×${game.prestigeCritDamageMult.toStringAsFixed(1)}'),
+          if (game.subclassEffect == SubclassEffect.assassin) _Source('Assassin subclass', '3× base (triple damage)'),
+          _Source('Critical Fury keyword', '3× base if item equipped'),
         ],
       ),
       _StatRow(
@@ -1073,7 +1087,7 @@ class _StatRowWidgetState extends State<_StatRowWidget> {
                   Expanded(
                     child: Text(
                       row.label,
-                      style: GoogleFonts.pixelifySans(
+                      style: GoogleFonts.rajdhani(
                         fontSize: 11,
                         color: Colors.white70,
                         letterSpacing: 0.5,
@@ -1082,7 +1096,7 @@ class _StatRowWidgetState extends State<_StatRowWidget> {
                   ),
                   Text(
                     row.total,
-                    style: GoogleFonts.pixelifySans(
+                    style: GoogleFonts.rajdhani(
                       fontSize: 12,
                       fontWeight: FontWeight.bold,
                       color: row.color,

@@ -1,4 +1,4 @@
-enum AchievementCondition {
+﻿enum AchievementCondition {
   totalBattleWins,
   totalKills,
   totalBossKills,
@@ -15,7 +15,7 @@ enum AchievementCondition {
   subclassChosen, // target = 1 (boolean)
 }
 
-enum AchievementRewardType { shards, essence, crystals }
+enum AchievementRewardType { shards, essence, zcoins }
 
 class Achievement {
   Achievement({
@@ -46,7 +46,7 @@ class Achievement {
     final suffix = switch (rewardType) {
       AchievementRewardType.shards   => '◆',
       AchievementRewardType.essence  => ' essence',
-      AchievementRewardType.crystals => ' 💎',
+      AchievementRewardType.zcoins => ' 🪙',
     };
     return '$rewardAmount$suffix';
   }
@@ -181,7 +181,7 @@ List<Achievement> buildAchievements() => [
     name: 'Reborn',
     description: 'Prestige for the first time.',
     condition: AchievementCondition.prestigeLevel, target: 1,
-    rewardType: AchievementRewardType.crystals, rewardAmount: 3,
+    rewardType: AchievementRewardType.zcoins, rewardAmount: 3,
   ),
   Achievement(
     id: 'twice_reborn', emoji: '✦✦',
@@ -232,7 +232,7 @@ List<Achievement> buildAchievements() => [
     name: 'Master of the Tree',
     description: 'Unlock all 24 passive tree nodes.',
     condition: AchievementCondition.passiveNodesUnlocked, target: 24,
-    rewardType: AchievementRewardType.crystals, rewardAmount: 5,
+    rewardType: AchievementRewardType.zcoins, rewardAmount: 5,
   ),
   Achievement(
     id: 'smith', emoji: '🔨',

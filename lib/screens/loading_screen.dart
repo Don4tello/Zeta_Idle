@@ -152,7 +152,7 @@ class _LoadingScreenState extends State<LoadingScreen>
       children: [
         Text(
           'ZETA IDLE',
-          style: GoogleFonts.pixelifySans(
+          style: GoogleFonts.rajdhani(
             fontSize: 41,
             fontWeight: FontWeight.bold,
             color: AppTheme2.gold,
@@ -168,7 +168,7 @@ class _LoadingScreenState extends State<LoadingScreen>
         const SizedBox(height: 6),
         Text(
           '— THE CURSED REALM —',
-          style: GoogleFonts.pixelifySans(
+          style: GoogleFonts.rajdhani(
             fontSize: 12,
             color: const Color(0xFF555577),
             letterSpacing: 3,
@@ -244,7 +244,7 @@ class _LoadingScreenState extends State<LoadingScreen>
       children: [
         Text(
           _flavorText,
-          style: GoogleFonts.pixelifySans(
+          style: GoogleFonts.rajdhani(
             fontSize: 12,
             color: const Color(0xFF4a4a66),
             letterSpacing: 1,
@@ -253,7 +253,7 @@ class _LoadingScreenState extends State<LoadingScreen>
         const SizedBox(height: 6),
         Text(
           '${(progress * 100).toInt()}%',
-          style: GoogleFonts.pixelifySans(
+          style: GoogleFonts.rajdhani(
             fontSize: 11,
             color: const Color(0xFF3a3a55),
             letterSpacing: 2,

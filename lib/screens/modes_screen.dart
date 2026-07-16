@@ -1,3 +1,4 @@
+import 'dart:math' show max;
 import 'dart:ui' show PointerDeviceKind;
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -14,6 +15,7 @@ import 'world_event_screen.dart';
 import 'bounty_board_screen.dart';
 import 'expedition_screen.dart';
 import 'quest_screen.dart';
+import 'armory_screen.dart';
 import 'bestiary_screen.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -31,17 +33,21 @@ class _ModesScreenState extends State<ModesScreen>
     with TickerProviderStateMixin {
 
   // (label, emoji, unlockRequirement)
+  // Primary combat modes come first (left side), secondary/meta modes after.
   static const _tabData = [
+    // ── Primary (battle animation modes) ─────────────────────────────────────
     ('CAMPAIGN',          '📜',  0),   // always
+    ('DUNGEON',           '🏰', 15),   // boss 3
+    ('BOSS RUSH',         '💀', 25),   // boss 5
+    ('TOWER ASCENSION',   '🗼', 35),   // boss 7
+    ('GAUNTLET',          '🛡️', 45),  // boss 9
+    // ── Secondary ─────────────────────────────────────────────────────────────
     ('DAILY',             '🎯',  5),   // boss 1
     ('QUESTS',            '📜', 10),   // boss 2
-    ('DUNGEON',           '🏰', 15),   // boss 3
     ('BOUNTIES',          '📋', 20),   // boss 4
-    ('BOSS RUSH',         '💀', 25),   // boss 5
+    ('ARMORY',            '🛡', 28),   // after boss 5 — legendary/set catalogue
     ('EVENTS',            '🌐', 30),   // boss 6
-    ('TOWER ASCENSION',   '🗼', 35),   // boss 7
     ('EXPEDITION',        '🗺️', 40),  // boss 8
-    ('GAUNTLET',          '🛡️', 45),  // boss 9
     ('PVP',               '⚔️', 50),  // boss 10
     ('BESTIARY',          '🐉', 55),   // boss 11
   ];
@@ -63,7 +69,7 @@ class _ModesScreenState extends State<ModesScreen>
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
         final game = GameStateProvider.of(context);
-        final indices = _unlockedIndices(game.campaignStageIndex);
+        final indices = _unlockedIndices(max(game.campaignStageIndex, game.campaignAllTimeHigh));
         if (_index < indices.length) {
           final label = _tabData[indices[_index]].$1;
           game.markModeTabVisited(label);
@@ -94,7 +100,8 @@ class _ModesScreenState extends State<ModesScreen>
   void didChangeDependencies() {
     super.didChangeDependencies();
     final game = GameStateProvider.of(context);
-    final indices = _unlockedIndices(game.campaignStageIndex);
+    final effective = max(game.campaignStageIndex, game.campaignAllTimeHigh);
+    final indices = _unlockedIndices(effective);
     final newCount = indices.isEmpty ? 1 : indices.length;
     if (newCount != _visibleCount) {
       _rebuildTabs(newCount);
@@ -109,25 +116,28 @@ class _ModesScreenState extends State<ModesScreen>
   }
 
   Widget _screenFor(int i) => switch (i) {
+    // Primary — indices must match _tabData order exactly
     0  => const CampaignScreen(),
-    1  => const DailyScreen(),
-    2  => const QuestScreen(),
-    3  => const DungeonScreen(),
-    4  => const BountyBoardScreen(),
-    5  => const BossRushScreen(),
-    6  => const WorldEventScreen(),
-    7  => const EndlessScreen(),         // Tower Ascension
-    8  => const ExpeditionScreen(),
-    9  => const GauntletScreen(),
-    10 => const PvpScreen(),
-    11 => const BestiaryScreen(),
+    1  => const DungeonScreen(),
+    2  => const BossRushScreen(),        // BOSS RUSH
+    3  => const EndlessScreen(),         // TOWER ASCENSION
+    4  => const GauntletScreen(),        // GAUNTLET
+    // Secondary
+    5  => const DailyScreen(),           // DAILY
+    6  => const QuestScreen(),           // QUESTS
+    7  => const BountyBoardScreen(),     // BOUNTIES
+    8  => const ArmoryScreen(embedded: true),
+    9  => const WorldEventScreen(),
+    10 => const ExpeditionScreen(),
+    11 => const PvpScreen(),
+    12 => const BestiaryScreen(),
     _  => const SizedBox.shrink(),
   };
 
   @override
   Widget build(BuildContext context) {
     final game    = GameStateProvider.of(context);
-    final cleared = game.campaignStageIndex;
+    final cleared = max(game.campaignStageIndex, game.campaignAllTimeHigh);
     final indices = _unlockedIndices(cleared);
 
     // Mark current all-data index as loaded.
@@ -176,6 +186,11 @@ class _ModesScreenState extends State<ModesScreen>
                   'QUESTS'     => game.questsClaimable > 0 || game.adventureQuestsClaimable > 0,
                   _            => false,
                 };
+                // Show a separator before the first secondary tab (index ≥ 4)
+                // when there is at least one primary tab visible before it.
+                final isSecondary = i >= 4;
+                final prevIsPrimary = vi > 0 && indices[vi - 1] < 4;
+                final showGroupSeparator = isSecondary && prevIsPrimary;
                 return Tab(
                   height: 52,
                   child: Stack(
@@ -188,7 +203,7 @@ class _ModesScreenState extends State<ModesScreen>
                               style: TextStyle(fontSize: isActive ? 17 : 14)),
                           const SizedBox(height: 3),
                           Text(label,
-                              style: GoogleFonts.pixelifySans(
+                              style: GoogleFonts.rajdhani(
                                 fontSize: 9,
                                 fontWeight: isActive
                                     ? FontWeight.bold
@@ -200,6 +215,16 @@ class _ModesScreenState extends State<ModesScreen>
                               )),
                         ],
                       ),
+                      // Separator line between primary and secondary groups
+                      if (showGroupSeparator)
+                        Positioned(
+                          left: -14,
+                          top: 8, bottom: 8,
+                          child: Container(
+                            width: 1,
+                            color: const Color(0xFF5a4830),
+                          ),
+                        ),
                       if (isNew)
                         Positioned(
                           top: -2,

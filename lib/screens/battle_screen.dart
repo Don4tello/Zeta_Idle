@@ -1,9 +1,11 @@
-﻿import 'dart:async';
+import 'dart:async';
 import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show HapticFeedback;
 import 'package:go_router/go_router.dart';
 import '../core/routing/app_router.dart';
-import '../data/enemy_data.dart';
+import '../screens/main_shell.dart';
+import '../models/artifact.dart';
 import '../models/equipment.dart';
 import '../services/game_state.dart';
 import '../widgets/affix_chip_row.dart';
@@ -14,6 +16,8 @@ import '../widgets/item_drop_badge.dart';
 import '../widgets/pet_battle_sprite.dart';
 import '../theme/app_theme.dart';
 import '../widgets/level_up_section.dart';
+import '../data/ability_data.dart';
+import '../widgets/arena_ability_effect.dart';
 import '../utils/format_number.dart';
 
 class BattleScreen extends StatefulWidget {
@@ -25,19 +29,24 @@ class BattleScreen extends StatefulWidget {
 
 class _BattleScreenState extends State<BattleScreen>
     with SingleTickerProviderStateMixin {
-  final _arenaKey = GlobalKey<BattleArenaState>();
+  final _arenaKey  = GlobalKey<BattleArenaState>();
+  final _effectKey = GlobalKey<ArenaAbilityEffectState>();
 
   bool _busy = false;
   bool _autoRunning = false;
+  bool _isPaused = false;
+  int? _countdown; // 3/2/1 shown before first attack; null = no countdown
   bool _showingReward = false;
   int _rewardGold    = 0;
   int _rewardExp     = 0;
   int _rewardShards  = 0;
   EquipmentItem? _rewardItem;
   LevelUpEvent?  _levelUpEvent;
+  Artifact?      _rewardArtifact;
   Completer<void>? _rewardCompleter;
+  bool _exitRequested = false;
 
-  // Step 7 — victory stagger
+  // Step 7 � victory stagger
   late final AnimationController _victoryCtrl = AnimationController(
       vsync: this, duration: const Duration(milliseconds: 900));
 
@@ -49,10 +58,12 @@ class _BattleScreenState extends State<BattleScreen>
   @override
   void dispose() {
     _victoryCtrl.dispose();
+    // Stop battle music when leaving the screen
+    GameStateProvider.of(context).audioService.endBattleMusic();
     super.dispose();
   }
 
-  // ── Auto attack loop ──────────────────────────────────────────────────────
+  // -- Auto attack loop ------------------------------------------------------
 
   void _startAutoAttack(GameState game) async {
     if (_autoRunning) return;
@@ -60,6 +71,11 @@ class _BattleScreenState extends State<BattleScreen>
 
     while (mounted) {
       while (mounted && game.currentEnemy != null) {
+        // Spin while paused or counting down
+        while (mounted && (_isPaused || _countdown != null)) {
+          await Future.delayed(const Duration(milliseconds: 60));
+        }
+        if (!mounted || game.currentEnemy == null) break;
         if (!_busy) await _doAttack(game);
         if (mounted && game.currentEnemy != null) {
           await Future.delayed(
@@ -72,6 +88,7 @@ class _BattleScreenState extends State<BattleScreen>
       if (game.heroDefeated) {
         game.heroDefeated = false;
         await _showDefeatDialog(game);
+        MainShell.switchToTab(0);
         if (mounted) context.go(Routes.shell);
         break;
       }
@@ -79,29 +96,56 @@ class _BattleScreenState extends State<BattleScreen>
       if (mounted) {
         _rewardCompleter = Completer<void>();
         setState(() {
-          _showingReward  = true;
-          _rewardGold     = game.lastRewardGold;
-          _rewardExp      = game.lastRewardExp;
-          _rewardShards   = game.lastShardDrop;
-          _rewardItem     = game.lastItemDrop;
-          _levelUpEvent   = game.lastLevelUp;
+          _showingReward   = true;
+          _rewardGold      = game.lastRewardGold;
+          _rewardExp       = game.lastRewardExp;
+          _rewardShards    = game.lastShardDrop;
+          _rewardItem      = game.lastItemDrop;
+          _levelUpEvent    = game.lastLevelUp;
+          _rewardArtifact  = game.lastArtifactDrop;
+          game.lastArtifactDrop = null;
         });
         _victoryCtrl.forward(from: 0);
+        // Haptic: heavy for boss/level-up, medium for normal victory
+        if (game.lastLevelUp != null || game.isBossStage) {
+          game.haptic(HapticFeedback.heavyImpact);
+        } else {
+          game.haptic(HapticFeedback.mediumImpact);
+        }
       }
-      await Future.any([
-        Future.delayed(const Duration(seconds: 2)),
-        _rewardCompleter!.future,
-      ]);
+      await _rewardCompleter!.future;
       _rewardCompleter = null;
-      if (!mounted) break;
-      setState(() { _showingReward = false; _rewardItem = null; });
+      if (!mounted || _exitRequested) break;
+
+      // Campaign replay: return to campaign map instead of looping
+      if (game.isCampaignReplay) {
+        game.isCampaignReplay = false;
+        setState(() { _showingReward = false; _rewardItem = null; });
+        if (mounted) Navigator.pop(context);
+        break;
+      }
+
+      // Final campaign boss just fell — show Rebirth Unlocked and stop
+      if (game.lastBattleWasFinalVictory) {
+        game.lastBattleWasFinalVictory = false;
+        setState(() { _showingReward = false; _rewardItem = null; });
+        if (mounted) await _showRebirthUnlockedDialog();
+        if (mounted) context.go(Routes.shell);
+        break;
+      }
 
       if (game.endlessTutorialPending && mounted) {
         await _showEndlessTutorial(game);
       }
 
+      // Start next battle BEFORE hiding the overlay so there is no
+      // gap where currentEnemy == null renders "NO ACTIVE BATTLE".
       await _arenaKey.currentState?.fadeEnemyOut();
       game.startBattle();
+      if (!mounted) break;
+      setState(() { _showingReward = false; _rewardItem = null; });
+      await _runCountdown(game);
+
       if (game.currentEnemy == null) {
         if (mounted) context.go(Routes.shell);
         break;
@@ -109,6 +153,15 @@ class _BattleScreenState extends State<BattleScreen>
     }
 
     _autoRunning = false;
+  }
+
+  Future<void> _runCountdown(GameState game) async {
+    for (int i = 3; i >= 1; i--) {
+      if (!mounted) return;
+      setState(() => _countdown = i);
+      await Future.delayed(Duration(milliseconds: game.scaledInterval(1000)));
+    }
+    if (mounted) setState(() => _countdown = null);
   }
 
   Future<void> _showEndlessTutorial(GameState game) async {
@@ -130,10 +183,10 @@ class _BattleScreenState extends State<BattleScreen>
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Text('♾️', style: TextStyle(fontSize: 38)),
+              const Text('??', style: TextStyle(fontSize: 38)),
               const SizedBox(height: 10),
               const Text(
-                'TOWER ASCENSION UNLOCKED',
+                'FIRST VICTORY',
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontSize: 16,
@@ -144,7 +197,7 @@ class _BattleScreenState extends State<BattleScreen>
               ),
               const SizedBox(height: 16),
               const Text(
-                'The Endless Arena is now open. Revisit defeated bosses and farm at your own pace.',
+                'The campaign is now underway. Defeat enemies to earn gold, XP, and gear as you push through every stage.',
                 textAlign: TextAlign.center,
                 style: TextStyle(fontSize: 14, color: AppTheme.textLight, height: 1.5),
               ),
@@ -156,14 +209,14 @@ class _BattleScreenState extends State<BattleScreen>
                   border: Border.all(color: const Color(0xFF55ee88).withValues(alpha: 0.3)),
                 ),
                 child: const Text(
-                  'Fight the current campaign enemy on repeat for gold and XP. Challenge defeated bosses for bigger rewards and item drops. Enemies scale with your power — never too easy.',
+                  'Beating bosses unlocks new modes � Daily Quests, Dungeons, Boss Rush, Tower Ascension, and more. Check the PLAY tab as you progress.',
                   textAlign: TextAlign.center,
                   style: TextStyle(fontSize: 13, color: AppTheme.textMuted, height: 1.6),
                 ),
               ),
               const SizedBox(height: 20),
               const Text(
-                'Find it under the MODES tab → ENDLESS',
+                'New content unlocks automatically as you clear stages',
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontSize: 11,
@@ -185,7 +238,7 @@ class _BattleScreenState extends State<BattleScreen>
                     padding: const EdgeInsets.symmetric(vertical: 14),
                   ),
                   child: const Text(
-                    'GOT IT — KEEP FIGHTING',
+                    'GOT IT � KEEP FIGHTING',
                     style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, letterSpacing: 1),
                   ),
                 ),
@@ -199,6 +252,7 @@ class _BattleScreenState extends State<BattleScreen>
 
   Future<void> _showDefeatDialog(GameState game) async {
     if (!mounted) return;
+    game.haptic(HapticFeedback.vibrate); // defeat rumble
     final stage = game.campaignStageIndex;
     await showDialog<void>(
       context: context,
@@ -216,7 +270,7 @@ class _BattleScreenState extends State<BattleScreen>
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Text('☠', style: TextStyle(fontSize: 32)),
+              const Text('?', style: TextStyle(fontSize: 32)),
               const SizedBox(height: 8),
               Text('${game.hero.name.toUpperCase()} FALLS',
                   style: const TextStyle(
@@ -229,16 +283,16 @@ class _BattleScreenState extends State<BattleScreen>
                   style: TextStyle(color: AppTheme.textLight, fontSize: 13)),
               const SizedBox(height: 16),
               if (stage >= 5)
-                _defeatOption(dialogCtx, '♾️', 'ENDLESS MODE', 'Farm XP & gold at your pace',
+                _defeatOption(dialogCtx, '??', 'ENDLESS MODE', 'Farm XP & gold at your pace',
                     const Color(0xFF55cc88), () { Navigator.of(dialogCtx).pop(); context.push(Routes.endless); }),
               if (stage >= 5)
-                _defeatOption(dialogCtx, '🏰', 'DUNGEON', 'Earn shards & items',
+                _defeatOption(dialogCtx, '??', 'DUNGEON', 'Earn shards & items',
                     const Color(0xFF66aaff), () { Navigator.of(dialogCtx).pop(); context.push(Routes.dungeon); }),
               if (stage >= 10)
-                _defeatOption(dialogCtx, '⚔', 'GAUNTLET', 'Earn echoes for upgrades',
+                _defeatOption(dialogCtx, '?', 'GAUNTLET', 'Earn echoes for upgrades',
                     const Color(0xFFcc88ff), () { Navigator.of(dialogCtx).pop(); context.push(Routes.gauntlet); }),
               if (stage >= 5)
-                _defeatOption(dialogCtx, '🎯', 'DAILY CHALLENGES', 'Claim rewards for progress',
+                _defeatOption(dialogCtx, '??', 'DAILY CHALLENGES', 'Claim rewards for progress',
                     const Color(0xFFffaa44), () { Navigator.of(dialogCtx).pop(); context.push(Routes.daily); }),
               const SizedBox(height: 8),
               SizedBox(
@@ -247,6 +301,72 @@ class _BattleScreenState extends State<BattleScreen>
                   onPressed: () => Navigator.of(dialogCtx).pop(),
                   child: const Text('BACK TO HERO',
                       style: TextStyle(color: AppTheme.textMuted, fontSize: 12, letterSpacing: 1)),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _showRebirthUnlockedDialog() async {
+    if (!mounted) return;
+    await showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogCtx) => Dialog(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        child: Container(
+          constraints: const BoxConstraints(maxWidth: 340),
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            color: const Color(0xFF0d0a1a),
+            border: Border.all(color: const Color(0xFFcc44ff), width: 2),
+            boxShadow: [
+              BoxShadow(color: const Color(0xFFcc44ff).withValues(alpha: 0.25),
+                  blurRadius: 24, spreadRadius: 2),
+            ],
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text('✦', style: TextStyle(fontSize: 40, color: Color(0xFFcc44ff))),
+              const SizedBox(height: 10),
+              const Text('REBIRTH UNLOCKED',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                      fontSize: 18, fontWeight: FontWeight.bold,
+                      color: Color(0xFFcc44ff), letterSpacing: 2.5)),
+              const SizedBox(height: 14),
+              const Text(
+                'The Omega has fallen. The curse is ended.\n\n'
+                'You may now Rebirth — resetting your campaign '
+                'in exchange for permanent power.',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: AppTheme.textLight, fontSize: 13, height: 1.5),
+              ),
+              const SizedBox(height: 6),
+              const Text(
+                'Find the Rebirth option in the Hero Hub.',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: AppTheme.textMuted, fontSize: 12),
+              ),
+              const SizedBox(height: 20),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () => Navigator.of(dialogCtx).pop(),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF1a0a2a),
+                    foregroundColor: const Color(0xFFcc44ff),
+                    side: const BorderSide(color: Color(0xFFcc44ff)),
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                  ),
+                  child: const Text('CONTINUE',
+                      style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold,
+                          letterSpacing: 2)),
                 ),
               ),
             ],
@@ -295,9 +415,17 @@ class _BattleScreenState extends State<BattleScreen>
     if (_busy || game.currentEnemy == null) return;
     if (mounted) setState(() => _busy = true);
 
-    // ── Hero attacks ────────────────────────────────────────────────────────
+    // -- Hero attacks --------------------------------------------------------
     game.clearPendingFloats();
     game.heroAttack();
+    if (game.lastHeroCrit) game.haptic(HapticFeedback.lightImpact);
+    final firedAbility = game.lastAbilityFired;
+    if (firedAbility != null) {
+      _arenaKey.currentState?.playAbilityBanner(firedAbility.name, firedAbility.effect, id: firedAbility.id);
+      _effectKey.currentState?.playEffect(firedAbility.id);
+    } else {
+      _effectKey.currentState?.playEffect('auto_${game.hero.heroClass.name}');
+    }
     await (_arenaKey.currentState?.playHeroAttack(
           game.lastHeroDamage,
           isCrit: game.lastHeroCrit,
@@ -315,7 +443,7 @@ class _BattleScreenState extends State<BattleScreen>
       _arenaKey.currentState?.playEnemyDeath();
     }
 
-    // ── Enemy counter-attacks ────────────────────────────────────────────────
+    // -- Enemy counter-attacks ------------------------------------------------
     if (mounted && game.currentEnemy != null) {
       await Future.delayed(const Duration(milliseconds: 500));
       if (mounted) {
@@ -336,9 +464,9 @@ class _BattleScreenState extends State<BattleScreen>
     if (mounted) setState(() => _busy = false);
   }
 
-  // ── Helpers ───────────────────────────────────────────────────────────────
+  // -- Helpers ---------------------------------------------------------------
 
-  // ── Build ─────────────────────────────────────────────────────────────────
+  // -- Build -----------------------------------------------------------------
 
   @override
   Widget build(BuildContext context) {
@@ -357,6 +485,15 @@ class _BattleScreenState extends State<BattleScreen>
           },
         ),
         actions: [
+          IconButton(
+            icon: Icon(
+              _isPaused ? Icons.play_arrow : Icons.pause,
+              color: _isPaused ? AppTheme.accentGold : AppTheme.textMuted,
+              size: 22,
+            ),
+            tooltip: _isPaused ? 'Resume' : 'Pause',
+            onPressed: () => setState(() => _isPaused = !_isPaused),
+          ),
           IconButton(
             icon: Icon(
               game.audioService.sfxMuted ? Icons.volume_off : Icons.volume_up,
@@ -378,6 +515,7 @@ class _BattleScreenState extends State<BattleScreen>
             tooltip: game.autoCampaign ? 'Auto-Campaign: ON' : 'Auto-Campaign: OFF',
             onPressed: () {
               game.toggleAutoCampaign();
+              game.audioService.playUiClick();
               (context as Element).markNeedsBuild();
             },
           ),
@@ -393,11 +531,37 @@ class _BattleScreenState extends State<BattleScreen>
                     ? _buildNoBattle(context)
                     : _buildArena(context, game, enemy),
                 if (_showingReward) _buildRewardOverlay(),
+                if (_countdown != null) _buildCountdownOverlay(_countdown!),
               ],
             ),
           ),
-          if (enemy != null) const BattleIconBar(),
+          const SafeArea(top: false, child: BattleIconBar()),
         ],
+      ),
+    );
+  }
+
+  Widget _buildCountdownOverlay(int count) {
+    return IgnorePointer(
+      child: Center(
+        child: AnimatedSwitcher(
+          duration: const Duration(milliseconds: 220),
+          transitionBuilder: (child, anim) =>
+              ScaleTransition(scale: anim, child: FadeTransition(opacity: anim, child: child)),
+          child: Text(
+            '$count',
+            key: ValueKey(count),
+            style: const TextStyle(
+              fontSize: 96,
+              fontWeight: FontWeight.bold,
+              color: Colors.white,
+              shadows: [
+                Shadow(color: Color(0xFFcc2200), blurRadius: 32, offset: Offset(0, 0)),
+                Shadow(color: Color(0xFFcc2200), blurRadius: 16, offset: Offset(0, 0)),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -411,20 +575,129 @@ class _BattleScreenState extends State<BattleScreen>
 
   static List<Color> _heroBuffGlows(GameState game) {
     final glows = <Color>[];
-    if (game.buffAttackBonus > 0)  glows.add(const Color(0xFFffcc00)); // yellow — ATK
-    if (game.buffAcBonus > 0)      glows.add(const Color(0xFF66aaff)); // blue  — AC
-    if (game.dodgeNextHit)         glows.add(const Color(0xFF44ddcc)); // cyan  — dodge
-    if (game.auraRoundsLeft > 0)   glows.add(const Color(0xFF55ee88)); // green — aura heal
+    if (game.heroAbsorbShield > 0) glows.add(const Color(0xFF88ccff)); // sky   — absorb shield
+    if (game.buffAttackBonus > 0)  glows.add(const Color(0xFFffcc00)); // yellow� ATK
+    if (game.buffAcBonus > 0)      glows.add(const Color(0xFF66aaff)); // blue  � AC
+    if (game.dodgeNextHit)         glows.add(const Color(0xFF44ddcc)); // cyan  � dodge
+    if (game.auraRoundsLeft > 0)   glows.add(const Color(0xFF55ee88)); // green � aura heal
     return glows;
   }
 
   static List<Color> _enemyDebuffGlows(GameState game) {
     final glows = <Color>[];
-    if (game.dotRoundsLeft > 0)          glows.add(const Color(0xFF88dd00)); // lime   — DOT
-    if (game.enemyStunRounds > 0)        glows.add(const Color(0xFFcc44ff)); // purple — stun
-    if (game.enemyWeakenRounds > 0)      glows.add(const Color(0xFFff4488)); // pink   — weaken
-    if (game.enemyVulnerableRounds > 0)  glows.add(const Color(0xFFff8800)); // orange — vulnerable
+    if (game.dotRoundsLeft > 0)          glows.add(const Color(0xFF88dd00)); // lime   � DOT
+    if (game.enemyStunRounds > 0)          glows.add(const Color(0xFFcc44ff)); // purple — stun
+    if (game.stunApplicationCount >= 2)   glows.add(const Color(0xFF665577)); // dim purple — DR immune� stun
+    if (game.enemySilenceRounds > 0)       glows.add(const Color(0xFFffdd00)); // gold   — silence
+    if (game.enemyMissChanceRounds > 0)   glows.add(const Color(0xFFaaaaff)); // lavender — miss
+    if (game.enemyWeakenRounds > 0)       glows.add(const Color(0xFFff4488)); // pink� weaken
+    if (game.enemyVulnerableRounds > 0)  glows.add(const Color(0xFFff8800)); // orange � vulnerable
     return glows;
+  }
+
+  // ── Status-effect helpers ──────────────────────────────────────────────
+
+  static List<_StatusInfo> _heroStatuses(GameState game) {
+    final list = <_StatusInfo>[];
+    if (game.heroAbsorbShield > 0) {
+      list.add(_StatusInfo('SHD', 'Absorb Shield',
+          'Barrier absorbs ${game.heroAbsorbShield} HP of incoming damage.',
+          -1, const Color(0xFF88ccff)));
+    }
+    if (game.buffAttackBonus > 0) {
+      list.add(_StatusInfo('DMG+', 'Damage Buff',
+          'DMG increased by ${game.buffAttackBonus}.',
+          game.buffAttackRounds, const Color(0xFFffcc00)));
+    }
+    if (game.buffAcBonus > 0) {
+      list.add(_StatusInfo('AC+', 'AC Bonus',
+          'AC increased by ${game.buffAcBonus}.',
+          game.buffAcRounds, const Color(0xFF66aaff)));
+    }
+    if (game.dodgeNextHit) {
+      list.add(_StatusInfo('DGE', 'Dodge',
+          'Will dodge the next incoming attack.', -1, const Color(0xFF44ddcc)));
+    }
+    if (game.auraRoundsLeft > 0) {
+      list.add(_StatusInfo('AUR', 'Aura',
+          'Healing aura restores ${game.auraHealPerRound} HP/r.',
+          game.auraRoundsLeft, const Color(0xFF55ee88)));
+    }
+    if (game.heroStunRounds > 0) {
+      list.add(_StatusInfo('STN', 'Stunned',
+          'Stunned — cannot act for ${game.heroStunRounds} round(s).',
+          game.heroStunRounds, const Color(0xFFcc44ff)));
+    }
+    if (game.heroDotRoundsLeft > 0) {
+      list.add(_StatusInfo('DOT', 'Burning / Poison',
+          'Taking ${game.heroDotDmgPerRound} damage/round for ${game.heroDotRoundsLeft} more round(s).',
+          game.heroDotRoundsLeft, const Color(0xFFff4400)));
+    }
+    return list;
+  }
+
+  static List<_StatusInfo> _enemyStatuses(GameState game) {
+    final list = <_StatusInfo>[];
+    if (game.enemyStunRounds > 0) {
+      list.add(_StatusInfo('STN', 'Stunned',
+          'Enemy is stunned — cannot act for ${game.enemyStunRounds} round(s).',
+          game.enemyStunRounds, const Color(0xFFcc44ff)));
+    }
+    if (game.stunApplicationCount >= 2) {
+      list.add(_StatusInfo('DR', 'Stun Resistance',
+          'Enemy has built up stun resistance. Next stun will be resisted (resets after 5 rounds without a stun).',
+          -1, const Color(0xFF665577)));
+    }
+    if (game.dotRoundsLeft > 0) {
+      list.add(_StatusInfo('DOT', 'Damage Over Time',
+          'Enemy takes ${game.dotDmg} periodic damage/round for ${game.dotRoundsLeft} more round(s).',
+          game.dotRoundsLeft, const Color(0xFF88dd00)));
+    }
+    if (game.enemySilenceRounds > 0) {
+      list.add(_StatusInfo('SIL', 'Silenced',
+          'Enemy cannot use abilities for ${game.enemySilenceRounds} round(s).',
+          game.enemySilenceRounds, const Color(0xFFffdd00)));
+    }
+    if (game.enemyMissChanceRounds > 0) {
+      list.add(_StatusInfo('MSS', 'Miss Chance',
+          'Enemy has ${game.enemyMissChancePct}% chance to miss each attack for ${game.enemyMissChanceRounds} more round(s).',
+          game.enemyMissChanceRounds, const Color(0xFFaaaaff)));
+    }
+    if (game.enemyWeakenRounds > 0) {
+      list.add(_StatusInfo('WKN', 'Weakened',
+          'Enemy ATK reduced by ${game.enemyWeakenPct}% for ${game.enemyWeakenRounds} more round(s).',
+          game.enemyWeakenRounds, const Color(0xFFff4488)));
+    }
+    if (game.enemyVulnerableRounds > 0) {
+      list.add(_StatusInfo('VLN', 'Vulnerable',
+          'Enemy takes ${game.enemyVulnerablePct}% more damage for ${game.enemyVulnerableRounds} more round(s).',
+          game.enemyVulnerableRounds, const Color(0xFFff8800)));
+    }
+    return list;
+  }
+
+  Widget _buildStatusBars(BuildContext context, GameState game) {
+    final hero   = _heroStatuses(game);
+    final enemy  = _enemyStatuses(game);
+    // Always occupy a fixed height so the arena never resizes when
+    // buffs/debuffs appear or disappear.
+    return SizedBox(
+      height: 50,
+      child: (hero.isEmpty && enemy.isEmpty) ? null : Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (enemy.isNotEmpty) ...[
+              _StatusBadgeRow(rowLabel: 'ENEMY', statuses: enemy),
+              const SizedBox(height: 3),
+            ],
+            if (hero.isNotEmpty)
+              _StatusBadgeRow(rowLabel: 'HERO', statuses: hero),
+          ],
+        ),
+      ),
+    );
   }
 
   Widget _buildArena(BuildContext context, GameState game, enemy) {
@@ -435,9 +708,12 @@ class _BattleScreenState extends State<BattleScreen>
     }
     return Column(
       children: [
-        // ── ARENA ─────────────────────────────────────────────────────────
+        // -- ARENA ---------------------------------------------------------
         Expanded(
-          child: BattleArena(
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+          BattleArena(
             key: _arenaKey,
             heroName:         game.hero.name,
             heroLevel:        game.hero.level,
@@ -446,11 +722,12 @@ class _BattleScreenState extends State<BattleScreen>
             heroAttack:       game.hero.attack,
             heroSpriteId:     game.hero.spriteId,
             heroGender:       game.hero.gender,
+            heroRace:         game.heroRace,
             heroAuraColor:    game.heroAuraColor,
             heroAuraIntensity: game.heroAuraIntensity,
             heroColorFilter:  game.heroSkinFilter,
             heroPet: game.equippedPet != null
-                ? PetBattleSprite(pet: game.equippedPet!, size: 28)
+                ? PetBattleSprite(pet: game.equippedPet!)
                 : null,
             enemyName:    enemy.name,
             enemyLevel:   enemy.level,
@@ -458,8 +735,10 @@ class _BattleScreenState extends State<BattleScreen>
             enemyMaxHp:   enemy.maxHealth,
             enemyAttack:  enemy.attack,
             enemyId:      enemy.id,
-            stageIndex:   game.campaignStageIndex,
-            headerLabel:  '⚔  STAGE ${game.campaignStageIndex + 1}  ⚔',
+            stageIndex:   game.isCampaignReplay ? game.replayStageIndex : game.campaignStageIndex,
+            headerLabel:  game.isCampaignReplay
+                ? 'STAGE ${game.replayStageIndex + 1}  (REPLAY)'
+                : 'STAGE ${game.campaignStageIndex + 1}',
             isBoss:       game.isBossStage,
             isBossEnraged: game.isBossEnraged,
             affixWidget: game.activeAffixes.isNotEmpty
@@ -471,18 +750,17 @@ class _BattleScreenState extends State<BattleScreen>
             enemyResistances: enemy.resistances,
             heroBuffGlows: _heroBuffGlows(game),
             enemyDebuffGlows: _enemyDebuffGlows(game),
+            heroCritPct: game.totalCritChancePct,
+            heroArmor: game.heroArmorValue,
           ),
+          ArenaAbilityEffect(key: _effectKey),
+        ]),
         ),
 
-        // ── STAGE PROGRESS BAR + STREAK ───────────────────────────────────
-        _StageProgressBar(
-            stageIndex: game.campaignStageIndex,
-            victoryStreak: game.victoryStreak),
+        // -- STATUS EFFECT BARS --------------------------------------------
+        _buildStatusBars(context, game),
 
-        // ── STAGE PREVIEW STRIP ──────────────────────────────────────────
-        _StagePreviewStrip(currentStage: game.campaignStageIndex),
-
-        // ── PRESTIGE NUDGE ────────────────────────────────────────────────
+        // -- PRESTIGE NUDGE ------------------------------------------------
         if (game.consecutiveLosses >= 3 && game.canPrestige)
           const _PrestigeNudge(),
 
@@ -493,14 +771,19 @@ class _BattleScreenState extends State<BattleScreen>
   Widget _buildRewardOverlay() {
     return Positioned.fill(
       child: GestureDetector(
-        onTap: () => _rewardCompleter?.complete(),
+        onTap: () {
+          if (_victoryCtrl.isCompleted) _rewardCompleter?.complete();
+        },
         child: Container(
         color: Colors.black.withValues(alpha: 0.75),
         child: Center(
           child: AnimatedBuilder(
             animation: _victoryCtrl,
-            builder: (_, __) {
-              return Container(
+            builder: (ctx, __) {
+              final maxH = MediaQuery.of(ctx).size.height * 0.88;
+              return ConstrainedBox(
+                constraints: BoxConstraints(maxHeight: maxH),
+                child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 36, vertical: 28),
                 decoration: BoxDecoration(
                   color: const Color(0xFF241910),
@@ -509,95 +792,291 @@ class _BattleScreenState extends State<BattleScreen>
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    _stagger(0.00, 0.22,
-                      child: const Text('VICTORY!',
-                          style: TextStyle(
-                              fontSize: 27, fontWeight: FontWeight.bold,
-                              color: AppTheme.accentGold, letterSpacing: 4))),
+                    // ── Scrollable reward content ─────────────────────────────
+                    Flexible(
+                      child: SingleChildScrollView(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            _stagger(0.00, 0.22,
+                              child: const Text('VICTORY!',
+                                  style: TextStyle(
+                                      fontSize: 27, fontWeight: FontWeight.bold,
+                                      color: AppTheme.accentGold, letterSpacing: 4))),
+                            // Boss defeat lore — first kill only
+                            Builder(builder: (ctx) {
+                              final gs = GameStateProvider.of(ctx);
+                              final msg = gs.pendingBossDefeatMessage;
+                              if (msg == null) return const SizedBox.shrink();
+                              return _stagger(0.05, 0.28, child: Padding(
+                                padding: const EdgeInsets.only(top: 10),
+                                child: Container(
+                                  padding: const EdgeInsets.all(12),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFF1a0a00),
+                                    border: Border.all(color: const Color(0xFFcc8844).withValues(alpha: 0.5)),
+                                    borderRadius: BorderRadius.circular(4),
+                                  ),
+                                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                                    const Text('BOSS DEFEATED',
+                                        style: TextStyle(fontSize: 8, color: Color(0xFFcc8844),
+                                            fontWeight: FontWeight.bold, letterSpacing: 2)),
+                                    const SizedBox(height: 5),
+                                    Text(msg,
+                                        style: const TextStyle(fontSize: 11, color: AppTheme.textLight,
+                                            height: 1.6, fontStyle: FontStyle.italic),
+                                        textAlign: TextAlign.left),
+                                  ]),
+                                ),
+                              ));
+                            }),
+                            // Unlock notice — new content area discovered
+                            Builder(builder: (ctx) {
+                              final gs = GameStateProvider.of(ctx);
+                              final notice = gs.pendingUnlockNotice;
+                              if (notice == null) return const SizedBox.shrink();
+                              return _stagger(0.05, 0.28, child: Padding(
+                                padding: const EdgeInsets.only(top: 10),
+                                child: Container(
+                                  padding: const EdgeInsets.all(12),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFF0a1a0a),
+                                    border: Border.all(color: const Color(0xFF44cc44).withValues(alpha: 0.6)),
+                                    borderRadius: BorderRadius.circular(4),
+                                  ),
+                                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                                    const Text('NEW CONTENT UNLOCKED',
+                                        style: TextStyle(fontSize: 8, color: Color(0xFF44cc44),
+                                            fontWeight: FontWeight.bold, letterSpacing: 2)),
+                                    const SizedBox(height: 5),
+                                    Text('⚔  $notice',
+                                        style: const TextStyle(fontSize: 13, color: AppTheme.textLight,
+                                            height: 1.5, fontWeight: FontWeight.bold)),
+                                  ]),
+                                ),
+                              ));
+                            }),
+                            Builder(builder: (ctx) {
+                              final gs = GameStateProvider.of(ctx);
+                              if (!gs.pendingClassQuestlineUnlock) return const SizedBox.shrink();
+                              final cls = gs.hero.heroClass;
+                              return _stagger(0.05, 0.30, child: Padding(
+                                padding: const EdgeInsets.only(top: 10),
+                                child: Container(
+                                  padding: const EdgeInsets.all(12),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFF1a1000),
+                                    border: Border.all(color: AppTheme.accentGold.withValues(alpha: 0.7)),
+                                    borderRadius: BorderRadius.circular(4),
+                                  ),
+                                  child: Row(children: [
+                                    Icon(cls.info.icon, color: AppTheme.accentGold, size: 20),
+                                    const SizedBox(width: 10),
+                                    Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                                      const Text('CLASS QUESTLINE UNLOCKED',
+                                          style: TextStyle(fontSize: 8, color: AppTheme.accentGold,
+                                              fontWeight: FontWeight.bold, letterSpacing: 2)),
+                                      const SizedBox(height: 4),
+                                      Text('The ${cls.displayName} path begins. Complete 5 quests to unlock your Ultimate Ability.',
+                                          style: const TextStyle(fontSize: 11, color: AppTheme.textLight, height: 1.4)),
+                                    ])),
+                                  ]),
+                                ),
+                              ));
+                            }),
+                            const SizedBox(height: 16),
+                            _stagger(0.15, 0.40,
+                              child: Text('+${fmtNum(_rewardGold)} GOLD',
+                                  style: const TextStyle(
+                                      fontSize: 21, fontWeight: FontWeight.bold,
+                                      color: Color(0xFFffd700), letterSpacing: 2))),
+                            const SizedBox(height: 6),
+                            _stagger(0.28, 0.53,
+                              child: Text('+${fmtNum(_rewardExp)} XP',
+                                  style: const TextStyle(
+                                      fontSize: 21, fontWeight: FontWeight.bold,
+                                      color: Color(0xFF4ad46a), letterSpacing: 2))),
+                            const SizedBox(height: 6),
+                            _stagger(0.40, 0.65,
+                              child: Row(mainAxisSize: MainAxisSize.min, children: [
+                                const Icon(Icons.diamond_outlined,
+                                    color: Color(0xFF80d0ff), size: 16),
+                                const SizedBox(width: 6),
+                                if (_rewardShards > 0) Text(
+                                  '+$_rewardShards SHARDS',
+                                  style: const TextStyle(
+                                      fontSize: 17,
+                                      fontWeight: FontWeight.bold,
+                                      color: Color(0xFF80d0ff),
+                                      letterSpacing: 1)),
+                              ])),
+                            if (_levelUpEvent != null) ...[
+                              const SizedBox(height: 12),
+                              const Divider(color: Color(0xFF3a2a18), height: 1),
+                              const SizedBox(height: 10),
+                              _stagger(0.50, 0.75,
+                                child: LevelUpSection(event: _levelUpEvent!)),
+                              Builder(builder: (ctx) {
+                                final gs = GameStateProvider.of(ctx);
+                                final event = _levelUpEvent!;
+                                final oldIds = AbilityData
+                                    .unlockedFor(gs.hero.heroClass, event.fromLevel,
+                                        ultUnlocked: gs.classUltimateUnlocked)
+                                    .map((a) => a.id)
+                                    .toSet();
+                                final newAbilities = AbilityData
+                                    .unlockedFor(gs.hero.heroClass, event.toLevel,
+                                        ultUnlocked: gs.classUltimateUnlocked)
+                                    .where((a) => !oldIds.contains(a.id))
+                                    .toList();
+                                if (newAbilities.isEmpty) return const SizedBox.shrink();
+                                return Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: newAbilities.map((ability) =>
+                                    _stagger(0.55, 0.78, child: Padding(
+                                      padding: const EdgeInsets.only(top: 8),
+                                      child: Container(
+                                        padding: const EdgeInsets.all(10),
+                                        decoration: BoxDecoration(
+                                          color: const Color(0xFF1a1a0e),
+                                          border: Border.all(
+                                              color: const Color(0xFFffcc44).withValues(alpha: 0.6)),
+                                          borderRadius: BorderRadius.circular(4),
+                                        ),
+                                        child: Row(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            const Text('??', style: TextStyle(fontSize: 14)),
+                                            const SizedBox(width: 8),
+                                            Expanded(child: Column(
+                                              crossAxisAlignment: CrossAxisAlignment.start,
+                                              mainAxisSize: MainAxisSize.min,
+                                              children: [
+                                                Text(
+                                                  'ABILITY UNLOCKED: ${ability.name}',
+                                                  style: const TextStyle(
+                                                    fontSize: 11,
+                                                    color: Color(0xFFffcc44),
+                                                    fontWeight: FontWeight.bold,
+                                                    letterSpacing: 0.5,
+                                                  ),
+                                                ),
+                                                const SizedBox(height: 3),
+                                                Text(
+                                                  ability.description,
+                                                  style: const TextStyle(
+                                                    fontSize: 10,
+                                                    color: Color(0xFFffeeaa),
+                                                    height: 1.4,
+                                                  ),
+                                                ),
+                                              ],
+                                            )),
+                                          ],
+                                        ),
+                                      ),
+                                    )),
+                                  ).toList(),
+                                );
+                              }),
+                            ],
+                            if (_rewardItem != null) ...[
+                              const SizedBox(height: 12),
+                              const Divider(color: Color(0xFF3a2a50), height: 1),
+                              const SizedBox(height: 10),
+                              _stagger(0.55, 0.80, child: ItemDropBadge(item: _rewardItem!)),
+                              const SizedBox(height: 6),
+                              _stagger(0.60, 0.82,
+                                child: const Text('? Added to Bag',
+                                    style: TextStyle(
+                                        fontSize: 11, color: Color(0xFF88cc88),
+                                        letterSpacing: 1))),
+                            ],
+                            if (_rewardArtifact != null) ...[
+                              const SizedBox(height: 12),
+                              const Divider(color: Color(0xFF2a2a3a), height: 1),
+                              const SizedBox(height: 10),
+                              _stagger(0.60, 0.82, child: _ArtifactDropBadge(artifact: _rewardArtifact!)),
+                            ],
+                          ],
+                        ),
+                      ),
+                    ),
+                    // ── Fixed button row — always visible ─────────────────────
                     const SizedBox(height: 16),
-                    _stagger(0.15, 0.40,
-                      child: Text('+${fmtNum(_rewardGold)} GOLD',
-                          style: const TextStyle(
-                              fontSize: 21, fontWeight: FontWeight.bold,
-                              color: Color(0xFFffd700), letterSpacing: 2))),
-                    const SizedBox(height: 6),
-                    _stagger(0.28, 0.53,
-                      child: Text('+${fmtNum(_rewardExp)} XP',
-                          style: const TextStyle(
-                              fontSize: 21, fontWeight: FontWeight.bold,
-                              color: Color(0xFF4ad46a), letterSpacing: 2))),
-                    const SizedBox(height: 6),
-                    _stagger(0.40, 0.65,
-                      child: Row(mainAxisSize: MainAxisSize.min, children: [
-                        const Icon(Icons.diamond_outlined,
-                            color: Color(0xFF80d0ff), size: 16),
-                        const SizedBox(width: 6),
-                        if (_rewardShards > 0) Text(
-                          '+$_rewardShards SHARDS',
-                          style: const TextStyle(
-                              fontSize: 17,
-                              fontWeight: FontWeight.bold,
-                              color: Color(0xFF80d0ff),
-                              letterSpacing: 1)),
-                      ])),
-                    if (_levelUpEvent != null) ...[
-                      const SizedBox(height: 12),
-                      const Divider(color: Color(0xFF3a2a18), height: 1),
-                      const SizedBox(height: 10),
-                      _stagger(0.50, 0.75,
-                        child: LevelUpSection(event: _levelUpEvent!)),
-                    ],
-                    if (_rewardItem != null) ...[
-                      const SizedBox(height: 12),
-                      const Divider(color: Color(0xFF3a2a50), height: 1),
-                      const SizedBox(height: 10),
-                      _stagger(0.55, 0.80, child: ItemDropBadge(item: _rewardItem!)),
-                      const SizedBox(height: 6),
-                      _stagger(0.60, 0.82,
-                        child: const Text('→ Added to Bag',
-                            style: TextStyle(
-                                fontSize: 11, color: Color(0xFF88cc88),
-                                letterSpacing: 1))),
-                    ],
-                    const SizedBox(height: 16),
-                    _stagger(0.68, 0.90,
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          OutlinedButton(
-                            onPressed: () {
-                              _rewardCompleter?.complete();
-                              if (mounted) Navigator.pop(context);
-                            },
-                            style: OutlinedButton.styleFrom(
-                              side: const BorderSide(color: AppTheme.accentGold),
-                              foregroundColor: AppTheme.accentGold,
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 14, vertical: 10),
-                            ),
-                            child: const Text('HERO',
-                                style: TextStyle(fontSize: 12, letterSpacing: 1)),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        OutlinedButton(
+                          onPressed: () {
+                            final gs = GameStateProvider.of(context);
+                            if (gs.pendingClassQuestlineUnlock) {
+                              gs.pendingClassQuestlineUnlock = false;
+                              gs.saveToLocal();
+                            }
+                            _exitRequested = true;
+                            _rewardCompleter?.complete();
+                            MainShell.switchToTab(0);
+                            if (mounted) Navigator.pop(context);
+                          },
+                          style: OutlinedButton.styleFrom(
+                            side: const BorderSide(color: AppTheme.accentGold),
+                            foregroundColor: AppTheme.accentGold,
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 14, vertical: 10),
                           ),
-                          const SizedBox(width: 12),
-                          ElevatedButton(
-                            onPressed: () => _rewardCompleter?.complete(),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: AppTheme.accentGold,
-                              foregroundColor: Colors.black,
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 14, vertical: 10),
-                            ),
-                            child: const Text('CONTINUE',
-                                style: TextStyle(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.bold,
-                                    letterSpacing: 1)),
+                          child: const Text('HERO',
+                              style: TextStyle(fontSize: 12, letterSpacing: 1)),
+                        ),
+                        const SizedBox(width: 12),
+                        ElevatedButton(
+                          onPressed: () {
+                            final gs = GameStateProvider.of(context);
+                            if (gs.pendingBossDefeatMessage != null) {
+                              gs.pendingBossDefeatMessage = null;
+                              gs.saveToLocal();
+                            }
+                            if (gs.pendingUnlockNotice != null) {
+                              gs.pendingUnlockNotice = null;
+                              gs.saveToLocal();
+                            }
+                            if (gs.pendingClassQuestlineUnlock) {
+                              gs.pendingClassQuestlineUnlock = false;
+                              gs.saveToLocal();
+                            }
+                            _rewardCompleter?.complete();
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppTheme.accentGold,
+                            foregroundColor: Colors.black,
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 14, vertical: 10),
                           ),
-                        ],
-                      )),
+                          child: Builder(builder: (ctx) {
+                            final gs = GameStateProvider.of(ctx);
+                            return Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Text('FIGHT  (−1 ⚡)',
+                                    style: TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.bold,
+                                        letterSpacing: 1)),
+                                Text(
+                                  '⚡ ${gs.energy} / ${GameState.maxEnergy}',
+                                  style: const TextStyle(
+                                      fontSize: 9, letterSpacing: 0.5),
+                                ),
+                              ],
+                            );
+                          }),
+                        ),
+                      ],
+                    ),
                   ],
-                ),
-              );
+                ),          // outer Column
+                ),          // Container
+              );            // ConstrainedBox
             },
           ),
         ),
@@ -606,7 +1085,7 @@ class _BattleScreenState extends State<BattleScreen>
     );
   }
 
-  /// Slides a child up and fades it in over [begin]→[end] of _victoryCtrl.
+  /// Slides a child up and fades it in over [begin]?[end] of _victoryCtrl.
   Widget _stagger(double begin, double end, {required Widget child}) {
     final t = CurvedAnimation(
       parent: _victoryCtrl,
@@ -622,84 +1101,6 @@ class _BattleScreenState extends State<BattleScreen>
   }
 }
 
-class _StageProgressBar extends StatelessWidget {
-  const _StageProgressBar({required this.stageIndex, this.victoryStreak = 0});
-  final int stageIndex;
-  final int victoryStreak;
-
-  @override
-  Widget build(BuildContext context) {
-    const total = 25;
-    final progress = stageIndex % total;
-    final fraction = progress / total;
-    final streakPct = (victoryStreak.clamp(0, 25));
-    return Container(
-      color: const Color(0xFF0a0e1f),
-      padding: const EdgeInsets.fromLTRB(10, 4, 10, 2),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Text(
-                'PRESTIGE PROGRESS',
-                style: TextStyle(
-                  fontSize: 8,
-                  color: AppTheme.textMuted.withValues(alpha: 0.7),
-                  letterSpacing: 1,
-                ),
-              ),
-              const Spacer(),
-              if (victoryStreak > 0) ...[
-                Text(
-                  '🔥 $victoryStreak STREAK  +$streakPct%',
-                  style: TextStyle(
-                    fontSize: 8,
-                    color: streakPct >= 20
-                        ? const Color(0xFFff6633)
-                        : streakPct >= 10
-                            ? const Color(0xFFffaa33)
-                            : const Color(0xFF88cc44),
-                    letterSpacing: 0.5,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(width: 8),
-              ],
-              Text(
-                '$progress / $total',
-                style: const TextStyle(
-                  fontSize: 8,
-                  color: AppTheme.accentGold,
-                  letterSpacing: 0.5,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 3),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(2),
-            child: TweenAnimationBuilder<double>(
-              tween: Tween(begin: 0, end: fraction),
-              duration: const Duration(milliseconds: 500),
-              curve: Curves.easeOut,
-              builder: (_, value, __) => LinearProgressIndicator(
-                value: value,
-                minHeight: 5,
-                backgroundColor: const Color(0xFF2a2318),
-                valueColor: AlwaysStoppedAnimation<Color>(
-                  progress >= total - 1
-                      ? const Color(0xFFFFE14D)
-                      : AppTheme.accentGold.withValues(alpha: 0.75),
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
 
 class _PrestigeNudge extends StatelessWidget {
   const _PrestigeNudge();
@@ -718,11 +1119,11 @@ class _PrestigeNudge extends StatelessWidget {
       ),
       child: Row(
         children: [
-          const Text('☠', style: TextStyle(fontSize: 13)),
+          const Text('?', style: TextStyle(fontSize: 13)),
           const SizedBox(width: 8),
           Expanded(
             child: Text(
-              'Struggling? Prestige is unlocked — reset for permanent power!',
+              'Struggling? Prestige is unlocked � reset for permanent power!',
               style: AppTheme.pixelHeading(
                 fontSize: 10,
                 letterSpacing: 0.5,
@@ -736,7 +1137,7 @@ class _PrestigeNudge extends StatelessWidget {
   }
 }
 
-// ── Speed button ──────────────────────────────────────────────────────────────
+// -- Speed button --------------------------------------------------------------
 
 class _SpeedButton extends StatelessWidget {
   const _SpeedButton({required this.game});
@@ -767,11 +1168,11 @@ class _SpeedButton extends StatelessWidget {
       context: context,
       builder: (_) => AlertDialog(
         backgroundColor: const Color(0xFF1a1a2e),
-        title: const Text('2× Speed Boost',
+        title: const Text('2� Speed Boost',
             style: TextStyle(color: Color(0xFFddbb44), fontWeight: FontWeight.bold)),
         content: Text(
-          'Unlock 2× battle speed for 7 days?\n\nCost: ${GameState.kSpeedBoostCrystalCost} crystals\n'
-          'Your crystals: ${game.crystals}',
+          'Unlock 2� battle speed for 7 days?\n\nCost: ${GameState.kSpeedBoostCrystalCost} ZCoins\n'
+          'Your ZCoins: ${game.zcoins}',
           style: const TextStyle(color: Color(0xFFaabbcc)),
         ),
         actions: [
@@ -786,7 +1187,7 @@ class _SpeedButton extends StatelessWidget {
                 game.setSpeedTier(3);
               } else {
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Not enough crystals!')),
+                  const SnackBar(content: Text('Not enough zcoins!')),
                 );
               }
             },
@@ -827,74 +1228,192 @@ class _SpeedButton extends StatelessWidget {
   }
 }
 
-// ── Stage Preview Strip ──────────────────────────────────────────────────────
+// -- Artifact drop badge -------------------------------------------------------
 
-class _StagePreviewStrip extends StatelessWidget {
-  const _StagePreviewStrip({required this.currentStage});
-  final int currentStage;
+class _ArtifactDropBadge extends StatelessWidget {
+  const _ArtifactDropBadge({required this.artifact});
+  final Artifact artifact;
 
   @override
   Widget build(BuildContext context) {
+    final rc = artifact.rarity.color;
+    final tc = artifact.type.color;
     return Container(
-      color: const Color(0xFF0a0e1f),
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      child: Row(
-        children: [
-          Text('NEXT ',
-              style: AppTheme.pixelHeading(
-                  fontSize: 7, letterSpacing: 1,
-                  color: AppTheme.textMuted.withValues(alpha: 0.5))),
-          const SizedBox(width: 4),
-          for (int i = 1; i <= 5; i++) ...[
-            if (i > 1) Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 2),
-              child: Text('›',
-                  style: TextStyle(fontSize: 8,
-                      color: AppTheme.textMuted.withValues(alpha: 0.3))),
-            ),
-            _PreviewDot(stageIndex: currentStage + i),
-          ],
-        ],
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: const Color(0xFF1a1428),
+        border: Border.all(color: rc.withValues(alpha: 0.7)),
+        borderRadius: BorderRadius.circular(4),
+        boxShadow: [BoxShadow(color: rc.withValues(alpha: 0.2), blurRadius: 8)],
       ),
+      child: Row(children: [
+        Container(
+          width: 36, height: 36,
+          decoration: BoxDecoration(
+            color: tc.withValues(alpha: 0.12),
+            border: Border.all(color: tc.withValues(alpha: 0.4)),
+            borderRadius: BorderRadius.circular(3),
+          ),
+          child: Center(
+            child: ArtifactIcon(type: artifact.type, color: tc, size: 24, rarity: artifact.rarity),
+          ),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+            Text('ARTIFACT FOUND!',
+                style: TextStyle(fontSize: 9, color: rc, fontWeight: FontWeight.bold, letterSpacing: 1)),
+            const SizedBox(height: 2),
+            Text(artifact.name,
+                style: TextStyle(fontSize: 12, color: rc, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 2),
+            Text(artifact.flavorText,
+                style: const TextStyle(fontSize: 9, color: AppTheme.textMuted, height: 1.3)),
+          ]),
+        ),
+      ]),
     );
   }
 }
 
-class _PreviewDot extends StatelessWidget {
-  const _PreviewDot({required this.stageIndex});
-  final int stageIndex;
+// ── Status-effect icon bar ─────────────────────────────────────────────────────
+
+class _StatusInfo {
+  const _StatusInfo(this.label, this.name, this.desc, this.rounds, this.color);
+  final String label;
+  final String name;
+  final String desc;
+  final int rounds;
+  final Color color;
+}
+
+class _StatusBadgeRow extends StatelessWidget {
+  const _StatusBadgeRow({required this.rowLabel, required this.statuses});
+  final String rowLabel;
+  final List<_StatusInfo> statuses;
 
   @override
   Widget build(BuildContext context) {
-    final enemy = EnemyData.enemyForStage(stageIndex);
-    final isBoss = stageIndex % 5 == 4;
-    final atkType = enemy.attackType;
-
-    return Tooltip(
-      message: '${enemy.name} (Lv.${enemy.level}) — ${atkType.label}',
-      child: Container(
-        width: isBoss ? 28 : 22,
-        height: 22,
-        decoration: BoxDecoration(
-          color: isBoss
-              ? const Color(0xFF2a0040)
-              : const Color(0xFF151520),
-          border: Border.all(
-            color: isBoss
-                ? const Color(0xFFcc44ff).withValues(alpha: 0.6)
-                : atkType.color.withValues(alpha: 0.4),
-            width: isBoss ? 1.5 : 1,
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        Text(rowLabel,
+            style: const TextStyle(
+                fontSize: 8, color: Color(0xFF777777), letterSpacing: 1)),
+        const SizedBox(width: 5),
+        Expanded(
+          child: SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: statuses
+                  .map((s) => Padding(
+                        padding: const EdgeInsets.only(right: 4),
+                        child: _StatusBadge(status: s),
+                      ))
+                  .toList(),
+            ),
           ),
-          borderRadius: BorderRadius.circular(3),
         ),
-        child: Center(
-          child: Text(
-            isBoss ? '☠' : atkType.emoji,
-            style: TextStyle(fontSize: isBoss ? 11 : 9, color: atkType.color),
+      ],
+    );
+  }
+}
+
+class _StatusBadge extends StatelessWidget {
+  const _StatusBadge({required this.status});
+  final _StatusInfo status;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: () => _showInfo(context),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+        decoration: BoxDecoration(
+          color: status.color.withValues(alpha: 0.18),
+          border: Border.all(color: status.color.withValues(alpha: 0.65), width: 1),
+          borderRadius: BorderRadius.circular(4),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(status.label,
+                style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold,
+                    color: status.color,
+                    letterSpacing: 0.3)),
+            if (status.rounds > 0) ...[
+              const SizedBox(width: 3),
+              Text('${status.rounds}r',
+                  style: TextStyle(
+                      fontSize: 9, color: status.color.withValues(alpha: 0.7))),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showInfo(BuildContext context) {
+    showDialog(
+      context: context,
+      barrierColor: Colors.black54,
+      builder: (_) => Dialog(
+        backgroundColor: Colors.transparent,
+        child: Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: const Color(0xFF1a1208),
+            border: Border.all(color: status.color, width: 1.5),
+            borderRadius: BorderRadius.circular(6),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: status.color.withValues(alpha: 0.25),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: Text(status.label,
+                      style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                          color: status.color)),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(status.name,
+                      style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFFe0d0b0))),
+                ),
+                GestureDetector(
+                  onTap: () => Navigator.of(context).pop(),
+                  child: const Icon(Icons.close, size: 18, color: Color(0xFF888888)),
+                ),
+              ]),
+              const SizedBox(height: 10),
+              Text(status.desc,
+                  style: const TextStyle(
+                      fontSize: 13, color: Color(0xFFa89878), height: 1.4)),
+              if (status.rounds > 0) ...[
+                const SizedBox(height: 8),
+                Text('${status.rounds} round(s) remaining',
+                    style: TextStyle(
+                        fontSize: 11,
+                        color: status.color.withValues(alpha: 0.8),
+                        fontStyle: FontStyle.italic)),
+              ],
+            ],
           ),
         ),
       ),
     );
   }
 }
-

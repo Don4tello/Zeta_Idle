@@ -3,6 +3,7 @@ import '../models/equipment.dart' show ItemStat;
 import '../models/hero_ability.dart';
 import '../models/passive_tree.dart' show PassiveEffect;
 import '../services/game_state.dart';
+import 'ability_icon.dart';
 
 /// Shared ABILITIES + ALLIES + STATUS panel used across all battle screens.
 ///
@@ -68,9 +69,15 @@ class BattleSplitPanel extends StatelessWidget {
       case AbilityEffect.aura:
         lines.add('Regenerate $sv HP/round for ${a.duration} rounds');
       case AbilityEffect.debuffWeaken:
-        lines.add('Reduces enemy ATK by $sv% for ${a.duration} rounds');
+        lines.add(sv >= 100 ? 'Disarms enemy for ${a.duration} round(s)' : 'Reduces enemy ATK by $sv% for ${a.duration} rounds');
       case AbilityEffect.debuffVulnerable:
         lines.add('Enemy takes $sv% more damage for ${a.duration} rounds');
+      case AbilityEffect.silence:
+        lines.add('Silences enemy for ${a.duration} rounds (blocks abilities)');
+      case AbilityEffect.absorbShield:
+        lines.add('Creates a $sv HP barrier that absorbs incoming damage');
+      case AbilityEffect.missChance:
+        lines.add('Enemy has $sv% chance to miss each attack for ${a.duration} rounds');
     }
 
     if (rank > 0) lines.add('Rank $rank');
@@ -462,13 +469,26 @@ class BattleIconBar extends StatelessWidget {
     AbilityEffect.debuffVulnerable: Icons.broken_image,
   };
 
+  static Widget _sectionLabel(String text) => Padding(
+    padding: const EdgeInsets.only(left: 2, bottom: 3, top: 6),
+    child: Text(text,
+        style: const TextStyle(
+          fontSize: 9,
+          color: Color(0xFF5a6080),
+          fontWeight: FontWeight.bold,
+          letterSpacing: 1.5,
+        )),
+  );
+
   @override
   Widget build(BuildContext context) {
-    final game = GameStateProvider.of(context);
+    final game      = GameStateProvider.of(context);
     final abilities = game.unlockedAbilities;
-    if (abilities.isEmpty) return const SizedBox.shrink();
+    final allMercs  = game.unlockedAllies;
 
-    // Status effects
+    if (abilities.isEmpty && allMercs.isEmpty) return const SizedBox.shrink();
+
+    // Active status effects
     final statuses = <({IconData icon, Color color, String label, int rounds})>[];
     if (game.buffAttackBonus > 0)
       statuses.add((icon: Icons.add_circle, color: const Color(0xFFffcc00),
@@ -495,81 +515,147 @@ class BattleIconBar extends StatelessWidget {
       statuses.add((icon: Icons.broken_image, color: const Color(0xFFff8800),
           label: '+${game.enemyVulnerablePct}% DMG', rounds: game.enemyVulnerableRounds));
 
+    final usedAllies = game.allyAbilitiesUsed;
+
     return Container(
-      color: const Color(0xFF0a0e1f),
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        child: Row(
+      color: const Color(0xFF07091a),
+      padding: const EdgeInsets.fromLTRB(8, 0, 8, 6),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Abilities
-          ...abilities.map((a) {
-            final cd = localCooldownResolver != null
-                ? localCooldownResolver!(a.id)
-                : game.cooldownRemaining(a.id);
-            final total = game.scaledAbilityCooldown(a);
-            final ready = cd == 0;
-            final fill = ready ? 1.0 : ((total - cd) / total.clamp(1, 9999)).clamp(0.0, 1.0);
-            final color = _effectColors[a.effect] ?? Colors.grey;
-            final icon  = _effectIcons[a.effect] ?? Icons.star;
 
-            if (a.effect == AbilityEffect.bonusDamage || a.effect == AbilityEffect.dot) {
-              // Use damage type color
-              final dtColor = game.abilityEffectiveDamageType(a).color;
-              return _AbilityIcon(
-                icon: icon, color: dtColor, fill: fill, ready: ready,
-                name: a.name, cd: cd,
-                onTap: () => BattleSplitPanel.showAbilityInfo(context, game, a, cd, total, dtColor, icon),
-              );
-            }
-            return _AbilityIcon(
-              icon: icon, color: color, fill: fill, ready: ready,
-              name: a.name, cd: cd,
-              onTap: () => BattleSplitPanel.showAbilityInfo(context, game, a, cd, total, color, icon),
-            );
-          }),
-
-          // Merc icons
-          if (game.unlockedAllies.isNotEmpty) ...[
-            Container(width: 1, height: 28, margin: const EdgeInsets.symmetric(horizontal: 4),
-                color: const Color(0xFF2a3a2a)),
-            ...game.unlockedAllies.where((a) => a.activeAbility != null).map((ally) =>
-              Tooltip(
-                message: '${ally.name}: ${ally.activeAbility!.name}\n${ally.activeAbility!.description}',
-                child: Container(
-                  width: 28, height: 28,
-                  margin: const EdgeInsets.only(right: 3),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF44cc88).withValues(alpha: 0.15),
-                    border: Border.all(color: const Color(0xFF44cc88).withValues(alpha: 0.5)),
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                  child: Center(child: Text(ally.icon, style: const TextStyle(fontSize: 14))),
+          // ── ABILITIES ────────────────────────────────────────────────────
+          if (abilities.isNotEmpty) ...[
+            _sectionLabel('ABILITIES'),
+            SizedBox(
+              height: 58,
+              child: SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    ...abilities.map((a) {
+                      final cd    = localCooldownResolver != null
+                          ? localCooldownResolver!(a.id)
+                          : game.cooldownRemaining(a.id);
+                      final total = game.scaledAbilityCooldown(a);
+                      final ready = cd == 0;
+                      final fill  = ready ? 1.0 : ((total - cd) / total.clamp(1, 9999)).clamp(0.0, 1.0);
+                      final color = _effectColors[a.effect] ?? Colors.grey;
+                      final icon  = _effectIcons[a.effect] ?? Icons.star;
+                      if (a.effect == AbilityEffect.bonusDamage || a.effect == AbilityEffect.dot) {
+                        final dtColor = game.abilityEffectiveDamageType(a).color;
+                        return _AbilityIcon(
+                          abilityId: a.id, color: dtColor, fill: fill, ready: ready,
+                          name: a.name, cd: cd,
+                          onTap: () => BattleSplitPanel.showAbilityInfo(context, game, a, cd, total, dtColor, icon),
+                        );
+                      }
+                      return _AbilityIcon(
+                        abilityId: a.id, color: color, fill: fill, ready: ready,
+                        name: a.name, cd: cd,
+                        onTap: () => BattleSplitPanel.showAbilityInfo(context, game, a, cd, total, color, icon),
+                      );
+                    }),
+                    if (statuses.isNotEmpty) ...[
+                      Container(width: 1, height: 30,
+                          margin: const EdgeInsets.symmetric(horizontal: 6),
+                          color: const Color(0xFF2a2a3a)),
+                      ...statuses.map((s) => _StatusIcon(
+                        icon: s.icon, color: s.color, label: s.label, rounds: s.rounds)),
+                    ],
+                  ],
                 ),
               ),
             ),
           ],
 
-          if (statuses.isNotEmpty) ...[
-            Container(width: 1, height: 28, margin: const EdgeInsets.symmetric(horizontal: 6),
-                color: const Color(0xFF2a2a3a)),
-            // Status effects
-            ...statuses.map((s) => _StatusIcon(
-              icon: s.icon, color: s.color, label: s.label, rounds: s.rounds)),
+          // ── MERCS ────────────────────────────────────────────────────────
+          if (allMercs.isNotEmpty) ...[
+            _sectionLabel('MERCS'),
+            SizedBox(
+              height: 62,
+              child: SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: allMercs.map((ally) {
+                    final hasActive = ally.activeAbility != null;
+                    final used      = usedAllies.contains(ally.id);
+                    final dimmed    = hasActive && used;
+                    final borderColor = hasActive
+                        ? const Color(0xFF44cc88)
+                        : const Color(0xFF556688);
+                    final sheetTitle = hasActive
+                        ? '${ally.name}: ${ally.activeAbility!.name}'
+                        : ally.name;
+                    final sheetBody = hasActive
+                        ? ally.activeAbility!.description
+                        : '${ally.name} provides passive support in battle.';
+                    return GestureDetector(
+                      onTap: () => BattleSplitPanel._showInfoSheet(
+                        context,
+                        title: sheetTitle,
+                        body: sheetBody,
+                        color: borderColor,
+                        icon: Icons.people,
+                      ),
+                      child: Opacity(
+                        opacity: dimmed ? 0.30 : 1.0,
+                        child: Container(
+                          width: 50,
+                          height: 58,
+                          margin: const EdgeInsets.only(right: 5),
+                          decoration: BoxDecoration(
+                            color: borderColor.withValues(alpha: dimmed ? 0.04 : 0.12),
+                            border: Border.all(
+                              color: borderColor.withValues(alpha: dimmed ? 0.18 : 0.45),
+                            ),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Text(ally.icon, style: const TextStyle(fontSize: 22)),
+                              const SizedBox(height: 2),
+                              Text(
+                                ally.name.split(' ').first, // first word of name
+                                style: const TextStyle(
+                                  fontSize: 8,
+                                  color: Color(0xFF8899AA),
+                                  letterSpacing: 0.3,
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              if (!hasActive)
+                                const Text('PASSIVE',
+                                    style: TextStyle(
+                                        fontSize: 7, color: Color(0xFF445566),
+                                        fontWeight: FontWeight.bold, letterSpacing: 0.5)),
+                            ],
+                          ),
+                        ),
+                      ),
+                    );
+                  }).toList(),
+                ),
+              ),
+            ),
           ],
         ],
-      )),
+      ),
     );
   }
 }
 
 class _AbilityIcon extends StatelessWidget {
   const _AbilityIcon({
-    required this.icon, required this.color, required this.fill,
+    required this.abilityId, required this.color, required this.fill,
     required this.ready, required this.name, required this.cd,
     required this.onTap,
   });
-  final IconData icon;
+  final String abilityId;
   final Color color;
   final double fill;
   final bool ready;
@@ -582,48 +668,46 @@ class _AbilityIcon extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        width: 34,
-        height: 34,
-        margin: const EdgeInsets.only(right: 4),
+        width: 48,
+        height: 48,
+        margin: const EdgeInsets.only(right: 5),
         decoration: BoxDecoration(
-          color: const Color(0xFF0d1020),
           border: Border.all(
             color: ready ? color : color.withValues(alpha: 0.3),
             width: ready ? 1.5 : 1,
           ),
-          borderRadius: BorderRadius.circular(4),
+          borderRadius: BorderRadius.circular(6),
           boxShadow: ready ? [
-            BoxShadow(color: color.withValues(alpha: 0.3), blurRadius: 6),
+            BoxShadow(color: color.withValues(alpha: 0.3), blurRadius: 8),
           ] : null,
         ),
-        child: Stack(
-          children: [
-            // Cooldown fill from bottom
-            Positioned(
-              left: 0, right: 0, bottom: 0,
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 300),
-                height: 32 * fill,
-                decoration: BoxDecoration(
-                  color: color.withValues(alpha: ready ? 0.25 : 0.12),
-                  borderRadius: BorderRadius.circular(3),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(5),
+          child: Stack(
+            children: [
+              // Custom-painted ability icon fills the box
+              AbilityIcon(abilityId: abilityId, size: 48),
+              // Dark dim overlay shrinks from top as ability charges
+              if (!ready)
+                Positioned(
+                  left: 0, right: 0, top: 0,
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 300),
+                    height: 48 * (1.0 - fill),
+                    color: Colors.black.withValues(alpha: 0.65),
+                  ),
                 ),
-              ),
-            ),
-            // Icon
-            Center(
-              child: Icon(icon, size: 16,
-                  color: ready ? color : color.withValues(alpha: 0.4)),
-            ),
-            // Cooldown number
-            if (!ready)
-              Positioned(
-                right: 2, bottom: 1,
-                child: Text('$cd', style: TextStyle(
-                    fontSize: 8, color: color.withValues(alpha: 0.6),
-                    fontWeight: FontWeight.bold)),
-              ),
-          ],
+              // Cooldown number
+              if (!ready)
+                Positioned(
+                  right: 3, bottom: 2,
+                  child: Text('$cd', style: TextStyle(
+                      fontSize: 10, color: color.withValues(alpha: 0.9),
+                      fontWeight: FontWeight.bold,
+                      shadows: const [Shadow(color: Colors.black, blurRadius: 4)])),
+                ),
+            ],
+          ),
         ),
       ),
     );

@@ -6,7 +6,10 @@ enum AbilityEffect {
   bonusDamage, heal, attackBonus, acBonus, stun, dot, dodge,
   aura,             // hero heals X HP/round for duration rounds
   debuffWeaken,     // enemy ATK reduced by X% for duration rounds
-  debuffVulnerable, // enemy takes X% more of a damage type for duration rounds
+  debuffVulnerable, // enemy takes X% more damage for duration rounds
+  silence,          // enemy cannot use abilities for duration rounds
+  absorbShield,     // hero gains a barrier that absorbs X flat damage
+  missChance,       // enemy has X% chance to miss per round for duration rounds
 }
 
 // ── Milestone choice (replaces AbilityBranch) ─────────────────────────────────
@@ -58,6 +61,9 @@ class HeroAbility {
     this.penetration = 0,
     this.category = AbilityCategory.damage,
     this.milestones = const [],
+    this.baseBonus,
+    this.baseBonusValue = 0,
+    this.baseBonusDuration = 0,
   });
 
   final String id;
@@ -71,4 +77,8 @@ class HeroAbility {
   final int penetration;
   final AbilityCategory category;
   final List<AbilityMilestone> milestones;
+  // Fires alongside the primary effect on every cast (not gated behind milestones)
+  final AbilityEffect? baseBonus;
+  final int baseBonusValue;
+  final int baseBonusDuration;
 }

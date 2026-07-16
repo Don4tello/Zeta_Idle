@@ -17,13 +17,63 @@ enum DungeonRoomType {
   shrine,      // Choose a run-long blessing (early floors)
   lockedChest, // Spend shards for a rare/epic item
   trap,        // Unavoidable damage
-  restSite,    // Recover 20% max HP
+  restSite,    // Recover HP — event type determines outcome
   boss,        // Every 5th floor — boss encounter
 }
 
 enum DungeonConsumableType { healthPotion, damageBoost, ironShield }
 
 enum DungeonBlessingType { attackUp, defenseUp, goldSense, swiftness, toughSkin, bloodthirst }
+
+/// Random event variant for rest sites
+enum RestEventType { peaceful, ambush, badWeather, haunted, wanderer, supplies, merchant }
+
+/// Shrine alignment — determines blessing/curse draw
+enum ShrineVariant { normal, corrupted, benevolent, twin }
+
+// ── Dungeon merchant item pool ────────────────────────────────────────────────
+
+class DungeonMerchantItem {
+  const DungeonMerchantItem({
+    required this.id,
+    required this.name,
+    required this.icon,
+    required this.desc,
+    required this.cost,
+  });
+  final String id;
+  final String name;
+  final String icon;
+  final String desc;
+  final int cost;
+
+  static const pool = <DungeonMerchantItem>[
+    DungeonMerchantItem(id: 'hp_tonic',     name: 'Healing Tonic',   icon: '🧪', desc: 'Restore 25% max HP.',          cost: 80),
+    DungeonMerchantItem(id: 'atk_elixir',   name: 'Strength Elixir', icon: '⚔',  desc: '+3 ATK for this run.',         cost: 100),
+    DungeonMerchantItem(id: 'iron_amulet',  name: 'Iron Amulet',     icon: '🛡',  desc: '+2 AC for this run.',          cost: 100),
+    DungeonMerchantItem(id: 'shard_pouch',  name: 'Shard Pouch',     icon: '◆',   desc: 'Gain 20 gem shards.',          cost: 80),
+    DungeonMerchantItem(id: 'war_drum',     name: 'War Drum',        icon: '🥁',  desc: '+20% damage dealt this run.',  cost: 150),
+    DungeonMerchantItem(id: 'lucky_coin',   name: 'Lucky Coin',      icon: '🪙',  desc: '2× gold from remaining rooms.',cost: 120),
+    DungeonMerchantItem(id: 'cooldown_gem', name: 'Focus Crystal',   icon: '✦',   desc: 'Reset all ability cooldowns.', cost: 90),
+    DungeonMerchantItem(id: 'remedy',       name: 'Remedy',          icon: '💊',  desc: 'Restore all consumable charges.',cost: 90),
+  ];
+
+  /// Deterministic 3-item stock seeded by floor number.
+  static List<DungeonMerchantItem> stockForFloor(int floor) {
+    final indices = List<int>.generate(pool.length, (i) => i);
+    var seed = (floor * 1234567 + 98765).abs();
+    for (var i = indices.length - 1; i > 0; i--) {
+      seed = (seed * 6364136223846793005 + 1442695040888963407).abs();
+      final j = seed % (i + 1);
+      final tmp = indices[i]; indices[i] = indices[j]; indices[j] = tmp;
+    }
+    return indices.take(3).map((i) => pool[i]).toList();
+  }
+
+  static DungeonMerchantItem? byId(String id) {
+    try { return pool.firstWhere((m) => m.id == id); } catch (_) { return null; }
+  }
+}
 
 // ── Shrine Curse/Blessing system ─────────────────────────────────────────────
 
@@ -165,6 +215,7 @@ class DungeonRoom {
   DungeonRoom({
     required this.floor,
     required this.type,
+    this.enemyId,
     this.enemyName,
     this.enemyMaxHp,
     this.enemyAtk,
@@ -177,6 +228,12 @@ class DungeonRoom {
     this.chestShardCost,
     this.restoreHp,
     this.isAmbush = false,
+    this.restEventType = RestEventType.peaceful,
+    this.restEventTitle = 'Rest Site',
+    this.restEventFlavor = '',
+    this.restDamage = 0,
+    this.restBonusGold = 0,
+    this.shrineVariant = ShrineVariant.normal,
   });
 
   final int floor;
@@ -184,6 +241,7 @@ class DungeonRoom {
   bool resolved = false;
 
   // Combat / boss / elite / ambush
+  String? enemyId;
   String? enemyName;
   int? enemyMaxHp;
   int? enemyAtk;
@@ -200,6 +258,7 @@ class DungeonRoom {
 
   // Shrine / altar
   List<DungeonBlessingType>? blessingChoices;
+  final ShrineVariant shrineVariant;
 
   // Locked chest
   int? chestShardCost;
@@ -207,6 +266,11 @@ class DungeonRoom {
 
   // Rest site
   int? restoreHp;
+  final RestEventType restEventType;
+  final String restEventTitle;
+  final String restEventFlavor;
+  final int restDamage;     // HP taken before healing (ambush / bad weather)
+  final int restBonusGold;  // extra gold reward (supplies event)
 
   // Whether this room drops an item (set by GameState after combat)
   bool hasItemDrop = false;
@@ -398,6 +462,7 @@ class DungeonRun {
     final e = EnemyData.enemyForStage(stageIdx);
     return DungeonRoom(
       floor: floor, type: DungeonRoomType.combat,
+      enemyId: EnemyData.spriteIdForStage(stageIdx),
       enemyName: e.name,
       enemyMaxHp: (e.maxHealth * _floorMult * _tierMult).round(),
       enemyAtk: (e.attack * _floorMult * _tierMult).round(),
@@ -410,6 +475,7 @@ class DungeonRun {
     final e = EnemyData.enemyForStage(stageIdx);
     return DungeonRoom(
       floor: floor, type: DungeonRoomType.elite,
+      enemyId: EnemyData.spriteIdForStage(stageIdx),
       enemyName: '★ ${e.name}',
       enemyMaxHp: (e.maxHealth * 1.5 * _floorMult * _tierMult).round(),
       enemyAtk: (e.attack * 1.4 * _floorMult * _tierMult).round(),
@@ -422,6 +488,7 @@ class DungeonRun {
     final e = EnemyData.enemyForStage(stageIdx);
     return DungeonRoom(
       floor: floor, type: DungeonRoomType.ambush,
+      enemyId: EnemyData.spriteIdForStage(stageIdx),
       enemyName: e.name,
       enemyMaxHp: (e.maxHealth * _floorMult * _tierMult).round(),
       enemyAtk: (e.attack * _floorMult * _tierMult).round(),
@@ -431,10 +498,65 @@ class DungeonRun {
   }
 
   DungeonRoom _makeRestSiteRoom(Random rng) {
-    final heal = (heroMaxHp * 0.20).round().clamp(1, heroMaxHp);
+    // Weighted event roll: peaceful 35 | ambush 15 | badWeather 14 | haunted 9 | wanderer 9 | supplies 9 | merchant 9
+    const weights = [35, 15, 14, 9, 9, 9, 9];
+    const types = RestEventType.values;
+    final total = weights.fold(0, (a, b) => a + b);
+    var roll = rng.nextInt(total);
+    var eventType = RestEventType.peaceful;
+    for (var i = 0; i < weights.length; i++) {
+      roll -= weights[i];
+      if (roll < 0) { eventType = types[i]; break; }
+    }
+
+    int heal;
+    int damage = 0;
+    int bonusGold = 0;
+    String title;
+    String flavor;
+
+    switch (eventType) {
+      case RestEventType.peaceful:
+        heal   = (heroMaxHp * 0.20).round().clamp(1, heroMaxHp);
+        title  = 'Rest Site';
+        flavor = 'A quiet clearing. You make camp and recover your strength.';
+      case RestEventType.ambush:
+        damage = (heroMaxHp * 0.12).round().clamp(1, heroMaxHp - 1);
+        heal   = (heroMaxHp * 0.15).round().clamp(1, heroMaxHp);
+        title  = 'Camp Ambush!';
+        flavor = 'Enemies raid your camp in the night. You fight them off, but not without injury.';
+      case RestEventType.badWeather:
+        damage = (heroMaxHp * 0.08).round().clamp(1, heroMaxHp - 1);
+        heal   = (heroMaxHp * 0.12).round().clamp(1, heroMaxHp);
+        title  = 'Violent Storm';
+        flavor = 'A fierce storm lashes your camp. You shelter as best you can, battered but alive.';
+      case RestEventType.haunted:
+        heal   = (heroMaxHp * 0.08).round().clamp(1, heroMaxHp);
+        title  = 'Haunted Grounds';
+        flavor = 'Unsettling visions plague your sleep. You rise exhausted and shaken.';
+      case RestEventType.wanderer:
+        heal   = (heroMaxHp * 0.35).round().clamp(1, heroMaxHp);
+        title  = 'Wandering Healer';
+        flavor = 'A traveling healer stumbles upon your camp and tends your wounds generously.';
+      case RestEventType.supplies:
+        heal      = (heroMaxHp * 0.20).round().clamp(1, heroMaxHp);
+        bonusGold = 80 + floor * 20 + rng.nextInt(60);
+        title     = 'Abandoned Supplies';
+        flavor    = 'You find a cache of supplies left by a previous adventurer — rations, bandages, and coin.';
+      case RestEventType.merchant:
+        heal   = (heroMaxHp * 0.05).round().clamp(1, heroMaxHp);
+        title  = 'Traveling Merchant';
+        flavor = 'A cloaked merchant spreads wares on a folding table. "Quality goods, fair prices," they say with a grin.';
+    }
+
     return DungeonRoom(
       floor: floor, type: DungeonRoomType.restSite,
       restoreHp: heal,
+      restEventType: eventType,
+      restEventTitle: title,
+      restEventFlavor: flavor,
+      restDamage: damage,
+      restBonusGold: bonusGold,
     );
   }
 
@@ -443,9 +565,12 @@ class DungeonRun {
     final e = EnemyData.enemyForStage(stageIdx);
     return DungeonRoom(
       floor: floor, type: DungeonRoomType.boss,
+      enemyId: EnemyData.spriteIdForStage(stageIdx),
       enemyName: '☠ ${e.name}',
+      // Boss ATK ramps from 1.2× at floor 1 to 1.6× at floor 17+, giving a smoother
+      // difficulty curve instead of the hard cliff at floors 7–9.
       enemyMaxHp: (e.maxHealth * 2.5 * _floorMult * _tierMult).round(),
-      enemyAtk: (e.attack * 1.6 * _floorMult * _tierMult).round(),
+      enemyAtk: (e.attack * (1.2 + (floor - 1) * 0.025).clamp(1.2, 1.6) * _floorMult * _tierMult).round(),
       enemyAc: e.armorClass + 2 + (floor ~/ 5).clamp(0, 8),
     );
   }
@@ -463,7 +588,17 @@ class DungeonRun {
 
   DungeonRoom _makeShrineRoom(Random rng) {
     final all = DungeonBlessingType.values.toList()..shuffle(rng);
-    return DungeonRoom(floor: floor, type: DungeonRoomType.shrine, blessingChoices: all.take(3).toList());
+    // Shrine variant weights: normal 60 | corrupted 20 | benevolent 15 | twin 5
+    final vRoll = rng.nextInt(100);
+    final variant = vRoll < 60 ? ShrineVariant.normal
+        : vRoll < 80            ? ShrineVariant.corrupted
+        : vRoll < 95            ? ShrineVariant.benevolent
+        :                         ShrineVariant.twin;
+    return DungeonRoom(
+      floor: floor, type: DungeonRoomType.shrine,
+      blessingChoices: all.take(3).toList(),
+      shrineVariant: variant,
+    );
   }
 
   DungeonRoom _makeTrapRoom(Random rng) {
@@ -607,6 +742,15 @@ class DungeonRun {
           case AbilityEffect.debuffVulnerable:
             enemyVulnRounds = 3;
             lastAbilityLog.add('✦ ${ability.name}: enemy vulnerable for 3 rounds!');
+          case AbilityEffect.silence:
+            enemyStunned = true;
+            lastAbilityLog.add('✦ ${ability.name}: enemy silenced!');
+          case AbilityEffect.absorbShield:
+            heroHpLocal = (heroHpLocal + sv).clamp(0, heroMaxHp);
+            lastAbilityLog.add('✦ ${ability.name}: +$sv HP barrier!');
+          case AbilityEffect.missChance:
+            enemyWeakenRounds = ability.duration > 0 ? ability.duration : 2;
+            lastAbilityLog.add('✦ ${ability.name}: enemy miss chance applied!');
         }
         if (enemyHpLocal <= 0) break;
       }
@@ -693,8 +837,15 @@ class DungeonRun {
   // ── Rest site ─────────────────────────────────────────────────────────────
 
   void resolveRestSite(DungeonRoom room) {
+    // Apply event damage first (ambush / bad weather) — capped so it can't kill
+    if (room.restDamage > 0) {
+      heroHp = (heroHp - room.restDamage).clamp(1, heroMaxHp);
+    }
+    // Then heal
     final heal = room.restoreHp ?? (heroMaxHp ~/ 5);
     heroHp = (heroHp + heal).clamp(0, heroMaxHp);
+    // Bonus gold (supplies event)
+    if (room.restBonusGold > 0) goldEarned += room.restBonusGold;
     roomsCleared++;
   }
 

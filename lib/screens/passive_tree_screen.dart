@@ -1,4 +1,5 @@
-﻿import 'package:flutter/material.dart';
+﻿import 'dart:ui' show PointerDeviceKind;
+import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../models/passive_tree.dart';
 import '../services/game_state.dart';
@@ -51,7 +52,7 @@ class PassiveTreeScreen extends StatelessWidget {
             const SizedBox(width: 5),
             Text(
               '${game.essence}',
-              style: GoogleFonts.pixelifySans(
+              style: GoogleFonts.rajdhani(
                 color: const Color(0xFFaaff88),
                 fontSize: 15,
                 fontWeight: FontWeight.bold,
@@ -76,7 +77,9 @@ class PassiveTreeScreen extends StatelessWidget {
           TutorialTip(
             tutorialKey: 'passives',
             game: game,
-            text: 'Spend Essence to unlock passive nodes. Each node can be ranked up to 5. Higher tiers require the previous node at rank 1+.',
+            text: 'You\'ve earned Essence ✦ — spend it here on permanent passive '
+                'nodes that survive every rebirth. Your class branch is at the top. '
+                'Each node ranks up to 5 for bigger bonuses.',
           ),
         ...[PassiveBranch.elementalist, ...PassiveBranch.values.where((b) => b != PassiveBranch.elementalist)].map((branch) {
         final className = game.hero.heroClass.name;
@@ -99,10 +102,7 @@ class PassiveTreeScreen extends StatelessWidget {
             !game.passiveTree.ascendantBranchAvailable;
 
         final otherCount = branch == PassiveBranch.ascendant
-            ? kPassiveNodes
-                .where((n) => n.branch != PassiveBranch.ascendant &&
-                    game.passiveTree.isUnlocked(n.id))
-                .length
+            ? game.passiveTree.ascendantUnlockPoints
             : 0;
 
         final totalRanks = nodes.fold(0, (s, n) => s + game.passiveTree.rankOf(n.id));
@@ -141,7 +141,7 @@ class PassiveTreeScreen extends StatelessWidget {
                       const Icon(Icons.lock_outline, color: Colors.white30, size: 11),
                       const SizedBox(width: 4),
                       Text(
-                        '$otherCount / 4 nodes needed',
+                        '$otherCount / 5 branches at 25',
                         style: const TextStyle(color: Colors.white30, fontSize: 10),
                       ),
                     ])
@@ -191,10 +191,18 @@ class PassiveTreeScreen extends StatelessWidget {
                 ]),
               ),
               const SizedBox(height: 6),
-              // Node row with connectors — scrollable on mobile
+              // Node row with connectors — horizontally scrollable
               SizedBox(
-                height: 130,
-                child: ListView(
+                height: 155,
+                child: ScrollConfiguration(
+                  behavior: ScrollConfiguration.of(context).copyWith(
+                    dragDevices: {
+                      PointerDeviceKind.touch,
+                      PointerDeviceKind.mouse,
+                      PointerDeviceKind.trackpad,
+                    },
+                  ),
+                  child: ListView(
                   scrollDirection: Axis.horizontal,
                   children: [
                     for (int i = 0; i < nodes.length; i++) ...[
@@ -204,7 +212,7 @@ class PassiveTreeScreen extends StatelessWidget {
                           active: !locked && game.passiveTree.isUnlocked(nodes[i - 1].id),
                         ),
                       SizedBox(
-                        width: 80,
+                        width: 100,
                         child: _NodeCard(
                           node: nodes[i],
                           game: game,
@@ -214,8 +222,9 @@ class PassiveTreeScreen extends StatelessWidget {
                       ),
                     ],
                   ],
+                  ),
                 ),
-              ),  // closes SizedBox + ListView
+              ),
             ],
           ),
         );
@@ -264,7 +273,7 @@ class PassiveTreeScreen extends StatelessWidget {
                 )),
                 if (!maxed)
                   GestureDetector(
-                    onTap: can && affordable ? () => game.upgradePassive(node.id) : null,
+                    onTap: can && affordable ? () { game.upgradePassive(node.id); game.audioService.playUiConfirm(); } : null,
                     child: Container(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                       decoration: BoxDecoration(
@@ -295,16 +304,16 @@ class PassiveTreeScreen extends StatelessWidget {
                     backgroundColor: const Color(0xFF1a1a2e),
                     title: const Text('Full Respec?', style: TextStyle(color: Colors.white, fontSize: 14)),
                     content: Text(
-                      'Reset ALL passive nodes.\nRefund $refund essence (60%).\nCost: 50 crystals.',
+                      'Reset ALL passive nodes.\nRefund $refund essence (60%).\nCost: 50 zcoins.',
                       style: const TextStyle(color: Colors.white70, fontSize: 12, height: 1.4),
                     ),
                     actions: [
                       TextButton(onPressed: () => Navigator.pop(ctx, false),
                           child: const Text('Cancel')),
                       TextButton(
-                        onPressed: game.crystals >= 50 ? () => Navigator.pop(ctx, true) : null,
-                        child: Text('Respec (50 💎)',
-                            style: TextStyle(color: game.crystals >= 50 ? const Color(0xFFcc88ff) : Colors.white24)),
+                        onPressed: game.zcoins >= 50 ? () => Navigator.pop(ctx, true) : null,
+                        child: Text('Respec (50 ZC)',
+                            style: TextStyle(color: game.zcoins >= 50 ? const Color(0xFFcc88ff) : Colors.white24)),
                       ),
                     ],
                   ),
@@ -315,7 +324,7 @@ class PassiveTreeScreen extends StatelessWidget {
                 foregroundColor: const Color(0xFFcc88ff),
                 side: const BorderSide(color: Color(0xFFcc88ff)),
               ),
-              child: const Text('FULL RESPEC (50 💎)',
+              child: const Text('FULL RESPEC (50 ZC)',
                   style: TextStyle(fontSize: 11, letterSpacing: 1)),
             ),
           ),
@@ -345,7 +354,7 @@ class PassiveTreeScreen extends StatelessWidget {
               const SizedBox(width: 5),
               Text(
                 '${game.essence}',
-                style: GoogleFonts.pixelifySans(
+                style: GoogleFonts.rajdhani(
                   color: const Color(0xFFaaff88),
                   fontSize: 17,
                   fontWeight: FontWeight.bold,
@@ -539,6 +548,7 @@ class _NodeCard extends StatelessWidget {
                     onPressed: canAfford
                         ? () {
                             game.upgradePassive(node.id);
+                            game.audioService.playUiConfirm();
                             setSheetState(() {});
                           }
                         : null,
@@ -546,7 +556,9 @@ class _NodeCard extends StatelessWidget {
                     label: Text(
                       canUpgrade
                           ? 'UPGRADE  ($cost ✦)'
-                          : 'LOCKED — unlock previous tier first',
+                          : node.branch == PassiveBranch.ascendant
+                              ? 'LOCKED — spend 25 ranks in more branches'
+                              : 'LOCKED — max all branch nodes first',
                       style: const TextStyle(fontSize: 13, letterSpacing: 0.5),
                     ),
                     style: ElevatedButton.styleFrom(

@@ -3,19 +3,16 @@ import 'dnd_class.dart';
 
 enum HeroGender {
   male,
-  female,
-  nonBinary;
+  female;
 
   String get icon => switch (this) {
-    HeroGender.male      => '♂',
-    HeroGender.female    => '♀',
-    HeroGender.nonBinary => '⚧',
+    HeroGender.male   => '♂',
+    HeroGender.female => '♀',
   };
 
   String get label => switch (this) {
-    HeroGender.male      => 'Male',
-    HeroGender.female    => 'Female',
-    HeroGender.nonBinary => 'Non-Binary',
+    HeroGender.male   => 'Male',
+    HeroGender.female => 'Female',
   };
 
   static HeroGender? tryParse(String? s) =>
@@ -61,6 +58,9 @@ class HeroModel {
   // Applied by HeroTrait chosen at character creation (+/- %)
   int extraHpPct = 0;
 
+  // Flat HP bonus from Ability Score (VIT stat) — always recalculated, never saved
+  int flatHpBonus = 0;
+
   // +10% damage per 10 hero levels (permanent, additive with other % bonuses)
   int levelBonusDamagePct = 0;
 
@@ -68,7 +68,7 @@ class HeroModel {
   // classElement unlocks at level 5 (auto).
   // secondaryElement unlocks via the Dual Mastery upgrade.
   // activeDamageTypeIndex: 0 = physical, 1 = classElement, 2 = secondaryElement
-  int activeDamageTypeIndex = 0;
+  int activeDamageTypeIndex = 1;
   bool dualMasteryUnlocked  = false;
 
   // ── Modern display aliases ─────────────────────────────────────
@@ -97,15 +97,18 @@ class HeroModel {
   // Flat damage scales with level (+1 per 2 levels); % damage via damagePctFor
   int get damageMod => level ~/ 2;
 
+  // Combined flat damage stat: proficiency bonus + level-based flat damage
+  int get baseDmg => proficiencyBonus + damageMod;
+
   // Max HP: level-based + Vitality (CON) scaling
   int get maxHealth {
     final base = 100 + (level - 1) * 20;
     final vitalityBonus = constitution; // +1% max HP per point of CON
-    return (base * (100 + extraHpPct + vitalityBonus) / 100).round().clamp(1, 99999);
+    return ((base * (100 + extraHpPct + vitalityBonus) / 100) + flatHpBonus).round().clamp(1, 99999);
   }
 
-  // Armor class = flat 10; DEX no longer boosts AC (use passives/items)
-  int get armorClass => 10;
+  // Armor class = 2 base; grows through items, passives, and STR bonuses on gear
+  int get armorClass => 2;
 
   // Idle rate = flat 5; WIS no longer boosts idle rate (use passives/items)
   int get idleRate => 5;
@@ -136,16 +139,16 @@ class HeroModel {
   // ── Damage type accessors ──────────────────────────────────────────────────
   // Returns the DamageType the hero is currently dealing.
   // physical is always available; classElement at lv5+; secondaryElement if unlocked.
-  bool get classElementUnlocked => level >= 5;
+  bool get classElementUnlocked => true;
 
   DamageType get activeDamageType {
     if (activeDamageTypeIndex == 2 && dualMasteryUnlocked) {
       return heroClass.info.secondaryElement;
     }
-    if (activeDamageTypeIndex == 1 && classElementUnlocked) {
+    if (activeDamageTypeIndex >= 1) {
       return heroClass.info.classElement;
     }
-    return DamageType.physical;
+    return heroClass.info.classElement;
   }
 
   List<DamageType> get availableDamageTypes {
@@ -200,7 +203,7 @@ class HeroModel {
 
   void levelUp() {
     level += 1;
-    experienceToNextLevel = (experienceToNextLevel * 1.08).round();
+    experienceToNextLevel = (experienceToNextLevel * 1.27).round();
 
     // Grant automatic stat growth on every level-up
     _applyStat(_primaryStat[heroClass] ?? 'strength', 1);

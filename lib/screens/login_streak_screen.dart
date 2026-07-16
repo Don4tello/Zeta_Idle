@@ -10,7 +10,7 @@ class LoginStreakScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final game = GameStateProvider.of(context);
     final streak = game.loginStreak;
-    final dayInCycle = ((streak - 1) % 7) + 1; // 1–7
+    final dayInCycle = streak <= 0 ? 1 : ((streak - 1) % 7) + 1; // 1–7
     final todayClaimed = game.loginTodayClaimed;
 
     return Scaffold(
@@ -29,7 +29,7 @@ class LoginStreakScreen extends StatelessWidget {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          _InfoBanner(streak: streak, claimed: todayClaimed),
+          _InfoBanner(streak: streak, dayInCycle: dayInCycle, claimed: todayClaimed),
           const SizedBox(height: 16),
           GridView.count(
             crossAxisCount: 7,
@@ -40,15 +40,16 @@ class LoginStreakScreen extends StatelessWidget {
             children: List.generate(7, (i) {
               final day = i + 1;
               final reward = LoginReward.forDay(day);
-              final isPast   = day < dayInCycle || todayClaimed;
-              final isToday  = day == dayInCycle;
-              final isFuture = day > dayInCycle && !todayClaimed;
+              // A day is "past" only if it's before today's day, OR if it IS today and was claimed.
+              final isPast   = day < dayInCycle || (day == dayInCycle && todayClaimed);
+              final isToday  = day == dayInCycle && !todayClaimed;
+              final isFuture = day > dayInCycle;
               return _DayCell(
                 reward: reward,
-                isPast: isPast && !(isToday && !todayClaimed),
+                isPast: isPast,
                 isToday: isToday,
-                isFuture: isFuture || (isToday && todayClaimed),
-                claimed: todayClaimed && isToday,
+                isFuture: isFuture,
+                claimed: todayClaimed && day == dayInCycle,
               );
             }),
           ),
@@ -107,8 +108,9 @@ class _StreakBadge extends StatelessWidget {
 }
 
 class _InfoBanner extends StatelessWidget {
-  const _InfoBanner({required this.streak, required this.claimed});
+  const _InfoBanner({required this.streak, required this.dayInCycle, required this.claimed});
   final int streak;
+  final int dayInCycle;
   final bool claimed;
 
   @override
@@ -122,7 +124,7 @@ class _InfoBanner extends StatelessWidget {
       ),
       child: Text(
         claimed
-            ? 'Day $streak reward claimed. Keep the streak alive — log in tomorrow!'
+            ? 'Day $dayInCycle reward claimed. Keep the streak alive — log in tomorrow!'
             : 'You\'ve been here $streak day${streak == 1 ? '' : 's'} in a row. '
               'Claim today\'s reward below. Missing a day resets your streak.',
         style: const TextStyle(

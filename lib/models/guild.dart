@@ -1,4 +1,4 @@
-// ─────────────────────────────────────────────────────────────────────────────
+﻿// ─────────────────────────────────────────────────────────────────────────────
 // Guild System — Tier 1 MVP
 //
 // Data lives in Firestore. Local model mirrors cloud state.
@@ -624,10 +624,10 @@ class RaidCatalog {
   }
 
   static Map<String, int> rewardsForTier(int tier) => switch (tier) {
-    1 => {'guildCoins': 250, 'gold': 75000, 'shards': 500, 'echoes': 200, 'crystals': 25},
-    2 => {'guildCoins': 500, 'gold': 150000, 'shards': 1000, 'echoes': 400, 'mythril': 50, 'crystals': 50},
-    3 => {'guildCoins': 1000, 'gold': 300000, 'shards': 2000, 'echoes': 750, 'mythril': 125, 'crystals': 150},
-    _ => {'guildCoins': 150, 'gold': 25000, 'crystals': 25},
+    1 => {'guildCoins': 250, 'gold': 75000, 'shards': 500, 'echoes': 200, 'zcoins': 25},
+    2 => {'guildCoins': 500, 'gold': 150000, 'shards': 1000, 'echoes': 400, 'mythril': 50, 'zcoins': 50},
+    3 => {'guildCoins': 1000, 'gold': 300000, 'shards': 2000, 'echoes': 750, 'mythril': 125, 'zcoins': 150},
+    _ => {'guildCoins': 150, 'gold': 25000, 'zcoins': 25},
   };
 }
 
@@ -878,10 +878,10 @@ class GuildWar {
   static Map<String, int> rewardsForRank(int rank, bool won) {
     final base = won ? 2 : 1;
     return switch (rank) {
-      1 => {'guildCoins': 300 * base, 'gold': 50000 * base, 'echoes': 200 * base, 'crystals': 40 * base},
-      2 => {'guildCoins': 200 * base, 'gold': 35000 * base, 'echoes': 150 * base, 'crystals': 25 * base},
-      3 => {'guildCoins': 150 * base, 'gold': 25000 * base, 'echoes': 100 * base, 'crystals': 15 * base},
-      _ => {'guildCoins': 100 * base, 'gold': 15000 * base, 'echoes': 50 * base, 'crystals': 10 * base},
+      1 => {'guildCoins': 300 * base, 'gold': 50000 * base, 'echoes': 200 * base, 'zcoins': 40 * base},
+      2 => {'guildCoins': 200 * base, 'gold': 35000 * base, 'echoes': 150 * base, 'zcoins': 25 * base},
+      3 => {'guildCoins': 150 * base, 'gold': 25000 * base, 'echoes': 100 * base, 'zcoins': 15 * base},
+      _ => {'guildCoins': 100 * base, 'gold': 15000 * base, 'echoes': 50 * base, 'zcoins': 10 * base},
     };
   }
 }
@@ -944,7 +944,7 @@ class GuildShopItem {
         description: '+25 Gem Shards', cost: 45, icon: '💠'),
     GuildShopItem(id: 'guild_essence_vial', name: 'Essence Vial',
         description: '+100 Essence', cost: 55, icon: '✦'),
-    GuildShopItem(id: 'guild_crystal_chest', name: 'Crystal Chest',
-        description: '+20 Crystals', cost: 70, icon: '💎'),
+    GuildShopItem(id: 'guild_crystal_chest', name: 'ZCoin Chest',
+        description: '+20 ZCoins', cost: 70, icon: '🪙'),
   ];
 }

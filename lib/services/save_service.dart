@@ -24,6 +24,7 @@ class SaveService {
   static const String _savePrefix        = 'zeta_idle_save_';
   static const String _extraSlotsKey     = 'zeta_idle_extra_slots';
   static const String _welcomeSeenKey    = 'zeta_idle_welcome_seen';
+  static const String _prestigePrefix    = 'zeta_pl_';
   static const int maxSlots     = 5;
   static const int defaultSlots = 3;
 
@@ -67,12 +68,14 @@ class SaveService {
       try {
         final data = jsonDecode(raw) as Map<String, dynamic>;
         final hero = data['hero'] as Map<String, dynamic>;
+        final jsonPl  = (data['prestigeLevel'] as int?) ?? 0;
+        final directPl = prefs.getInt('$_prestigePrefix$i') ?? 0;
         return CharacterSummary(
           slot: i,
           name: hero['name'] as String,
           level: hero['level'] as int,
           heroClass: DndClass.tryParse(hero['heroClass'] as String?),
-          prestigeLevel: (data['prestigeLevel'] as int?) ?? 0,
+          prestigeLevel: jsonPl > directPl ? jsonPl : directPl,
           gender: HeroGender.tryParse(hero['gender'] as String?),
         );
       } catch (_) {
@@ -84,5 +87,16 @@ class SaveService {
   Future<void> deleteSlot(int slot) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove('$_savePrefix$slot');
+    await prefs.remove('$_prestigePrefix$slot');
+  }
+
+  Future<void> savePrestigeLevel(int slot, int level) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt('$_prestigePrefix$slot', level);
+  }
+
+  Future<int> loadPrestigeLevel(int slot) async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getInt('$_prestigePrefix$slot') ?? 0;
   }
 }

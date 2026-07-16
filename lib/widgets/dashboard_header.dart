@@ -8,9 +8,11 @@ import '../models/passive_tree.dart';
 import '../services/game_state.dart';
 import '../theme/app_theme.dart';
 import '../models/hero_race.dart';
+import '../models/hero_trait.dart';
 import '../widgets/battle_sprites.dart';
 import '../widgets/progress_ring.dart';
 import '../widgets/hero_tab_controller.dart';
+import '../screens/main_shell.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // DashboardHeader
@@ -45,6 +47,90 @@ class _DashboardHeaderState extends State<DashboardHeader>
   void dispose() {
     _dangerPulse.dispose();
     super.dispose();
+  }
+
+  void _showRacePopup(BuildContext ctx, HeroRace race) {
+    final info  = race.info;
+    final trait = HeroTrait.forRace(race).firstOrNull;
+    showDialog<void>(
+      context: ctx,
+      builder: (_) => Dialog(
+        backgroundColor: AppTheme.panelBg,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(4),
+          side: BorderSide(color: info.color.withValues(alpha: 0.6)),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(info.icon, style: const TextStyle(fontSize: 36)),
+              const SizedBox(height: 8),
+              Text(
+                info.displayName.toUpperCase(),
+                style: AppTheme.pixelHeading(fontSize: 16, color: info.color, letterSpacing: 2),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                info.description,
+                textAlign: TextAlign.center,
+                style: const TextStyle(fontSize: 13, color: AppTheme.textMuted, height: 1.4),
+              ),
+              if (trait != null) ...[
+                const SizedBox(height: 14),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: info.color.withValues(alpha: 0.07),
+                    border: Border.all(color: info.color.withValues(alpha: 0.3)),
+                    borderRadius: BorderRadius.circular(3),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(children: [
+                        Text(trait.icon, style: const TextStyle(fontSize: 14)),
+                        const SizedBox(width: 6),
+                        Text(
+                          trait.name.toUpperCase(),
+                          style: AppTheme.pixelHeading(fontSize: 11, color: info.color, letterSpacing: 1),
+                        ),
+                      ]),
+                      const SizedBox(height: 6),
+                      ...trait.bonusChips.map((chip) => Padding(
+                        padding: const EdgeInsets.only(top: 3),
+                        child: Row(children: [
+                          Container(width: 3, height: 3,
+                              decoration: BoxDecoration(color: info.color.withValues(alpha: 0.6), shape: BoxShape.circle)),
+                          const SizedBox(width: 8),
+                          Text(chip, style: TextStyle(fontSize: 13, color: info.color, fontWeight: FontWeight.bold)),
+                        ]),
+                      )),
+                      const SizedBox(height: 6),
+                      Text(
+                        trait.description,
+                        style: const TextStyle(fontSize: 12, color: AppTheme.textMuted, height: 1.4),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+              const SizedBox(height: 16),
+              SizedBox(
+                width: double.infinity,
+                child: TextButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  style: TextButton.styleFrom(foregroundColor: info.color),
+                  child: const Text('CLOSE'),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   // Triggered from build() via postFrameCallback to avoid modifying animation
@@ -111,14 +197,17 @@ class _DashboardHeaderState extends State<DashboardHeader>
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Hero sprite — hidden on phone to save space
-              if (!isPhone)
-                SizedBox(
-                  width: 80,
-                  height: 100,
-                  child: Center(child: BattleSprite(spriteId: hero.spriteId, gender: hero.gender, colorFilter: game.heroSkinFilter)),
+              SizedBox(
+                width: 80,
+                height: 120,
+                child: BattleSprite(
+                  spriteId: hero.spriteId,
+                  gender: hero.gender,
+                  race: game.heroRace,
+                  colorFilter: game.heroSkinFilter,
                 ),
-              if (!isPhone) const SizedBox(width: 14),
+              ),
+              const SizedBox(width: 10),
 
               Expanded(
                 child: Column(
@@ -146,6 +235,16 @@ class _DashboardHeaderState extends State<DashboardHeader>
                                   color: (raceColor ?? AppTheme.accentGold).withValues(alpha: 0.7),
                                 ),
                               ),
+                              if (game.heroRace != null) ...[
+                                const SizedBox(width: 4),
+                                GestureDetector(
+                                  onTap: () => _showRacePopup(context, game.heroRace!),
+                                  child: Text(
+                                    game.heroRace!.info.icon,
+                                    style: const TextStyle(fontSize: 13),
+                                  ),
+                                ),
+                              ],
                             ],
                           ),
                         ),
@@ -213,39 +312,7 @@ class _DashboardHeaderState extends State<DashboardHeader>
                         ),
                       ),
                     ),
-                    // Class damage types
-                    const SizedBox(height: 4),
-                    Row(
-                      children: hero.availableDamageTypes.map((dt) {
-                        final active = dt == hero.activeDamageType;
-                        final dmgPct = game.passiveElemDamagePct(dt) + game.gemElemDamagePct(dt);
-                        final resPct = game.gemElemResPct(dt);
-                        final tip = '${dt.label}\n+$dmgPct% damage  •  $resPct% resistance\nYour class can use this damage type for abilities.';
-                        return Tooltip(
-                          message: tip,
-                          child: Container(
-                          margin: const EdgeInsets.only(right: 6),
-                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: dt.color.withValues(alpha: 0.15),
-                            border: Border.all(
-                              color: dt.color.withValues(alpha: 0.7),
-                            ),
-                            borderRadius: BorderRadius.circular(3),
-                          ),
-                          child: Text(
-                            '${dt.emoji} ${dt.label}',
-                            style: TextStyle(
-                              fontSize: 9,
-                              color: dt.color,
-                              fontWeight: FontWeight.bold,
-                              letterSpacing: 0.5,
-                            ),
-                          ),
-                        ),
-                        );
-                      }).toList(),
-                    ),
+                    // (Damage type is set by class/abilities, no manual chips)
 
                     // Prestige milestone title
                     if (game.prestigeTitle != null) ...[
@@ -378,7 +445,7 @@ class _BarLabel extends StatelessWidget {
             style: AppTheme.pixelHeading(fontSize: 10, letterSpacing: 1, color: color)),
         Text(
           '$current / $max',
-          style: GoogleFonts.pixelifySans(
+          style: GoogleFonts.rajdhani(
               fontSize: 10, color: color.withValues(alpha: 0.75)),
         ),
       ],
@@ -485,78 +552,102 @@ class _IdleProgressPanelState extends State<_IdleProgressPanel>
     final xpMin     = game.idleXpPerCycle;
     final enemyName = game.campaignStageIndex > 0 ? game.idleEnemyName : '—';
 
-    return Container(
-      decoration: BoxDecoration(
-        color: AppTheme.darkBg,
-        border: Border.all(color: AppTheme.cardBorder),
-      ),
-      child: Column(
-        children: [
-          // ── IDLE label ─────────────────────────────────────────────────────
-          Padding(
-            padding: const EdgeInsets.fromLTRB(8, 6, 8, 0),
-            child: Text(
-              '⚡ IDLE',
-              style: AppTheme.pixelHeading(
-                  fontSize: 8, letterSpacing: 1,
-                  color: AppTheme.textMuted),
+    final canCollect = fill > 0;
+
+    void collect() {
+      if (!canCollect) return;
+      game.collectIdleRewards();
+      showDialog(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          backgroundColor: const Color(0xFF1a1a2e),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(8),
+            side: const BorderSide(color: Color(0xFFdaa520), width: 1.5),
+          ),
+          title: Text('⚡ IDLE REWARDS',
+              textAlign: TextAlign.center,
+              style: AppTheme.pixelHeading(fontSize: 14, letterSpacing: 2, color: const Color(0xFFdaa520))),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _IdleRewardRow('💰 Gold', '+${AppTheme.fmtNumber(game.lastIdleGold)}', const Color(0xFFdaa520)),
+              if (game.lastIdleEssence > 0)
+                _IdleRewardRow('✦ Essence', '+${game.lastIdleEssence}', const Color(0xFF88ccff)),
+              _IdleRewardRow('⚡ XP', '+${AppTheme.fmtNumber(game.lastIdleXp)}', const Color(0xFFffcc44)),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: Text('NICE', style: AppTheme.pixelHeading(fontSize: 11, color: const Color(0xFFdaa520))),
             ),
-          ),
-          const SizedBox(height: 2),
+          ],
+        ),
+      );
+    }
 
-          // ── Enemy name ─────────────────────────────────────────────────────
-          Text(
-            enemyName.toUpperCase(),
-            style: AppTheme.pixelHeading(
-                fontSize: 8, letterSpacing: 1, color: AppTheme.textMuted),
+    return GestureDetector(
+      onTap: canCollect ? collect : null,
+      behavior: HitTestBehavior.opaque,
+      child: Container(
+        decoration: BoxDecoration(
+          color: AppTheme.darkBg,
+          border: Border.all(
+            color: canCollect
+                ? const Color(0xFFdaa520).withValues(alpha: 0.7)
+                : AppTheme.cardBorder,
+            width: canCollect ? 1.5 : 1.0,
           ),
-          const SizedBox(height: 4),
-
-          // ── Progress bar with sprites flanking — tap to collect ────────────
-          GestureDetector(
-            onTap: fill > 0 ? () {
-              game.collectIdleRewards();
-              showDialog(
-                context: context,
-                builder: (ctx) => AlertDialog(
-                  backgroundColor: const Color(0xFF1a1a2e),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
-                    side: const BorderSide(color: Color(0xFFdaa520), width: 1.5),
+        ),
+        child: Column(
+          children: [
+            // ── IDLE label + collect hint ───────────────────────────────────
+            Padding(
+              padding: const EdgeInsets.fromLTRB(8, 4, 8, 0),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    '⚡ IDLE',
+                    style: AppTheme.pixelHeading(
+                        fontSize: 8, letterSpacing: 1,
+                        color: AppTheme.textMuted),
                   ),
-                  title: Text('⚡ IDLE REWARDS',
-                      textAlign: TextAlign.center,
-                      style: AppTheme.pixelHeading(fontSize: 14, letterSpacing: 2, color: const Color(0xFFdaa520))),
-                  content: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      _IdleRewardRow('💰 Gold', '+${AppTheme.fmtNumber(game.lastIdleGold)}', const Color(0xFFdaa520)),
-                      if (game.lastIdleEssence > 0)
-                        _IdleRewardRow('✦ Essence', '+${game.lastIdleEssence}', const Color(0xFF88ccff)),
-                      _IdleRewardRow('⚡ XP', '+${AppTheme.fmtNumber(game.lastIdleXp)}', const Color(0xFFffcc44)),
-                    ],
-                  ),
-                  actions: [
-                    TextButton(
-                      onPressed: () => Navigator.pop(ctx),
-                      child: Text('NICE', style: AppTheme.pixelHeading(fontSize: 11, color: const Color(0xFFdaa520))),
+                  if (canCollect) ...[
+                    const SizedBox(width: 6),
+                    Text(
+                      '• TAP TO COLLECT',
+                      style: AppTheme.pixelHeading(
+                          fontSize: 7, letterSpacing: 1,
+                          color: const Color(0xFFdaa520)),
                     ),
                   ],
-                ),
-              );
-            } : null,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 8),
+                ],
+              ),
+            ),
+            const SizedBox(height: 1),
+
+            // ── Enemy name ─────────────────────────────────────────────────
+            Text(
+              enemyName.toUpperCase(),
+              style: AppTheme.pixelHeading(
+                  fontSize: 8, letterSpacing: 1, color: AppTheme.textMuted),
+            ),
+            const SizedBox(height: 2),
+
+            // ── Progress bar with sprites flanking ─────────────────────────
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 6),
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  // Hero sprite — left
+                  // Hero sprite — left (FittedBox keeps it in bounds)
                   SizedBox(
-                    width: 20,
-                    height: 20,
-                    child: Transform.scale(
-                      scale: 0.45,
-                      alignment: Alignment.center,
+                    width: 24,
+                    height: 36,
+                    child: FittedBox(
+                      fit: BoxFit.contain,
                       child: BattleSprite(
                         key: _heroKey,
                         spriteId: game.hero.spriteId,
@@ -611,13 +702,12 @@ class _IdleProgressPanelState extends State<_IdleProgressPanel>
 
                   const SizedBox(width: 4),
 
-                  // Enemy sprite — right
+                  // Enemy sprite — right (FittedBox keeps it in bounds)
                   SizedBox(
-                    width: 20,
-                    height: 20,
-                    child: Transform.scale(
-                      scale: 0.45,
-                      alignment: Alignment.center,
+                    width: 24,
+                    height: 36,
+                    child: FittedBox(
+                      fit: BoxFit.contain,
                       child: BattleSprite(
                         key: _enemyKey,
                         spriteId: game.idleEnemySpriteId,
@@ -630,26 +720,26 @@ class _IdleProgressPanelState extends State<_IdleProgressPanel>
                 ],
               ),
             ),
-          ),
-          const SizedBox(height: 5),
+            const SizedBox(height: 3),
 
-          // ── Rewards row ────────────────────────────────────────────────────
-          Padding(
-            padding: const EdgeInsets.fromLTRB(8, 0, 8, 7),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                _RewardChip('💰', '${AppTheme.fmtNumber(goldMin)}g', AppTheme.accentGold),
-                if (essMin > 0) ...[
-                  const SizedBox(width: 10),
-                  _RewardChip('✦', '+$essMin', const Color(0xFF44dd88)),
+            // ── Rewards row ────────────────────────────────────────────────
+            Padding(
+              padding: const EdgeInsets.fromLTRB(6, 0, 6, 5),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  _RewardChip('💰', '${AppTheme.fmtNumber(goldMin)}g', AppTheme.accentGold),
+                  if (essMin > 0) ...[
+                    const SizedBox(width: 8),
+                    _RewardChip('✦', '+$essMin', const Color(0xFF44dd88)),
+                  ],
+                  const SizedBox(width: 8),
+                  _RewardChip('✨', '+$xpMin XP', const Color(0xFF88aaff)),
                 ],
-                const SizedBox(width: 10),
-                _RewardChip('✨', '+$xpMin XP', const Color(0xFF88aaff)),
-              ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -667,7 +757,7 @@ class _RewardChip extends StatelessWidget {
       Text(icon, style: TextStyle(fontSize: 10, color: color)),
       const SizedBox(width: 3),
       Text(value,
-          style: GoogleFonts.pixelifySans(
+          style: GoogleFonts.rajdhani(
               fontSize: 10,
               fontWeight: FontWeight.bold,
               color: color)),
@@ -679,24 +769,47 @@ class _NextActionHint extends StatelessWidget {
   const _NextActionHint({required this.hint});
   final String hint;
 
-  // Map hint text to all-tab index in _kAllTabs
-  // 0=SHEET, 1=BONUSES, 2=ABILITIES, 3=ACHIEVEMENTS, 4=UPGRADES, 5=PASSIVES
-  int _tabIndex() {
-    if (hint.contains('Ability')) return 2;
-    if (hint.contains('Passive')) return 5;
-    if (hint.contains('Endless') || hint.contains('Upgrade')) return 4;
-    if (hint.contains('daily') || hint.contains('Daily')) return -1; // modes tab, not hero hub
-    return -1;
+  // Returns the all-tab index (Hero Hub) or shell tab index to navigate to.
+  // heroHubIdx: non-null → switch within Hero Hub using HeroTabController
+  // shellIdx:   non-null → switch main shell tab (e.g. PLAY=1 for Daily)
+  // Both null   → hint is informational only, not tappable
+  //
+  // Hero Hub all-tab indices:
+  //   0=SHEET 1=SCORES 2=ABILITIES 3=ACHIEVEMENTS 4=PASSIVES 5=BONUSES
+  //   6=BESTIARY 7=CODEX 8=PETS 9=MERCS 10=REBIRTH 11=UPGRADES
+  //   12=ASCEND 13=MASTERY
+  // Main shell tab indices: 0=HERO 1=PLAY 2=INVENTORY 3=SHOP
+  ({int? heroHubIdx, int? shellIdx}) _destination() {
+    if (hint.contains('Prestige') || hint.contains('prestige')) return (heroHubIdx: 10, shellIdx: null);
+    if (hint.contains('Ascension'))  return (heroHubIdx: 12, shellIdx: null);
+    if (hint.contains('Daily'))      return (heroHubIdx: null, shellIdx: 1);
+    if (hint.contains('Achievement')) return (heroHubIdx: 3, shellIdx: null);
+    if (hint.contains('Expedition')) return (heroHubIdx: 9, shellIdx: null);
+    if (hint.contains('Ability score')) return (heroHubIdx: 1, shellIdx: null);
+    if (hint.contains('Ability'))    return (heroHubIdx: 2, shellIdx: null);
+    if (hint.contains('Passive'))    return (heroHubIdx: 4, shellIdx: null);
+    if (hint.contains('Endless') || hint.contains('upgrade')) return (heroHubIdx: 11, shellIdx: null);
+    if (hint.contains('Elemental') || hint.contains('mastery')) return (heroHubIdx: 13, shellIdx: null);
+    if (hint.contains('Pet'))        return (heroHubIdx: 8, shellIdx: null);
+    return (heroHubIdx: null, shellIdx: null);
   }
 
   @override
   Widget build(BuildContext context) {
-    final tabIdx = _tabIndex();
+    final dest    = _destination();
     final switcher = HeroTabController.maybeOf(context);
-    final tappable = tabIdx >= 0 && switcher != null;
+    final tappable = dest.shellIdx != null || (dest.heroHubIdx != null && switcher != null);
+
+    void onTap() {
+      if (dest.shellIdx != null) {
+        MainShell.switchToTab(dest.shellIdx!);
+      } else if (dest.heroHubIdx != null) {
+        switcher?.switchTo(dest.heroHubIdx!);
+      }
+    }
 
     return GestureDetector(
-      onTap: tappable ? () => switcher.switchTo(tabIdx) : null,
+      onTap: tappable ? onTap : null,
       child: Container(
         width: double.infinity,
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),

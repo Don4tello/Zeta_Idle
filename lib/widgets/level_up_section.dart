@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../services/game_state.dart';
 import '../theme/app_theme.dart';
@@ -15,11 +15,11 @@ class LevelUpSection extends StatelessWidget {
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Text('⬆', style: TextStyle(fontSize: 14)),
+            const Text('â¬†', style: TextStyle(fontSize: 14)),
             const SizedBox(width: 6),
             Text(
-              'LEVEL UP!  Lv ${event.fromLevel} → ${event.toLevel}',
-              style: GoogleFonts.pixelifySans(
+              'LEVEL UP!  Lv ${event.fromLevel} â†’ ${event.toLevel}',
+              style: GoogleFonts.rajdhani(
                 fontSize: 14,
                 fontWeight: FontWeight.bold,
                 color: AppTheme.accentGold,
@@ -30,8 +30,8 @@ class LevelUpSection extends StatelessWidget {
         ),
         const SizedBox(height: 8),
         Text(
-          'HP: ${event.hpBefore} → ${event.hpAfter}',
-          style: GoogleFonts.pixelifySans(
+          'HP: ${event.hpBefore} â†’ ${event.hpAfter}',
+          style: GoogleFonts.rajdhani(
             fontSize: 12,
             color: const Color(0xFF66cc44),
             letterSpacing: 1,
@@ -53,7 +53,7 @@ class LevelUpSection extends StatelessWidget {
                       ),
                       child: Text(
                         '$s +1',
-                        style: GoogleFonts.pixelifySans(
+                        style: GoogleFonts.rajdhani(
                           fontSize: 11,
                           fontWeight: FontWeight.bold,
                           color: AppTheme.accentGold,

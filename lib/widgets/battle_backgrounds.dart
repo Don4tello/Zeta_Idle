@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 
 /// Returns a stage-themed background painter.
 /// [stageIndex] is 0-based (stage 1 = index 0).
@@ -450,7 +450,7 @@ class _DarkwoodPainter extends _BgPainter {
 
 // ─────────────────────────────────────────────────────────────────
 // FROSTED PEAKS   (Stage 7 — Frosted Peaks)
-// Icy mountain pass, blue sky, snow, ice crystals
+// Icy mountain pass, blue sky, snow, ice zcoins
 // ─────────────────────────────────────────────────────────────────
 
 class _FrostedPeaksPainter extends _BgPainter {

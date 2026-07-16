@@ -1,4 +1,4 @@
-import 'dart:math' as math;
+﻿import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'pet.dart' show PetBonusType;
 
@@ -7,7 +7,7 @@ class PaletteSkin {
     required this.id,
     required this.name,
     required this.description,
-    required this.crystalCost,
+    required this.zcoinCost,
     required this.hueShift,
     required this.saturation,
     required this.brightness,
@@ -19,7 +19,7 @@ class PaletteSkin {
   final String id;
   final String name;
   final String description;
-  final int crystalCost;
+  final int zcoinCost;
   final double hueShift;    // degrees 0–360 rotates the hue wheel
   final double saturation;  // 0 = grayscale, 1 = original, >1 = vivid
   final double brightness;  // channel offset −128 to +128
@@ -84,7 +84,7 @@ const kSkinCatalog = <PaletteSkin>[
     id: 'bone_knight',
     name: 'Bone Knight',
     description: 'Bleached pale as ancient bone and funeral ivory.',
-    crystalCost: 300,
+    zcoinCost: 300,
     hueShift: 0,
     saturation: 0.12,
     brightness: 50,
@@ -96,7 +96,7 @@ const kSkinCatalog = <PaletteSkin>[
     id: 'shadowblood',
     name: 'Shadowblood',
     description: 'Dark as midnight, red as fresh wounds.',
-    crystalCost: 350,
+    zcoinCost: 350,
     hueShift: 345,
     saturation: 1.7,
     brightness: -35,
@@ -108,7 +108,7 @@ const kSkinCatalog = <PaletteSkin>[
     id: 'gilded',
     name: 'Gilded',
     description: "Armour worth a kingdom's ransom.",
-    crystalCost: 400,
+    zcoinCost: 400,
     hueShift: 38,
     saturation: 1.4,
     brightness: 15,
@@ -120,7 +120,7 @@ const kSkinCatalog = <PaletteSkin>[
     id: 'void_walker',
     name: 'Void Walker',
     description: 'Imbued with the swirling colours of the abyss.',
-    crystalCost: 450,
+    zcoinCost: 450,
     hueShift: 265,
     saturation: 1.5,
     brightness: -20,
@@ -132,7 +132,7 @@ const kSkinCatalog = <PaletteSkin>[
     id: 'frost',
     name: 'Frost',
     description: 'Cold as the eternal northern wastes.',
-    crystalCost: 350,
+    zcoinCost: 350,
     hueShift: 200,
     saturation: 1.25,
     brightness: 10,
@@ -144,7 +144,7 @@ const kSkinCatalog = <PaletteSkin>[
     id: 'infernal',
     name: 'Infernal',
     description: 'Forged where the bedrock itself burns.',
-    crystalCost: 400,
+    zcoinCost: 400,
     hueShift: 18,
     saturation: 1.6,
     brightness: -5,

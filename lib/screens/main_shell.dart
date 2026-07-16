@@ -28,6 +28,10 @@ class MainShell extends StatefulWidget {
 
   final VoidCallback onBackToSelect;
 
+  // Battle screens call this to request a tab switch when returning to the shell.
+  static void Function(int tab)? _onTabRequest;
+  static void switchToTab(int tab) => _onTabRequest?.call(tab);
+
   @override
   State<MainShell> createState() => _MainShellState();
 }
@@ -38,7 +42,16 @@ class _MainShellState extends State<MainShell> {
   @override
   void initState() {
     super.initState();
+    MainShell._onTabRequest = (tab) {
+      if (mounted) setState(() => _tab = tab);
+    };
     _checkOnStart();
+  }
+
+  @override
+  void dispose() {
+    MainShell._onTabRequest = null;
+    super.dispose();
   }
 
   Future<void> _checkOnStart() async {
@@ -48,6 +61,8 @@ class _MainShellState extends State<MainShell> {
     if (!seen) {
       await SaveService.markWelcomeSeen();
       game.markTutorialSeen('welcome');
+      // New character — start on Modes (Campaign) tab so they can battle immediately
+      if (mounted) setState(() => _tab = 1);
       if (mounted) _showWelcomeTutorial(game);
     } else if (game.offlineGoldEarned > 0) {
       _showOfflineDialog(game);
@@ -350,15 +365,11 @@ class _MainShellState extends State<MainShell> {
                   style: const TextStyle(fontSize: 9, color: Color(0xFFffaa33))),
             ]),
           ),
-        Expanded(child: IndexedStack(
-          index: _tab,
-          children: [
-            HeroHubScreen(onBackToSelect: widget.onBackToSelect),
-            const ModesScreen(),
-            const InventoryHubScreen(),
-            const PremiumShopScreen(),
-            if (game.campaignStageIndex >= 15) const GuildScreen(),
-          ],
+        Expanded(child: _SwipeShell(
+          tab: _tab,
+          onTabChange: (i) => setState(() => _tab = i),
+          showGuild: game.campaignStageIndex >= 14,
+          onBackToSelect: widget.onBackToSelect,
         )),
       ]),
       bottomNavigationBar: SafeArea(
@@ -373,7 +384,7 @@ class _MainShellState extends State<MainShell> {
           false,
           game.guildId != null,
         ],
-        showGuild: game.campaignStageIndex >= 15,
+        showGuild: game.campaignStageIndex >= 14,
       )),
     );
   }
@@ -392,8 +403,8 @@ class _CustomBottomNav extends StatelessWidget {
   final bool showGuild;
 
   List<({String emoji, String label})> get _navItems => [
-    (emoji: '⚔️',  label: 'HERO'),
-    (emoji: '🗺️',  label: 'MODES'),
+    (emoji: '👑',  label: 'HERO'),
+    (emoji: '⚔️',  label: 'PLAY'),
     (emoji: '🎒',  label: 'INVENTORY'),
     (emoji: '🛒',  label: 'SHOP'),
     if (showGuild) (emoji: '🏰', label: 'GUILD'),
@@ -569,14 +580,14 @@ class _WelcomeDialogState extends State<_WelcomeDialog> {
     (
       icon: '⚔',
       title: 'Fight!',
-      body: 'Tap QUICK BATTLE on the home screen to fight your first enemy. '
-          'Attack costs nothing — keep pressing until the enemy falls.',
+      body: 'Go to the PLAY tab and tap a stage card in CAMPAIGN to start your first battle. '
+          'Keep attacking until the enemy falls!',
     ),
     (
       icon: '⚡',
       title: 'Earn idle gold',
       body: 'Your hero earns gold automatically every minute, even when you\'re not fighting. '
-          'Watch the gold bar on the home screen fill up.',
+          'Watch the gold bar on the HERO tab fill up.',
     ),
     (
       icon: '⬆',
@@ -661,8 +672,15 @@ class TutorialTip extends StatelessWidget {
     'passives'  => game.tutorialPassivesSeen,
     'bestiary'  => game.tutorialBestiarySeen,
     'prestige'  => game.tutorialPrestigeSeen,
-    'mercs'     => game.tutorialMercsSeen,
-    _           => true,
+    'mercs'         => game.tutorialMercsSeen,
+    'bonus'         => game.tutorialBonusSeen,
+    'codex'         => game.tutorialCodexSeen,
+    'achievements'  => game.tutorialAchievementsSeen,
+    'itemDrop'      => game.tutorialItemDropSeen,
+    'energyEmpty'   => game.tutorialEnergyEmptySeen,
+    'firstKill'     => game.tutorialFirstKillSeen,
+    'abilityUnlock' => game.tutorialAbilityUnlockSeen,
+    _               => true,
   };
 
   @override
@@ -683,13 +701,56 @@ class TutorialTip extends StatelessWidget {
               style: const TextStyle(fontSize: 13, color: Color(0xFF88eeaa), height: 1.4))),
           GestureDetector(
             onTap: () => game.markTutorialSeen(tutorialKey),
-            child: const Padding(
-              padding: EdgeInsets.only(left: 10),
-              child: Icon(Icons.close, size: 16, color: Color(0xFF44cc88)),
+            child: Container(
+              margin: const EdgeInsets.only(left: 10),
+              width: 36,
+              height: 36,
+              decoration: BoxDecoration(
+                color: const Color(0xFF223322),
+                border: Border.all(color: const Color(0xFF44cc88), width: 1.5),
+                borderRadius: BorderRadius.circular(4),
+              ),
+              child: const Icon(Icons.close, size: 20, color: Color(0xFF44cc88)),
             ),
           ),
         ],
       ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// _SwipeShell — IndexedStack with horizontal swipe to change tabs
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _SwipeShell extends StatefulWidget {
+  const _SwipeShell({
+    required this.tab,
+    required this.onTabChange,
+    required this.showGuild,
+    required this.onBackToSelect,
+  });
+  final int tab;
+  final ValueChanged<int> onTabChange;
+  final bool showGuild;
+  final VoidCallback onBackToSelect;
+
+  @override
+  State<_SwipeShell> createState() => _SwipeShellState();
+}
+
+class _SwipeShellState extends State<_SwipeShell> {
+  @override
+  Widget build(BuildContext context) {
+    return IndexedStack(
+      index: widget.tab,
+      children: [
+        HeroHubScreen(onBackToSelect: widget.onBackToSelect),
+        const ModesScreen(),
+        const InventoryHubScreen(),
+        const PremiumShopScreen(),
+        if (widget.showGuild) const GuildScreen(),
+      ],
     );
   }
 }

@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../theme/app_theme.dart';
 
@@ -32,7 +32,7 @@ class SectionCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // ── Header row ──────────────────────────────────────────────────────
+          // â”€â”€ Header row â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
             decoration: BoxDecoration(
@@ -66,25 +66,28 @@ class SectionCard extends StatelessWidget {
                   ),
                   margin: const EdgeInsets.only(right: 10),
                 ),
-                Text(
-                  title.toUpperCase(),
-                  style: GoogleFonts.pixelifySans(
-                    fontSize: 12,
-                    fontWeight: FontWeight.bold,
-                    color: accent,
-                    letterSpacing: 2,
-                    shadows: [
-                      Shadow(
-                        color: accent.withValues(alpha: 0.4),
-                        blurRadius: 6,
-                      ),
-                    ],
+                Expanded(
+                  child: Text(
+                    title.toUpperCase(),
+                    overflow: TextOverflow.ellipsis,
+                    style: GoogleFonts.rajdhani(
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                      color: accent,
+                      letterSpacing: 2,
+                      shadows: [
+                        Shadow(
+                          color: accent.withValues(alpha: 0.4),
+                          blurRadius: 6,
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ],
             ),
           ),
-          // ── Body ────────────────────────────────────────────────────────────
+          // â”€â”€ Body â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
           Padding(
             padding: const EdgeInsets.all(14),
             child: DefaultTextStyle(

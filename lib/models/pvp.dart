@@ -95,16 +95,25 @@ PvpSnapshot generateBotOpponent(int myRating) {
   final rng    = Random();
   final level  = max(1, myRating ~/ 80);
   final rating = (myRating + rng.nextInt(201) - 100).clamp(100, 9999);
+
+  // Flat variance on each stat: 0–4 for ATK/AC, 0–3 for DMG, proportional for HP.
+  // Creates a spread where ~20% of bots match or exceed the player's item advantage,
+  // keeping PvP win rates in the target 60–75% range instead of 91–99%.
+  final atkVar = rng.nextInt(5);
+  final acVar  = rng.nextInt(5);
+  final dmgVar = rng.nextInt(4);
+  final hpVar  = rng.nextInt(max(1, level * 2 + 5));
+
   return PvpSnapshot(
     userId:      'bot_${rng.nextInt(99999)}',
     displayName: 'Wanderer',
     heroName:    kBotNames[rng.nextInt(kBotNames.length)],
     heroClass:   'fighter',
     level:       level,
-    maxHp:       (10 + level * 5).clamp(10, 999),
-    attackBonus: (2 + level ~/ 3).clamp(1, 20),
-    damageMod:   (level ~/ 4).clamp(0, 10),
-    armorClass:  (10 + level ~/ 4).clamp(10, 20),
+    maxHp:       (10 + level * 5 + hpVar).clamp(10, 999),
+    attackBonus: (2 + level ~/ 3 + atkVar).clamp(1, 22),
+    damageMod:   (level ~/ 4 + dmgVar).clamp(0, 12),
+    armorClass:  (10 + level ~/ 4 + acVar).clamp(10, 23),
     rating:      rating,
     wins:        rng.nextInt(25),
     losses:      rng.nextInt(20),
@@ -563,6 +572,12 @@ void _simApply(
       if (val > foe.vulnPct) { foe.vulnPct = val; foe.vulnRem = dur; }
     case AbilityEffect.dodge:
       self.dodgeNext = true;
+    case AbilityEffect.silence:
+      foe.stunRem = max(foe.stunRem, 1);
+    case AbilityEffect.absorbShield:
+      self.hp = min(self.maxHp, self.hp + val);
+    case AbilityEffect.missChance:
+      if (val > foe.weakenPct) { foe.weakenPct = val ~/ 2; foe.weakenRem = dur; }
   }
 }
 

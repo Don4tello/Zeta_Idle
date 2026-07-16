@@ -26,12 +26,12 @@ class _InventoryHubScreenState extends State<InventoryHubScreen>
   // Returns which tab indices (0=GEAR, 1=GEMS, 2=FORGE, 3=RUNES, 4=ARTIFACTS) are unlocked.
   // Once a tab is unlocked it stays visible permanently.
   List<int> _unlockedIndices(GameState game) {
-    final stage = game.campaignStageIndex;
+    final stage = game.effectiveUnlockStage;
     return [
       0, // GEAR always visible
-      if (stage >= 5 || game.gemShards > 0 || game.gemBag.isNotEmpty) 1, // GEMS
+      if (stage >= 50 || game.gemShards > 0 || game.gemBag.isNotEmpty) 1, // GEMS — aligns with PvP unlock
       if (stage >= 5 || game.inventory.bag.length >= 2) 2, // FORGE
-      if (stage >= 15 || game.runeDust > 0) 3, // RUNES
+      if (game.ownedRunes.isNotEmpty || game.runeDust > 0) 3, // RUNES — only after finding one
       if (stage >= 22 || game.ownedArtifacts.isNotEmpty) 4, // ARTIFACTS
     ];
   }
@@ -91,7 +91,7 @@ class _InventoryHubScreenState extends State<InventoryHubScreen>
         ]),
     3 => Column(children: [
           TutorialTip(tutorialKey: 'runes',
-              text: 'Craft Runes for temporary combat buffs. Collect dust by disenchanting gear.',
+              text: 'Craft Runes for temporary combat buffs. Collect dust by salvaging gear.',
               game: game),
           const Expanded(child: RuneScreen(embedded: true)),
         ]),
@@ -142,7 +142,7 @@ class _InventoryHubScreenState extends State<InventoryHubScreen>
               Text(_emojis[i], style: TextStyle(fontSize: i == allIdx ? 16 : 13)),
               const SizedBox(height: 2),
               Text(_labels[i],
-                  style: GoogleFonts.pixelifySans(
+                  style: GoogleFonts.rajdhani(
                     fontSize: 9,
                     fontWeight: i == allIdx ? FontWeight.bold : FontWeight.normal,
                     letterSpacing: 1,
@@ -245,7 +245,7 @@ class _GemCraftingTabState extends State<_GemCraftingTab> {
               const Text('💠', style: TextStyle(fontSize: 16)),
               const SizedBox(width: 8),
               Text('${game.gemShards}',
-                  style: GoogleFonts.pixelifySans(
+                  style: GoogleFonts.rajdhani(
                       fontSize: 17, fontWeight: FontWeight.bold,
                       color: const Color(0xFF44ccff))),
               const SizedBox(width: 6),

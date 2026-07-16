@@ -5,9 +5,9 @@ import 'package:google_fonts/google_fonts.dart';
 import '../core/routing/app_router.dart';
 import '../models/login_streak.dart';
 import '../services/game_state.dart';
-import '../screens/endless_upgrade_screen.dart';
 import '../widgets/battle_sprites.dart';
 import '../widgets/section_card.dart';
+import '../widgets/zcoin_icon.dart';
 import '../theme/app_theme.dart';
 
 class HomeScreen extends StatelessWidget {
@@ -18,12 +18,12 @@ class HomeScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final game  = GameStateProvider.of(context);
-    final stage = game.campaignStageIndex;
+    final stage = game.effectiveUnlockStage;
 
     // Returns null (hidden) when stage < unlock; adds ✨ badge for first 3 stages after unlock.
     Widget? btn(String label, int unlock, VoidCallback onTap, {bool badge = false}) {
       if (stage < unlock) return null;
-      final isNew = stage < unlock + 3;
+      final isNew = game.campaignStageIndex < unlock + 3 && game.prestigeLevel == 0;
       return _buildModeButtonBadged(
         context, isNew ? '$label  ✨' : label, onTap, badge: badge || isNew);
     }
@@ -221,9 +221,10 @@ class HomeScreen extends StatelessWidget {
                   const SizedBox(width: 8),
                   Expanded(
                       child: _buildResourceBox(
-                          '💎', 'CRYSTALS', '${game.crystals}',
+                          '', 'ZCOINS', '${game.zcoins}',
                           accent: const Color(0xFFAA66FF),
-                          tooltip: 'Crystals\nEarned from achievements and daily chests.\nSpend in the Aura Shop for skins, pets, and auras.')),
+                          iconWidget: const ZCoinIcon(size: 19),
+                          tooltip: 'ZCoins\nEarned from achievements and daily chests.\nSpend in the Aura Shop for skins, pets, and auras.')),
                 ]),
                 const SizedBox(height: 8),
                 Row(children: [
@@ -279,7 +280,7 @@ class HomeScreen extends StatelessWidget {
                       children: [
                         Text(
                           game.currentCampaignStage.title,
-                          style: GoogleFonts.pixelifySans(
+                          style: GoogleFonts.rajdhani(
                             fontWeight: FontWeight.bold,
                             color: AppTheme.textLight,
                             fontSize: 14,
@@ -326,82 +327,36 @@ class HomeScreen extends StatelessWidget {
 
             // ── Combat ────────────────────────────────────────────────────────
             sec('⚔', 'COMBAT', const Color(0xFFff6644), [
-              btn('📜  CAMPAIGN',          0,  () => context.push(Routes.campaign)),
-              btn('⚔️  QUICK BATTLE',     2,  () { game.startBattle(); context.push(Routes.battle); }),
-              btn('♾️  ENDLESS MODE',     5,  () => context.push(Routes.endless)),
-              btn('🎯  DAILY CHALLENGES', 5,  () => context.push(Routes.daily), badge: game.hasClaimableDaily),
-              stage >= 8 ? _LoginStreakButton() : null,
-              btn('🏰  DUNGEON',          5,  () => context.push(Routes.dungeon),
+              btn('📜  CAMPAIGN',           0,  () => context.push(Routes.campaign)),
+              btn('🏰  DUNGEON',            12, () => context.push(Routes.dungeon),
                   badge: game.dungeonAttemptsRemaining > 0),
-              btn('⚔  CHALLENGE GAUNTLET', 10, () => context.push(Routes.gauntlet)),
-              btn('☠  BOSS RUSH',         15, () => context.push(Routes.bossRush),
+              btn('⚔  CHALLENGE GAUNTLET', 11, () => context.push(Routes.gauntlet)),
+              btn('☠  BOSS RUSH',          15, () => context.push(Routes.bossRush),
                   badge: game.bossRushAttemptsRemaining > 0),
+              btn('🎯  DAILY CHALLENGES',   5,  () => context.push(Routes.daily),
+                  badge: game.hasClaimableDaily),
+              stage >= 8 ? _LoginStreakButton() : null,
+              btn('📋  BOUNTY BOARD',       8,  () => context.push(Routes.bounties)),
             ]),
 
-            // ── Character ─────────────────────────────────────────────────────
-            sec('🧙', 'CHARACTER', const Color(0xFF66aaff), [
-              btn('📋  CHARACTER SHEET', 0, () => context.go(Routes.shell)),
-              btn('⚡  ABILITIES',       2, () => context.push(Routes.abilityUpgrades),
-                  badge: game.hasAffordableAbilityUpgrade),
-              if (game.echoes > 0 || stage >= 10)
-                btn('⬆  UPGRADES',      10, () => Navigator.push(context,
-                    MaterialPageRoute(builder: (_) => const EndlessUpgradeScreen()))),
-              btn('🌿  PASSIVES',        5, () => context.push(Routes.passiveTree)),
-              btn('⚔  MASTERIES',       12, () => context.push(Routes.mastery)),
-              if (stage >= 18)
-                _buildModeButtonBadged(
-                  context,
-                  game.subclassAvailable ? '✨  SUBCLASS  (READY)' : '✨  SUBCLASS',
-                  () => context.push(Routes.subclass),
-                  badge: game.subclassAvailable,
-                ),
+            // ── Hero Hub ──────────────────────────────────────────────────────
+            sec('🧙', 'HERO', const Color(0xFF66aaff), [
+              _HeroHubCard(),
             ]),
 
             // ── Progression ───────────────────────────────────────────────────
             sec('⬆', 'PROGRESSION', const Color(0xFFaa88ff), [
-              if (stage >= 5)
-                _buildModeButtonBadged(
-                  context, '🏆  ACHIEVEMENTS',
-                  () => context.push(Routes.achievements),
-                  badge: game.achievementsClaimable > 0,
-                ),
-              btn('✦  PRESTIGE',   20, () => context.push(Routes.prestige)),
-              btn('✦  ASCENSION',  45, () => context.push(Routes.ascension)),
-            ]),
-
-            // ── Economy & Crafting ────────────────────────────────────────────
-            sec('💰', 'ECONOMY & CRAFTING', const Color(0xFFffdd44), [
-              btn('🎒  INVENTORY',     0,  () => context.push(Routes.inventory)),
-              btn('🛒  MERCHANT',      3,  () => context.push(Routes.shop)),
-              btn('🔨  FORGE',         5,  () => context.push(Routes.forge)),
-              btn('🗺  EXPEDITIONS',  15, () => context.push(Routes.expedition)),
-              btn('✦  RUNE FORGE',    15, () => context.push(Routes.runeForge)),
-              btn('⬡  ARTIFACT FORGE', 22, () => context.push(Routes.artifacts)),
+              btn('🏆  ACHIEVEMENTS', 5,  () => context.push(Routes.achievements),
+                  badge: game.achievementsClaimable > 0),
+              btn('✦  PRESTIGE',      20, () => context.push(Routes.prestige)),
+              btn('🌐  WORLD EVENT',  16, () => context.push(Routes.worldEvent)),
+              btn('✦  ASCENSION',    45, () => context.push(Routes.ascension)),
             ]),
 
             // ── Social ───────────────────────────────────────────────────────
             sec('🏰', 'SOCIAL', const Color(0xFF44ccaa), [
-              btn('⚔  GUILD',         15, () => context.push(Routes.guild)),
-              btn('📋  BOUNTY BOARD', 8,  () => context.push(Routes.bounties)),
-              btn('🌐  WORLD EVENT',  12, () => context.push(Routes.worldEvent)),
-              btn('🏆  LEADERBOARD',  15, () => context.push(Routes.leaderboard)),
-            ]),
-
-            // ── Lore & More ───────────────────────────────────────────────────
-            sec('📚', 'LORE & MORE', const Color(0xFF88aacc), [
-              btn('📖  BESTIARY', 3, () => context.push(Routes.bestiary)),
-              if (stage >= 3)
-                _buildModeButtonBadged(
-                  context,
-                  game.questsClaimable > 0
-                      ? '📜  QUESTLINES  (${game.questsClaimable} ready)'
-                      : '📜  QUESTLINES',
-                  () => context.push(Routes.quests),
-                  badge: game.questsClaimable > 0,
-                ),
-              btn('💎  COSMETICS',          8,  () => context.push(Routes.auraShop)),
-              btn('❓  KNOWLEDGE BASE',     5,  () => context.push(Routes.knowledgeBase)),
-              btn('🤝  MERCENARIES',        15, () => context.push(Routes.npcAllies)),
+              btn('⚔  GUILD',               15, () => context.push(Routes.guild)),
+              btn('🏆  LEADERBOARD',         15, () => context.push(Routes.leaderboard)),
               btn('⚠  CHALLENGE MODIFIERS', 25, () => context.push(Routes.challengeMods)),
             ]),
 
@@ -512,7 +467,7 @@ class HomeScreen extends StatelessWidget {
         Text(abbr,
             style: AppTheme.pixelHeading(fontSize: 9, letterSpacing: 0)),
         Text('$score',
-            style: GoogleFonts.pixelifySans(
+            style: GoogleFonts.rajdhani(
                 fontSize: 13,
                 fontWeight: FontWeight.bold,
                 color: AppTheme.textLight)),
@@ -536,7 +491,7 @@ class HomeScreen extends StatelessWidget {
         Text(label,
             style: AppTheme.pixelHeading(fontSize: 9, letterSpacing: 0)),
         Text(value,
-            style: GoogleFonts.pixelifySans(
+            style: GoogleFonts.rajdhani(
                 fontSize: 13,
                 fontWeight: FontWeight.bold,
                 color: AppTheme.textLight)),
@@ -555,7 +510,7 @@ class HomeScreen extends StatelessWidget {
             style: AppTheme.pixelHeading(fontSize: 11, letterSpacing: 1)),
         const SizedBox(height: 4),
         Text(value,
-            style: GoogleFonts.pixelifySans(
+            style: GoogleFonts.rajdhani(
                 fontSize: 16,
                 fontWeight: FontWeight.bold,
                 color: AppTheme.textLight)),
@@ -564,7 +519,7 @@ class HomeScreen extends StatelessWidget {
   }
 
   Widget _buildResourceBox(String emoji, String label, String value,
-      {Color? accent, String? tooltip}) {
+      {Color? accent, String? tooltip, Widget? iconWidget}) {
     final c = accent ?? AppTheme.accentGold;
     final box = Container(
       padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 6),
@@ -579,14 +534,14 @@ class HomeScreen extends StatelessWidget {
         borderRadius: BorderRadius.circular(4),
       ),
       child: Column(children: [
-        Text(emoji, style: const TextStyle(fontSize: 19)),
+        iconWidget ?? Text(emoji, style: const TextStyle(fontSize: 19)),
         const SizedBox(height: 4),
         Text(label,
             style: AppTheme.pixelHeading(
                 fontSize: 9, letterSpacing: 0.5, color: c.withValues(alpha: 0.85))),
         const SizedBox(height: 3),
         Text(value,
-            style: GoogleFonts.pixelifySans(
+            style: GoogleFonts.rajdhani(
                 fontSize: 14,
                 fontWeight: FontWeight.bold,
                 color: AppTheme.textLight)),
@@ -666,12 +621,11 @@ class _QuickAccessGrid extends StatelessWidget {
   Widget build(BuildContext context) {
     final stage = game.campaignStageIndex;
     final all = [
-      _QuickItem('📜', 'CAMPAIGN',   0, () => context.push(Routes.campaign)),
-      _QuickItem('📋', 'CHARACTER',  0, () => context.go(Routes.shell)),
-      _QuickItem('⚔️', 'BATTLE',    2, () { game.startBattle(); context.push(Routes.battle); }),
-      _QuickItem('🎒', 'INVENTORY',  3, () => context.push(Routes.inventory)),
-      _QuickItem('🔨', 'FORGE',      5, () => context.push(Routes.forge)),
-      _QuickItem('♾️', 'ENDLESS',   5, () => context.push(Routes.endless)),
+      _QuickItem('📜', 'CAMPAIGN',  0,  () => context.push(Routes.campaign)),
+      _QuickItem('🧙', 'HERO',      0,  () => context.push(Routes.heroHub)),
+      _QuickItem('🏰', 'DUNGEON',   8,  () => context.push(Routes.dungeon)),
+      _QuickItem('⚔️', 'GAUNTLET', 11, () => context.push(Routes.gauntlet)),
+      _QuickItem('☠', 'BOSS RUSH', 15, () => context.push(Routes.bossRush)),
     ];
     final items = all.where((i) => stage >= i.unlock).toList();
 
@@ -818,15 +772,15 @@ class _GettingStartedCard extends StatelessWidget {
             onTap: () => context.go(Routes.shell),
           ),
           _StepRow(
-            done: stage >= 2,
-            label: 'Unlock Quick Battle (reach Stage 2)',
-            onTap: stage >= 2
-                ? () { game.startBattle(); context.push(Routes.battle); }
-                : null,
+            done: game.abilityScoreRank('pwr') > 0 ||
+                  game.abilityScoreRank('vit') > 0 ||
+                  game.abilityScoreRank('agi') > 0,
+            label: 'Open HERO and buy your first Ability Score upgrade',
+            onTap: () => context.push(Routes.heroHub),
           ),
           _StepRow(
             done: stage >= 5,
-            label: 'Reach Stage 5 — new modes and features unlock!',
+            label: 'Reach Stage 5 — Abilities and Daily Challenges unlock!',
             onTap: stage >= 5 ? null : () => context.push(Routes.campaign),
           ),
         ],
@@ -873,6 +827,63 @@ class _StepRow extends StatelessWidget {
               const Icon(Icons.arrow_forward_ios,
                   size: 9, color: AppTheme.textMuted),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+// ── Hero Hub Card ─────────────────────────────────────────────────────────────
+
+class _HeroHubCard extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    const accent = Color(0xFF66aaff);
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () => context.push(Routes.heroHub),
+        borderRadius: BorderRadius.circular(4),
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [
+                accent.withValues(alpha: 0.10),
+                Colors.transparent,
+              ],
+              stops: const [0.0, 1.0],
+              begin: Alignment.centerLeft,
+              end: Alignment.centerRight,
+            ),
+            border: Border(
+              left:   const BorderSide(color: accent, width: 3),
+              top:    BorderSide(color: accent.withValues(alpha: 0.25), width: 1),
+              right:  BorderSide(color: AppTheme.cardBorder, width: 1),
+              bottom: BorderSide(color: AppTheme.cardBorder, width: 1),
+            ),
+            borderRadius: BorderRadius.circular(4),
+          ),
+          child: Row(children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('🧙  HERO',
+                      style: AppTheme.pixelHeading(
+                          fontSize: 13, letterSpacing: 1, color: accent)),
+                  const SizedBox(height: 5),
+                  Text('UPGRADES  •  ARMORY  •  ALLIES  •  CODEX',
+                      style: AppTheme.pixelHeading(
+                          fontSize: 9,
+                          letterSpacing: 0.5,
+                          color: accent.withValues(alpha: 0.55))),
+                ],
+              ),
+            ),
+            Icon(Icons.arrow_forward_ios,
+                color: accent.withValues(alpha: 0.6), size: 14),
+          ]),
         ),
       ),
     );

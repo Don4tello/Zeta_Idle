@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -65,10 +65,10 @@ class AppTheme {
   static TextStyle pixelHeading({
     double fontSize = 15,
     Color color = accentGold,
-    double letterSpacing = 2,
+    double letterSpacing = 1.5,
     FontWeight weight = FontWeight.bold,
   }) =>
-      GoogleFonts.pixelifySans(
+      GoogleFonts.rajdhani(
         fontSize: fontSize,
         color: color,
         letterSpacing: letterSpacing,
@@ -78,12 +78,18 @@ class AppTheme {
   // ── Full theme ───────────────────────────────────────────────────────────────
   static ThemeData darkMedievalTheme() {
     final base = ThemeData.dark();
-    final pixelText = GoogleFonts.pixelifySansTextTheme(base.textTheme).apply(
+    // rajdhani throughout for a consistent pixel-art look
+    final pixelText = GoogleFonts.rajdhaniTextTheme(base.textTheme).apply(
       bodyColor: textLight,
       displayColor: accentGold,
     );
+    final textTheme = pixelText.copyWith(
+      bodyLarge:  GoogleFonts.rajdhani(color: textLight, fontSize: 16),
+      bodyMedium: GoogleFonts.rajdhani(color: textLight, fontSize: 14),
+      bodySmall:  GoogleFonts.rajdhani(color: textMuted,  fontSize: 12),
+    );
     return base.copyWith(
-      textTheme: pixelText,
+      textTheme: textTheme,
       scaffoldBackgroundColor: darkBg,
       primaryColor: accentGold,
       appBarTheme: const AppBarTheme(
@@ -126,7 +132,7 @@ class AppTheme {
     'shards':     'Shards — From Dungeon treasure rooms and locked chests. Used for Abilities and Allies.',
     'echoes':     'Echoes — From Challenge Gauntlet runs. Used for permanent Upgrades.',
     'essence':    'Essence — From campaign kills and Gauntlet. Used for the Passive Tree.',
-    'crystals':   'Crystals — From achievements and daily chests. Used for cosmetics and boosts.',
+    'zcoins':   'ZCoins — From achievements and daily chests. Used for cosmetics and boosts.',
     'mythril':    'Mythril — From Boss Rush and Prestige. Used for Artifact Forge.',
     'gemShards':  'Gem Shards — From PvP Arena battles. Used to craft elemental Gems.',
     'souls':      'Souls — Earned by Prestiging. Used in the Prestige Shop.',

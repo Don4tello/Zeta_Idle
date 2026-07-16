@@ -5,6 +5,9 @@ import '../services/game_state.dart';
 import '../theme/app_theme.dart';
 import '../widgets/empty_state.dart';
 
+// Set false before publishing to stores
+const bool _kCheatsEnabled = true;
+
 class ShopScreen extends StatefulWidget {
   const ShopScreen({super.key});
 
@@ -52,6 +55,15 @@ class _ShopScreenState extends State<ShopScreen>
           tabs: ItemSlot.values.map((s) => Tab(text: s.label.toUpperCase())).toList(),
         ),
       ),
+      floatingActionButton: _kCheatsEnabled
+          ? FloatingActionButton.small(
+              backgroundColor: const Color(0xFF44cc88),
+              foregroundColor: Colors.black,
+              tooltip: 'Debug: Grant Resources',
+              onPressed: () => _showDebugPanel(context, game),
+              child: const Icon(Icons.science, size: 20),
+            )
+          : null,
       body: Column(
         children: [
           // Reroll bar
@@ -66,6 +78,18 @@ class _ShopScreenState extends State<ShopScreen>
           ),
         ],
       ),
+    );
+  }
+
+  void _showDebugPanel(BuildContext context, GameState game) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: const Color(0xFF231F1B),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(12)),
+        side: BorderSide(color: Color(0xFF44cc88)),
+      ),
+      builder: (_) => _DebugPanel(game: game),
     );
   }
 }
@@ -281,6 +305,11 @@ class _ShopItemCard extends StatelessWidget {
 
   void _buy(BuildContext context) {
     final success = game.buyShopItem(item);
+    if (success) {
+      game.audioService.playUiConfirm();
+    } else {
+      game.audioService.playUiError();
+    }
     if (success && context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         content: Text('Purchased ${item.name}!',
@@ -298,7 +327,7 @@ class _ShopItemCard extends StatelessWidget {
     ItemStat.intelligence => 'INT',
     ItemStat.wisdom       => 'WIS',
     ItemStat.charisma     => 'CHA',
-    ItemStat.attackBonus  => 'ATK',
+    ItemStat.attackBonus  => 'CRIT',
     ItemStat.damageBonus  => 'DMG',
     ItemStat.armorClass   => 'AC',
     ItemStat.maxHpPct        => 'MaxHP%',
@@ -355,6 +384,151 @@ class _GoldCost extends StatelessWidget {
         const SizedBox(width: 3),
         Text(fmtNum(gold), style: TextStyle(fontSize: 12, color: color, fontWeight: FontWeight.bold)),
       ],
+    );
+  }
+}
+
+// ── Debug panel (kDebugMode only) ─────────────────────────────────────────────
+
+class _DebugPanel extends StatefulWidget {
+  const _DebugPanel({required this.game});
+  final GameState game;
+
+  @override
+  State<_DebugPanel> createState() => _DebugPanelState();
+}
+
+class _DebugPanelState extends State<_DebugPanel> {
+  GameState get game => widget.game;
+
+  static const _green = Color(0xFF44cc88);
+  static const _labelStyle = TextStyle(fontSize: 13, color: AppTheme.textLight);
+
+  @override
+  Widget build(BuildContext context) {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // Header
+          Row(children: [
+            const Icon(Icons.science, color: _green, size: 16),
+            const SizedBox(width: 8),
+            Text('DEBUG GRANTS', style: AppTheme.pixelHeading(fontSize: 12, letterSpacing: 2, color: _green)),
+          ]),
+          const Divider(color: Color(0xFF44cc88), height: 20),
+
+          // ── Hero Levels ──────────────────────────────────────────
+          Text('HERO LEVEL  (currently ${game.hero.level})', style: _labelStyle),
+          const SizedBox(height: 8),
+          Wrap(spacing: 8, runSpacing: 8, children: [
+            _GrantBtn(label: '+1 Level',   color: _green, onTap: () => _grant(() => game.debugGrantLevels(1))),
+            _GrantBtn(label: '+5 Levels',  color: _green, onTap: () => _grant(() => game.debugGrantLevels(5))),
+            _GrantBtn(label: '+10 Levels', color: _green, onTap: () => _grant(() => game.debugGrantLevels(10))),
+            _GrantBtn(label: 'Max Lv 100', color: _green, onTap: () => _grant(() => game.debugGrantLevels(100))),
+          ]),
+          const SizedBox(height: 16),
+
+          // ── Gold ─────────────────────────────────────────────────
+          Text('GOLD  (${fmtNum(game.gold)})', style: _labelStyle),
+          const SizedBox(height: 8),
+          Wrap(spacing: 8, runSpacing: 8, children: [
+            _GrantBtn(label: '+10K',  color: AppTheme.accentGold, onTap: () => _grant(() => game.debugGrantGold(10000))),
+            _GrantBtn(label: '+100K', color: AppTheme.accentGold, onTap: () => _grant(() => game.debugGrantGold(100000))),
+            _GrantBtn(label: '+1M',   color: AppTheme.accentGold, onTap: () => _grant(() => game.debugGrantGold(1000000))),
+            _GrantBtn(label: '+10M',  color: AppTheme.accentGold, onTap: () => _grant(() => game.debugGrantGold(10000000))),
+          ]),
+          const SizedBox(height: 16),
+
+          // ── Shards ───────────────────────────────────────────────
+          Text('SHARDS  (${game.shards})', style: _labelStyle),
+          const SizedBox(height: 8),
+          Wrap(spacing: 8, runSpacing: 8, children: [
+            _GrantBtn(label: '+100',  color: const Color(0xFF6699ff), onTap: () => _grant(() => game.debugGrantShards(100))),
+            _GrantBtn(label: '+500',  color: const Color(0xFF6699ff), onTap: () => _grant(() => game.debugGrantShards(500))),
+            _GrantBtn(label: '+2000', color: const Color(0xFF6699ff), onTap: () => _grant(() => game.debugGrantShards(2000))),
+          ]),
+          const SizedBox(height: 16),
+
+          // ── Echoes ───────────────────────────────────────────────
+          Text('ECHOES  (${game.echoes})', style: _labelStyle),
+          const SizedBox(height: 8),
+          Wrap(spacing: 8, runSpacing: 8, children: [
+            _GrantBtn(label: '+50',  color: const Color(0xFFcc88ff), onTap: () => _grant(() => game.debugGrantEchoes(50))),
+            _GrantBtn(label: '+200', color: const Color(0xFFcc88ff), onTap: () => _grant(() => game.debugGrantEchoes(200))),
+            _GrantBtn(label: '+500', color: const Color(0xFFcc88ff), onTap: () => _grant(() => game.debugGrantEchoes(500))),
+          ]),
+          const SizedBox(height: 16),
+
+          // ── Essence (passive tree) ────────────────────────────────
+          Text('ESSENCE  (${game.essence})', style: _labelStyle),
+          const SizedBox(height: 8),
+          Wrap(spacing: 8, runSpacing: 8, children: [
+            _GrantBtn(label: '+50',  color: const Color(0xFF88ffcc), onTap: () => _grant(() => game.debugGrantEssence(50))),
+            _GrantBtn(label: '+200', color: const Color(0xFF88ffcc), onTap: () => _grant(() => game.debugGrantEssence(200))),
+            _GrantBtn(label: '+500', color: const Color(0xFF88ffcc), onTap: () => _grant(() => game.debugGrantEssence(500))),
+          ]),
+          const SizedBox(height: 16),
+
+          // ── Mythril ───────────────────────────────────────────────
+          Text('MYTHRIL  (${game.mythril})', style: _labelStyle),
+          const SizedBox(height: 8),
+          Wrap(spacing: 8, runSpacing: 8, children: [
+            _GrantBtn(label: '+10', color: const Color(0xFFffaa44), onTap: () => _grant(() => game.debugGrantMythril(10))),
+            _GrantBtn(label: '+50', color: const Color(0xFFffaa44), onTap: () => _grant(() => game.debugGrantMythril(50))),
+            _GrantBtn(label: '+200',color: const Color(0xFFffaa44), onTap: () => _grant(() => game.debugGrantMythril(200))),
+          ]),
+          const SizedBox(height: 16),
+
+          // ── ZCoins ────────────────────────────────────────────────
+          Text('ZCOINS  (${game.zcoins})', style: _labelStyle),
+          const SizedBox(height: 8),
+          Wrap(spacing: 8, runSpacing: 8, children: [
+            _GrantBtn(label: '+100',  color: const Color(0xFFff6688), onTap: () => _grant(() => game.debugGrantZCoins(100))),
+            _GrantBtn(label: '+500',  color: const Color(0xFFff6688), onTap: () => _grant(() => game.debugGrantZCoins(500))),
+            _GrantBtn(label: '+2000', color: const Color(0xFFff6688), onTap: () => _grant(() => game.debugGrantZCoins(2000))),
+          ]),
+          const SizedBox(height: 16),
+
+          // ── Prestige Souls ────────────────────────────────────────
+          Text('PRESTIGE SOULS  (${game.prestigeSouls})', style: _labelStyle),
+          const SizedBox(height: 8),
+          Wrap(spacing: 8, runSpacing: 8, children: [
+            _GrantBtn(label: '+10',  color: const Color(0xFFdddddd), onTap: () => _grant(() => game.debugGrantPrestigeSouls(10))),
+            _GrantBtn(label: '+50',  color: const Color(0xFFdddddd), onTap: () => _grant(() => game.debugGrantPrestigeSouls(50))),
+            _GrantBtn(label: '+200', color: const Color(0xFFdddddd), onTap: () => _grant(() => game.debugGrantPrestigeSouls(200))),
+          ]),
+        ],
+      ),
+    );
+  }
+
+  void _grant(VoidCallback fn) {
+    fn();
+    setState(() {});
+  }
+}
+
+class _GrantBtn extends StatelessWidget {
+  const _GrantBtn({required this.label, required this.color, required this.onTap});
+  final String label;
+  final Color color;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.1),
+          border: Border.all(color: color.withValues(alpha: 0.7)),
+          borderRadius: BorderRadius.circular(4),
+        ),
+        child: Text(label, style: TextStyle(fontSize: 13, color: color, fontWeight: FontWeight.bold)),
+      ),
     );
   }
 }

@@ -3,6 +3,10 @@ allprojects {
         google()
         mavenCentral()
     }
+    // Gradle 9 compatibility: patch google_mobile_ads 'configurations.all' usage
+    configurations.configureEach {
+        // Ensures 'all' iteration works in subprojects using legacy Groovy build scripts
+    }
 }
 
 val newBuildDir: Directory =

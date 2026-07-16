@@ -10,13 +10,14 @@ import '../services/game_state.dart';
 import '../services/iap_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/battle_sprites.dart';
+import '../widgets/zcoin_icon.dart';
 
 const _kCrystalSources = [
   ('🏆', 'Achievements — claim unlocked achievements for crystal rewards'),
   ('⚔️', 'Gauntlet — clear all 10 enemies in a Challenge Gauntlet run'),
   ('🗝️', 'Dungeons — complete a dungeon for a small crystal bonus'),
-  ('🌟', 'Prestige & Ascension — first prestige and ascension grant crystals'),
-  ('📅', 'Daily Login — day 7 login streak reward includes crystals'),
+  ('🌟', 'Prestige & Ascension — first prestige and ascension grant zcoins'),
+  ('📅', 'Daily Login — day 7 login streak reward includes zcoins'),
 ];
 
 class AuraShopScreen extends StatefulWidget {
@@ -53,7 +54,7 @@ class _AuraShopScreenState extends State<AuraShopScreen>
         actions: [
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-            child: _CrystalBadge(crystals: game.crystals),
+            child: _CrystalBadge(zcoins: game.zcoins),
           ),
         ],
         bottom: TabBar(
@@ -65,7 +66,7 @@ class _AuraShopScreenState extends State<AuraShopScreen>
             Tab(child: Text('AURAS', style: AppTheme.pixelHeading(fontSize: 11, letterSpacing: 1))),
             Tab(child: Text('SKINS', style: AppTheme.pixelHeading(fontSize: 11, letterSpacing: 1))),
             Tab(child: Text('PETS', style: AppTheme.pixelHeading(fontSize: 11, letterSpacing: 1))),
-            Tab(child: Text('CRYSTALS', style: AppTheme.pixelHeading(fontSize: 11, letterSpacing: 1))),
+            Tab(child: Text('ZCOINS', style: AppTheme.pixelHeading(fontSize: 11, letterSpacing: 1))),
             Tab(child: Text('BOOSTS', style: AppTheme.pixelHeading(fontSize: 11, letterSpacing: 1))),
           ],
         ),
@@ -73,67 +74,67 @@ class _AuraShopScreenState extends State<AuraShopScreen>
       body: TabBarView(
         controller: _tabs,
         children: [
-          _AurasTab(game: game),
-          _SkinsTab(game: game),
-          _PetsTab(game: game),
+          CosmeticsAurasSection(game: game),
+          CosmeticsSkinsSection(game: game),
+          CosmeticsPetsSection(game: game),
           _CrystalsTab(game: game),
-          _BoostsTab(game: game),
+          CosmeticsBoostsSection(game: game),
         ],
       ),
     );
   }
 }
 
-// ─── Auras tab ────────────────────────────────────────────────────────────────
+// ─── Auras section (used in AuraShopScreen and inline in premium shop) ────────
 
-class _AurasTab extends StatelessWidget {
-  const _AurasTab({required this.game});
+class CosmeticsAurasSection extends StatelessWidget {
+  const CosmeticsAurasSection({required this.game, this.scrollable = true, super.key});
   final GameState game;
+  final bool scrollable;
 
   @override
   Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          if (game.equippedAuraId != null) ...[
-            Text('EQUIPPED', style: AppTheme.pixelHeading(fontSize: 11, letterSpacing: 2, color: AppTheme.accentGold)),
-            const SizedBox(height: 8),
-            _buildAuraCard(context, kAuraCatalog.firstWhere((a) => a.id == game.equippedAuraId)),
-            const SizedBox(height: 16),
-          ],
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text('ALL AURAS', style: AppTheme.pixelHeading(fontSize: 11, letterSpacing: 2)),
-              if (game.equippedAuraId != null)
-                TextButton(
-                  onPressed: () => game.equipAura(null),
-                  style: TextButton.styleFrom(
-                    foregroundColor: AppTheme.textMuted,
-                    padding: EdgeInsets.zero,
-                    minimumSize: Size.zero,
-                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                  ),
-                  child: Text('Remove aura', style: const TextStyle(fontSize: 11, color: AppTheme.textMuted)),
-                ),
-            ],
-          ),
+    final col = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (game.equippedAuraId != null) ...[
+          Text('EQUIPPED', style: AppTheme.pixelHeading(fontSize: 11, letterSpacing: 2, color: AppTheme.accentGold)),
           const SizedBox(height: 8),
-          ...kAuraCatalog.map((aura) => Padding(
-            padding: const EdgeInsets.only(bottom: 10),
-            child: _buildAuraCard(context, aura),
-          )),
+          _buildAuraCard(context, kAuraCatalog.firstWhere((a) => a.id == game.equippedAuraId)),
+          const SizedBox(height: 16),
         ],
-      ),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text('ALL AURAS', style: AppTheme.pixelHeading(fontSize: 11, letterSpacing: 2)),
+            if (game.equippedAuraId != null)
+              TextButton(
+                onPressed: () => game.equipAura(null),
+                style: TextButton.styleFrom(
+                  foregroundColor: AppTheme.textMuted,
+                  padding: EdgeInsets.zero,
+                  minimumSize: Size.zero,
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
+                child: Text('Remove aura', style: const TextStyle(fontSize: 11, color: AppTheme.textMuted)),
+              ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        ...kAuraCatalog.map((aura) => Padding(
+          padding: const EdgeInsets.only(bottom: 10),
+          child: _buildAuraCard(context, aura),
+        )),
+      ],
     );
+    if (!scrollable) return col;
+    return SingleChildScrollView(padding: const EdgeInsets.all(16), child: col);
   }
 
   Widget _buildAuraCard(BuildContext context, HeroAura aura) {
     final owned    = game.ownedAuraIds.contains(aura.id);
     final equipped = game.equippedAuraId == aura.id;
-    final canAfford = game.crystals >= aura.crystalCost;
+    final canAfford = game.zcoins >= aura.zcoinCost;
 
     return Container(
       padding: const EdgeInsets.all(14),
@@ -197,7 +198,7 @@ class _AurasTab extends StatelessWidget {
                 else
                   Row(
                     children: [
-                      _CrystalCost(crystals: aura.crystalCost, affordable: canAfford),
+                      _CrystalCost(zcoins: aura.zcoinCost, affordable: canAfford),
                       const SizedBox(width: 10),
                       _ActionButton(
                         label: 'UNLOCK',
@@ -228,7 +229,7 @@ class _AurasTab extends StatelessWidget {
           children: [
             _AuraOrb(aura: aura, size: 72),
             const SizedBox(height: 12),
-            Text('Cost: ${aura.crystalCost} crystals',
+            Text('Cost: ${aura.zcoinCost} zcoins',
                 style: const TextStyle(color: AppTheme.textLight, fontSize: 14)),
           ],
         ),
@@ -241,6 +242,7 @@ class _AurasTab extends StatelessWidget {
             onPressed: () {
               Navigator.pop(context);
               game.purchaseAura(aura.id);
+              game.audioService.playUiConfirm();
             },
             child: Text('CONFIRM', style: AppTheme.pixelHeading(fontSize: 11, color: AppTheme.accentGold)),
           ),
@@ -250,56 +252,56 @@ class _AurasTab extends StatelessWidget {
   }
 }
 
-// ─── Skins tab ────────────────────────────────────────────────────────────────
+// ─── Skins section ────────────────────────────────────────────────────────────
 
-class _SkinsTab extends StatelessWidget {
-  const _SkinsTab({required this.game});
+class CosmeticsSkinsSection extends StatelessWidget {
+  const CosmeticsSkinsSection({required this.game, this.scrollable = true, super.key});
   final GameState game;
+  final bool scrollable;
 
   @override
   Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          if (game.equippedSkinId != null) ...[
-            Text('EQUIPPED', style: AppTheme.pixelHeading(fontSize: 11, letterSpacing: 2, color: AppTheme.accentGold)),
-            const SizedBox(height: 8),
-            _buildSkinCard(context, kSkinCatalog.firstWhere((s) => s.id == game.equippedSkinId)),
-            const SizedBox(height: 16),
-          ],
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text('ALL SKINS', style: AppTheme.pixelHeading(fontSize: 11, letterSpacing: 2)),
-              if (game.equippedSkinId != null)
-                TextButton(
-                  onPressed: () => game.equipSkin(null),
-                  style: TextButton.styleFrom(
-                    foregroundColor: AppTheme.textMuted,
-                    padding: EdgeInsets.zero,
-                    minimumSize: Size.zero,
-                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                  ),
-                  child: const Text('Remove skin', style: TextStyle(fontSize: 11, color: AppTheme.textMuted)),
-                ),
-            ],
-          ),
+    final col = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (game.equippedSkinId != null) ...[
+          Text('EQUIPPED', style: AppTheme.pixelHeading(fontSize: 11, letterSpacing: 2, color: AppTheme.accentGold)),
           const SizedBox(height: 8),
-          ...kSkinCatalog.map((skin) => Padding(
-            padding: const EdgeInsets.only(bottom: 10),
-            child: _buildSkinCard(context, skin),
-          )),
+          _buildSkinCard(context, kSkinCatalog.firstWhere((s) => s.id == game.equippedSkinId)),
+          const SizedBox(height: 16),
         ],
-      ),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text('ALL SKINS', style: AppTheme.pixelHeading(fontSize: 11, letterSpacing: 2)),
+            if (game.equippedSkinId != null)
+              TextButton(
+                onPressed: () => game.equipSkin(null),
+                style: TextButton.styleFrom(
+                  foregroundColor: AppTheme.textMuted,
+                  padding: EdgeInsets.zero,
+                  minimumSize: Size.zero,
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
+                child: const Text('Remove skin', style: TextStyle(fontSize: 11, color: AppTheme.textMuted)),
+              ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        ...kSkinCatalog.map((skin) => Padding(
+          padding: const EdgeInsets.only(bottom: 10),
+          child: _buildSkinCard(context, skin),
+        )),
+      ],
     );
+    if (!scrollable) return col;
+    return SingleChildScrollView(padding: const EdgeInsets.all(16), child: col);
   }
 
   Widget _buildSkinCard(BuildContext context, PaletteSkin skin) {
     final owned     = game.ownedSkinIds.contains(skin.id);
     final equipped  = game.equippedSkinId == skin.id;
-    final canAfford = game.crystals >= skin.crystalCost;
+    final canAfford = game.zcoins >= skin.zcoinCost;
 
     return Container(
       padding: const EdgeInsets.all(14),
@@ -364,7 +366,7 @@ class _SkinsTab extends StatelessWidget {
                 else
                   Row(
                     children: [
-                      _CrystalCost(crystals: skin.crystalCost, affordable: canAfford),
+                      _CrystalCost(zcoins: skin.zcoinCost, affordable: canAfford),
                       const SizedBox(width: 10),
                       _ActionButton(
                         label: 'UNLOCK',
@@ -393,7 +395,7 @@ class _SkinsTab extends StatelessWidget {
           children: [
             _SkinPreview(spriteId: game.hero.spriteId, skin: skin, showLabel: true),
             const SizedBox(height: 12),
-            Text('Cost: ${skin.crystalCost} crystals',
+            Text('Cost: ${skin.zcoinCost} zcoins',
                 style: const TextStyle(color: AppTheme.textLight, fontSize: 14)),
           ],
         ),
@@ -406,6 +408,7 @@ class _SkinsTab extends StatelessWidget {
             onPressed: () {
               Navigator.pop(context);
               game.purchaseSkin(skin.id);
+              game.audioService.playUiConfirm();
             },
             child: Text('CONFIRM', style: AppTheme.pixelHeading(fontSize: 11, color: AppTheme.accentGold)),
           ),
@@ -464,64 +467,64 @@ class _SkinPreview extends StatelessWidget {
   }
 }
 
-// ─── Pets tab ─────────────────────────────────────────────────────────────────
+// ─── Pets section ─────────────────────────────────────────────────────────────
 
-class _PetsTab extends StatelessWidget {
-  const _PetsTab({required this.game});
+class CosmeticsPetsSection extends StatelessWidget {
+  const CosmeticsPetsSection({required this.game, this.scrollable = true, super.key});
   final GameState game;
+  final bool scrollable;
 
   @override
   Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'All owned pets grant their passive bonus automatically. Use SEND OUT to choose which pet accompanies you in battle.',
-            style: const TextStyle(fontSize: 14, color: AppTheme.textMuted, height: 1.4),
-          ),
-          const SizedBox(height: 12),
-          if (game.equippedPetId != null) ...[
-            Text('BATTLE COMPANION', style: AppTheme.pixelHeading(fontSize: 11, letterSpacing: 2, color: AppTheme.accentGold)),
-            const SizedBox(height: 8),
-            _buildPetCard(context, kPetCatalog.firstWhere((p) => p.id == game.equippedPetId)),
-            const SizedBox(height: 16),
-          ],
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text('ALL PETS', style: AppTheme.pixelHeading(fontSize: 11, letterSpacing: 2)),
-              if (game.equippedPetId != null)
-                TextButton(
-                  onPressed: () => game.equipPet(null),
-                  style: TextButton.styleFrom(
-                    foregroundColor: AppTheme.textMuted,
-                    padding: EdgeInsets.zero,
-                    minimumSize: Size.zero,
-                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                  ),
-                  child: const Text('Dismiss pet', style: TextStyle(fontSize: 11, color: AppTheme.textMuted)),
-                ),
-            ],
-          ),
-          const SizedBox(height: 4),
-          Text('One companion can be active at a time. Each grants a small passive bonus.',
-              style: const TextStyle(fontSize: 12, color: AppTheme.textMuted)),
-          const SizedBox(height: 12),
-          ...kPetCatalog.map((pet) => Padding(
-            padding: const EdgeInsets.only(bottom: 10),
-            child: _buildPetCard(context, pet),
-          )),
+    final col = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'All owned pets grant their passive bonus automatically. Use SEND OUT to choose which pet accompanies you in battle.',
+          style: const TextStyle(fontSize: 14, color: AppTheme.textMuted, height: 1.4),
+        ),
+        const SizedBox(height: 12),
+        if (game.equippedPetId != null) ...[
+          Text('BATTLE COMPANION', style: AppTheme.pixelHeading(fontSize: 11, letterSpacing: 2, color: AppTheme.accentGold)),
+          const SizedBox(height: 8),
+          _buildPetCard(context, kPetCatalog.firstWhere((p) => p.id == game.equippedPetId)),
+          const SizedBox(height: 16),
         ],
-      ),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text('ALL PETS', style: AppTheme.pixelHeading(fontSize: 11, letterSpacing: 2)),
+            if (game.equippedPetId != null)
+              TextButton(
+                onPressed: () => game.equipPet(null),
+                style: TextButton.styleFrom(
+                  foregroundColor: AppTheme.textMuted,
+                  padding: EdgeInsets.zero,
+                  minimumSize: Size.zero,
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
+                child: const Text('Dismiss pet', style: TextStyle(fontSize: 11, color: AppTheme.textMuted)),
+              ),
+          ],
+        ),
+        const SizedBox(height: 4),
+        Text('One companion can be active at a time. Each grants a small passive bonus.',
+            style: const TextStyle(fontSize: 12, color: AppTheme.textMuted)),
+        const SizedBox(height: 12),
+        ...kPetCatalog.map((pet) => Padding(
+          padding: const EdgeInsets.only(bottom: 10),
+          child: _buildPetCard(context, pet),
+        )),
+      ],
     );
+    if (!scrollable) return col;
+    return SingleChildScrollView(padding: const EdgeInsets.all(16), child: col);
   }
 
   Widget _buildPetCard(BuildContext context, PetDefinition pet) {
     final owned     = game.ownedPetIds.contains(pet.id);
     final equipped  = game.equippedPetId == pet.id;
-    final canAfford = game.crystals >= pet.crystalCost;
+    final canAfford = game.zcoins >= pet.zcoinCost;
 
     return Container(
       padding: const EdgeInsets.all(14),
@@ -592,7 +595,7 @@ class _PetsTab extends StatelessWidget {
                 ] else
                   Row(
                     children: [
-                      _CrystalCost(crystals: pet.crystalCost, affordable: canAfford),
+                      _CrystalCost(zcoins: pet.zcoinCost, affordable: canAfford),
                       const SizedBox(width: 10),
                       _ActionButton(
                         label: 'ADOPT',
@@ -632,7 +635,7 @@ class _PetsTab extends StatelessWidget {
                   style: TextStyle(fontSize: 13, color: pet.color, fontWeight: FontWeight.bold)),
             ),
             const SizedBox(height: 12),
-            Text('Cost: ${pet.crystalCost} crystals',
+            Text('Cost: ${pet.zcoinCost} zcoins',
                 style: const TextStyle(color: AppTheme.textLight, fontSize: 14)),
           ],
         ),
@@ -645,6 +648,7 @@ class _PetsTab extends StatelessWidget {
             onPressed: () {
               Navigator.pop(context);
               game.purchasePet(pet.id);
+              game.audioService.playUiConfirm();
             },
             child: Text('ADOPT', style: AppTheme.pixelHeading(fontSize: 11, color: pet.color)),
           ),
@@ -679,7 +683,7 @@ class _PetAvatar extends StatelessWidget {
   }
 }
 
-// ─── Crystals tab ─────────────────��───────────────────────────────────────────
+// ─── ZCoins tab ─────────────────��───────────────────────────────────────────
 
 class _CrystalsTab extends StatelessWidget {
   const _CrystalsTab({required this.game});
@@ -693,7 +697,7 @@ class _CrystalsTab extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Center(child: _CrystalBadge(crystals: game.crystals, large: true)),
+          Center(child: _CrystalBadge(zcoins: game.zcoins, large: true)),
           const SizedBox(height: 20),
           if (!supported) ...[
             Container(
@@ -707,16 +711,16 @@ class _CrystalsTab extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Row(children: [
-                    Text('💎', style: TextStyle(fontSize: 21)),
-                    SizedBox(width: 10),
-                    Text('EARNING CRYSTALS',
+                  Row(children: [
+                    const ZCoinIcon(size: 21),
+                    const SizedBox(width: 10),
+                    const Text('EARNING ZCOINS',
                         style: TextStyle(color: Color(0xFF88aaff),
                             fontSize: 13, fontWeight: FontWeight.bold, letterSpacing: 1.5)),
                   ]),
                   const SizedBox(height: 12),
                   const Text(
-                    'On PC, crystals are earned through gameplay:',
+                    'On PC, ZCoins are earned through gameplay:',
                     style: TextStyle(color: AppTheme.textLight, fontSize: 13),
                   ),
                   const SizedBox(height: 10),
@@ -742,7 +746,7 @@ class _CrystalsTab extends StatelessWidget {
               )),
             ],
           ] else ...[
-            Text('CRYSTAL PACKS', style: AppTheme.pixelHeading(fontSize: 11, letterSpacing: 2)),
+            Text('ZCOIN PACKS', style: AppTheme.pixelHeading(fontSize: 11, letterSpacing: 2)),
             const SizedBox(height: 10),
             ...IapService.packages.map((pkg) => Padding(
               padding: const EdgeInsets.only(bottom: 10),
@@ -772,7 +776,7 @@ class _PackageCard extends StatelessWidget {
       ),
       child: Row(
         children: [
-          const Text('💎', style: TextStyle(fontSize: 29)),
+          const ZCoinIcon(size: 29),
           const SizedBox(width: 14),
           Expanded(
             child: Column(
@@ -790,10 +794,10 @@ class _PackageCard extends StatelessWidget {
           ElevatedButton(
             onPressed: () {
               if (devMode) {
-                game.grantCrystals(pkg.crystals);
+                game.grantCrystals(pkg.zcoins);
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
-                    content: Text('+${pkg.crystals} crystals granted (debug)'),
+                    content: Text('+${pkg.zcoins} ZCoins granted (debug)'),
                     backgroundColor: const Color(0xFF2A2623),
                     duration: const Duration(seconds: 2),
                   ),
@@ -886,8 +890,8 @@ class _AuraOrbState extends State<_AuraOrb> with SingleTickerProviderStateMixin 
 }
 
 class _CrystalBadge extends StatelessWidget {
-  const _CrystalBadge({required this.crystals, this.large = false});
-  final int crystals;
+  const _CrystalBadge({required this.zcoins, this.large = false});
+  final int zcoins;
   final bool large;
 
   @override
@@ -902,10 +906,10 @@ class _CrystalBadge extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text('💎', style: TextStyle(fontSize: large ? 20 : 14)),
+          ZCoinIcon(size: large ? 20 : 14),
           const SizedBox(width: 6),
           Text(
-            '$crystals',
+            '$zcoins',
             style: AppTheme.pixelHeading(
               fontSize: large ? 16 : 11,
               color: const Color(0xFF88aaff),
@@ -919,8 +923,8 @@ class _CrystalBadge extends StatelessWidget {
 }
 
 class _CrystalCost extends StatelessWidget {
-  const _CrystalCost({required this.crystals, required this.affordable});
-  final int crystals;
+  const _CrystalCost({required this.zcoins, required this.affordable});
+  final int zcoins;
   final bool affordable;
 
   @override
@@ -928,10 +932,10 @@ class _CrystalCost extends StatelessWidget {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        const Text('💎', style: TextStyle(fontSize: 14)),
+        const ZCoinIcon(size: 14),
         const SizedBox(width: 4),
         Text(
-          '$crystals',
+          '$zcoins',
           style: TextStyle(
             fontSize: 13,
             color: affordable ? const Color(0xFF88aaff) : AppTheme.cardBorder,
@@ -984,7 +988,7 @@ class _PetEvolutionRow extends StatelessWidget {
       );
     }
     final cost      = game.evolutionCost(petId);
-    final canAfford = game.crystals >= cost;
+    final canAfford = game.zcoins >= cost;
     final starLabel = evo == 0 ? '○○' : '★○';
     return Padding(
       padding: const EdgeInsets.only(top: 8),
@@ -995,7 +999,7 @@ class _PetEvolutionRow extends StatelessWidget {
         Text(evo == 0 ? 'Evo I: 1.5× bonus' : 'Evo II: 2× bonus',
             style: const TextStyle(fontSize: 10, color: AppTheme.textMuted)),
         const SizedBox(width: 8),
-        _CrystalCost(crystals: cost, affordable: canAfford),
+        _CrystalCost(zcoins: cost, affordable: canAfford),
         const SizedBox(width: 6),
         _ActionButton(
           label: 'EVOLVE',
@@ -1007,79 +1011,79 @@ class _PetEvolutionRow extends StatelessWidget {
   }
 }
 
-// ── Boosts Tab ────────────────────────────────────────────────────────────────
+// ── Boosts section ────────────────────────────────────────────────────────────
 
-class _BoostsTab extends StatelessWidget {
-  const _BoostsTab({required this.game});
+class CosmeticsBoostsSection extends StatelessWidget {
+  const CosmeticsBoostsSection({required this.game, this.scrollable = true, super.key});
   final GameState game;
+  final bool scrollable;
 
   @override
   Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // ── Waystones ─────────────────────────────────────────────────────
-          Text('WAYSTONES', style: AppTheme.pixelHeading(fontSize: 11, letterSpacing: 2, color: AppTheme.accentGold)),
-          const SizedBox(height: 4),
-          const Text(
-            'Multiply idle gold income while active. Activate one before closing '
-            'the app to boost offline earnings. Only one can be active at a time.',
-            style: TextStyle(fontSize: 11, color: AppTheme.textMuted, height: 1.5),
-          ),
-          const SizedBox(height: 8),
-          if (game.waystoneActive)
-            _WaystoneActiveBanner(game: game),
-          const SizedBox(height: 8),
-          ...WaystoneType.all.map((w) => Padding(
-            padding: const EdgeInsets.only(bottom: 10),
-            child: _WaystoneCard(game: game, waystone: w),
-          )),
-          const SizedBox(height: 20),
+    final col = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // ── Waystones ─────────────────────────────────────────────────────
+        Text('WAYSTONES', style: AppTheme.pixelHeading(fontSize: 11, letterSpacing: 2, color: AppTheme.accentGold)),
+        const SizedBox(height: 4),
+        const Text(
+          'Multiply idle gold income while active. Activate one before closing '
+          'the app to boost offline earnings. Only one can be active at a time.',
+          style: TextStyle(fontSize: 11, color: AppTheme.textMuted, height: 1.5),
+        ),
+        const SizedBox(height: 8),
+        if (game.waystoneActive)
+          _WaystoneActiveBanner(game: game),
+        const SizedBox(height: 8),
+        ...WaystoneType.all.map((w) => Padding(
+          padding: const EdgeInsets.only(bottom: 10),
+          child: _WaystoneCard(game: game, waystone: w),
+        )),
+        const SizedBox(height: 20),
 
-          // ── Attack Effects ─────────────────────────────────────────────────
-          Text('ATTACK EFFECTS', style: AppTheme.pixelHeading(fontSize: 11, letterSpacing: 2, color: AppTheme.accentGold)),
-          const SizedBox(height: 4),
-          const Text(
-            'Cosmetic visual effects on your attacks. Purely decorative — no gameplay impact.',
-            style: TextStyle(fontSize: 11, color: AppTheme.textMuted, height: 1.5),
-          ),
-          const SizedBox(height: 8),
-          ...AttackEffect.all.map((e) => Padding(
-            padding: const EdgeInsets.only(bottom: 8),
-            child: _AttackEffectCard(game: game, effect: e),
-          )),
-          const SizedBox(height: 20),
+        // ── Attack Effects ─────────────────────────────────────────────────
+        Text('ATTACK EFFECTS', style: AppTheme.pixelHeading(fontSize: 11, letterSpacing: 2, color: AppTheme.accentGold)),
+        const SizedBox(height: 4),
+        const Text(
+          'Cosmetic visual effects on your attacks. Purely decorative — no gameplay impact.',
+          style: TextStyle(fontSize: 11, color: AppTheme.textMuted, height: 1.5),
+        ),
+        const SizedBox(height: 8),
+        ...AttackEffect.all.map((e) => Padding(
+          padding: const EdgeInsets.only(bottom: 8),
+          child: _AttackEffectCard(game: game, effect: e),
+        )),
+        const SizedBox(height: 20),
 
-          // ── Extra Character Slots ──────────────────────────────────────────
-          Text('CHARACTER SLOTS', style: AppTheme.pixelHeading(fontSize: 11, letterSpacing: 2, color: AppTheme.accentGold)),
-          const SizedBox(height: 4),
-          Text(
-            'Unlock additional character save slots. You currently have '
-            '${3 + game.extraCharacterSlots} of 5.',
-            style: const TextStyle(fontSize: 11, color: AppTheme.textMuted, height: 1.5),
-          ),
-          const SizedBox(height: 8),
-          if (game.extraCharacterSlots >= 2)
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: const Color(0xFF231F1B),
-                border: Border.all(color: const Color(0xFF44cc66).withValues(alpha: 0.4)),
-                borderRadius: BorderRadius.circular(4),
-              ),
-              child: const Row(children: [
-                Text('✓ ', style: TextStyle(color: Color(0xFF44cc66))),
-                Text('All 5 slots unlocked.',
-                    style: TextStyle(fontSize: 12, color: Color(0xFF44cc66))),
-              ]),
-            )
-          else
-            _SlotUnlockCard(game: game),
-        ],
-      ),
+        // ── Extra Character Slots ──────────────────────────────────────────
+        Text('CHARACTER SLOTS', style: AppTheme.pixelHeading(fontSize: 11, letterSpacing: 2, color: AppTheme.accentGold)),
+        const SizedBox(height: 4),
+        Text(
+          'Unlock additional character save slots. You currently have '
+          '${3 + game.extraCharacterSlots} of 5.',
+          style: const TextStyle(fontSize: 11, color: AppTheme.textMuted, height: 1.5),
+        ),
+        const SizedBox(height: 8),
+        if (game.extraCharacterSlots >= 2)
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: const Color(0xFF231F1B),
+              border: Border.all(color: const Color(0xFF44cc66).withValues(alpha: 0.4)),
+              borderRadius: BorderRadius.circular(4),
+            ),
+            child: const Row(children: [
+              Text('✓ ', style: TextStyle(color: Color(0xFF44cc66))),
+              Text('All 5 slots unlocked.',
+                  style: TextStyle(fontSize: 12, color: Color(0xFF44cc66))),
+            ]),
+          )
+        else
+          _SlotUnlockCard(game: game),
+      ],
     );
+    if (!scrollable) return col;
+    return SingleChildScrollView(padding: const EdgeInsets.all(16), child: col);
   }
 }
 
@@ -1123,7 +1127,7 @@ class _WaystoneCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final isGrand  = waystone.id == 'grand';
     final count    = isGrand ? game.grandWaystoneCount : game.basicWaystoneCount;
-    final canBuy   = game.crystals >= waystone.crystalCost;
+    final canBuy   = game.zcoins >= waystone.zcoinCost;
     final canUse   = count > 0 && !game.waystoneActive;
 
     return Container(
@@ -1150,7 +1154,7 @@ class _WaystoneCard extends StatelessWidget {
                 style: const TextStyle(fontSize: 11, color: AppTheme.textMuted)),
             const SizedBox(height: 8),
             Row(children: [
-              _CrystalCost(crystals: waystone.crystalCost, affordable: canBuy),
+              _CrystalCost(zcoins: waystone.zcoinCost, affordable: canBuy),
               const SizedBox(width: 8),
               _ActionButton(
                 label: 'BUY',
@@ -1182,7 +1186,7 @@ class _AttackEffectCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final owned    = game.ownedAttackEffects.contains(effect.id);
     final equipped = game.equippedAttackEffectId == effect.id;
-    final canBuy   = game.crystals >= effect.crystalCost;
+    final canBuy   = game.zcoins >= effect.zcoinCost;
 
     return Container(
       padding: const EdgeInsets.all(12),
@@ -1214,7 +1218,7 @@ class _AttackEffectCard extends StatelessWidget {
           )
         else
           Row(children: [
-            _CrystalCost(crystals: effect.crystalCost, affordable: canBuy),
+            _CrystalCost(zcoins: effect.zcoinCost, affordable: canBuy),
             const SizedBox(width: 6),
             _ActionButton(
               label: 'BUY',
@@ -1234,7 +1238,7 @@ class _SlotUnlockCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     const cost     = 100;
-    final canAfford = game.crystals >= cost;
+    final canAfford = game.zcoins >= cost;
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
@@ -1254,7 +1258,7 @@ class _SlotUnlockCard extends StatelessWidget {
                 style: TextStyle(fontSize: 11, color: AppTheme.textMuted)),
             const SizedBox(height: 8),
             Row(children: [
-              _CrystalCost(crystals: cost, affordable: canAfford),
+              _CrystalCost(zcoins: cost, affordable: canAfford),
               const SizedBox(width: 8),
               _ActionButton(
                 label: 'UNLOCK',

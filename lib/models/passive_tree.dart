@@ -192,10 +192,10 @@ const kPassiveNodes = <PassiveNode>[
     description: '+25% XP per rank'),
 
   // ── ✨ MYSTIC — Abilities & Essence ───────────────────────────────────────
-  PassiveNode(id: 'mystic_0', name: 'Quick Hands',   emoji: '🌀',
+  PassiveNode(id: 'mystic_0', name: 'Arcane Gathering', emoji: '🌀',
     branch: PassiveBranch.mystic,   tier: 0, essenceCost: 8,
-    effect: PassiveEffect.cooldownReduce, value: 1,
-    description: '−1 ability cooldown per rank'),
+    effect: PassiveEffect.essenceGain, value: 10,
+    description: '+10% essence from kills per rank'),
   PassiveNode(id: 'mystic_1', name: 'Arcane Touch',  emoji: '✨',
     branch: PassiveBranch.mystic,   tier: 1, essenceCost: 18,
     effect: PassiveEffect.abilityDamage, value: 15,
@@ -206,52 +206,57 @@ const kPassiveNodes = <PassiveNode>[
     description: '+20% heal effectiveness per rank'),
   PassiveNode(id: 'mystic_3', name: 'Essence Draw',  emoji: '🔮',
     branch: PassiveBranch.mystic,   tier: 3, essenceCost: 70,
-    effect: PassiveEffect.essenceGain,   value: 20,
-    description: '+20% essence from kills, per rank'),
+    effect: PassiveEffect.essenceGain,   value: 12,
+    description: '+12% essence from kills per rank'),
   PassiveNode(id: 'mystic_4', name: 'Chain Cast',    emoji: '⚗',
     branch: PassiveBranch.mystic,   tier: 4, essenceCost: 130,
-    effect: PassiveEffect.abilityDamage, value: 25,
-    description: '+25% ability damage per rank'),
+    effect: PassiveEffect.abilityDamage, value: 20,
+    description: '+20% ability damage per rank'),
   PassiveNode(id: 'mystic_5', name: 'Transcendence', emoji: '🌟',
     branch: PassiveBranch.mystic,   tier: 5, essenceCost: 250,
-    effect: PassiveEffect.abilityDamage, value: 40,
-    description: '+40% ability damage per rank'),
+    effect: PassiveEffect.abilityDamage, value: 25,
+    description: '+25% ability damage per rank'),
 
   // ── 🜂 ELEMENTALIST — generated dynamically per class (see elementalistNodesFor)
 
-  // ── ⭐ ASCENDANT — Cross-branch mastery (requires 4 unlocks elsewhere) ────
+  // ── ⭐ ASCENDANT — Unlock 1 point per branch with 25+ total ranks (max 5) ──
   PassiveNode(id: 'ascendant_0', name: "Warrior's Soul", emoji: '⚔',
     branch: PassiveBranch.ascendant, tier: 0, essenceCost: 100,
     effect: PassiveEffect.allDamage,     value: 5,
-    unlockRequires: 4,
+    unlockRequires: 1,
     description: '+5% all damage per rank'),
   PassiveNode(id: 'ascendant_1', name: "Fortune's Favor", emoji: '🌙',
     branch: PassiveBranch.ascendant, tier: 1, essenceCost: 200,
     effect: PassiveEffect.goldFlat,      value: 20,
+    unlockRequires: 2,
     description: '+20% gold per rank'),
   PassiveNode(id: 'ascendant_2', name: 'Life Force',      emoji: '💖',
     branch: PassiveBranch.ascendant, tier: 2, essenceCost: 350,
     effect: PassiveEffect.maxHp,         value: 15,
+    unlockRequires: 2,
     description: '+15% max HP per rank'),
   PassiveNode(id: 'ascendant_3', name: 'Power Surge',     emoji: '⭐',
     branch: PassiveBranch.ascendant, tier: 3, essenceCost: 550,
     effect: PassiveEffect.abilityDamage, value: 20,
+    unlockRequires: 3,
     description: '+20% ability damage per rank'),
   PassiveNode(id: 'ascendant_4', name: 'Soul Harvest',    emoji: '🌌',
     branch: PassiveBranch.ascendant, tier: 4, essenceCost: 800,
     effect: PassiveEffect.essenceGain,   value: 25,
+    unlockRequires: 4,
     description: '+25% essence per rank'),
   PassiveNode(id: 'ascendant_5', name: 'Convergence',     emoji: '🔆',
     branch: PassiveBranch.ascendant, tier: 5, essenceCost: 1200,
     effect: PassiveEffect.allDamage,     value: 8,
+    unlockRequires: 5,
     description: '+8% all damage per rank'),
 
   // ── ⚔ KEYSTONE — SLAYER ──────────────────────────────────────────────────
   PassiveNode(id: 'slayer_key', name: 'Bloodlust', emoji: '🩸',
     branch: PassiveBranch.slayer, tier: 7, essenceCost: 800, maxRank: 1,
     effect: PassiveEffect.allDamage, value: 10, isKeystone: true,
-    keystoneDesc: 'Kills heal 5% of max HP',
-    description: 'Kills heal 5% max HP + 10% all damage'),
+    keystoneDesc: 'Kills grant a guaranteed crit on next attack',
+    description: 'Kill = auto-crit next attack + 10% all damage'),
 
   // ── 🛡 KEYSTONE — GUARDIAN ────────────────────────────────────────────────
   PassiveNode(id: 'guardian_key', name: 'Unbreakable', emoji: '💠',
@@ -285,7 +290,7 @@ const kPassiveNodes = <PassiveNode>[
   PassiveNode(id: 'ascendant_key', name: 'Convergence Prime', emoji: '🔱',
     branch: PassiveBranch.ascendant, tier: 6, essenceCost: 1500, maxRank: 1,
     effect: PassiveEffect.allDamage, value: 15, isKeystone: true,
-    unlockRequires: 8,
+    unlockRequires: 5,
     keystoneDesc: 'All passive bonuses increased by 10%',
     description: '+10% to all passives + 15% all damage'),
 
@@ -313,6 +318,12 @@ const kPassiveNodes = <PassiveNode>[
     effect: PassiveEffect.allRes, value: 5,
     isConnector: true, requiresBranches: [PassiveBranch.elementalist, PassiveBranch.guardian],
     description: '+5% all res per rank (requires Elementalist + Guardian)'),
+
+  PassiveNode(id: 'conn_mage_elem', name: 'Arcane Catalyst', emoji: '✨🜂',
+    branch: PassiveBranch.ascendant, tier: 0, essenceCost: 300, maxRank: 3,
+    effect: PassiveEffect.cooldownReduce, value: 1,
+    isConnector: true, requiresBranches: [PassiveBranch.mystic, PassiveBranch.elementalist],
+    description: '−1 cooldown per rank (requires Mystic + Elementalist)'),
 
   // ── CLASS-SPECIFIC NODES ──────────────────────────────────────────────────
   PassiveNode(id: 'class_barbarian', name: 'Frenzy', emoji: '🔥',
@@ -457,16 +468,13 @@ class PassiveTree {
       return branchNodes.every((n) => isMaxRank(n.id));
     }
 
-    // Elementalist nodes have no prerequisites — always upgradable
-    if (node.branch == PassiveBranch.elementalist) return true;
-
-    if (node.tier == 0) {
-      if (node.branch != PassiveBranch.ascendant) return true;
-      return _otherBranchUnlocks >= node.unlockRequires;
+    // Ascendant nodes unlock based on how many branches have reached 25+ total ranks
+    if (node.branch == PassiveBranch.ascendant) {
+      return ascendantUnlockPoints >= node.unlockRequires;
     }
-    // Require previous node in same branch to be rank ≥ 1
-    final branchStr = id.split('_')[0];
-    return isUnlocked('${branchStr}_${node.tier - 1}');
+
+    // All other nodes (including class-specific) have no prerequisites
+    return true;
   }
 
   int costForNextRank(String id) {
@@ -491,14 +499,25 @@ class PassiveTree {
       final r = rankOf(node.id);
       if (r >= 1 && node.effect == effect) total += node.value * r;
     }
+    // Convergence Prime keystone: all passive bonuses +10%
+    if (total > 0 && isUnlocked('ascendant_key')) return (total * 1.1).round();
     return total;
   }
 
-  int get _otherBranchUnlocks => allNodes
-      .where((n) => n.branch != PassiveBranch.ascendant && isUnlocked(n.id))
-      .length;
+  // Each non-Ascendant branch where ≥25 total ranks have been spent contributes 1 point (max 5).
+  int get ascendantUnlockPoints {
+    var points = 0;
+    for (final branch in PassiveBranch.values) {
+      if (branch == PassiveBranch.ascendant) continue;
+      final total = allNodes
+          .where((n) => n.branch == branch)
+          .fold(0, (s, n) => s + rankOf(n.id));
+      if (total >= 25) points++;
+    }
+    return points;
+  }
 
-  bool get ascendantBranchAvailable => _otherBranchUnlocks >= 4;
+  bool get ascendantBranchAvailable => ascendantUnlockPoints >= 1;
 
   // ── Node filtering ─────────────────────────────────────────────────────────
 

@@ -18,6 +18,26 @@ class QuestScreen extends StatelessWidget {
         backgroundColor: const Color(0xFF2A2623),
         title: Text('QUESTLINES', style: AppTheme.pixelHeading(fontSize: 14, letterSpacing: 2)),
         actions: [
+          if (game.hasClaimableQuest)
+            Padding(
+              padding: const EdgeInsets.only(right: 8),
+              child: Center(
+                child: GestureDetector(
+                  onTap: game.claimAllQuests,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF1a1428),
+                      border: Border.all(color: const Color(0xFFcc88ff)),
+                      borderRadius: BorderRadius.circular(3),
+                    ),
+                    child: Text('CLAIM ALL',
+                        style: AppTheme.pixelHeading(
+                            fontSize: 9, color: const Color(0xFFcc88ff))),
+                  ),
+                ),
+              ),
+            ),
           if (game.heroTitle != null)
             Padding(
               padding: const EdgeInsets.only(right: 16),
@@ -71,29 +91,47 @@ class QuestScreen extends StatelessWidget {
           const SizedBox(height: 20),
 
           // ── Class Questline ────────────────────────────────────────
-          Container(
-            padding: const EdgeInsets.all(12),
-            margin: const EdgeInsets.only(bottom: 10),
-            decoration: BoxDecoration(
-              color: const Color(0xFF231F1B),
-              border: Border.all(color: AppTheme.accentGold.withValues(alpha: 0.4)),
-              borderRadius: BorderRadius.circular(4),
-            ),
-            child: Row(children: [
-              Icon(game.hero.heroClass.info.icon,
-                  color: AppTheme.accentGold, size: 22),
-              const SizedBox(width: 12),
-              Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text('${game.hero.heroClass.displayName.toUpperCase()} QUESTS',
-                    style: AppTheme.pixelHeading(
-                        fontSize: 12, color: AppTheme.accentGold, letterSpacing: 2)),
-                const SizedBox(height: 2),
-                Text('Class-specific challenges for permanent bonuses.',
-                    style: const TextStyle(fontSize: 10, color: AppTheme.textMuted)),
+          _ClassQuestlineHeader(game: game, quests: quests),
+          if (game.hero.level < 30)
+            Container(
+              margin: const EdgeInsets.only(bottom: 16),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              decoration: BoxDecoration(
+                color: const Color(0xFF141210),
+                border: Border.all(color: const Color(0xFF3a3020)),
+                borderRadius: BorderRadius.circular(4),
+              ),
+              child: Row(children: [
+                const Icon(Icons.lock_outline, size: 16, color: Color(0xFF888866)),
+                const SizedBox(width: 10),
+                Text('Unlocks at Level 30  (current: ${game.hero.level})',
+                    style: const TextStyle(fontSize: 12, color: Color(0xFF888866))),
               ]),
-            ]),
-          ),
-          ...quests.map((q) => _QuestCard(quest: q, game: game)),
+            )
+          else ...[
+            if (game.classUltimateUnlocked)
+              Container(
+                margin: const EdgeInsets.only(bottom: 10),
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF1a1200),
+                  border: Border.all(color: AppTheme.accentGold),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: Row(children: [
+                  const Text('⚡', style: TextStyle(fontSize: 18)),
+                  const SizedBox(width: 10),
+                  Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    Text('ULTIMATE ABILITY UNLOCKED',
+                        style: AppTheme.pixelHeading(fontSize: 10, color: AppTheme.accentGold, letterSpacing: 2)),
+                    const SizedBox(height: 3),
+                    Text('${game.hero.heroClass.displayName} ultimate is now available in battle.',
+                        style: const TextStyle(fontSize: 11, color: AppTheme.textMuted)),
+                  ])),
+                ]),
+              ),
+            ...quests.map((q) => _QuestCard(quest: q, game: game)),
+          ],
         ],
       ),
     );
@@ -454,6 +492,119 @@ class _RewardRow extends StatelessWidget {
           _Chip('"${reward.title}"', AppTheme.accentGold),
       ])),
     ]);
+  }
+}
+
+// ── Class questline header with 5-node progress chain ────────────────────────
+
+class _ClassQuestlineHeader extends StatelessWidget {
+  const _ClassQuestlineHeader({required this.game, required this.quests});
+  final GameState game;
+  final List<ClassQuest> quests;
+
+  @override
+  Widget build(BuildContext context) {
+    final cls          = game.hero.heroClass;
+    final ultUnlocked  = game.classUltimateUnlocked;
+    final mainQuests   = quests.take(5).toList();
+    final claimedCount = mainQuests.where((q) => game.questsClaimed[q.id] == true).length;
+
+    return Container(
+      padding: const EdgeInsets.all(12),
+      margin: const EdgeInsets.only(bottom: 10),
+      decoration: BoxDecoration(
+        color: const Color(0xFF231F1B),
+        border: Border.all(color: AppTheme.accentGold.withValues(alpha: ultUnlocked ? 0.9 : 0.4)),
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Row(children: [
+          Icon(cls.info.icon, color: AppTheme.accentGold, size: 22),
+          const SizedBox(width: 12),
+          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text('${cls.displayName.toUpperCase()} QUESTLINE',
+                style: AppTheme.pixelHeading(fontSize: 12, color: AppTheme.accentGold, letterSpacing: 2)),
+            const SizedBox(height: 2),
+            Text('Complete 5 quests to unlock the Ultimate Ability.',
+                style: const TextStyle(fontSize: 10, color: AppTheme.textMuted)),
+          ])),
+          Text('$claimedCount / 5',
+              style: AppTheme.pixelHeading(fontSize: 11, color: AppTheme.accentGold)),
+        ]),
+        const SizedBox(height: 12),
+        // 5-node progress chain
+        Row(children: [
+          for (int i = 0; i < 5; i++) ...[
+            _ProgressNode(
+              index: i,
+              claimed: i < mainQuests.length && game.questsClaimed[mainQuests[i].id] == true,
+              active:  i < mainQuests.length && game.isQuestUnlocked(mainQuests[i]) && game.questsClaimed[mainQuests[i].id] != true,
+            ),
+            if (i < 4)
+              Expanded(child: Container(
+                height: 2,
+                color: i < claimedCount
+                    ? const Color(0xFF44cc66)
+                    : const Color(0xFF333322),
+              )),
+          ],
+          const SizedBox(width: 6),
+          // Ultimate node
+          _UltimateNode(unlocked: ultUnlocked),
+        ]),
+      ]),
+    );
+  }
+}
+
+class _ProgressNode extends StatelessWidget {
+  const _ProgressNode({required this.index, required this.claimed, required this.active});
+  final int  index;
+  final bool claimed;
+  final bool active;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = claimed
+        ? const Color(0xFF44cc66)
+        : active
+            ? AppTheme.accentGold
+            : const Color(0xFF333322);
+    return Container(
+      width: 26, height: 26,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: color.withValues(alpha: 0.15),
+        border: Border.all(color: color, width: 1.5),
+      ),
+      child: claimed
+          ? const Icon(Icons.check, size: 13, color: Color(0xFF44cc66))
+          : Text('${index + 1}',
+              style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: color)),
+    );
+  }
+}
+
+class _UltimateNode extends StatelessWidget {
+  const _UltimateNode({required this.unlocked});
+  final bool unlocked;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = unlocked ? AppTheme.accentGold : const Color(0xFF444422);
+    return Container(
+      width: 32, height: 32,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: color.withValues(alpha: unlocked ? 0.20 : 0.08),
+        border: Border.all(color: color, width: unlocked ? 2.0 : 1.0),
+      ),
+      child: Text('⚡',
+          style: TextStyle(fontSize: 14,
+              color: unlocked ? AppTheme.accentGold : const Color(0xFF555533))),
+    );
   }
 }
 

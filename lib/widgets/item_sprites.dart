@@ -47,10 +47,13 @@ class ItemSprite extends StatelessWidget {
       switch (rarity) {
         null                 => null,
         ItemRarity.common    => null,
+        ItemRarity.uncommon  => const Color(0xFF55cc55),
         ItemRarity.rare      => const Color(0xFF6699ff),
         ItemRarity.epic      => const Color(0xFFcc44ff),
         ItemRarity.legendary => const Color(0xFFFFD700),
+        ItemRarity.mythic    => const Color(0xFFDD1111),
         ItemRarity.set       => setColor ?? const Color(0xFF44ff88),
+        ItemRarity.unique    => const Color(0xFFE8A0FF),
       };
 
   @override

@@ -148,8 +148,7 @@ class _ArtifactScreenState extends State<ArtifactScreen> {
 
   Widget _buildTableBonuses(GameState game) {
     final bonuses = <(String, String, int)>[
-      ('⚔', 'ATK', game.artifactAttackBonus),
-      ('🗡', 'DMG', game.artifactDamageBonus),
+      ('⚔', 'PWR', game.artifactPowerBonus),
       ('🛡', 'ARM', game.artifactAcBonus),
       ('❤', 'HP%', game.artifactHpPct),
       ('💰', 'Gold%', game.artifactGoldPct),
@@ -193,107 +192,12 @@ class _ArtifactScreenState extends State<ArtifactScreen> {
 
   Widget _buildCollection(GameState game) {
     final owned = game.ownedArtifacts;
-    final cost  = game.forgeCost;
-    final canAfford = game.mythril >= cost;
 
     return ListView(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
       padding: const EdgeInsets.fromLTRB(8, 6, 8, 8),
       children: [
-        // ── Forge section ────────────────────────────────────────────────────
-        Padding(
-          padding: const EdgeInsets.only(bottom: 6),
-          child: Text('FORGE',
-              style: AppTheme.pixelHeading(fontSize: 11, letterSpacing: 2)),
-        ),
-        Text(
-          'Forge a random artifact from the relics of fallen heroes. '
-          'Higher campaign stage yields stronger items.',
-          style: const TextStyle(fontSize: 10, color: AppTheme.textMuted, height: 1.4),
-        ),
-        const SizedBox(height: 8),
-        // Forge button — shows all 7 type icons as a preview row
-        GestureDetector(
-          onTap: canAfford
-              ? () { game.forgeArtifact(); setState(() {}); }
-              : null,
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-            decoration: BoxDecoration(
-              gradient: canAfford
-                  ? const LinearGradient(
-                      colors: [Color(0xFF2a1a44), Color(0xFF1a1030)],
-                    )
-                  : null,
-              color: canAfford ? null : const Color(0xFF141420),
-              border: Border.all(
-                  color: canAfford
-                      ? const Color(0xFF9966ff)
-                      : AppTheme.cardBorder,
-                  width: canAfford ? 1.5 : 1),
-              borderRadius: BorderRadius.circular(6),
-              boxShadow: canAfford ? [
-                BoxShadow(
-                  color: const Color(0xFF9966ff).withValues(alpha: 0.3),
-                  blurRadius: 10,
-                  spreadRadius: 1,
-                ),
-              ] : null,
-            ),
-            child: Row(children: [
-              Row(
-                children: ArtifactBaseType.values.map((t) => Padding(
-                  padding: const EdgeInsets.only(right: 4),
-                  child: ArtifactIcon(
-                    type: t,
-                    color: t.color.withValues(alpha: canAfford ? 0.9 : 0.3),
-                    size: 20,
-                  ),
-                )).toList(),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Text(
-                  canAfford ? 'FORGE ARTIFACT' : 'NOT ENOUGH MYTHRIL',
-                  style: AppTheme.pixelHeading(
-                    fontSize: 12,
-                    letterSpacing: 1,
-                    color: canAfford
-                        ? Colors.white
-                        : AppTheme.cardBorder,
-                  ),
-                ),
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: canAfford
-                      ? const Color(0xFF9966ff).withValues(alpha: 0.25)
-                      : Colors.transparent,
-                  borderRadius: BorderRadius.circular(4),
-                  border: Border.all(
-                      color: canAfford
-                          ? const Color(0xFF9966ff).withValues(alpha: 0.5)
-                          : AppTheme.cardBorder),
-                ),
-                child: Row(mainAxisSize: MainAxisSize.min, children: [
-                  Text('⬡',
-                      style: TextStyle(fontSize: 13,
-                          color: canAfford ? const Color(0xFFcc99ff) : AppTheme.cardBorder)),
-                  const SizedBox(width: 4),
-                  Text('$cost',
-                      style: TextStyle(
-                          fontSize: 13, fontWeight: FontWeight.bold,
-                          color: canAfford ? const Color(0xFFcc99ff) : AppTheme.cardBorder)),
-                ]),
-              ),
-            ]),
-          ),
-        ),
-        const SizedBox(height: 12),
-        const Divider(height: 1, color: Color(0xFF2a2a3a)),
-        const SizedBox(height: 8),
         // ── Collection ───────────────────────────────────────────────────────
         Padding(
           padding: const EdgeInsets.only(bottom: 4),
@@ -308,12 +212,14 @@ class _ArtifactScreenState extends State<ArtifactScreen> {
         if (owned.isEmpty)
           const Padding(
             padding: EdgeInsets.symmetric(vertical: 12),
-            child: Text('No artifacts forged yet.',
-                style: TextStyle(fontSize: 11, color: AppTheme.textMuted)),
+            child: Text(
+              'No artifacts found yet. Complete Dungeons, Boss Rush, and Campaign bosses to find them.',
+              style: TextStyle(fontSize: 11, color: AppTheme.textMuted, height: 1.4),
+            ),
           )
         else ...[
           Text(
-            'Tap to select, then tap a grid cell to equip it.',
+            'Tap to select, then tap a grid cell to equip. Spend Mythril to upgrade.',
             style: const TextStyle(fontSize: 10, color: AppTheme.textMuted),
           ),
           const SizedBox(height: 8),
@@ -321,7 +227,10 @@ class _ArtifactScreenState extends State<ArtifactScreen> {
             artifact: art,
             equipped: game.isArtifactEquipped(art.uid),
             selected: _selectedArtifactId == art.uid,
+            mythril: game.mythril,
+            upgradeCost: game.artifactUpgradeCost(art),
             onTap: () => _onArtifactTap(game, art.uid),
+            onUpgrade: () { game.upgradeArtifact(art.uid); game.audioService.playUiConfirm(); setState(() {}); },
           )),
         ],
       ],
@@ -430,40 +339,6 @@ class _GridCell extends StatelessWidget {
     );
   }
 
-  Widget _buildEmptySlot(double size) {
-    if (size < 18) return const SizedBox.shrink();
-    return Center(
-      child: SizedBox(
-        width: size * 0.28,
-        height: size * 0.28,
-        child: CustomPaint(painter: _DiamondPainter()),
-      ),
-    );
-  }
-}
-
-// ── Empty slot diamond ────────────────────────────────────────────────────────
-
-class _DiamondPainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = const Color(0xFF2a2a40)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 0.8;
-    final cx = size.width / 2;
-    final cy = size.height / 2;
-    canvas.drawPath(
-      Path()
-        ..moveTo(cx, 0)
-        ..lineTo(size.width, cy)
-        ..lineTo(cx, size.height)
-        ..lineTo(0, cy)
-        ..close(),
-      paint,
-    );
-  }
-  @override bool shouldRepaint(_DiamondPainter old) => false;
 }
 
 // ── Placement hint ────────────────────────────────────────────────────────────
@@ -498,13 +373,19 @@ class _ArtifactRow extends StatelessWidget {
     required this.artifact,
     required this.equipped,
     required this.selected,
+    required this.mythril,
+    required this.upgradeCost,
     required this.onTap,
+    required this.onUpgrade,
   });
 
   final Artifact  artifact;
   final bool      equipped;
   final bool      selected;
+  final int       mythril;
+  final int       upgradeCost;
   final VoidCallback onTap;
+  final VoidCallback onUpgrade;
 
   @override
   Widget build(BuildContext context) {
@@ -574,12 +455,54 @@ class _ArtifactRow extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 8),
-          if (equipped)
-            _badge('ON', rc, thick: true)
-          else
-            Icon(selected ? Icons.touch_app : Icons.add_circle_outline,
-                size: 18,
-                color: selected ? const Color(0xFF9966ff) : AppTheme.textMuted),
+          Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              if (equipped)
+                _badge('ON', rc, thick: true)
+              else
+                Icon(selected ? Icons.touch_app : Icons.add_circle_outline,
+                    size: 18,
+                    color: selected ? const Color(0xFF9966ff) : AppTheme.textMuted),
+              if (artifact.dropLevel < 50) ...[
+                const SizedBox(height: 4),
+                GestureDetector(
+                  onTap: mythril >= upgradeCost ? onUpgrade : null,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: mythril >= upgradeCost
+                          ? const Color(0xFF9966ff).withValues(alpha: 0.15)
+                          : Colors.transparent,
+                      border: Border.all(
+                        color: mythril >= upgradeCost
+                            ? const Color(0xFF9966ff).withValues(alpha: 0.6)
+                            : AppTheme.cardBorder,
+                      ),
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                    child: Row(mainAxisSize: MainAxisSize.min, children: [
+                      Text('⬡',
+                          style: TextStyle(
+                              fontSize: 9,
+                              color: mythril >= upgradeCost
+                                  ? const Color(0xFFcc99ff)
+                                  : AppTheme.textMuted)),
+                      const SizedBox(width: 2),
+                      Text('$upgradeCost ▲',
+                          style: TextStyle(
+                              fontSize: 8,
+                              fontWeight: FontWeight.bold,
+                              color: mythril >= upgradeCost
+                                  ? const Color(0xFFcc99ff)
+                                  : AppTheme.textMuted)),
+                    ]),
+                  ),
+                ),
+              ],
+            ],
+          ),
         ]),
       ),
     );
@@ -614,8 +537,7 @@ class _ArtifactRow extends StatelessWidget {
             style: TextStyle(fontSize: 9, color: c, fontWeight: FontWeight.bold)),
       ));
     }
-    add(a.attackBonus, 'ATK');
-    add(a.damageBonus, 'DMG');
+    add(a.powerBonus, 'PWR');
     add(a.acBonus,     'AC');
     add(a.hpPct,       'HP%');
     add(a.shardPct,    '◆%');

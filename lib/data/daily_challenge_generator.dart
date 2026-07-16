@@ -1,4 +1,4 @@
-import 'dart:math';
+﻿import 'dart:math';
 import '../models/daily_challenge.dart';
 
 class _Template {
@@ -10,7 +10,7 @@ class _Template {
     required this.gold,
     required this.shards,
     required this.essence,
-    required this.crystals,
+    required this.zcoins,
   });
   final DailyChallengeType type;
   final String title;
@@ -19,7 +19,7 @@ class _Template {
   final int gold;
   final int shards;
   final int essence;
-  final int crystals;
+  final int zcoins;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -35,13 +35,13 @@ class DailyChallengeGenerator {
         type: DailyChallengeType.killEnemies,
         title: 'Slayer',
         makeDesc: _killDesc, target: 10,
-        gold: 120, shards: 5, essence: 3, crystals: 3,
+        gold: 120, shards: 5, essence: 3, zcoins: 3,
       ),
       _Template(
         type: DailyChallengeType.killEnemies,
         title: 'Pest Control',
         makeDesc: _killDesc, target: 15,
-        gold: 150, shards: 6, essence: 4, crystals: 4,
+        gold: 150, shards: 6, essence: 4, zcoins: 4,
       ),
     ],
     DailyChallengeType.winBattles: [
@@ -49,13 +49,13 @@ class DailyChallengeGenerator {
         type: DailyChallengeType.winBattles,
         title: 'Skirmisher',
         makeDesc: _winsDesc, target: 5,
-        gold: 120, shards: 5, essence: 3, crystals: 3,
+        gold: 120, shards: 5, essence: 3, zcoins: 3,
       ),
       _Template(
         type: DailyChallengeType.winBattles,
         title: 'Brawler',
         makeDesc: _winsDesc, target: 8,
-        gold: 150, shards: 6, essence: 4, crystals: 4,
+        gold: 150, shards: 6, essence: 4, zcoins: 4,
       ),
     ],
     DailyChallengeType.collectIdle: [
@@ -63,13 +63,13 @@ class DailyChallengeGenerator {
         type: DailyChallengeType.collectIdle,
         title: 'Patient Collector',
         makeDesc: _idleDesc, target: 3,
-        gold: 80, shards: 4, essence: 3, crystals: 2,
+        gold: 80, shards: 4, essence: 3, zcoins: 2,
       ),
       _Template(
         type: DailyChallengeType.collectIdle,
         title: 'Idle Harvester',
         makeDesc: _idleDesc, target: 5,
-        gold: 100, shards: 5, essence: 4, crystals: 3,
+        gold: 100, shards: 5, essence: 4, zcoins: 3,
       ),
     ],
     DailyChallengeType.useAbilities: [
@@ -77,13 +77,13 @@ class DailyChallengeGenerator {
         type: DailyChallengeType.useAbilities,
         title: 'Apprentice',
         makeDesc: _abilityDesc, target: 5,
-        gold: 100, shards: 5, essence: 3, crystals: 3,
+        gold: 100, shards: 5, essence: 3, zcoins: 3,
       ),
       _Template(
         type: DailyChallengeType.useAbilities,
         title: 'Channeler',
         makeDesc: _abilityDesc, target: 8,
-        gold: 120, shards: 5, essence: 4, crystals: 4,
+        gold: 120, shards: 5, essence: 4, zcoins: 4,
       ),
     ],
     DailyChallengeType.dealDamage: [
@@ -91,13 +91,13 @@ class DailyChallengeGenerator {
         type: DailyChallengeType.dealDamage,
         title: 'Striker',
         makeDesc: _dmgDesc, target: 200,
-        gold: 100, shards: 5, essence: 3, crystals: 3,
+        gold: 100, shards: 5, essence: 3, zcoins: 3,
       ),
       _Template(
         type: DailyChallengeType.dealDamage,
         title: 'Bruiser',
         makeDesc: _dmgDesc, target: 350,
-        gold: 130, shards: 6, essence: 4, crystals: 4,
+        gold: 130, shards: 6, essence: 4, zcoins: 4,
       ),
     ],
     DailyChallengeType.reachGold: [
@@ -105,13 +105,13 @@ class DailyChallengeGenerator {
         type: DailyChallengeType.reachGold,
         title: 'Coin Seeker',
         makeDesc: _goldDesc, target: 500,
-        gold: 90, shards: 5, essence: 3, crystals: 2,
+        gold: 90, shards: 5, essence: 3, zcoins: 2,
       ),
       _Template(
         type: DailyChallengeType.reachGold,
         title: 'Treasure Hoarder',
         makeDesc: _goldDesc, target: 750,
-        gold: 110, shards: 5, essence: 4, crystals: 3,
+        gold: 110, shards: 5, essence: 4, zcoins: 3,
       ),
     ],
     DailyChallengeType.equipItem: [
@@ -120,7 +120,7 @@ class DailyChallengeGenerator {
         title: 'Recycler',
         makeDesc: (_) => 'Disenchant any item today.',
         target: 1,
-        gold: 100, shards: 5, essence: 3, crystals: 3,
+        gold: 100, shards: 5, essence: 3, zcoins: 3,
       ),
     ],
     DailyChallengeType.defeatBoss: [
@@ -128,7 +128,7 @@ class DailyChallengeGenerator {
         type: DailyChallengeType.defeatBoss,
         title: 'Boss Slayer',
         makeDesc: _bossDesc, target: 1,
-        gold: 150, shards: 8, essence: 5, crystals: 5,
+        gold: 150, shards: 8, essence: 5, zcoins: 5,
       ),
     ],
   };
@@ -158,7 +158,7 @@ class DailyChallengeGenerator {
     rewardGold:     t.gold,
     rewardShards:   t.shards,
     rewardEssence:  t.essence,
-    rewardCrystals: t.crystals,
+    rewardCrystals: t.zcoins,
   );
 
   static String _killDesc(int t)    => 'Kill $t enemies today.';

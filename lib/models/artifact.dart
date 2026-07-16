@@ -82,8 +82,7 @@ class ArtifactBase {
     required this.name,
     required this.type,
     required this.flavorText,
-    this.attackBonus = 0,
-    this.damageBonus = 0,
+    this.powerBonus  = 0,
     this.acBonus     = 0,
     this.hpPct       = 0,
     this.shardPct    = 0,
@@ -95,8 +94,7 @@ class ArtifactBase {
   final String           name;
   final ArtifactBaseType type;
   final String           flavorText;
-  final int attackBonus;
-  final int damageBonus;
+  final int powerBonus; // flat damage (merged attack + damage)
   final int acBonus;
   final int hpPct;
   final int shardPct;
@@ -122,7 +120,7 @@ class ArtifactBase {
     ArtifactBase(
       id: 'b_sword', name: 'Sword', type: ArtifactBaseType.sword,
       flavorText: 'Too small to fight with. Too sharp to ignore.',
-      attackBonus: 1, damageBonus: 2,
+      powerBonus: 3,
     ),
     ArtifactBase(
       id: 'b_gemstone', name: 'Gemstone', type: ArtifactBaseType.gemstone,
@@ -156,8 +154,7 @@ class ArtifactAffix {
     required this.id,
     required this.name,
     required this.kind,
-    this.attackBonus = 0,
-    this.damageBonus = 0,
+    this.powerBonus  = 0,
     this.acBonus     = 0,
     this.hpPct       = 0,
     this.shardPct    = 0,
@@ -168,8 +165,7 @@ class ArtifactAffix {
   final String    id;
   final String    name;
   final AffixKind kind;
-  final int attackBonus;
-  final int damageBonus;
+  final int powerBonus; // flat damage (merged attack + damage)
   final int acBonus;
   final int hpPct;
   final int shardPct;
@@ -178,28 +174,28 @@ class ArtifactAffix {
 
   static const prefixes = <ArtifactAffix>[
     ArtifactAffix(id: 'px_sturdy',   name: 'Sturdy',        kind: AffixKind.prefix, hpPct: 6),
-    ArtifactAffix(id: 'px_sharp',    name: 'Sharp',         kind: AffixKind.prefix, attackBonus: 1),
-    ArtifactAffix(id: 'px_fierce',   name: 'Fierce',        kind: AffixKind.prefix, damageBonus: 2),
+    ArtifactAffix(id: 'px_sharp',    name: 'Sharp',         kind: AffixKind.prefix, powerBonus: 1),
+    ArtifactAffix(id: 'px_fierce',   name: 'Fierce',        kind: AffixKind.prefix, powerBonus: 2),
     ArtifactAffix(id: 'px_warded',   name: 'Warded',        kind: AffixKind.prefix, acBonus: 1),
     ArtifactAffix(id: 'px_gilded',   name: 'Gilded',        kind: AffixKind.prefix, goldPct: 8),
     ArtifactAffix(id: 'px_blessed',  name: 'Blessed',       kind: AffixKind.prefix, xpPct: 8),
     ArtifactAffix(id: 'px_shard',    name: 'Shard-Touched', kind: AffixKind.prefix, shardPct: 8),
     ArtifactAffix(id: 'px_ironclad', name: 'Ironclad',      kind: AffixKind.prefix, acBonus: 1, hpPct: 3),
-    ArtifactAffix(id: 'px_swift',    name: 'Swift',         kind: AffixKind.prefix, attackBonus: 1, damageBonus: 1),
-    ArtifactAffix(id: 'px_ancient',  name: 'Ancient',       kind: AffixKind.prefix, attackBonus: 1, acBonus: 1, hpPct: 3, goldPct: 3),
+    ArtifactAffix(id: 'px_swift',    name: 'Swift',         kind: AffixKind.prefix, powerBonus: 2),
+    ArtifactAffix(id: 'px_ancient',  name: 'Ancient',       kind: AffixKind.prefix, powerBonus: 1, acBonus: 1, hpPct: 3, goldPct: 3),
   ];
 
   static const suffixes = <ArtifactAffix>[
     ArtifactAffix(id: 'sx_fortitude', name: 'of Fortitude',       kind: AffixKind.suffix, hpPct: 6),
-    ArtifactAffix(id: 'sx_slaying',   name: 'of Slaying',         kind: AffixKind.suffix, damageBonus: 2),
-    ArtifactAffix(id: 'sx_precision', name: 'of Precision',       kind: AffixKind.suffix, attackBonus: 1),
+    ArtifactAffix(id: 'sx_slaying',   name: 'of Slaying',         kind: AffixKind.suffix, powerBonus: 2),
+    ArtifactAffix(id: 'sx_precision', name: 'of Precision',       kind: AffixKind.suffix, powerBonus: 1),
     ArtifactAffix(id: 'sx_protect',   name: 'of Protection',      kind: AffixKind.suffix, acBonus: 1),
     ArtifactAffix(id: 'sx_wealth',    name: 'of Wealth',          kind: AffixKind.suffix, goldPct: 8),
     ArtifactAffix(id: 'sx_wisdom',    name: 'of Wisdom',          kind: AffixKind.suffix, xpPct: 8),
     ArtifactAffix(id: 'sx_crystal',   name: 'of Crystallization', kind: AffixKind.suffix, shardPct: 8),
     ArtifactAffix(id: 'sx_bulwark',   name: 'of the Bulwark',     kind: AffixKind.suffix, acBonus: 1, hpPct: 3),
-    ArtifactAffix(id: 'sx_hunt',      name: 'of the Hunt',        kind: AffixKind.suffix, attackBonus: 1, damageBonus: 1),
-    ArtifactAffix(id: 'sx_ages',      name: 'of Ages',            kind: AffixKind.suffix, attackBonus: 1, acBonus: 1, hpPct: 3, goldPct: 3),
+    ArtifactAffix(id: 'sx_hunt',      name: 'of the Hunt',        kind: AffixKind.suffix, powerBonus: 2),
+    ArtifactAffix(id: 'sx_ages',      name: 'of Ages',            kind: AffixKind.suffix, powerBonus: 1, acBonus: 1, hpPct: 3, goldPct: 3),
   ];
 
   static ArtifactAffix? byId(String? id) {
@@ -256,8 +252,7 @@ class Artifact {
 
   static int _n(int? v) => v ?? 0;
 
-  int get attackBonus => ((_n(base.attackBonus) + _n(prefix?.attackBonus) + _n(suffix?.attackBonus)) * _scale).round();
-  int get damageBonus => ((_n(base.damageBonus) + _n(prefix?.damageBonus) + _n(suffix?.damageBonus)) * _scale).round();
+  int get powerBonus  => ((_n(base.powerBonus)  + _n(prefix?.powerBonus)  + _n(suffix?.powerBonus))  * _scale).round();
   int get acBonus     => ((_n(base.acBonus)     + _n(prefix?.acBonus)     + _n(suffix?.acBonus))     * _scale).round();
   int get hpPct       => ((_n(base.hpPct)       + _n(prefix?.hpPct)       + _n(suffix?.hpPct))       * _scale).round();
   int get shardPct    => ((_n(base.shardPct)     + _n(prefix?.shardPct)    + _n(suffix?.shardPct))    * _scale).round();

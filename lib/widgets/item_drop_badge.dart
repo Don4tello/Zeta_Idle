@@ -137,13 +137,23 @@ class _ItemDropBadgeState extends State<ItemDropBadge>
                   if (diffs.isEmpty) return const SizedBox.shrink();
                   return Padding(
                     padding: const EdgeInsets.only(top: 6),
-                    child: Row(
+                    child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Text('vs ${current.name}: ',
-                            style: TextStyle(fontSize: 9,
-                                color: Colors.white.withValues(alpha: 0.4))),
-                        ...diffs.expand((w) => [w, const SizedBox(width: 6)]),
+                        Text(
+                          'vs ${current.name}',
+                          style: TextStyle(fontSize: 9,
+                              color: Colors.white.withValues(alpha: 0.4)),
+                          overflow: TextOverflow.ellipsis,
+                          maxLines: 1,
+                        ),
+                        const SizedBox(height: 3),
+                        Wrap(
+                          alignment: WrapAlignment.center,
+                          spacing: 6,
+                          runSpacing: 2,
+                          children: diffs,
+                        ),
                       ],
                     ),
                   );

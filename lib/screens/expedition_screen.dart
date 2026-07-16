@@ -1,4 +1,4 @@
-import 'dart:async';
+﻿import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../models/expedition.dart';
@@ -163,7 +163,7 @@ class _ExpeditionScreenState extends State<ExpeditionScreen> {
                   fontSize: 10, color: AppTheme.textMuted, letterSpacing: 1)),
           const Spacer(),
           Text('🔄 ${_timeUntilRefresh()}',
-              style: GoogleFonts.pixelifySans(
+              style: GoogleFonts.rajdhani(
                   fontSize: 10, color: const Color(0xFF666055))),
         ]),
         const SizedBox(height: 10),
@@ -272,12 +272,12 @@ class _LocationCard extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(loc.name,
-                              style: GoogleFonts.pixelifySans(
+                              style: GoogleFonts.rajdhani(
                                   fontSize: 9, color: Colors.white70,
                                   fontWeight: FontWeight.bold),
                               maxLines: 1, overflow: TextOverflow.ellipsis),
                           Text(loc.biome.rewardFocus,
-                              style: GoogleFonts.pixelifySans(
+                              style: GoogleFonts.rajdhani(
                                   fontSize: 8, color: const Color(0xFF998870)),
                               maxLines: 1, overflow: TextOverflow.ellipsis),
                         ],
@@ -316,12 +316,12 @@ class _IdleMercCard extends StatelessWidget {
         Expanded(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Text(merc.name,
-                style: GoogleFonts.pixelifySans(
+                style: GoogleFonts.rajdhani(
                     fontSize: 13,
                     fontWeight: FontWeight.bold,
                     color: Colors.white70)),
             Text(merc.title,
-                style: GoogleFonts.pixelifySans(
+                style: GoogleFonts.rajdhani(
                     fontSize: 10, color: AppTheme.textMuted)),
           ]),
         ),
@@ -405,12 +405,12 @@ class _ActiveMercCard extends StatelessWidget {
               Expanded(
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                   Text(merc.name,
-                      style: GoogleFonts.pixelifySans(
+                      style: GoogleFonts.rajdhani(
                           fontSize: 12,
                           fontWeight: FontWeight.bold,
                           color: Colors.white70)),
                   Text(expedition.location.name,
-                      style: GoogleFonts.pixelifySans(
+                      style: GoogleFonts.rajdhani(
                           fontSize: 10, color: color),
                       overflow: TextOverflow.ellipsis),
                 ]),
@@ -586,7 +586,7 @@ class _ActiveMercCard extends StatelessWidget {
     'shards'   => '◆',
     'essence'  => '✦',
     'mythril'  => '⬡',
-    'crystals' => '💎',
+    'zcoins' => '🪙',
     _          => '•',
   };
 }
@@ -653,7 +653,7 @@ class _DispatchSheetState extends State<_DispatchSheet> {
                     style: AppTheme.pixelHeading(
                         fontSize: 12, letterSpacing: 1)),
                 Text(widget.merc.title,
-                    style: GoogleFonts.pixelifySans(
+                    style: GoogleFonts.rajdhani(
                         fontSize: 10, color: AppTheme.textMuted)),
               ]),
             ]),
@@ -698,7 +698,7 @@ class _DispatchSheetState extends State<_DispatchSheet> {
                             horizontal: 6, vertical: 5),
                         child: Text(
                           loc.name,
-                          style: GoogleFonts.pixelifySans(
+                          style: GoogleFonts.rajdhani(
                               fontSize: 9,
                               color: sel ? Colors.white : Colors.white54,
                               fontWeight: sel
@@ -825,7 +825,7 @@ class _RewardChip extends StatelessWidget {
     'shards'   => '◆',
     'essence'  => '✦',
     'mythril'  => '⬡',
-    'crystals' => '💎',
+    'zcoins' => '🪙',
     _          => '•',
   };
 
@@ -834,7 +834,7 @@ class _RewardChip extends StatelessWidget {
     'shards'   => const Color(0xFF44aadd),
     'essence'  => const Color(0xFF44dd88),
     'mythril'  => const Color(0xFF8888ff),
-    'crystals' => const Color(0xFFff88cc),
+    'zcoins' => const Color(0xFFff88cc),
     _          => Colors.white54,
   };
 
@@ -849,7 +849,7 @@ class _RewardChip extends StatelessWidget {
       ),
       child: Text(
         '$icon ${AppTheme.fmtNumber(amount)} $resourceKey',
-        style: GoogleFonts.pixelifySans(fontSize: 11, color: color),
+        style: GoogleFonts.rajdhani(fontSize: 11, color: color),
       ),
     );
   }

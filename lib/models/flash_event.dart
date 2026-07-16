@@ -1,4 +1,4 @@
-import 'dart:math';
+﻿import 'dart:math';
 
 class FlashEvent {
   const FlashEvent({
@@ -21,7 +21,7 @@ class FlashEvent {
     FlashEvent(id: 'shard_storm', name: 'Shard Storm', icon: '◆', description: 'Shard drops tripled!', bonus: 3.0, bonusType: 'shards'),
     FlashEvent(id: 'boss_invasion', name: 'Boss Invasion', icon: '💀', description: 'Boss Rush gives 3× mythril!', bonus: 3.0, bonusType: 'mythril'),
     FlashEvent(id: 'echo_resonance', name: 'Echo Resonance', icon: '🔊', description: 'Gauntlet echoes doubled!', bonus: 2.0, bonusType: 'echoes'),
-    FlashEvent(id: 'crystal_rain', name: 'Crystal Rain', icon: '💎', description: '+50% crystal drops everywhere!', bonus: 1.5, bonusType: 'crystals'),
+    FlashEvent(id: 'crystal_rain', name: 'ZCoin Rain', icon: '🪙', description: '+50% ZCoin drops everywhere!', bonus: 1.5, bonusType: 'zcoins'),
     FlashEvent(id: 'forge_frenzy', name: 'Forge Frenzy', icon: '🔨', description: 'Reforging costs halved!', bonus: 0.5, bonusType: 'forgeCost'),
     FlashEvent(id: 'arena_fury', name: 'Arena Fury', icon: '⚔', description: 'PvP gives 3× gem shards!', bonus: 3.0, bonusType: 'gemShards'),
   ];

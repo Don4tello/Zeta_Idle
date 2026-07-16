@@ -1,8 +1,25 @@
 ﻿import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../core/routing/app_router.dart';
+import '../models/equipment.dart';
 import '../services/game_state.dart';
 import '../theme/app_theme.dart';
+
+Color _salvageColor(ItemRarity r) => switch (r) {
+  ItemRarity.common   => const Color(0xFFaaaaaa),
+  ItemRarity.uncommon => const Color(0xFF55cc55),
+  ItemRarity.rare     => const Color(0xFF6699ff),
+  ItemRarity.epic     => const Color(0xFFcc44ff),
+  _                   => Colors.white,
+};
+
+String _salvageLabel(ItemRarity r) => switch (r) {
+  ItemRarity.common   => 'Common',
+  ItemRarity.uncommon => 'Uncommon',
+  ItemRarity.rare     => 'Rare',
+  ItemRarity.epic     => 'Epic',
+  _                   => r.name,
+};
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -36,11 +53,28 @@ class _SettingsScreenState extends State<SettingsScreen> {
               subtitle: game.authService.isGoogleSignedIn
                   ? (game.authService.userEmail ?? 'Signed in')
                   : 'Sync saves across devices',
-              trailing: TextButton(
-                onPressed: () => context.push(Routes.account),
-                child: const Text('MANAGE',
-                    style: TextStyle(color: Color(0xFF66aaff))),
-              ),
+              trailing: game.authService.isGoogleSignedIn
+                ? TextButton(
+                    onPressed: () => context.push(Routes.account),
+                    child: const Text('MANAGE',
+                        style: TextStyle(color: Color(0xFF66aaff))),
+                  )
+                : ElevatedButton.icon(
+                    onPressed: () async {
+                      await game.authService.signInWithGoogle();
+                      if (context.mounted) setState(() {});
+                    },
+                    icon: const Text('G', style: TextStyle(
+                        fontWeight: FontWeight.bold, color: Color(0xFF4285F4))),
+                    label: const Text('SIGN IN'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF2a2a3a),
+                      foregroundColor: Colors.white,
+                      side: const BorderSide(color: Color(0xFF4285F4)),
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      minimumSize: const Size(0, 36),
+                    ),
+                  ),
             ),
             const SizedBox(height: 16),
 
@@ -87,6 +121,52 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
             const SizedBox(height: 16),
 
+            // Haptics
+            _SectionHeader('HAPTICS'),
+            _SettingsTile(
+              title: 'Vibration',
+              subtitle: game.hapticsEnabled
+                  ? 'Vibrates on crits, level-ups, victories & rewards'
+                  : 'Off',
+              trailing: Switch(
+                value: game.hapticsEnabled,
+                onChanged: (_) => setState(() => game.toggleHaptics()),
+                activeColor: AppTheme.accentGold,
+                inactiveTrackColor: AppTheme.cardBorder,
+              ),
+            ),
+
+            const SizedBox(height: 16),
+
+            // Display
+            _SectionHeader('DISPLAY'),
+            _SettingsTile(
+              title: 'Damage Numbers',
+              subtitle: game.showDamageNumbers
+                  ? 'Floating numbers shown in battle'
+                  : 'Hidden',
+              trailing: Switch(
+                value: game.showDamageNumbers,
+                onChanged: (_) => setState(() => game.toggleDamageNumbers()),
+                activeColor: AppTheme.accentGold,
+                inactiveTrackColor: AppTheme.cardBorder,
+              ),
+            ),
+            _SettingsTile(
+              title: 'Reduced Particles',
+              subtitle: game.reducedParticles
+                  ? 'Fewer background effects (better performance)'
+                  : 'Full effects',
+              trailing: Switch(
+                value: game.reducedParticles,
+                onChanged: (_) => setState(() => game.toggleReducedParticles()),
+                activeColor: AppTheme.accentGold,
+                inactiveTrackColor: AppTheme.cardBorder,
+              ),
+            ),
+
+            const SizedBox(height: 16),
+
             // Stats
             _SectionHeader('STATS'),
             _SettingsTile(
@@ -100,13 +180,38 @@ class _SettingsScreenState extends State<SettingsScreen> {
             // Auto-Loot
             _SectionHeader('AUTO-LOOT'),
             _SettingsTile(
-              title: 'Auto-Disenchant Commons',
-              subtitle: 'Automatically disenchant common drops for shards',
-              trailing: Switch(
-                value: game.autoDisenchantCommon,
-                onChanged: (_) => setState(() => game.toggleAutoDisenchantCommon()),
-                activeColor: AppTheme.accentGold,
-                inactiveTrackColor: AppTheme.cardBorder,
+              title: 'Auto-Salvage',
+              subtitle: game.autoSalvageThreshold == null
+                  ? 'Tap to enable auto-salvage for drops'
+                  : 'Auto-salvages ${_salvageLabel(game.autoSalvageThreshold!)} and below',
+              trailing: GestureDetector(
+                onTap: () { setState(() { game.cycleAutoSalvageThreshold(); }); game.audioService.playUiClick(); },
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                  decoration: BoxDecoration(
+                    color: game.autoSalvageThreshold == null
+                        ? const Color(0xFF1a1a1a)
+                        : _salvageColor(game.autoSalvageThreshold!).withValues(alpha: 0.15),
+                    border: Border.all(
+                      color: game.autoSalvageThreshold == null
+                          ? AppTheme.cardBorder
+                          : _salvageColor(game.autoSalvageThreshold!),
+                    ),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: Text(
+                    game.autoSalvageThreshold == null
+                        ? 'OFF'
+                        : '≤ ${_salvageLabel(game.autoSalvageThreshold!)}',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                      color: game.autoSalvageThreshold == null
+                          ? AppTheme.textMuted
+                          : _salvageColor(game.autoSalvageThreshold!),
+                    ),
+                  ),
+                ),
               ),
             ),
             _SettingsTile(
@@ -114,7 +219,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               subtitle: 'Automatically equip items better than current gear',
               trailing: Switch(
                 value: game.autoEquipUpgrades,
-                onChanged: (_) => setState(() => game.toggleAutoEquipUpgrades()),
+                onChanged: (_) { setState(() => game.toggleAutoEquipUpgrades()); game.audioService.playUiClick(); },
                 activeColor: AppTheme.accentGold,
                 inactiveTrackColor: AppTheme.cardBorder,
               ),
@@ -128,7 +233,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               title: 'Battle Speed',
               subtitle: game.battleSpeedLabel,
               trailing: TextButton(
-                onPressed: () => setState(() => game.cycleBattleSpeed()),
+                onPressed: () { setState(() => game.cycleBattleSpeed()); game.audioService.playUiClick(); },
                 child: Text(game.battleSpeedLabel,
                     style: AppTheme.pixelHeading(fontSize: 14, color: AppTheme.accentGold)),
               ),
@@ -138,10 +243,34 @@ class _SettingsScreenState extends State<SettingsScreen> {
               subtitle: 'Automatically fight campaign battles in the background',
               trailing: Switch(
                 value: game.autoCampaign,
-                onChanged: (_) => setState(() => game.toggleAutoCampaign()),
+                onChanged: (_) { setState(() => game.toggleAutoCampaign()); game.audioService.playUiClick(); },
                 activeColor: const Color(0xFF44cc88),
                 inactiveTrackColor: AppTheme.cardBorder,
               ),
+            ),
+
+            const SizedBox(height: 16),
+
+            // Daily Reset
+            _SectionHeader('DAILY RESET'),
+            _SettingsTile(
+              title: 'Reset Time',
+              subtitle: game.canChangeResetHour
+                  ? 'Daily limits reset at ${_formatResetHour(game.resetHour)}. Tap to change (once per year).'
+                  : 'Resets at ${_formatResetHour(game.resetHour)} · Already changed this year.',
+              trailing: game.canChangeResetHour
+                  ? TextButton(
+                      onPressed: () => _showResetHourPicker(context, game),
+                      style: TextButton.styleFrom(
+                        foregroundColor: AppTheme.accentGold,
+                        side: const BorderSide(color: AppTheme.accentGold),
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        minimumSize: const Size(64, 44),
+                      ),
+                      child: Text('CHANGE', style: AppTheme.pixelHeading(
+                          fontSize: 10, color: AppTheme.accentGold)),
+                    )
+                  : const SizedBox.shrink(),
             ),
 
             const SizedBox(height: 16),
@@ -278,6 +407,83 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 child: Text('VIEW', style: AppTheme.pixelHeading(
                     fontSize: 10, color: AppTheme.textMuted)),
               ),
+            ),
+            const SizedBox(height: 16),
+
+            // Dev tools — desktop only, used for exporting sprites as PNG
+            _SectionHeader('DEV TOOLS', color: const Color(0xFF445566)),
+            _SettingsTile(
+              title: 'Export Sprites',
+              subtitle: 'Render all class sprites & race icons to exported_sprites/',
+              trailing: TextButton(
+                onPressed: () => context.push(Routes.spriteExport),
+                style: TextButton.styleFrom(
+                  foregroundColor: const Color(0xFF6699aa),
+                  side: const BorderSide(color: Color(0xFF445566)),
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  minimumSize: const Size(64, 44),
+                ),
+                child: Text('OPEN', style: AppTheme.pixelHeading(
+                    fontSize: 10, color: const Color(0xFF6699aa))),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  String _formatResetHour(int h) {
+    final period = h < 12 ? 'AM' : 'PM';
+    final displayH = h == 0 ? 12 : (h > 12 ? h - 12 : h);
+    return '$displayH:00 $period';
+  }
+
+  void _showResetHourPicker(BuildContext context, GameState game) {
+    int selected = game.resetHour;
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setLocal) => AlertDialog(
+          backgroundColor: const Color(0xFF2A2623),
+          title: Text('Daily Reset Time',
+              style: AppTheme.pixelHeading(fontSize: 14, color: AppTheme.accentGold)),
+          content: SizedBox(
+            width: 240,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text('Choose the hour when daily limits reset.',
+                    style: const TextStyle(fontSize: 13, color: Colors.white70)),
+                const SizedBox(height: 12),
+                DropdownButton<int>(
+                  value: selected,
+                  dropdownColor: const Color(0xFF2A2623),
+                  isExpanded: true,
+                  style: const TextStyle(fontSize: 13, color: Colors.white),
+                  items: List.generate(24, (h) => DropdownMenuItem(
+                    value: h,
+                    child: Text(_formatResetHour(h)),
+                  )),
+                  onChanged: (v) { if (v != null) setLocal(() => selected = v); },
+                ),
+                const SizedBox(height: 8),
+                const Text('Warning: you can only change this once per year.',
+                    style: TextStyle(fontSize: 11, color: Colors.redAccent)),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('CANCEL', style: TextStyle(fontSize: 12, color: Colors.white54)),
+            ),
+            TextButton(
+              onPressed: () {
+                game.setResetHour(selected);
+                Navigator.pop(ctx);
+              },
+              child: Text('CONFIRM', style: TextStyle(fontSize: 12, color: AppTheme.accentGold)),
             ),
           ],
         ),

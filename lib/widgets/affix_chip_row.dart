@@ -1,5 +1,4 @@
 ﻿import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import '../models/zone_affix.dart';
 import '../theme/app_theme.dart';
 
@@ -48,24 +47,76 @@ class _AffixChip extends StatelessWidget {
 
   Color get _color => affix.tier == 2 ? _t2Color : _t1Color;
 
+  void _showDetail(BuildContext context) {
+    final color = _color;
+    showDialog<void>(
+      context: context,
+      builder: (_) => Dialog(
+        backgroundColor: Colors.transparent,
+        child: Container(
+          constraints: const BoxConstraints(maxWidth: 320),
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: const Color(0xFF1a1a2e),
+            border: Border.all(color: color, width: 1.5),
+            borderRadius: BorderRadius.circular(6),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(children: [
+                Icon(affix.tier == 2 ? Icons.whatshot : Icons.warning_rounded,
+                    size: 16, color: color),
+                const SizedBox(width: 8),
+                Flexible(
+                  child: Text(
+                    affix.displayName.toUpperCase(),
+                    style: TextStyle(
+                      fontSize: 15, fontWeight: FontWeight.bold,
+                      color: color, letterSpacing: 1,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: color.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: Text('TIER ${affix.tier}',
+                      style: TextStyle(fontSize: 10, color: color)),
+                ),
+              ]),
+              const SizedBox(height: 12),
+              Text(affix.description,
+                  style: const TextStyle(
+                      fontSize: 13, color: AppTheme.textLight, height: 1.5)),
+              const SizedBox(height: 16),
+              Align(
+                alignment: Alignment.centerRight,
+                child: TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: Text('CLOSE',
+                      style: TextStyle(fontSize: 12, color: color)),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final color = _color;
 
-    return Tooltip(
-      message: affix.description,
-      preferBelow: false,
-      waitDuration: Duration.zero,
-      textStyle: GoogleFonts.sourceCodePro(
-        fontSize: 11,
-        color: AppTheme.textLight,
-      ),
-      decoration: BoxDecoration(
-        color: AppTheme.cardBg,
-        border: Border.all(color: color.withValues(alpha: 0.8)),
-      ),
+    return GestureDetector(
+      onTap: () => _showDetail(context),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+        padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
         decoration: BoxDecoration(
           color: color.withValues(alpha: 0.10),
           border: Border.all(color: color.withValues(alpha: 0.65)),
@@ -75,19 +126,21 @@ class _AffixChip extends StatelessWidget {
           children: [
             Icon(
               affix.tier == 2 ? Icons.whatshot : Icons.warning_rounded,
-              size: 9,
+              size: 11,
               color: color,
             ),
             const SizedBox(width: 4),
             Text(
               affix.displayName.toUpperCase(),
-              style: GoogleFonts.pixelifySans(
-                fontSize: 9,
+              style: TextStyle(
+                fontSize: 11,
                 color: color,
                 letterSpacing: 0.5,
                 fontWeight: FontWeight.bold,
               ),
             ),
+            const SizedBox(width: 4),
+            Icon(Icons.info_outline, size: 10, color: color.withValues(alpha: 0.7)),
           ],
         ),
       ),

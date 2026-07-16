@@ -61,134 +61,139 @@ class HeroTrait {
 
   static const all = <HeroTrait>[
     // ── Human ──────────────────────────────────────────────────────────────
-    // Humans excel through ambition — steady gains across the board.
+    // Generalist: solid XP + gold with no tradeoff — the safe starter.
     HeroTrait(
       id: TraitId.humanAdaptable,
       heroRace: HeroRace.human,
       icon: '🌐',
       name: 'Indomitable Will',
       description: 'Human ambition drives both growth and fortune. '
-          '+3% XP and +3% gold per kill.',
-      xpPct: 3,
-      goldPct: 3,
+          '+5% XP and +5% gold per kill.',
+      xpPct: 5,
+      goldPct: 5,
     ),
 
     // ── Elf ────────────────────────────────────────────────────────────────
-    // Ancient perception — elves notice what others overlook.
+    // Scholar: fastest levelling in the game; shards from ancient perception.
     HeroTrait(
       id: TraitId.elfFeyAncestry,
       heroRace: HeroRace.elf,
       icon: '🌿',
       name: 'Fey Sight',
-      description: 'Ancient perception uncovers hidden value. '
-          '+5% shard drops and +3% XP per kill.',
+      description: 'Ancient wisdom accelerates mastery above all else. '
+          '+10% XP per kill and +5% shard drops.',
+      xpPct: 10,
       shardPct: 5,
-      xpPct: 3,
     ),
 
     // ── Dwarf ──────────────────────────────────────────────────────────────
-    // Stubborn endurance — dwarves outlast everything, but wealth is secondary.
+    // Tank: highest HP of any race, but dwarves hoard poorly.
     HeroTrait(
       id: TraitId.dwarfResilience,
       heroRace: HeroRace.dwarf,
       icon: '🪨',
       name: 'Ironblood',
-      description: 'Stone-hard endurance, but wealth holds little appeal. '
-          '+8% max HP. −2% gold per kill.',
-      hpPct: 8,
-      goldPct: -2,
+      description: 'Stone-hard endurance, but wealth is never a priority. '
+          '+15% max HP. −3% gold per kill.',
+      hpPct: 15,
+      goldPct: -3,
     ),
 
     // ── Halfling ───────────────────────────────────────────────────────────
-    // Pure fortune — halflings find coins where others find dirt.
+    // Merchant: best gold income in the game; fortune also finds shards.
     HeroTrait(
       id: TraitId.halflingLucky,
       heroRace: HeroRace.halfling,
       icon: '🍀',
       name: "Fortune's Favor",
-      description: 'Luck manifests as found treasure and rare finds. '
-          '+5% gold and +3% shard drops per kill.',
-      goldPct: 5,
-      shardPct: 3,
+      description: 'Luck turns every kill into a payday. '
+          '+10% gold and +5% shard drops per kill.',
+      goldPct: 10,
+      shardPct: 5,
     ),
 
     // ── Gnome ──────────────────────────────────────────────────────────────
-    // Insatiable curiosity translates directly into mastery.
+    // Utility specialist: no combat edge but unmatched resource gains.
     HeroTrait(
       id: TraitId.gnomeCunning,
       heroRace: HeroRace.gnome,
       icon: '⚙',
       name: 'Eureka',
-      description: 'Every encounter is a lesson waiting to be learned. '
-          '+5% XP and +3% gold per kill.',
-      xpPct: 5,
-      goldPct: 3,
+      description: 'Tinkering genius converts every encounter into resources. '
+          '+7% XP, +5% gold, and +3% shard drops per kill.',
+      xpPct: 7,
+      goldPct: 5,
+      shardPct: 3,
     ),
 
     // ── Half-Elf ───────────────────────────────────────────────────────────
-    // Two bloodlines — neither dominant, but gifted by both.
+    // True generalist: small bonuses across every stat, including survivability.
     HeroTrait(
       id: TraitId.halfElfHeritage,
       heroRace: HeroRace.halfElf,
       icon: '🌙',
       name: 'Dual Heritage',
-      description: 'The best of two worlds, spread across all gains. '
-          '+3% XP, +3% gold, and +3% shard drops per kill.',
+      description: 'Two bloodlines gift a little of everything. '
+          '+3% XP, +3% gold, +3% shards, and +3% max HP.',
       xpPct: 3,
       goldPct: 3,
       shardPct: 3,
+      hpPct: 3,
     ),
 
     // ── Half-Orc ───────────────────────────────────────────────────────────
-    // Pure aggression — devastating output at the cost of survivability.
+    // Glass cannon: highest raw damage — but you die much faster.
     HeroTrait(
       id: TraitId.halfOrcRelentless,
       heroRace: HeroRace.halfOrc,
       icon: '💀',
       name: 'Savage Endurance',
-      description: 'Raw orcish fury hits hard but leaves you exposed. '
-          '+6% damage dealt. −5% max HP.',
-      dmgPct: 6,
-      hpPct: -5,
+      description: 'Orcish fury hits hardest — but leaves you exposed. '
+          '+10% damage dealt. −8% max HP.',
+      dmgPct: 10,
+      hpPct: -8,
     ),
 
     // ── Tiefling ───────────────────────────────────────────────────────────
-    // An infernal bargain — power flows freely, but fate takes its cut.
+    // Combat-survival hybrid: strong damage with some durability, but growth is stunted.
     HeroTrait(
       id: TraitId.tieflingResistance,
       heroRace: HeroRace.tiefling,
       icon: '🔥',
       name: 'Hellfire Pact',
-      description: 'Infernal power comes at a price. '
-          '+5% damage dealt. −2% shard drops.',
-      dmgPct: 5,
-      shardPct: -2,
+      description: 'Infernal power grants combat edge but stunts growth. '
+          '+7% damage, +4% max HP. −5% XP per kill.',
+      dmgPct: 7,
+      hpPct: 4,
+      xpPct: -5,
     ),
 
     // ── Dragonborn ─────────────────────────────────────────────────────────
-    // Ancient draconic blood — balanced power between might and endurance.
+    // Durable warrior: damage + survivability, at the cost of wealth.
     HeroTrait(
       id: TraitId.dragonbornFury,
       heroRace: HeroRace.dragonborn,
       icon: '🐉',
       name: 'Draconic Legacy',
-      description: 'Ancient draconic blood fuels raw power above all else. '
-          '+5% damage dealt and +2% max HP.',
+      description: 'Ancient draconic blood favours power over profit. '
+          '+5% damage, +8% max HP. −4% gold per kill.',
       dmgPct: 5,
-      hpPct: 2,
+      hpPct: 8,
+      goldPct: -4,
     ),
 
     // ── Aasimar ────────────────────────────────────────────────────────────
-    // Celestial grace — touched by the divine, grows swiftly.
+    // Divine balance: HP + XP + gold — no combat spike, but flourishes on all fronts.
     HeroTrait(
       id: TraitId.aasimarCelestial,
       heroRace: HeroRace.aasimar,
       icon: '✨',
       name: 'Celestial Grace',
-      description: 'Divine blessing nurtures both body and soul. '
-          '+4% max HP and +4% XP per kill.',
-      hpPct: 4,
-      xpPct: 4,
+      description: 'Divine blessing nurtures body, soul, and fortune equally. '
+          '+5% max HP, +5% XP, and +3% gold per kill.',
+      hpPct: 5,
+      xpPct: 5,
+      goldPct: 3,
     ),
   ];
 }
