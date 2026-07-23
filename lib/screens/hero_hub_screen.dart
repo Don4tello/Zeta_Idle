@@ -65,7 +65,7 @@ const _kAllTabs = <_TabDef>[
   )),
   _TabDef('MERCS',        '🤝', 20),   // boss 4 — NPC encounters begin
   _TabDef('REBIRTH',      '✦',  25, resource: _TabResource(  // rebirth gate
-    icon: '☠', color: Color(0xFFcc8844), name: 'Souls',
+    icon: '✦', color: Color(0xFFcc8844), name: 'Paragon Points',
     sources: 'Earned by Prestiging your hero',
   )),
   _TabDef('UPGRADES',     '🔮', 45, resource: _TabResource(  // gauntlet echoes
@@ -116,14 +116,19 @@ class _HeroHubScreenState extends State<HeroHubScreen>
   int _visibleCount = 0;
 
   // New indices: REBIRTH=8, UPGRADES=9(echoes gate), ASCEND=10(prestige gate)
-  List<int> _unlockedIndices(GameState game) => [
-    for (int i = 0; i < _kAllTabs.length; i++)
-      if (i == 12                              // ASCEND: needs prestige
-          ? game.prestigeLevel > 0
-          : i == 11                            // UPGRADES: echoes OR stage 45
-              ? (game.echoes > 0 || game.effectiveUnlockStage >= _kAllTabs[i].unlock)
-              : game.effectiveUnlockStage >= _kAllTabs[i].unlock) i,
-  ];
+  List<int> _unlockedIndices(GameState game) {
+    final pl = game.confirmedPrestigeLevel > game.prestigeLevel
+        ? game.confirmedPrestigeLevel
+        : game.prestigeLevel;
+    return [
+      for (int i = 0; i < _kAllTabs.length; i++)
+        if (i == 12                              // ASCEND: needs prestige
+            ? pl > 0
+            : i == 11                            // UPGRADES: echoes OR stage 45
+                ? (game.echoes > 0 || game.effectiveUnlockStage >= _kAllTabs[i].unlock)
+                : game.effectiveUnlockStage >= _kAllTabs[i].unlock) i,
+    ];
+  }
 
   void _rebuildController(int newCount) {
     final prev = _ctrl.index.clamp(0, newCount - 1);

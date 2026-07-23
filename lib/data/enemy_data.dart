@@ -846,7 +846,7 @@ class EnemyData {
       ],
     ),
     Enemy(
-      id: 'world_ender', name: 'World Ender', level: 42, maxHealth: 60000, attack: 1350, armorClass: 26,
+      id: 'world_ender', name: 'World Ender', level: 42, maxHealth: 30000, attack: 1350, armorClass: 26,
       namedBoss: true, attackType: DamageType.void_,
       resistances: {DamageType.void_: 75, DamageType.physical: 50, DamageType.fire: 25, DamageType.cold: 25, DamageType.lightning: -25},
       description: 'The entity assigned to end this particular universe when the time comes. You have reached the edge. The time appears to have come.',

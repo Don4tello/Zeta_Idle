@@ -144,7 +144,7 @@ class _SoulTallyCard extends StatelessWidget {
     final chalBonus = challenge.bonusSouls;
 
     return _panel(
-      header: 'SOUL TALLY',
+      header: 'PARAGON POINTS EARNED',
       headerColor: const Color(0xFF1a2a5a),
       child: Column(
         children: [
@@ -159,8 +159,8 @@ class _SoulTallyCard extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text('TOTAL SOULS', style: TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold)),
-              Text('$soulsPreview ☠', style: const TextStyle(color: Color(0xFFffaaff), fontSize: 16, fontWeight: FontWeight.bold)),
+              const Text('TOTAL PARAGON PTS', style: TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold)),
+              Text('✦ $soulsPreview', style: const TextStyle(color: Color(0xFFffaaff), fontSize: 16, fontWeight: FontWeight.bold)),
             ],
           ),
         ],
@@ -279,7 +279,7 @@ class _ChallengePicker extends StatelessWidget {
       child: Column(
         children: [
           const Text(
-            'Accept a hardship for bonus souls.',
+            'Accept a hardship for bonus Paragon Points.',
             style: TextStyle(color: Colors.white54, fontSize: 12),
           ),
           const SizedBox(height: 10),
@@ -333,7 +333,7 @@ class _ChallengeRow extends StatelessWidget {
                 border: Border.all(color: const Color(0xFFff6666)),
                 borderRadius: BorderRadius.circular(4),
               ),
-              child: Text('+${challenge.bonusSouls} ☠', style: const TextStyle(color: Color(0xFFff9999), fontSize: 11, fontWeight: FontWeight.bold)),
+              child: Text('+${challenge.bonusSouls} ✦', style: const TextStyle(color: Color(0xFFff9999), fontSize: 11, fontWeight: FontWeight.bold)),
             ),
           ],
         ),

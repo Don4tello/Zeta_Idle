@@ -22,7 +22,7 @@ class PrestigeScreen extends StatelessWidget {
               tutorialKey: 'prestige',
               game: game,
               text: 'You can now Rebirth! ✦ Prestige your hero to reset progress '
-                  'but earn permanent Souls ☠ and multipliers that stack forever. '
+                  'but earn permanent Paragon Points ✦ and multipliers that stack forever. '
                   'Each rebirth makes every future run significantly stronger.',
             ),
           _RebirthPanel(game: game),
@@ -30,14 +30,14 @@ class PrestigeScreen extends StatelessWidget {
           _BonusPanel(game: game),
           const SizedBox(height: 20),
           Row(children: [
-            Text('SOUL SHOP',
+            Text('PARAGON SHOP',
                 style: AppTheme.pixelHeading(fontSize: 14, letterSpacing: 2)),
             const SizedBox(width: 10),
             _SoulBadge(souls: game.prestigeSouls, large: false),
           ]),
           const SizedBox(height: 4),
           const Text(
-            'Spend souls on permanent upgrades that persist across all future runs.',
+            'Spend Paragon Points on permanent upgrades that persist across all future runs.',
             style: TextStyle(fontSize: 14, color: AppTheme.textMuted),
           ),
           const SizedBox(height: 14),
@@ -137,7 +137,7 @@ class _RebirthPanel extends StatelessWidget {
                     fontSize: 12, letterSpacing: 2, color: const Color(0xFFcc8844))),
             const Spacer(),
             if (game.prestigeLevel > 0)
-              _SoulBadge(souls: game.prestigeLevel, large: false, label: 'LEVEL'),
+              _SoulBadge(souls: game.prestigeLevel, large: false, label: 'REBIRTH'),
           ]),
           const SizedBox(height: 8),
           const Text(
@@ -167,9 +167,9 @@ class _RebirthPanel extends StatelessWidget {
                 Text('YOU WILL GAIN', style: AppTheme.pixelHeading(
                     fontSize: 10, letterSpacing: 2, color: const Color(0xFF44cc88))),
                 const SizedBox(height: 6),
-                Text('☠ ${(game.campaignStageIndex / 5).floor().clamp(1, 200)} Souls',
+                Text('✦ ${(game.campaignStageIndex / 5).floor().clamp(1, 200)} Paragon Points',
                     style: const TextStyle(fontSize: 12, color: Color(0xFFcc8844), fontWeight: FontWeight.bold)),
-                Text('+5% Gold multiplier  •  +5% XP multiplier  •  +5% Idle multiplier',
+                Text('+15% Gold  •  +10% XP  •  +10% Idle  •  +3.5% Damage (per rebirth)',
                     style: const TextStyle(fontSize: 10, color: AppTheme.textMuted)),
                 Text('⬡ +10 Mythril',
                     style: const TextStyle(fontSize: 11, color: Color(0xFF9966ff))),
@@ -197,7 +197,7 @@ class _RebirthPanel extends StatelessWidget {
                     const Icon(Icons.auto_awesome, color: Color(0xFFaacc44), size: 16),
                     const SizedBox(width: 8),
                     Text(
-                      'Ready to Rebirth!  +$soulsPreview soul${soulsPreview == 1 ? '' : 's'}  •  +10 Mythril',
+                      'Ready to Rebirth!  +$soulsPreview Paragon Point${soulsPreview == 1 ? '' : 's'}  •  +10 Mythril',
                       style: const TextStyle(fontSize: 13, color: Color(0xFFaacc44)),
                     ),
                   ]),
@@ -270,7 +270,7 @@ class _RebirthPanel extends StatelessWidget {
             ),
             const SizedBox(height: 10),
             Text(
-              'You will earn $soulsPreview soul${soulsPreview == 1 ? '' : 's'} to spend in the Soul Shop.',
+              'You will earn $soulsPreview Paragon Point${soulsPreview == 1 ? '' : 's'} to spend in the Paragon Shop.',
               style: const TextStyle(
                   fontSize: 14, color: Color(0xFFaacc44), fontWeight: FontWeight.bold),
             ),
@@ -358,26 +358,32 @@ class _BonusPanel extends StatelessWidget {
       chips.add('+${((game.prestigeXpMult - 1) * 100).round()}% XP');
       chips.add('+${((game.prestigeIdleMult - 1) * 100).round()}% Idle');
     }
+    if (game.prestigeLevel > 0) {
+      chips.add('+${(game.prestigeLevel * 3.5).round()}% Damage');
+    }
     final s = game.prestigeShop;
-    if (s.isUnlocked('iron_resolve'))   chips.add('+20% Max HP');
-    if (s.isUnlocked('blood_drinker'))  chips.add('3% HP on kill');
-    if (s.isUnlocked('killing_blow'))   chips.add('+5% Crit');
-    if (s.isUnlocked('deaths_edge'))    chips.add('+60% Crit DMG');
-    if (s.isUnlocked('start_gold'))     chips.add('+600 Start Gold');
-    if (s.isUnlocked('war_spoils'))     chips.add('+2500 Start Gold');
-    if (s.isUnlocked('carrion_picker')) chips.add('+35% Shards');
-    if (s.isUnlocked('essence_bonus'))  chips.add('+35% Essence');
-    if (s.isUnlocked('treasure_sense')) chips.add('+25% Battle Gold');
-    if (s.isUnlocked('swift_learner'))  chips.add('+20% XP');
-    if (s.isUnlocked('head_start'))     chips.add('Start Stage 6');
-    if (s.isUnlocked('head_start_2'))   chips.add('Start Stage 16');
-    if (s.isUnlocked('ability_disc'))   chips.add('-25% Ability Cost');
-    if (s.isUnlocked('idle_bonus'))     chips.add('+10 Idle Rate');
-    if (s.isUnlocked('forge_bonus'))    chips.add('Forge: 2 items');
-    if (s.isUnlocked('soul_conduit'))   chips.add('+3 Souls/Rebirth');
-    if (s.isUnlocked('artifact_vault')) chips.add('Artifacts persist');
-    if (s.isUnlocked('mythril_memory')) chips.add('Keep 30% Mythril');
-    if (s.isUnlocked('soul_overdrive')) chips.add('Start at Stage 31');
+    if (s.isUnlocked('iron_resolve'))        chips.add('+30% Max HP');
+    if (s.isUnlocked('blood_drinker'))       chips.add('5% HP on kill');
+    if (s.isUnlocked('killing_blow'))        chips.add('+8% Crit');
+    if (s.isUnlocked('deaths_edge'))         chips.add('+80% Crit DMG');
+    if (s.isUnlocked('destroyer'))           chips.add('+20% Damage');
+    if (s.isUnlocked('start_gold'))          chips.add('+20% Gold Income');
+    if (s.isUnlocked('war_spoils'))          chips.add('+35% More Gold');
+    if (s.isUnlocked('carrion_picker'))      chips.add('+50% Shards');
+    if (s.isUnlocked('essence_bonus'))       chips.add('+50% Essence');
+    if (s.isUnlocked('treasure_sense'))      chips.add('+35% Battle Gold');
+    if (s.isUnlocked('swift_learner'))       chips.add('+30% XP');
+    if (s.isUnlocked('head_start'))          chips.add('Start Stage 11');
+    if (s.isUnlocked('head_start_2'))        chips.add('Start Stage 21');
+    if (s.isUnlocked('ability_disc'))        chips.add('-35% Ability Cost');
+    if (s.isUnlocked('instant_recall'))      chips.add('+1,500 Start Gold');
+    if (s.isUnlocked('idle_bonus'))          chips.add('+30 Idle Rate');
+    if (s.isUnlocked('forge_bonus'))         chips.add('Forge: 2 items');
+    if (s.isUnlocked('soul_conduit'))        chips.add('+5 PP/Rebirth');
+    if (s.isUnlocked('artifact_vault'))      chips.add('Artifacts persist');
+    if (s.isUnlocked('mythril_memory'))      chips.add('Keep 50% Mythril');
+    if (s.isUnlocked('soul_overdrive'))      chips.add('Start at Stage 41');
+    if (s.isUnlocked('paragon_dominance'))   chips.add('+${game.prestigeLevel}% All Stats');
 
     if (chips.isEmpty) return const SizedBox.shrink();
 
@@ -640,7 +646,7 @@ class _SoulBadge extends StatelessWidget {
   const _SoulBadge({
     required this.souls,
     required this.large,
-    this.label = 'SOULS',
+    this.label = 'PP',
     this.dim = false,
   });
   final int souls;

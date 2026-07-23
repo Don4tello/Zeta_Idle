@@ -3203,34 +3203,43 @@ class GameState extends ChangeNotifier {
     return _prestigeTitles[keys.last];
   }
 
-  double get prestigeGoldMult    => (1.0 + prestigeLevel * 0.10) * _challengeGoldMult * ascGoldMult * ascPrestigeMult;
-  double get prestigeXpMult      => (1.0 + prestigeLevel * 0.05)
-      * (prestigeShop.isUnlocked('swift_learner') ? 1.20 : 1.0)
+  double get prestigeGoldMult    => (1.0 + prestigeLevel * 0.15) * _challengeGoldMult * ascGoldMult * ascPrestigeMult;
+  double get prestigeXpMult      => (1.0 + prestigeLevel * 0.10)
+      * (prestigeShop.isUnlocked('swift_learner') ? 1.30 : 1.0)
       * _boonXpMult * ascXpMult * ascPrestigeMult;
-  double get prestigeIdleMult    => (1.0 + prestigeLevel * 0.05) * ascIdleMult * ascPrestigeMult;
-  double get prestigeShardMult   => (prestigeShop.isUnlocked('carrion_picker') ? 1.35 : 1.0) * ascShardMult;
-  double get prestigeEssenceMult => (prestigeShop.isUnlocked('essence_bonus')  ? 1.35 : 1.0) * ascEssenceMult;
-  int    get prestigeIdleBonus   => prestigeShop.isUnlocked('idle_bonus') ? 10 : 0;
+  double get prestigeIdleMult    => (1.0 + prestigeLevel * 0.10) * ascIdleMult * ascPrestigeMult;
+  /// Flat % damage bonus from Paragon level — +3.5% per rebirth, plus Destroyer node.
+  double get prestigeDamageMult  => (1.0 + prestigeLevel * 0.035)
+      * (prestigeShop.isUnlocked('destroyer') ? 1.20 : 1.0)
+      * (prestigeShop.isUnlocked('paragon_dominance') ? (1.0 + prestigeLevel * 0.01) : 1.0);
+  double get prestigeShardMult   => (prestigeShop.isUnlocked('carrion_picker') ? 1.50 : 1.0) * ascShardMult;
+  double get prestigeEssenceMult => (prestigeShop.isUnlocked('essence_bonus')  ? 1.50 : 1.0) * ascEssenceMult;
+  int    get prestigeIdleBonus   => prestigeShop.isUnlocked('idle_bonus') ? 30 : 0;
+  /// Paragon gold income multiplier — from Blood Tithe and War Spoils nodes (% bonus).
+  double get paragonGoldIncomeMult {
+    if (activeRebirthChallenge == RebirthChallenge.pauper) return 1.0;
+    var mult = 1.0;
+    if (prestigeShop.isUnlocked('start_gold')) mult += 0.20;
+    if (prestigeShop.isUnlocked('war_spoils')) mult += 0.35;
+    return mult;
+  }
   int    get prestigeStartGold {
     if (activeRebirthChallenge == RebirthChallenge.pauper) return 0;
-    var g = 0;
-    if (prestigeShop.isUnlocked('start_gold'))  g += 600;
-    if (prestigeShop.isUnlocked('war_spoils'))  g += 2500;
-    return g;
+    return prestigeShop.isUnlocked('instant_recall') ? 1500 : 0;
   }
   int get prestigeHeadStart {
-    if (prestigeShop.isUnlocked('soul_overdrive')) return 30; // Stage 31
-    if (prestigeShop.isUnlocked('head_start_2'))   return 15; // Stage 16
-    if (prestigeShop.isUnlocked('head_start'))     return 5;  // Stage 6
+    if (prestigeShop.isUnlocked('soul_overdrive')) return 40; // Stage 41
+    if (prestigeShop.isUnlocked('head_start_2'))   return 20; // Stage 21
+    if (prestigeShop.isUnlocked('head_start'))     return 10; // Stage 11
     return 0;
   }
   double get prestigeAbilityDiscount =>
-      prestigeShop.isUnlocked('ability_disc') ? 0.75 : 1.0;
+      prestigeShop.isUnlocked('ability_disc') ? 0.65 : 1.0;
   int get forgeCommonToRareCount =>
       prestigeShop.isUnlocked('forge_bonus') ? 2 : 3;
 
   // ── New prestige effect getters ────────────────────────────────────────────
-  int    get prestigeHpPct          => (prestigeShop.isUnlocked('iron_resolve') ? 20 : 0) + _challengeHpPenalty;
+  int    get prestigeHpPct          => (prestigeShop.isUnlocked('iron_resolve') ? 30 : 0) + _challengeHpPenalty;
 
   // ── Rebirth boon / challenge helpers ──────────────────────────────────────
   /// Preview soul total for the current run, given an optional boon/challenge.
@@ -3244,8 +3253,9 @@ class GameState extends ChangeNotifier {
     return (base + dungeon + bossRush + gauntlet + conduit + challenge.bonusSouls + boonBonus).clamp(1, 9999);
   }
   bool   get prestigeHealOnKill     => prestigeShop.isUnlocked('blood_drinker');
-  int    get prestigeCritBonus      => prestigeShop.isUnlocked('killing_blow')  ? 5  : 0;
-  double get prestigeCritDamageMult => prestigeShop.isUnlocked('deaths_edge')   ? 1.6: 1.0;
+  double get prestigeHealOnKillPct  => prestigeShop.isUnlocked('blood_drinker') ? 0.05 : 0.0;
+  int    get prestigeCritBonus      => prestigeShop.isUnlocked('killing_blow')  ? 8  : 0;
+  double get prestigeCritDamageMult => prestigeShop.isUnlocked('deaths_edge')   ? 1.8: 1.0;
 
   // ── Central crit chance aggregator ───────────────────────────────────────
   // All former "attack bonus" sources are repurposed as +1% crit per point.
@@ -3297,8 +3307,8 @@ class GameState extends ChangeNotifier {
                   _hasKeyword(ItemKeyword.criticalFury)) ? 3.0 : 2.0;
     return ((base + _scoreAgi) * prestigeCritDamageMult).clamp(1.5, 6.0);
   }
-  double get prestigeGoldBattleMult => prestigeShop.isUnlocked('treasure_sense')? 1.25: 1.0;
-  int    get prestigeSoulConduit    => prestigeShop.isUnlocked('soul_conduit')  ? 3  : 0;
+  double get prestigeGoldBattleMult => prestigeShop.isUnlocked('treasure_sense') ? 1.35 : 1.0;
+  int    get prestigeSoulConduit    => prestigeShop.isUnlocked('soul_conduit')   ? 5  : 0;
 
   bool purchasePrestigeNode(String nodeId) {
     final node = kPrestigeNodes.firstWhere((n) => n.id == nodeId,
@@ -3371,13 +3381,25 @@ class GameState extends ChangeNotifier {
     final savedEquippedSkin   = equippedSkinId;
     final savedEquippedAttack = equippedAttackEffectId;
 
-    _resetToDefaults(savedName, savedClass);
+    // Set confirmed level BEFORE the reset so it survives even if reset throws.
+    _confirmedPrestigeLevel = savedPrestigeLvl;
+    // Write dedicated prefs key SYNCHRONOUSLY before anything else can go wrong.
+    await saveService.savePrestigeLevel(_currentSlot, savedPrestigeLvl);
+    DebugLogger.log('prestige', 'pre-reset confirmedPL=$_confirmedPrestigeLevel pl=$prestigeLevel saved=$savedPrestigeLvl');
 
+    try {
+      _resetToDefaults(savedName, savedClass);
+    } catch (e, st) {
+      DebugLogger.log('prestige', 'resetToDefaults error: $e\n$st');
+      // Partial reset is acceptable — continue so restore lines always run.
+    }
+
+    // Always restore these unconditionally — even if _resetToDefaults threw.
     prestigeLevel  = savedPrestigeLvl;
     _confirmedPrestigeLevel = savedPrestigeLvl;
-    // Belt-and-suspenders: write directly to a dedicated key so even if the
-    // full saveToLocal() fails, the prestige level is not lost on next load.
-    saveService.savePrestigeLevel(_currentSlot, savedPrestigeLvl);
+    // Re-write dedicated key after restore so it survives even if the main JSON save fails.
+    unawaited(saveService.savePrestigeLevel(_currentSlot, savedPrestigeLvl));
+    DebugLogger.log('prestige', 'post-restore pl=$prestigeLevel confirmedPL=$_confirmedPrestigeLevel');
     prestigeSouls  = savedSouls;
     prestigeShop.restoreOwned(savedShopOwned);
 
@@ -3461,7 +3483,7 @@ class GameState extends ChangeNotifier {
 
     battleLog = [
       '✦ REBIRTH Lv$prestigeLevel ✦ $savedName returns, forged anew.',
-      '+$soulsEarned soul${soulsEarned == 1 ? '' : 's'}  •  '
+      '+$soulsEarned Paragon Point${soulsEarned == 1 ? '' : 's'}  •  '
       'Gold income +${(prestigeGoldMult * 100 - 100).round()}%  •  '
       'XP +${(prestigeXpMult * 100 - 100).round()}%  •  '
       'Idle +${(prestigeIdleMult * 100 - 100).round()}%',
@@ -4899,7 +4921,7 @@ class GameState extends ChangeNotifier {
       simCount++;
 
       // Gold
-      final baseGold    = ((enemy.level * 50 + 100) * endlessUpgrades.goldMultiplier * arcaneBonus * merchantScholarBonus * prestigeGoldMult * prestigeGoldBattleMult * passiveGoldMult * goldSenseMult * petGoldMult * allyGoldMult * (1.0 + _scoreLck / 100)).round();
+      final baseGold    = ((enemy.level * 50 + 100) * endlessUpgrades.goldMultiplier * arcaneBonus * merchantScholarBonus * prestigeGoldMult * paragonGoldIncomeMult * prestigeGoldBattleMult * passiveGoldMult * goldSenseMult * petGoldMult * allyGoldMult * (1.0 + _scoreLck / 100)).round();
       final bossGold    = isBoss ? (baseGold * 2).round() : 0;
       final battleGold  = baseGold + bossGold;
       totalGold += battleGold;
@@ -5959,6 +5981,7 @@ class GameState extends ChangeNotifier {
         penetration:      _penMap,
       );
       var damage = calculateDamage(_dmgCtx, rng: _rng).total.round().clamp(1, 9999);
+      if (prestigeLevel > 0) damage = (damage * prestigeDamageMult).round().clamp(1, 9999);
 
       // Log resistance/vulnerability (value already applied by pipeline; res capped at 75)
       final resistance = (enemy.resistances[heroType] ?? 0).clamp(-200, 75);
@@ -6507,7 +6530,7 @@ class GameState extends ChangeNotifier {
     final petGoldMult = 1.0 + (petGoldPct + skinGoldPct + auraGoldPct + artifactGoldPct + runeGoldPct + traitGoldPct) / 100.0;
     final bestiaryGoldMult = _isCampaignBattle ? bestiaryGoldBonus(enemy.id) : 1.0;
     var rewardGold =
-        ((enemy.level * 50 + 100) * endlessUpgrades.goldMultiplier * arcaneBonus * merchantScholarBonus * prestigeGoldMult * prestigeGoldBattleMult * passiveGoldMult * goldSenseMult * petGoldMult * allyGoldMult * bestiaryGoldMult * (1.0 + _scoreLck / 100))
+        ((enemy.level * 50 + 100) * endlessUpgrades.goldMultiplier * arcaneBonus * merchantScholarBonus * prestigeGoldMult * paragonGoldIncomeMult * prestigeGoldBattleMult * passiveGoldMult * goldSenseMult * petGoldMult * allyGoldMult * bestiaryGoldMult * (1.0 + _scoreLck / 100))
             .round();
     // Felix: Bribe — double gold on the first kill of the battle
     if (_felixBribeActive) {
@@ -6589,9 +6612,9 @@ class GameState extends ChangeNotifier {
     lastRewardExp  = rewardExp;
     lastItemDrop   = null;
 
-    // Blood Drinker: restore 3% max HP on kill
+    // Blood Drinker: restore 5% max HP on kill
     if (prestigeHealOnKill) {
-      final healAmt = (hero.maxHealth * 0.03).round().clamp(1, 9999);
+      final healAmt = (hero.maxHealth * prestigeHealOnKillPct).round().clamp(1, 9999);
       hero.currentHealth = (hero.currentHealth + healAmt).clamp(0, hero.maxHealth);
     }
 
@@ -6917,7 +6940,8 @@ class GameState extends ChangeNotifier {
     }
 
     if (wasFinalBoss) {
-      lastBattleWasFinalVictory = true;
+      // Only show the "Rebirth Unlocked" dialog on the very first clear.
+      if (prestigeLevel == 0) lastBattleWasFinalVictory = true;
       battleLog.add('The Omega falls. The curse is ended. A new age begins.');
     } else {
       battleLog.add('${hero.name} advances to stage ${campaignStageIndex + 1}.');
@@ -7002,7 +7026,7 @@ class GameState extends ChangeNotifier {
     if (idleProgress == 0) return;
 
     // Gold
-    final earned = (idleProgress * hero.goldRate * prestigeIdleMult * waystoneMult * allyIdleMult).round();
+    final earned = (idleProgress * hero.goldRate * prestigeIdleMult * paragonGoldIncomeMult * waystoneMult * allyIdleMult).round();
     gold += earned;
     lastIdleGold = earned;
     _totalGoldEarned += earned;
@@ -7049,11 +7073,11 @@ class GameState extends ChangeNotifier {
 
   /// Gold that will be awarded when the cycle completes.
   int get pendingIdleGold =>
-      (idleProgress * hero.goldRate * prestigeIdleMult * waystoneMult * allyIdleMult).round();
+      (idleProgress * hero.goldRate * prestigeIdleMult * paragonGoldIncomeMult * waystoneMult * allyIdleMult).round();
 
   /// Sustained gold earned per minute at current idle rate.
   int get idleGoldPerMinute =>
-      (_effectiveIdleRate * 12 * hero.goldRate * prestigeIdleMult * waystoneMult * allyIdleMult).round();
+      (_effectiveIdleRate * 12 * hero.goldRate * prestigeIdleMult * paragonGoldIncomeMult * waystoneMult * allyIdleMult).round();
 
   /// Essence that will be awarded when the current cycle completes (all multipliers applied).
   int get idleEssencePerCycle {

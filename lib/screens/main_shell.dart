@@ -38,6 +38,7 @@ class MainShell extends StatefulWidget {
 
 class _MainShellState extends State<MainShell> {
   int _tab = 0;
+  bool _comebackMerged = false;
 
   @override
   void initState() {
@@ -65,6 +66,7 @@ class _MainShellState extends State<MainShell> {
       if (mounted) setState(() => _tab = 1);
       if (mounted) _showWelcomeTutorial(game);
     } else if (game.offlineGoldEarned > 0) {
+      if (game.pendingComebackRewards != null) _comebackMerged = true;
       _showOfflineDialog(game);
       game.clearOfflineReport();
     }
@@ -159,9 +161,10 @@ class _MainShellState extends State<MainShell> {
     final gold = game.offlineGoldEarned;
     final goldLabel = fmtNum(gold);
 
-    final xp   = game.offlineXpEarned;
-    final ess  = game.offlineEssenceEarned;
-    final exps = game.offlineExpeditionsReady;
+    final xp      = game.offlineXpEarned;
+    final ess     = game.offlineEssenceEarned;
+    final exps    = game.offlineExpeditionsReady;
+    final comeback = game.pendingComebackRewards;
 
     showDialog<void>(
       context: context,
@@ -189,6 +192,16 @@ class _MainShellState extends State<MainShell> {
               const SizedBox(height: 6),
               _offlineRow('🗺️', '$exps expedition${exps > 1 ? "s" : ""} ready!', const Color(0xFF55cc88)),
             ],
+            if (comeback != null) ...[
+              const SizedBox(height: 10),
+              const Divider(color: Colors.white12),
+              const SizedBox(height: 4),
+              const Text('Comeback bonus:',
+                  style: TextStyle(fontSize: 11, color: Color(0xFF44aaff), letterSpacing: 1)),
+              const SizedBox(height: 6),
+              ...comeback.entries.map((e) =>
+                _offlineRow('🎁', '+${e.value} ${e.key}', const Color(0xFF44aaff))),
+            ],
             const SizedBox(height: 8),
             const Text('Idle income collected while you rested.',
                 style: TextStyle(fontSize: 12, color: AppTheme.textMuted,
@@ -197,7 +210,10 @@ class _MainShellState extends State<MainShell> {
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () {
+              if (comeback != null) game.claimComebackBonus();
+              Navigator.pop(context);
+            },
             child: Text('CLAIM', style: AppTheme.pixelHeading(fontSize: 12, color: AppTheme.accentGold)),
           ),
         ],
@@ -281,7 +297,7 @@ class _MainShellState extends State<MainShell> {
         );
       });
     }
-    if (game.pendingComebackRewards != null) {
+    if (game.pendingComebackRewards != null && !_comebackMerged) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
         final rewards = game.pendingComebackRewards!;
