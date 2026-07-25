@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://zetaidle.netlify.app/sitemap.xml
