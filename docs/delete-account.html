@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Delete Your Account &amp; Data - Zeta Idle</title>
+  <meta name="description" content="How to delete your Zeta Idle account and all associated data.">
+  <meta name="robots" content="index, follow">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+      background: #0e0e12;
+      color: #d4d0c8;
+      line-height: 1.7;
+    }
+    .container { max-width: 780px; margin: 0 auto; padding: 32px 20px 64px; }
+    h1 { font-size: 28px; color: #daa520; letter-spacing: 2px; margin-bottom: 8px; }
+    .app-name { font-size: 14px; color: #888; margin-bottom: 4px; }
+    .effective-date { font-size: 13px; color: #666; margin-bottom: 32px; }
+    h2 {
+      font-size: 20px; color: #c9a84c; margin-top: 36px; margin-bottom: 12px;
+      border-bottom: 1px solid #2a2520; padding-bottom: 6px;
+    }
+    p, li { font-size: 15px; margin-bottom: 12px; }
+    ul, ol { padding-left: 24px; margin-bottom: 16px; }
+    li { margin-bottom: 6px; }
+    a { color: #6699cc; text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    strong { color: #e0d8c8; }
+    .steps { counter-reset: step; }
+    .contact-box {
+      margin-top: 24px; padding: 16px 20px; background: #16161c;
+      border: 1px solid #2a2520; border-radius: 6px;
+    }
+    .contact-box p { margin-bottom: 6px; }
+    table { width: 100%; border-collapse: collapse; margin: 8px 0 16px; }
+    th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid #2a2520; font-size: 14px; }
+    th { color: #c9a84c; }
+    .footer {
+      margin-top: 48px; padding-top: 20px; border-top: 1px solid #2a2520;
+      font-size: 12px; color: #555; text-align: center;
+    }
+    @media (max-width: 600px) {
+      .container { padding: 20px 16px 48px; }
+      h1 { font-size: 22px; }
+      h2 { font-size: 17px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <p class="app-name"><a href="index.html" style="color:#c9a84c;text-decoration:none;">&larr; Zeta Idle</a></p>
+    <h1>Delete Your Account &amp; Data</h1>
+    <p class="effective-date">Zeta Idle &middot; Razor Integrations</p>
+
+    <p>
+      You can permanently delete your <strong>Zeta Idle</strong> account and all
+      associated data at any time. There are two ways to do this:
+    </p>
+
+    <h2>Option 1 &mdash; Delete in the app (fastest)</h2>
+    <ol class="steps">
+      <li>Open <strong>Zeta Idle</strong>.</li>
+      <li>Go to the <strong>Account</strong> screen.</li>
+      <li>Scroll to the <strong>Danger Zone</strong> and tap
+        <strong>Delete Account</strong>.</li>
+      <li>Confirm. Your account and data are removed immediately and the app closes.</li>
+    </ol>
+    <p>
+      This deletes your cloud save, PvP standing, leaderboard entries, guild
+      membership data, every local character save on the device, and your
+      sign-in account.
+    </p>
+
+    <h2>Option 2 &mdash; Request deletion by email</h2>
+    <p>
+      If you have uninstalled the app or cannot access it, email us and we will
+      delete your data for you:
+    </p>
+    <div class="contact-box">
+      <p><strong>Email:</strong>
+        <a href="mailto:razorintegrations@gmail.com?subject=Zeta%20Idle%20Account%20Deletion%20Request">razorintegrations@gmail.com</a></p>
+      <p><strong>Subject:</strong> Zeta Idle Account Deletion Request</p>
+      <p>Please include the Google account email you signed in with (if any) so
+        we can locate your data.</p>
+    </div>
+    <p>We process email deletion requests within <strong>30 days</strong>.</p>
+
+    <h2>Delete part of your data (keep your account)</h2>
+    <p>
+      You don't have to delete your whole account to remove specific data:
+    </p>
+    <ul>
+      <li><strong>Delete a single character:</strong> on the character-select
+        screen in the app, choose a character slot and delete it. That removes
+        that character's data while keeping your account and any other
+        characters.</li>
+      <li><strong>Request category-specific deletion:</strong> email
+        <a href="mailto:razorintegrations@gmail.com?subject=Zeta%20Idle%20Partial%20Data%20Deletion%20Request">razorintegrations@gmail.com</a>
+        and tell us what to remove (for example, your PvP standing, leaderboard
+        entry, or guild chat) &mdash; we'll delete just that and leave your
+        account intact.</li>
+    </ul>
+
+    <h2>What is deleted</h2>
+    <table>
+      <tr><th>Data</th><th>Deleted?</th></tr>
+      <tr><td>Cloud save (game progress, inventory, settings)</td><td>Yes &mdash; permanently</td></tr>
+      <tr><td>PvP snapshot &amp; rating</td><td>Yes</td></tr>
+      <tr><td>Endless / Tower leaderboard entry</td><td>Yes</td></tr>
+      <tr><td>Guild membership &amp; chat authored by you</td><td>Yes</td></tr>
+      <tr><td>Local saves on your device</td><td>Yes</td></tr>
+      <tr><td>Sign-in account (Firebase Authentication)</td><td>Yes</td></tr>
+    </table>
+
+    <h2>What is retained</h2>
+    <ul>
+      <li><strong>Purchase records</strong> are held by Google Play under
+        Google's own retention policies &mdash; we do not control or store your
+        payment information.</li>
+      <li>Anonymized crash and diagnostic logs that cannot be linked back to you
+        may be retained for stability analysis.</li>
+    </ul>
+    <p>
+      For full details on what we collect and why, see our
+      <a href="privacy-policy.html">Privacy Policy</a>.
+    </p>
+
+    <div class="footer">
+      &copy; 2025 Razor Integrations. All rights reserved.
+    </div>
+  </div>
+</body>
+</html>

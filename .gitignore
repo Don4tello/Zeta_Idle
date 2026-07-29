@@ -8,3 +8,6 @@ android/.gradle/
 android/app/build/
 ios/Pods/
 .DS_Store
+
+# Local-only image backup (do not commit — ~291MB)
+/_image_backup_original/
