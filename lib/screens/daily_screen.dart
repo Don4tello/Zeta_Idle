@@ -6,6 +6,7 @@ import '../theme/app_theme.dart';
 import '../widgets/section_card.dart';
 import '../widgets/zcoin_icon.dart';
 import 'main_shell.dart' show TutorialTip;
+import 'bounty_board_screen.dart' show BountyBoardBody;
 
 class DailyScreen extends StatelessWidget {
   const DailyScreen({super.key});
@@ -13,7 +14,7 @@ class DailyScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return DefaultTabController(
-      length: 2,
+      length: 3,
       child: Scaffold(
         backgroundColor: const Color(0xFF1B1A17),
         appBar: AppBar(
@@ -28,6 +29,7 @@ class DailyScreen extends StatelessWidget {
             tabs: [
               Tab(text: 'DAILY'),
               Tab(text: 'WEEKLY'),
+              Tab(text: 'BOUNTIES'),
             ],
           ),
         ),
@@ -35,6 +37,7 @@ class DailyScreen extends StatelessWidget {
           children: [
             _DailyTab(),
             _WeeklyTab(),
+            BountyBoardBody(),
           ],
         ),
       ),
@@ -84,7 +87,7 @@ class _DailyTab extends StatelessWidget {
                 const SizedBox(width: 10),
                 if (game.hasClaimableDaily)
                   GestureDetector(
-                    onTap: game.claimAllDailies,
+                    onTap: () { game.claimAllDailies(); game.audioService.playClaimAll(); },
                     child: Container(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                       decoration: BoxDecoration(
@@ -111,7 +114,7 @@ class _DailyTab extends StatelessWidget {
                 challenge: e.value,
                 progress:  game.getDailyProgress(e.value.type),
                 taskNumber: e.key + 1,
-                onClaim:   () => game.claimDailyChallenge(e.key),
+                onClaim:   () { game.claimDailyChallenge(e.key); game.audioService.playClaim(); },
               ),
             )),
             const SizedBox(height: 8),
@@ -182,7 +185,7 @@ class _WeeklyTab extends StatelessWidget {
               Row(children: [
                 if (game.hasClaimableWeekly) ...[
                   GestureDetector(
-                    onTap: game.claimAllWeeklies,
+                    onTap: () { game.claimAllWeeklies(); game.audioService.playClaimAll(); },
                     child: Container(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                       decoration: BoxDecoration(
@@ -517,7 +520,7 @@ class _DailyChestCard extends StatelessWidget {
                   const SizedBox(height: 20),
                   _chestRow('💰', '+1,000 GOLD', const Color(0xFFffd700)),
                   const SizedBox(height: 8),
-                  _chestRow(const ZCoinIcon(size: 16), '+150 ZCOINS', const Color(0xFF44ddcc)),
+                  _chestRow(const ZCoinIcon(size: 16), '+50 ZCOINS', const Color(0xFF44ddcc)),
                   const SizedBox(height: 8),
                   _chestRow('◆', '+75 SHARDS', const Color(0xFF80d0ff)),
                   const SizedBox(height: 8),
@@ -611,7 +614,7 @@ class _DailyChestCard extends StatelessWidget {
                     _RewardChip('💰 1000',  Color(0xFFccaa22)),
                     _RewardChip('◆ 75',     Color(0xFF88aaff)),
                     _RewardChip('✦ 50',     Color(0xFF88cc44)),
-                    _RewardChip('150',   Color(0xFF44ddcc), prefix: ZCoinIcon(size: 10, animate: false)),
+                    _RewardChip('50',   Color(0xFF44ddcc), prefix: ZCoinIcon(size: 10, animate: false)),
                   ],
                 ),
               ],
@@ -621,6 +624,7 @@ class _DailyChestCard extends StatelessWidget {
             GestureDetector(
               onTap: () {
                 game.claimDailyChest();
+                game.audioService.playClaim();
                 _showChestReward(context);
               },
               child: Container(
@@ -769,9 +773,7 @@ class _ChallengeCard extends StatelessWidget {
             children: [
               _RewardChip('💰 ${challenge.rewardGold}',    const Color(0xFFccaa22)),
               const SizedBox(width: 6),
-              _RewardChip('◆ ${challenge.rewardShards}',   const Color(0xFF88aaff)),
-              const SizedBox(width: 6),
-              _RewardChip('✦ ${challenge.rewardEssence}',  const Color(0xFF88cc44)),
+              _RewardChip('◆ ${challenge.rewardShards + challenge.rewardEssence}',   const Color(0xFF88aaff)),
               const SizedBox(width: 6),
               _RewardChip('${challenge.rewardCrystals}', const Color(0xFF44ddcc), prefix: ZCoinIcon(size: 10, animate: false)),
               const Spacer(),

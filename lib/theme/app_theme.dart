@@ -126,16 +126,4 @@ class AppTheme {
       dialogTheme: const DialogThemeData(backgroundColor: panelBg),
     );
   }
-
-  static const resourceTooltips = <String, String>{
-    'gold':       'Gold — Earned from battles, idle, expeditions. Used for stat upgrades and shop.',
-    'shards':     'Shards — From Dungeon treasure rooms and locked chests. Used for Abilities and Allies.',
-    'echoes':     'Echoes — From Challenge Gauntlet runs. Used for permanent Upgrades.',
-    'essence':    'Essence — From campaign kills and Gauntlet. Used for the Passive Tree.',
-    'zcoins':   'ZCoins — From achievements and daily chests. Used for cosmetics and boosts.',
-    'mythril':    'Mythril — From Boss Rush and Prestige. Used for Artifact Forge.',
-    'gemShards':  'Gem Shards — From PvP Arena battles. Used to craft elemental Gems.',
-    'souls':      'Souls — Earned by Prestiging. Used in the Prestige Shop.',
-    'runeDust':   'Rune Dust — From disenchanting items. Used to craft Runes.',
-  };
 }

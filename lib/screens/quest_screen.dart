@@ -23,7 +23,7 @@ class QuestScreen extends StatelessWidget {
               padding: const EdgeInsets.only(right: 8),
               child: Center(
                 child: GestureDetector(
-                  onTap: game.claimAllQuests,
+                  onTap: () { game.claimAllQuests(); game.audioService.playClaimAll(); },
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     decoration: BoxDecoration(
@@ -299,7 +299,7 @@ class _QuestCard extends StatelessWidget {
     QuestCondition.pvpWins:           'PvP wins',
     QuestCondition.reachLevel:        'Hero level',
     QuestCondition.earnGold:          'Gold earned',
-    QuestCondition.earnEssence:       'Essence earned',
+    QuestCondition.earnEssence:       'Shards earned',
     QuestCondition.collectArtifact:   'Artifacts collected',
     QuestCondition.endlessStage:      'Endless stage',
   };

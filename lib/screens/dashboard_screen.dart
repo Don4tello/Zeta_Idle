@@ -6,6 +6,7 @@ import '../models/expedition.dart';
 import '../models/npc_ally.dart';
 import '../services/game_state.dart';
 import '../theme/app_theme.dart';
+import '../widgets/currency_info.dart';
 import '../widgets/dashboard_header.dart';
 import '../widgets/hero_tab_controller.dart';
 import '../widgets/stats_grid_panel.dart';
@@ -268,20 +269,17 @@ class _IncomePanel extends StatelessWidget {
                   const Color(0xFF55cc88)),
             ],
           ]),
-          if (game.shards > 0 || game.echoes > 0 || game.essence > 0) ...[
+          if (game.shards > 0 || game.echoes > 0) ...[
             const SizedBox(height: 8),
             const Divider(color: Color(0xFF2a2518), height: 1),
             const SizedBox(height: 8),
             Wrap(spacing: 16, runSpacing: 6, children: [
               if (game.shards > 0)
-                Tooltip(message: AppTheme.resourceTooltips['shards']!,
+                Tooltip(message: CurrencyInfo.shards,
                     child: _IncomeRow('◆', 'Shards', '${game.shards}', const Color(0xFF44ccff))),
               if (game.echoes > 0)
-                Tooltip(message: AppTheme.resourceTooltips['echoes']!,
+                Tooltip(message: CurrencyInfo.echoes,
                     child: _IncomeRow('🔊', 'Echoes', '${game.echoes}', const Color(0xFFcc88ff))),
-              if (game.essence > 0)
-                Tooltip(message: AppTheme.resourceTooltips['essence']!,
-                    child: _IncomeRow('✦', 'Essence', '${game.essence}', const Color(0xFF44dd88))),
             ]),
           ],
         ],

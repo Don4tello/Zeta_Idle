@@ -667,12 +667,12 @@ class EnemyData {
 
     // -- Unique Campaign Bosses (namedBoss: true -- no auto-scaling applied) --
     Enemy(
-      id: 'goblin_warchief', name: 'Goblin Warchief', level: 4, maxHealth: 260, attack: 16, armorClass: 2,
+      id: 'goblin_warchief', name: 'Goblin Warchief', level: 4, maxHealth: 110, attack: 6, armorClass: 2,
       namedBoss: true, attackType: DamageType.physical, resistances: kR,
       description: 'The cunning general of the goblin horde, draped in stolen armour and drunk on victories over weaker things.',
       abilities: [
-        BossAbility(id: 'warchief_frenzy',  name: 'Frenzy Strike',   emoji: '??',  damageType: DamageType.physical, effect: BossAbilityEffect.bonusDamage, value: 50, cooldownRounds: 4),
-        BossAbility(id: 'warchief_poison',  name: 'Poisoned Blade',  emoji: '??',  damageType: DamageType.poison,   effect: BossAbilityEffect.dot,         value: 20, dotRounds: 3, cooldownRounds: 6),
+        BossAbility(id: 'warchief_frenzy',  name: 'Frenzy Strike',   emoji: '⚔',   damageType: DamageType.physical, effect: BossAbilityEffect.bonusDamage, value: 50, cooldownRounds: 4),
+        BossAbility(id: 'warchief_poison',  name: 'Poisoned Blade',  emoji: '☠',   damageType: DamageType.poison,   effect: BossAbilityEffect.dot,         value: 20, dotRounds: 3, cooldownRounds: 6),
       ],
     ),
     Enemy(
@@ -681,8 +681,8 @@ class EnemyData {
       resistances: {DamageType.void_: 25, DamageType.cold: 25, DamageType.poison: 50, DamageType.fire: -25},
       description: 'A warlock who stitched himself together from the fallen of a dozen battles. He considers himself both general and soldier.',
       abilities: [
-        BossAbility(id: 'vael_soul_drain',  name: 'Soul Drain',      emoji: '??',  damageType: DamageType.void_,    effect: BossAbilityEffect.dot,         value: 35, dotRounds: 3, cooldownRounds: 4),
-        BossAbility(id: 'vael_death_spike', name: 'Death Spike',     emoji: '??',  damageType: DamageType.cold,     effect: BossAbilityEffect.bonusDamage, value: 80, cooldownRounds: 5),
+        BossAbility(id: 'vael_soul_drain',  name: 'Soul Drain',      emoji: '✦',   damageType: DamageType.void_,    effect: BossAbilityEffect.dot,         value: 35, dotRounds: 3, cooldownRounds: 4),
+        BossAbility(id: 'vael_death_spike', name: 'Death Spike',     emoji: '❄',   damageType: DamageType.cold,     effect: BossAbilityEffect.bonusDamage, value: 80, cooldownRounds: 5),
       ],
     ),
     Enemy(
@@ -691,8 +691,8 @@ class EnemyData {
       resistances: {DamageType.cold: 50, DamageType.poison: 75, DamageType.fire: -25},
       description: 'A cursed god-king who refused death for three thousand years. The bandages are not wrappings - they are the curse made visible.',
       abilities: [
-        BossAbility(id: 'kethran_curse',    name: 'Ancient Curse',   emoji: '??',  damageType: DamageType.void_,    effect: BossAbilityEffect.dot,         value: 30, dotRounds: 3, cooldownRounds: 4),
-        BossAbility(id: 'kethran_smite',    name: 'Crushing Blow',   emoji: '??',  damageType: DamageType.physical, effect: BossAbilityEffect.bonusDamage, value: 90, cooldownRounds: 6),
+        BossAbility(id: 'kethran_curse',    name: 'Ancient Curse',   emoji: '✦',   damageType: DamageType.void_,    effect: BossAbilityEffect.dot,         value: 30, dotRounds: 3, cooldownRounds: 4),
+        BossAbility(id: 'kethran_smite',    name: 'Crushing Blow',   emoji: '⚔',   damageType: DamageType.physical, effect: BossAbilityEffect.bonusDamage, value: 90, cooldownRounds: 6),
       ],
     ),
     Enemy(
@@ -701,8 +701,8 @@ class EnemyData {
       resistances: {DamageType.void_: 75, DamageType.cold: -25},
       description: 'A floating sphere of ancient malice with a gaze that sees through every illusion, barrier, and intention you possess.',
       abilities: [
-        BossAbility(id: 'eye_beam',         name: 'Disintegration Beam', emoji: '???', damageType: DamageType.void_, effect: BossAbilityEffect.bonusDamage, value: 100, cooldownRounds: 5),
-        BossAbility(id: 'eye_gaze',         name: 'Petrifying Gaze',     emoji: '??', damageType: DamageType.void_, effect: BossAbilityEffect.stun,        value: 1,   cooldownRounds: 6),
+        BossAbility(id: 'eye_beam',         name: 'Disintegration Beam', emoji: '✦',  damageType: DamageType.void_, effect: BossAbilityEffect.bonusDamage, value: 100, cooldownRounds: 5),
+        BossAbility(id: 'eye_gaze',         name: 'Petrifying Gaze',     emoji: '◉',  damageType: DamageType.void_, effect: BossAbilityEffect.stun,        value: 1,   cooldownRounds: 6),
       ],
     ),
     Enemy(
@@ -711,8 +711,8 @@ class EnemyData {
       resistances: {DamageType.void_: 75, DamageType.cold: 50, DamageType.poison: 75, DamageType.physical: 25, DamageType.fire: -25},
       description: 'The original undead sorcerer-king from whom all lich kind descends. His death is not a setback - it is a tradition he has long since made routine.',
       abilities: [
-        BossAbility(id: 'lich_drain',       name: 'Life Drain',      emoji: '??',  damageType: DamageType.void_,    effect: BossAbilityEffect.dot,         value: 40, dotRounds: 3, cooldownRounds: 4),
-        BossAbility(id: 'lich_nova',        name: 'Death Nova',      emoji: '??',  damageType: DamageType.void_,    effect: BossAbilityEffect.bonusDamage, value: 110, cooldownRounds: 6),
+        BossAbility(id: 'lich_drain',       name: 'Life Drain',      emoji: '✦',   damageType: DamageType.void_,    effect: BossAbilityEffect.dot,         value: 40, dotRounds: 3, cooldownRounds: 4),
+        BossAbility(id: 'lich_nova',        name: 'Death Nova',      emoji: '✦',   damageType: DamageType.void_,    effect: BossAbilityEffect.bonusDamage, value: 110, cooldownRounds: 6),
       ],
     ),
     Enemy(
@@ -721,8 +721,8 @@ class EnemyData {
       resistances: {DamageType.lightning: 75, DamageType.physical: 40, DamageType.void_: 25, DamageType.fire: -50},
       description: 'The apex crystalline intelligence, refracting all energy into weapons. Its mind is a lattice of pure arcane mathematics that has solved the equation for your death.',
       abilities: [
-        BossAbility(id: 'prism_beam',       name: 'Prism Beam',      emoji: '?',  damageType: DamageType.lightning, effect: BossAbilityEffect.bonusDamage, value: 100, cooldownRounds: 4),
-        BossAbility(id: 'prism_static',     name: 'Static Field',    emoji: '???', damageType: DamageType.lightning, effect: BossAbilityEffect.dot,         value: 35, dotRounds: 3, cooldownRounds: 5),
+        BossAbility(id: 'prism_beam',       name: 'Prism Beam',      emoji: '⚡',   damageType: DamageType.lightning, effect: BossAbilityEffect.bonusDamage, value: 100, cooldownRounds: 4),
+        BossAbility(id: 'prism_static',     name: 'Static Field',    emoji: '⚡',   damageType: DamageType.lightning, effect: BossAbilityEffect.dot,         value: 35, dotRounds: 3, cooldownRounds: 5),
       ],
     ),
     Enemy(
@@ -731,8 +731,8 @@ class EnemyData {
       resistances: {DamageType.void_: 75, DamageType.physical: 75, DamageType.cold: 25, DamageType.fire: -75},
       description: 'The absolute ruler of the Shadow Realm. Where you see darkness, he sees a throne room. Every shadow you have ever cast belongs to him.',
       abilities: [
-        BossAbility(id: 'shadow_strike',    name: 'Shadow Strike',   emoji: '??',  damageType: DamageType.void_,    effect: BossAbilityEffect.bonusDamage, value: 100, cooldownRounds: 4),
-        BossAbility(id: 'shadow_chains',    name: 'Umbral Chains',   emoji: '??', damageType: DamageType.void_,    effect: BossAbilityEffect.stun,        value: 1,   cooldownRounds: 7),
+        BossAbility(id: 'shadow_strike',    name: 'Shadow Strike',   emoji: '✦',   damageType: DamageType.void_,    effect: BossAbilityEffect.bonusDamage, value: 100, cooldownRounds: 4),
+        BossAbility(id: 'shadow_chains',    name: 'Umbral Chains',   emoji: '◉',   damageType: DamageType.void_,    effect: BossAbilityEffect.stun,        value: 1,   cooldownRounds: 7),
       ],
     ),
     Enemy(
@@ -741,8 +741,8 @@ class EnemyData {
       resistances: {DamageType.cold: 75, DamageType.physical: 25, DamageType.lightning: 25, DamageType.fire: -75},
       description: 'An ancient wyrm whose body has calcified into living glacier over millennia of slumber. It breathes winter itself.',
       abilities: [
-        BossAbility(id: 'wyrm_breath',      name: 'Ice Breath',      emoji: '??',  damageType: DamageType.cold,     effect: BossAbilityEffect.bonusDamage, value: 100, cooldownRounds: 4),
-        BossAbility(id: 'wyrm_frostbite',   name: 'Frost Bite',      emoji: '??',  damageType: DamageType.cold,     effect: BossAbilityEffect.dot,         value: 35, dotRounds: 3, cooldownRounds: 5),
+        BossAbility(id: 'wyrm_breath',      name: 'Ice Breath',      emoji: '❄',   damageType: DamageType.cold,     effect: BossAbilityEffect.bonusDamage, value: 100, cooldownRounds: 4),
+        BossAbility(id: 'wyrm_frostbite',   name: 'Frost Bite',      emoji: '❄',   damageType: DamageType.cold,     effect: BossAbilityEffect.dot,         value: 35, dotRounds: 3, cooldownRounds: 5),
       ],
     ),
     Enemy(
@@ -751,8 +751,8 @@ class EnemyData {
       resistances: {DamageType.lightning: 75, DamageType.physical: 25, DamageType.void_: 25, DamageType.cold: -50},
       description: 'The primordial storm given a crown and a grudge. The sky does not contain it - it contains the sky.',
       abilities: [
-        BossAbility(id: 'storm_crash',      name: 'Thunder Crash',   emoji: '?',  damageType: DamageType.lightning, effect: BossAbilityEffect.bonusDamage, value: 110, cooldownRounds: 4),
-        BossAbility(id: 'storm_surge',      name: 'Storm Surge',     emoji: '???', damageType: DamageType.lightning, effect: BossAbilityEffect.dot,         value: 40, dotRounds: 3, cooldownRounds: 5),
+        BossAbility(id: 'storm_crash',      name: 'Thunder Crash',   emoji: '⚡',   damageType: DamageType.lightning, effect: BossAbilityEffect.bonusDamage, value: 110, cooldownRounds: 4),
+        BossAbility(id: 'storm_surge',      name: 'Storm Surge',     emoji: '⚡',   damageType: DamageType.lightning, effect: BossAbilityEffect.dot,         value: 40, dotRounds: 3, cooldownRounds: 5),
       ],
     ),
     Enemy(
@@ -761,8 +761,8 @@ class EnemyData {
       resistances: {DamageType.cold: 75, DamageType.physical: 25, DamageType.poison: 25, DamageType.lightning: -50},
       description: 'The original sea-beast from the age before the ocean had a floor. It is not a creature of the abyss - the abyss is a creature of it.',
       abilities: [
-        BossAbility(id: 'levi_crush',       name: 'Crushing Depths', emoji: '??',  damageType: DamageType.cold,     effect: BossAbilityEffect.bonusDamage, value: 100, cooldownRounds: 4),
-        BossAbility(id: 'levi_chill',       name: 'Abyssal Chill',   emoji: '??',  damageType: DamageType.cold,     effect: BossAbilityEffect.dot,         value: 35, dotRounds: 3, cooldownRounds: 5),
+        BossAbility(id: 'levi_crush',       name: 'Crushing Depths', emoji: '❄',   damageType: DamageType.cold,     effect: BossAbilityEffect.bonusDamage, value: 100, cooldownRounds: 4),
+        BossAbility(id: 'levi_chill',       name: 'Abyssal Chill',   emoji: '❄',   damageType: DamageType.cold,     effect: BossAbilityEffect.dot,         value: 35, dotRounds: 3, cooldownRounds: 5),
       ],
     ),
     Enemy(
@@ -771,8 +771,8 @@ class EnemyData {
       resistances: {DamageType.void_: 75, DamageType.physical: 50, DamageType.cold: 25, DamageType.fire: -50},
       description: 'A sleeping deity whose dream constructed the labyrinth. Every corridor is a thought. Every dead end is a forgotten memory. You are a nightmare it is about to wake up from.',
       abilities: [
-        BossAbility(id: 'dream_wave',       name: 'Nightmare Wave',  emoji: '??',  damageType: DamageType.void_,    effect: BossAbilityEffect.dot,         value: 45, dotRounds: 3, cooldownRounds: 4),
-        BossAbility(id: 'dream_tear',       name: 'Reality Tear',    emoji: '??',  damageType: DamageType.void_,    effect: BossAbilityEffect.stun,        value: 2,   cooldownRounds: 8),
+        BossAbility(id: 'dream_wave',       name: 'Nightmare Wave',  emoji: '✦',   damageType: DamageType.void_,    effect: BossAbilityEffect.dot,         value: 45, dotRounds: 3, cooldownRounds: 4),
+        BossAbility(id: 'dream_tear',       name: 'Reality Tear',    emoji: '◉',   damageType: DamageType.void_,    effect: BossAbilityEffect.stun,        value: 2,   cooldownRounds: 8),
       ],
     ),
     Enemy(
@@ -1035,7 +1035,10 @@ class EnemyData {
       final bossId = _bossOrder[stage];
       final base   = bossId != null ? _byId(bossId) : _byId(_campaignOrder[stage]);
       final hpMult  = 2.0 * (1.0 + prestigeLevel * 0.20);
-      final atkMult = 1.5 * (1.0 + prestigeLevel * 0.12);
+      // Enemy attack ramps +2%/stage past stage 5 so mid/late campaign keeps
+      // pressure on heal-sustain builds (stage 25 ≈ +40% ATK).
+      final lateRamp = 1.0 + ((stage - 5).clamp(0, 40)) * 0.02;
+      final atkMult = 1.5 * lateRamp * (1.0 + prestigeLevel * 0.12);
       return Enemy(
         id:          base.id,
         name:        base.name,

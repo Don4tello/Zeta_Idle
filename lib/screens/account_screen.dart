@@ -1,4 +1,5 @@
 ﻿import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show SystemNavigator;
 import '../services/game_state.dart';
 
 class AccountScreen extends StatefulWidget {
@@ -58,6 +59,59 @@ class _AccountScreenState extends State<AccountScreen> {
     if (mounted) setState(() => _loading = false);
   }
 
+  Future<void> _deleteAccount(GameState game) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF1a1a2e),
+        title: const Text('Delete account & data?',
+            style: TextStyle(color: Color(0xFFff6644), fontWeight: FontWeight.bold)),
+        content: const Text(
+          'This permanently deletes your account and ALL data — every character, '
+          'your cloud save, PvP standing, and leaderboard entries. '
+          'This cannot be undone.',
+          style: TextStyle(color: Color(0xFFcccccc)),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel', style: TextStyle(color: Color(0xFF888888))),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('DELETE EVERYTHING',
+                style: TextStyle(color: Color(0xFFff4444), fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+    if (confirm != true) return;
+    setState(() => _loading = true);
+    await game.deleteAccount();
+    if (!mounted) return;
+    setState(() => _loading = false);
+    await showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF1a1a2e),
+        title: const Text('Account deleted',
+            style: TextStyle(color: Colors.white)),
+        content: const Text(
+          'Your account and all data have been removed. The app will now close.',
+          style: TextStyle(color: Color(0xFFcccccc)),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => SystemNavigator.pop(),
+            child: const Text('Close', style: TextStyle(color: Color(0xFF66aaff))),
+          ),
+        ],
+      ),
+    );
+    SystemNavigator.pop();
+  }
+
   @override
   Widget build(BuildContext context) {
     final game    = GameStateProvider.of(context);
@@ -114,6 +168,25 @@ class _AccountScreenState extends State<AccountScreen> {
                 ],
                 const SizedBox(height: 32),
                 const _InfoSection(),
+                const SizedBox(height: 32),
+                const Divider(color: Color(0xFF33313a)),
+                const SizedBox(height: 12),
+                const Text('DANGER ZONE',
+                    style: TextStyle(
+                        color: Color(0xFF886666), fontSize: 11,
+                        fontWeight: FontWeight.bold, letterSpacing: 2)),
+                const SizedBox(height: 4),
+                const Text(
+                  'Permanently delete your account and all associated data.',
+                  style: TextStyle(color: Color(0xFF888888), fontSize: 12),
+                ),
+                const SizedBox(height: 12),
+                _ActionButton(
+                  label: 'DELETE ACCOUNT',
+                  color: const Color(0xFFcc3333),
+                  icon:  Icons.delete_forever,
+                  onTap: () => _deleteAccount(game),
+                ),
               ],
             ),
     );

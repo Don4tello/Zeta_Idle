@@ -39,7 +39,7 @@ class WorldEventReward {
       // Currency rewards
       WorldEventReward(id: 'omega_gold', name: 'Gold Purse', description: '💰 +${2000 + lvl * 50} Gold', tokenCost: 8, icon: '💰', gold: 2000 + lvl * 50),
       WorldEventReward(id: 'omega_crystals_10', name: 'ZCoin Cache', description: '🪙 +10 ZCoins', tokenCost: 12, icon: '🪙', zcoins: 10),
-      WorldEventReward(id: 'omega_essence', name: 'Essence Vial', description: '✦ +${50 + lvl * 3} Essence', tokenCost: 10, icon: '✦', essence: 50 + lvl * 3),
+      WorldEventReward(id: 'omega_essence', name: 'Shard Cache', description: '◆ +${50 + lvl * 3} Shards', tokenCost: 10, icon: '◆', essence: 50 + lvl * 3),
       WorldEventReward(id: 'omega_crystals_25', name: 'ZCoin Hoard', description: '🪙 +25 ZCoins', tokenCost: 25, icon: '🪙', zcoins: 25),
       WorldEventReward(id: 'omega_mythril', name: 'Mythril Ingot', description: '⬡ +${5 + lvl ~/ 5} Mythril', tokenCost: 20, icon: '⬡', mythril: 5 + lvl ~/ 5),
       // Gear rewards — level-appropriate

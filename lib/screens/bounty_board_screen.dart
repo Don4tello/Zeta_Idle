@@ -11,8 +11,6 @@ class BountyBoardScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final game = GameStateProvider.of(context);
-    final bounties = game.dailyBounties;
-
     return Scaffold(
       backgroundColor: const Color(0xFF1B1A17),
       appBar: AppBar(
@@ -26,7 +24,21 @@ class BountyBoardScreen extends StatelessWidget {
           ),
         ],
       ),
-      body: RefreshIndicator(
+      body: const BountyBoardBody(),
+    );
+  }
+}
+
+/// The bounty list body — reused as the BOUNTIES tab inside the Challenges screen.
+class BountyBoardBody extends StatelessWidget {
+  const BountyBoardBody({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final game = GameStateProvider.of(context);
+    final bounties = game.dailyBounties;
+
+    return RefreshIndicator(
         color: AppTheme.accentGold,
         backgroundColor: const Color(0xFF2A2623),
         onRefresh: () async {
@@ -37,6 +49,13 @@ class BountyBoardScreen extends StatelessWidget {
         physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.all(16),
         children: [
+          Align(
+            alignment: Alignment.centerRight,
+            child: Padding(
+              padding: const EdgeInsets.only(bottom: 10),
+              child: _TimeChip(game: game),
+            ),
+          ),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
             margin: const EdgeInsets.only(bottom: 16),
@@ -68,8 +87,7 @@ class BountyBoardScreen extends StatelessWidget {
                 )),
         ],
         ),  // ListView
-      ),    // RefreshIndicator
-    );
+      );    // RefreshIndicator
   }
 }
 

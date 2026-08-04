@@ -35,6 +35,11 @@ class LeaderboardService {
   static CollectionReference<Map<String, dynamic>> get _col =>
       _db.collection('endless_leaderboard');
 
+  /// Remove this user's leaderboard entry (used by account deletion).
+  static Future<void> deleteEntry(String uid) async {
+    try { await _col.doc(uid).delete(); } catch (_) {}
+  }
+
   static Future<void> submitScore({
     required String heroName,
     required int floor,

@@ -1,6 +1,7 @@
 ﻿import 'dart:math';
 import 'package:flutter/material.dart';
 import '../models/damage_type.dart';
+import 'game_icons.dart';
 import '../models/hero_ability.dart' show AbilityEffect;
 import '../services/game_state.dart';
 import '../models/dnd_class.dart';
@@ -47,6 +48,7 @@ class BattleArena extends StatefulWidget {
     required this.enemyMaxHp,
     required this.enemyAttack,
     required this.enemyId,
+    this.enemyColorFilter,
     this.stageIndex = 0,
     // Context
     this.headerLabel,
@@ -74,6 +76,7 @@ class BattleArena extends StatefulWidget {
   final Widget?      heroPet;
 
   final String enemyName, enemyId;
+  final ColorFilter? enemyColorFilter;
   final int    enemyLevel, enemyCurrentHp, enemyMaxHp, enemyAttack;
   final int    stageIndex;
 
@@ -121,6 +124,11 @@ class BattleArenaState extends State<BattleArena> with TickerProviderStateMixin 
   // Ability banner + edge flash
   late final AnimationController _bannerCtrl = AnimationController(
       vsync: this, duration: const Duration(milliseconds: 700));
+
+  // Elemental hit tint — brief edge vignette in the damage type's colour
+  late final AnimationController _elemFlashCtrl = AnimationController(
+      vsync: this, duration: const Duration(milliseconds: 320));
+  Color _elemFlashColor = Colors.white;
   String _bannerText  = '';
   String _bannerId    = '';
   Color  _bannerColor = Colors.white;
@@ -158,6 +166,7 @@ class BattleArenaState extends State<BattleArena> with TickerProviderStateMixin 
     _bossFlashCtrl.dispose();
     _enemyFadeCtrl.dispose();
     _bannerCtrl.dispose();
+    _elemFlashCtrl.dispose();
     for (final f in _floaters) f.ctrl.dispose();
     super.dispose();
   }
@@ -193,10 +202,22 @@ class BattleArenaState extends State<BattleArena> with TickerProviderStateMixin 
     _heroKey.currentState?.playAttack();
     final isWeak = (widget.enemyResistances[damageType] ?? 0) < 0;
     _spawnFloat(damage, isCrit: isCrit, onEnemy: true, damageType: damageType, isWeak: isWeak);
-    if (isCrit) _shakeCtrl.forward(from: 0.6);
-    await Future.delayed(const Duration(milliseconds: 200));
+    // Elemental screen tint on non-physical hits
+    if (damageType != DamageType.physical) {
+      _elemFlashColor = damageType.color;
+      _elemFlashCtrl.forward(from: 0);
+    }
+    // Screen shake scaled by impact: crits shake hard, big hits shake a little
+    final bigHit = widget.enemyMaxHp > 0 && damage >= widget.enemyMaxHp * 0.12;
+    if (isCrit) {
+      _shakeCtrl.forward(from: 0.35);
+    } else if (bigHit) {
+      _shakeCtrl.forward(from: 0.65);
+    }
+    // Sync the impact with the lunge's strike frame (~55% of 460ms)
+    await Future.delayed(const Duration(milliseconds: 250));
     if (mounted) {
-      _enemyKey.currentState?.playHit();
+      _enemyKey.currentState?.playHit(heavy: isCrit || bigHit);
     }
   }
 
@@ -225,16 +246,26 @@ class BattleArenaState extends State<BattleArena> with TickerProviderStateMixin 
   Future<void> playEnemyAttack(int damage,
       {DamageType damageType = DamageType.physical}) async {
     _enemyKey.currentState?.playAttack();
-    await Future.delayed(const Duration(milliseconds: 200));
+    // Wait through the windup so the hit lands on the strike frame
+    await Future.delayed(const Duration(milliseconds: 250));
     if (mounted) {
-      _heroKey.currentState?.playHit();
+      final bigHit = widget.heroMaxHp > 0 && damage >= widget.heroMaxHp * 0.15;
+      _heroKey.currentState?.playHit(heavy: bigHit);
+      if (bigHit) _shakeCtrl.forward(from: 0.55);
       _spawnFloat(damage, isCrit: false, onEnemy: false, damageType: damageType);
     }
   }
 
   void playEnemyDeath() {
-    _burstCtrl.forward(from: 0);
     _shakeCtrl.forward(from: 0);
+    _enemyKey.currentState?.playDeath();
+    Future.delayed(const Duration(milliseconds: 280), () {
+      if (mounted) _burstCtrl.forward(from: 0);
+    });
+  }
+
+  Future<void> playHeroDeath() async {
+    await _heroKey.currentState?.playDeath();
   }
 
   void playAbilityBanner(String name, AbilityEffect effect, {String id = ''}) {
@@ -268,15 +299,23 @@ class BattleArenaState extends State<BattleArena> with TickerProviderStateMixin 
     final ctrl = AnimationController(
         vsync: this, duration: const Duration(milliseconds: 1000));
     final weakTag = isWeak && !isCrit ? ' WEAK!' : '';
-    final label = isCrit ? '$damage${damageType.shortTag}!' : '$damage${damageType.shortTag}$weakTag';
-    final driftX = (_rng.nextDouble() - 0.5) * 52.0;
+    final label = isCrit ? '$damage!' : '$damage$weakTag';
+    // Crits arc outward; normal hits drift gently
+    final driftX = isCrit
+        ? (28.0 + _rng.nextDouble() * 24.0) * (onEnemy ? 1 : -1)
+        : (_rng.nextDouble() - 0.5) * 52.0;
+    // Bigger hits get bigger numbers (relative to the target's max HP)
+    final targetMax = onEnemy ? widget.enemyMaxHp : widget.heroMaxHp;
+    final frac = targetMax > 0 ? damage / targetMax : 0.0;
+    final sizeScale = (1.0 + frac * 2.5).clamp(1.0, 1.6);
     final entry = _FloatEntry(
         ctrl: ctrl,
         text: label,
         color: baseColor,
         isCrit: isCrit,
         onEnemy: onEnemy,
-        driftX: driftX);
+        driftX: driftX,
+        sizeScale: sizeScale);
     setState(() => _floaters.add(entry));
     ctrl.forward().then((_) {
       if (mounted) {
@@ -373,7 +412,8 @@ class BattleArenaState extends State<BattleArena> with TickerProviderStateMixin 
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          const Text('☠', style: TextStyle(fontSize: 13)),
+                          Icon(Icons.dangerous_outlined, size: 13,
+                              color: widget.isBossEnraged ? const Color(0xFFff4444) : const Color(0xFFcc44ff)),
                           const SizedBox(width: 8),
                           Text(
                             widget.isBossEnraged
@@ -389,7 +429,8 @@ class BattleArenaState extends State<BattleArena> with TickerProviderStateMixin 
                             ),
                           ),
                           const SizedBox(width: 8),
-                          const Text('☠', style: TextStyle(fontSize: 13)),
+                          Icon(Icons.dangerous_outlined, size: 13,
+                              color: widget.isBossEnraged ? const Color(0xFFff4444) : const Color(0xFFcc44ff)),
                         ],
                       ),
                     ),
@@ -469,6 +510,7 @@ class BattleArenaState extends State<BattleArena> with TickerProviderStateMixin 
                               facingLeft: true,
                               auraColor: widget.enemyAuraColor,
                               buffGlows: widget.enemyDebuffGlows,
+                              colorFilter: widget.enemyColorFilter,
                             ),
                             nameColor: const Color(0xFFee4040),
                             alignRight: true,
@@ -602,6 +644,23 @@ class BattleArenaState extends State<BattleArena> with TickerProviderStateMixin 
                   );
                 },
               ),
+              // Elemental hit tint — quick edge vignette in the damage colour
+              AnimatedBuilder(
+                animation: _elemFlashCtrl,
+                builder: (_, __) {
+                  final t = _elemFlashCtrl.value;
+                  if (t <= 0 || t >= 1) return const SizedBox.shrink();
+                  final alpha = sin(t * pi) * 0.16;
+                  return Positioned.fill(
+                    child: IgnorePointer(
+                      child: CustomPaint(
+                        painter: _AbilityEdgeFlashPainter(
+                            _elemFlashColor, alpha.clamp(0.0, 0.16)),
+                      ),
+                    ),
+                  );
+                },
+              ),
               // Death burst overlay
               if (_burstCtrl.isAnimating || _burstCtrl.value > 0)
                 Positioned.fill(
@@ -633,8 +692,8 @@ class BattleArenaState extends State<BattleArena> with TickerProviderStateMixin 
         // Fade out in last 30%
         final alpha = t < 0.7 ? 1.0 : (1 - (t - 0.7) / 0.3);
 
-        // Rise + horizontal drift
-        final rise  = t * 80.0;
+        // Crits fly a gravity arc (up fast, then fall); normal hits rise
+        final rise  = f.isCrit ? 130.0 * t - 95.0 * t * t : t * 80.0;
         final drift = f.driftX * t;
 
         // Scale: elastic pop in first 45%, then hold at 1.0
@@ -671,7 +730,7 @@ class BattleArenaState extends State<BattleArena> with TickerProviderStateMixin 
                   child: Text(
                     f.text,
                     style: TextStyle(
-                      fontSize: f.isCrit ? 28 : 18,
+                      fontSize: (f.isCrit ? 28 : 18) * f.sizeScale,
                       fontWeight: FontWeight.bold,
                       color: f.color,
                       shadows: [
@@ -751,12 +810,14 @@ class _FloatEntry {
     required this.isCrit,
     required this.onEnemy,
     this.driftX = 0.0,
+    this.sizeScale = 1.0,
   });
   final AnimationController ctrl;
   final String text;
   final Color  color;
   final bool   isCrit, onEnemy;
-  final double driftX; // horizontal drift in pixels over the full animation
+  final double driftX;    // horizontal drift in pixels over the full animation
+  final double sizeScale; // font scale from damage magnitude (1.0–1.6)
 }
 
 class _DeathBurstPainter extends CustomPainter {
@@ -766,17 +827,18 @@ class _DeathBurstPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final rng   = Random(1337);
-    const count = 14;
+    const count = 26;
     final paint = Paint()..style = PaintingStyle.fill;
 
     for (int i = 0; i < count; i++) {
       final angle  = rng.nextDouble() * pi * 2;
-      final speed  = 60 + rng.nextDouble() * 80;
+      final speed  = 60 + rng.nextDouble() * 110;
       final startR = 8 + rng.nextDouble() * 12;
       final dist   = startR + t * speed;
+      // Gravity: particles arc downward as they fly out
       final px     = cx + cos(angle) * dist;
-      final py     = cy + sin(angle) * dist;
-      final sz     = (1 - t) * (4 + rng.nextDouble() * 6);
+      final py     = cy + sin(angle) * dist + 70.0 * t * t;
+      final sz     = (1 - t) * (3 + rng.nextDouble() * 7);
       final alpha  = (1 - t * t).clamp(0.0, 1.0);
       const colors = [
         0xFFffcc44, 0xFFff8820, 0xFFee3030, 0xFFffffff, 0xFFdd60ff
@@ -801,6 +863,15 @@ class _DeathBurstPainter extends CustomPainter {
   @override
   bool shouldRepaint(_DeathBurstPainter old) => old.t != t;
 }
+
+GameIconType _dmgIcon(DamageType t) => switch (t) {
+  DamageType.physical  => GameIconType.fist,
+  DamageType.fire      => GameIconType.flame,
+  DamageType.cold      => GameIconType.snowflake,
+  DamageType.lightning => GameIconType.bolt,
+  DamageType.poison    => GameIconType.flask,
+  DamageType.void_     => GameIconType.moon,
+};
 
 class _CombatantPanel extends StatelessWidget {
   const _CombatantPanel({
@@ -894,8 +965,7 @@ class _CombatantPanel extends StatelessWidget {
                   style: const TextStyle(fontSize: 12, color: AppTheme.textLight)),
               if (damageType != null) ...[
                 const SizedBox(width: 5),
-                Text(damageType!.emoji,
-                    style: TextStyle(fontSize: 12, color: damageType!.color)),
+                GameIcon(_dmgIcon(damageType!), size: 13, color: damageType!.color),
               ],
             ],
           ),
@@ -904,11 +974,11 @@ class _CombatantPanel extends StatelessWidget {
             const SizedBox(height: 3),
             Row(mainAxisSize: MainAxisSize.min, children: [
               if (critPct != null)
-                _StatChip('⚡ ${critPct}% crit', const Color(0xFFffcc44)),
+                _StatChip('CRIT $critPct%', const Color(0xFFffcc44)),
               if (critPct != null && armor != null)
                 const SizedBox(width: 4),
               if (armor != null && armor! > 0)
-                _StatChip('🛡 $armor arm', const Color(0xFF88aacc)),
+                _StatChip('ARM $armor', const Color(0xFF88aacc)),
             ]),
           ],
           // Resistance/vulnerability row (shown for enemy panel)
@@ -942,7 +1012,7 @@ class _CombatantPanel extends StatelessWidget {
                 borderRadius: BorderRadius.circular(3),
               ),
               child: Text(
-                '${damageType!.emoji} ${damageType!.label.toUpperCase()}',
+                damageType!.label.toUpperCase(),
                 style: TextStyle(
                   fontSize: 9,
                   color: damageType!.color,
@@ -969,12 +1039,11 @@ class _LogLine extends StatelessWidget {
     if (t.contains('Item dropped'))             return const Color(0xFF80d0ff);
     if (t.contains('ENRAGES'))                  return const Color(0xFFee4444);
     if (t.contains('REBIRTH') || t.contains('ASCENSION')) return AppTheme.accentGold;
-    if (t.contains('✦'))                        return AppTheme.accentGold;
-    if (t.contains('🔥') || t.contains('(Fire)'))       return const Color(0xFFFF6B35);
-    if (t.contains('❄') || t.contains('(Cold)'))        return const Color(0xFF6CB4E4);
-    if (t.contains('⚡') || t.contains('(Lightning)'))  return const Color(0xFFFFE14D);
-    if (t.contains('☠') || t.contains('(Poison)'))      return const Color(0xFF7DCF6A);
-    if (t.contains('🌑') || t.contains('(Void)'))       return const Color(0xFF9966FF);
+    if (t.contains('FIRE') || t.contains(' Fire '))      return const Color(0xFFFF6B35);
+    if (t.contains('COLD') || t.contains(' Cold '))      return const Color(0xFF6CB4E4);
+    if (t.contains('LTNG') || t.contains(' Lightning ')) return const Color(0xFFFFE14D);
+    if (t.contains('POIS') || t.contains(' Poison '))    return const Color(0xFF7DCF6A);
+    if (t.contains('VOID') || t.contains(' Void '))      return const Color(0xFF9966FF);
     if (t.contains('stunned'))                  return const Color(0xFFcc44ff);
     if (t.contains('weakened') || t.contains('ATK reduced')) return const Color(0xFFff4488);
     if (t.contains('vulnerable'))               return const Color(0xFFff8800);

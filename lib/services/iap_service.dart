@@ -19,11 +19,13 @@ class CrystalPackage {
 typedef PurchaseCallback = void Function(String productId, int zcoins);
 
 class IapService {
-  IapService(this._onCrystalsGranted, {this.onPackPurchased, this.onSubscriptionActivated});
+  IapService(this._onCrystalsGranted,
+      {this.onPackPurchased, this.onSubscriptionActivated, this.onPremiumSkinPurchased});
 
   final void Function(int) _onCrystalsGranted;
   final void Function(String)? onPackPurchased;
   final void Function(String, int)? onSubscriptionActivated;
+  final void Function(String)? onPremiumSkinPurchased;
   StreamSubscription<List<PurchaseDetails>>? _sub;
   final Map<String, ProductDetails> _products = {};
   bool _storeAvailable = false;
@@ -40,6 +42,11 @@ class IapService {
     'crystals_100', 'crystals_550', 'crystals_1200', 'crystals_3000',
     // Non-consumables (packs)
     'pack_starter', 'pack_hero', 'pack_legend',
+    // Premium class skins ($4.99 each, non-consumable)
+    'skin_premium_barbarian', 'skin_premium_bard', 'skin_premium_cleric',
+    'skin_premium_druid', 'skin_premium_fighter', 'skin_premium_monk',
+    'skin_premium_ranger', 'skin_premium_rogue', 'skin_premium_sorcerer',
+    'skin_premium_warlock', 'skin_premium_wizard', 'skin_premium_paladin',
     // Subscriptions
     'sub_speed_monthly', 'sub_premium_monthly',
   };
@@ -95,6 +102,12 @@ class IapService {
     // Starter packs
     if (productId.startsWith('pack_')) {
       onPackPurchased?.call(productId);
+      return;
+    }
+
+    // Premium class skins — productId 'skin_<skinId>' → skinId 'premium_<class>'
+    if (productId.startsWith('skin_')) {
+      onPremiumSkinPurchased?.call(productId.substring('skin_'.length));
       return;
     }
 

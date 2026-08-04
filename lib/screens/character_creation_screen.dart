@@ -2,6 +2,7 @@
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../models/damage_type.dart';
+import '../widgets/game_icons.dart';
 import '../models/dnd_class.dart';
 import '../models/hero_model.dart' show HeroGender;
 import '../models/hero_race.dart';
@@ -703,18 +704,26 @@ class _DmgPill extends StatelessWidget {
   const _DmgPill(this.type);
   final DamageType type;
 
+  GameIconType get _icon => switch (type) {
+    DamageType.physical  => GameIconType.fist,
+    DamageType.fire      => GameIconType.flame,
+    DamageType.cold      => GameIconType.snowflake,
+    DamageType.lightning => GameIconType.bolt,
+    DamageType.poison    => GameIconType.flask,
+    DamageType.void_     => GameIconType.moon,
+  };
+
   @override
   Widget build(BuildContext context) {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Text(type.emoji,
-            style: const TextStyle(fontSize: 9)),
-        const SizedBox(width: 2),
+        GameIcon(_icon, size: 11, color: type.color),
+        const SizedBox(width: 3),
         Text(
           type.label,
           style: GoogleFonts.rajdhani(
-            fontSize: 8,
+            fontSize: 9,
             color: type.color,
             fontWeight: FontWeight.bold,
             letterSpacing: 0.3,

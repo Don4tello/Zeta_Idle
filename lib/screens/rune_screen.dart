@@ -3,6 +3,7 @@ import '../models/ability_rune.dart';
 import '../models/equipment.dart';
 import '../services/game_state.dart';
 import '../theme/app_theme.dart';
+import '../widgets/currency_info.dart';
 
 class RuneScreen extends StatelessWidget {
   const RuneScreen({super.key, this.embedded = false});
@@ -34,13 +35,18 @@ class RuneScreen extends StatelessWidget {
               const Text(
                 'Socket runes to permanently enhance your abilities.\n'
                 'Each rune modifies a specific ability — boosting damage, duration, or cooldown.\n'
-                'Costs Rune Dust from disenchanting gear.',
+                'Costs Arcane Dust from disenchanting gear, gems, and runes.',
                 style: TextStyle(fontSize: 11, color: AppTheme.textMuted, height: 1.4)),
               const SizedBox(height: 8),
               Row(children: [
-                const Text('🔮 Rune Dust: ', style: TextStyle(fontSize: 11, color: AppTheme.textMuted)),
-                Text('${game.runeDust}', style: const TextStyle(
-                    fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFFaa66ff))),
+                InfoTip(
+                  message: CurrencyInfo.gemShards,
+                  child: Row(mainAxisSize: MainAxisSize.min, children: [
+                    const Text('🌀 Arcane Dust: ', style: TextStyle(fontSize: 11, color: AppTheme.textMuted)),
+                    Text('${game.gemShards}', style: const TextStyle(
+                        fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFFbb88ee))),
+                  ]),
+                ),
                 const SizedBox(width: 16),
                 Text('📜 Owned: ${game.ownedRunes.length}/${runes.length}',
                     style: const TextStyle(fontSize: 11, color: AppTheme.textMuted)),
@@ -180,7 +186,7 @@ class _RuneCard extends StatelessWidget {
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
                       padding: const EdgeInsets.symmetric(horizontal: 10),
                     ),
-                    child: Text('Socket → ${item.name}  (🔮 ${rune.dustCost})',
+                    child: Text('Socket → ${item.name}  (🌀 ${rune.dustCost})',
                         style: TextStyle(fontSize: 9,
                             color: owned ? rune.color : AppTheme.cardBorder)),
                   ),

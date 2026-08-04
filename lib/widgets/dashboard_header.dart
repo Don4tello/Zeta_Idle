@@ -201,10 +201,12 @@ class _DashboardHeaderState extends State<DashboardHeader>
                 width: 80,
                 height: 120,
                 child: BattleSprite(
-                  spriteId: hero.spriteId,
+                  spriteId: game.heroBattleSpriteId,
                   gender: hero.gender,
                   race: game.heroRace,
-                  colorFilter: game.heroSkinFilter,
+                  colorFilter: game.heroSpriteFilter,
+                  auraColor: game.heroAuraColor,
+                  auraIntensity: game.heroAuraIntensity,
                 ),
               ),
               const SizedBox(width: 10),
@@ -287,6 +289,41 @@ class _DashboardHeaderState extends State<DashboardHeader>
                         ],
                       ],
                     ),
+                    // Subclass specialization (level 50+)
+                    if (game.activeSubclass != null) ...[
+                      const SizedBox(height: 3),
+                      Row(
+                        children: [
+                          Container(
+                            width: 8,
+                            height: 8,
+                            margin: const EdgeInsets.only(right: 6),
+                            decoration: BoxDecoration(
+                              color: game.activeSubclass!.spriteSwatch,
+                              borderRadius: BorderRadius.circular(2),
+                              boxShadow: [
+                                BoxShadow(
+                                    color: game.activeSubclass!.spriteSwatch
+                                        .withValues(alpha: 0.6),
+                                    blurRadius: 4),
+                              ],
+                            ),
+                          ),
+                          Flexible(
+                            child: Text(
+                              game.activeSubclass!.name.toUpperCase(),
+                              style: AppTheme.pixelHeading(
+                                fontSize: 9,
+                                color: game.activeSubclass!.spriteSwatch,
+                                letterSpacing: 1.5,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
                     // Medieval Power
                     const SizedBox(height: 3),
                     Tooltip(
@@ -573,7 +610,7 @@ class _IdleProgressPanelState extends State<_IdleProgressPanel>
             children: [
               _IdleRewardRow('💰 Gold', '+${AppTheme.fmtNumber(game.lastIdleGold)}', const Color(0xFFdaa520)),
               if (game.lastIdleEssence > 0)
-                _IdleRewardRow('✦ Essence', '+${game.lastIdleEssence}', const Color(0xFF88ccff)),
+                _IdleRewardRow('◆ Shards', '+${game.lastIdleEssence}', const Color(0xFF6699ff)),
               _IdleRewardRow('⚡ XP', '+${AppTheme.fmtNumber(game.lastIdleXp)}', const Color(0xFFffcc44)),
             ],
           ),
@@ -650,9 +687,11 @@ class _IdleProgressPanelState extends State<_IdleProgressPanel>
                       fit: BoxFit.contain,
                       child: BattleSprite(
                         key: _heroKey,
-                        spriteId: game.hero.spriteId,
+                        spriteId: game.heroBattleSpriteId,
                         gender: game.hero.gender,
-                        colorFilter: game.heroSkinFilter,
+                        colorFilter: game.heroSpriteFilter,
+                        auraColor: game.heroAuraColor,
+                        auraIntensity: game.heroAuraIntensity,
                       ),
                     ),
                   )

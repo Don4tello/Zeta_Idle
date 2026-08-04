@@ -1,5 +1,5 @@
 ﻿import 'package:flutter/material.dart';
-import '../screens/aura_shop_screen.dart';
+import '../widgets/game_icons.dart';
 import '../screens/premium_shop_screen.dart';
 import '../utils/format_number.dart';
 import '../screens/hero_hub_screen.dart';
@@ -179,18 +179,18 @@ class _MainShellState extends State<MainShell> {
             Text('You were away for $timeLabel.',
                 style: const TextStyle(fontSize: 13, color: AppTheme.textMuted)),
             const SizedBox(height: 12),
-            _offlineRow('💰', '+$goldLabel gold', AppTheme.accentGold),
+            _offlineRow(GameIconType.coin, '+$goldLabel gold', AppTheme.accentGold),
             if (xp > 0) ...[
               const SizedBox(height: 6),
-              _offlineRow('✨', '+${fmtNum(xp)} XP', const Color(0xFF88aaff)),
+              _offlineRow(GameIconType.star, '+${fmtNum(xp)} XP', const Color(0xFF88aaff)),
             ],
             if (ess > 0) ...[
               const SizedBox(height: 6),
-              _offlineRow('✦', '+$ess essence', const Color(0xFF44dd88)),
+              _offlineRow(GameIconType.starburst, '+$ess essence', const Color(0xFF44dd88)),
             ],
             if (exps > 0) ...[
               const SizedBox(height: 6),
-              _offlineRow('🗺️', '$exps expedition${exps > 1 ? "s" : ""} ready!', const Color(0xFF55cc88)),
+              _offlineRow(GameIconType.compass, '$exps expedition${exps > 1 ? "s" : ""} ready!', const Color(0xFF55cc88)),
             ],
             if (comeback != null) ...[
               const SizedBox(height: 10),
@@ -200,7 +200,7 @@ class _MainShellState extends State<MainShell> {
                   style: TextStyle(fontSize: 11, color: Color(0xFF44aaff), letterSpacing: 1)),
               const SizedBox(height: 6),
               ...comeback.entries.map((e) =>
-                _offlineRow('🎁', '+${e.value} ${e.key}', const Color(0xFF44aaff))),
+                _offlineRow(GameIconType.gift, '+${e.value} ${e.key}', const Color(0xFF44aaff))),
             ],
             const SizedBox(height: 8),
             const Text('Idle income collected while you rested.',
@@ -212,6 +212,7 @@ class _MainShellState extends State<MainShell> {
           TextButton(
             onPressed: () {
               if (comeback != null) game.claimComebackBonus();
+              game.audioService.playClaim();
               Navigator.pop(context);
             },
             child: Text('CLAIM', style: AppTheme.pixelHeading(fontSize: 12, color: AppTheme.accentGold)),
@@ -221,7 +222,7 @@ class _MainShellState extends State<MainShell> {
     );
   }
 
-  Widget _offlineRow(String emoji, String text, Color color) {
+  Widget _offlineRow(GameIconType icon, String text, Color color) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -231,7 +232,7 @@ class _MainShellState extends State<MainShell> {
         borderRadius: BorderRadius.circular(4),
       ),
       child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-        Text(emoji, style: const TextStyle(fontSize: 16)),
+        GameIcon(icon, size: 16, color: color),
         const SizedBox(width: 8),
         Text(text, style: AppTheme.pixelHeading(fontSize: 14, color: color)),
       ]),
@@ -247,6 +248,7 @@ class _MainShellState extends State<MainShell> {
         final id = game.pendingMilestone!;
         game.claimMilestoneRewards(id);
         game.dismissMilestone();
+        game.audioService.playClaim();
         final rewards = GameState.milestoneRewards(id);
         final rewardStr = rewards.entries.map((e) => '+${e.value} ${e.key}').join('  •  ');
         showDialog(
@@ -257,7 +259,7 @@ class _MainShellState extends State<MainShell> {
               borderRadius: BorderRadius.circular(8),
               side: const BorderSide(color: Color(0xFFFFD700), width: 2),
             ),
-            title: Text('✦ MILESTONE ✦',
+            title: Text('MILESTONE',
                 textAlign: TextAlign.center,
                 style: AppTheme.pixelHeading(fontSize: 16, letterSpacing: 3, color: const Color(0xFFFFD700))),
             content: Column(
@@ -297,7 +299,12 @@ class _MainShellState extends State<MainShell> {
         );
       });
     }
-    if (game.pendingComebackRewards != null && !_comebackMerged) {
+    // Only show the standalone comeback dialog when there is NO offline
+    // "Welcome back!" dialog to merge into. When the player has offline gold,
+    // _showOfflineDialog already displays + claims the comeback bonus — showing
+    // this one too produced a duplicate "Welcome back" popup.
+    if (game.pendingComebackRewards != null && !_comebackMerged
+        && game.offlineGoldEarned == 0) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
         final rewards = game.pendingComebackRewards!;
@@ -335,7 +342,7 @@ class _MainShellState extends State<MainShell> {
             ),
             actions: [
               TextButton(
-                onPressed: () { game.claimComebackBonus(); Navigator.pop(ctx); },
+                onPressed: () { game.claimComebackBonus(); game.audioService.playClaim(); Navigator.pop(ctx); },
                 child: Text('CLAIM', style: AppTheme.pixelHeading(fontSize: 12, color: const Color(0xFF44aaff))),
               ),
             ],
@@ -418,12 +425,12 @@ class _CustomBottomNav extends StatelessWidget {
   final List<bool> badges;
   final bool showGuild;
 
-  List<({String emoji, String label})> get _navItems => [
-    (emoji: '👑',  label: 'HERO'),
-    (emoji: '⚔️',  label: 'PLAY'),
-    (emoji: '🎒',  label: 'INVENTORY'),
-    (emoji: '🛒',  label: 'SHOP'),
-    if (showGuild) (emoji: '🏰', label: 'GUILD'),
+  List<({GameIconType icon, String label})> get _navItems => [
+    (icon: GameIconType.shield,   label: 'HERO'),
+    (icon: GameIconType.swords,   label: 'PLAY'),
+    (icon: GameIconType.chest,    label: 'INVENTORY'),
+    (icon: GameIconType.coinBag,  label: 'SHOP'),
+    if (showGuild) (icon: GameIconType.castle, label: 'GUILD'),
   ];
 
   @override
@@ -466,7 +473,7 @@ class _CustomBottomNav extends StatelessWidget {
             children: List.generate(_navItems.length, (i) {
               return Expanded(
                 child: _NavItem(
-                  emoji: _navItems[i].emoji,
+                  icon: _navItems[i].icon,
                   label: _navItems[i].label,
                   active: currentIndex == i,
                   badge: i < badges.length && badges[i],
@@ -485,14 +492,14 @@ class _CustomBottomNav extends StatelessWidget {
 
 class _NavItem extends StatelessWidget {
   const _NavItem({
-    required this.emoji,
+    required this.icon,
     required this.label,
     required this.active,
     required this.onTap,
     this.badge = false,
   });
 
-  final String emoji;
+  final GameIconType icon;
   final String label;
   final bool active;
   final bool badge;
@@ -539,10 +546,10 @@ class _NavItem extends StatelessWidget {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  AnimatedDefaultTextStyle(
-                    duration: const Duration(milliseconds: 200),
-                    style: TextStyle(fontSize: active ? (isPhone ? 18 : 22) : (isPhone ? 15 : 18)),
-                    child: Text(emoji),
+                  GameIcon(
+                    icon,
+                    size: active ? (isPhone ? 20.0 : 24.0) : (isPhone ? 17.0 : 20.0),
+                    color: color,
                   ),
                   SizedBox(height: isPhone ? 1 : 3),
                   AnimatedDefaultTextStyle(
@@ -594,29 +601,30 @@ class _WelcomeDialogState extends State<_WelcomeDialog> {
 
   static const _pages = [
     (
-      icon: '⚔',
+      icon: GameIconType.swords,
       title: 'Fight!',
       body: 'Go to the PLAY tab and tap a stage card in CAMPAIGN to start your first battle. '
           'Keep attacking until the enemy falls!',
     ),
     (
-      icon: '⚡',
+      icon: GameIconType.coin,
       title: 'Earn idle gold',
       body: 'Your hero earns gold automatically every minute, even when you\'re not fighting. '
           'Watch the gold bar on the HERO tab fill up.',
     ),
     (
-      icon: '⬆',
+      icon: GameIconType.mountain,
       title: 'Get stronger',
       body: 'Spend gold in UPGRADES to raise your stats. '
           'Open PASSIVES for permanent bonuses, and ABILITIES for powerful combat skills.',
     ),
     (
-      icon: '🗺',
+      icon: GameIconType.compass,
       title: 'Explore',
-      body: 'CAMPAIGN advances through 25 hand-crafted stages. '
-          'ENDLESS lets you grind shards forever. '
-          'The DUNGEON is a roguelite run with item drops and boss fights.',
+      body: 'CAMPAIGN advances through 100 hand-crafted stages. '
+          'TOWER ASCENSION lets you grind shards forever. '
+          'The DUNGEON is a roguelite run with item drops and boss fights. '
+          'More modes unlock as you progress.',
     ),
   ];
 
@@ -628,7 +636,7 @@ class _WelcomeDialogState extends State<_WelcomeDialog> {
       backgroundColor: const Color(0xFF2A2623),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
       title: Row(children: [
-        Text(p.icon, style: const TextStyle(fontSize: 23)),
+        GameIcon(p.icon, size: 23, color: AppTheme.accentGold),
         const SizedBox(width: 10),
         Text(p.title, style: AppTheme.pixelHeading(fontSize: 15, color: AppTheme.accentGold)),
         const Spacer(),
@@ -711,7 +719,7 @@ class TutorialTip extends StatelessWidget {
       ),
       child: Row(
         children: [
-          const Text('💡', style: TextStyle(fontSize: 17)),
+          const GameIcon(GameIconType.lightbulb, size: 17, color: Color(0xFF88eeaa)),
           const SizedBox(width: 10),
           Expanded(child: Text(text,
               style: const TextStyle(fontSize: 13, color: Color(0xFF88eeaa), height: 1.4))),

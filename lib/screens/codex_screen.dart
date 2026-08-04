@@ -275,7 +275,7 @@ class _GameModesContent extends StatelessWidget {
           body: 'Wave-based combat with challenge modifiers.\n'
               'Tiers 1-10 scale enemies like Campaign (T1=Lv1-10, etc.).\n'
               'More modifiers = higher echo multiplier (+25% per modifier).\n'
-              'Rewards scale with tier: Echoes, Essence, ZCoins.\n'
+              'Rewards scale with tier: Echoes, Shards, ZCoins.\n'
               'Guaranteed rune drop on full clear. Kills count toward all tracking.',
         ),
         _Entry(
@@ -304,7 +304,7 @@ class _GameModesContent extends StatelessWidget {
           title: 'Guild',
           color: Color(0xFF44ccaa),
           body: 'Join or create a guild for passive bonuses, weekly boss raids, and guild wars.\n'
-              'Guild perks unlock at milestones (Lv5 Shards, Lv8 Essence, Lv12 Damage, Lv20 30 members).\n'
+              'Guild perks unlock at milestones (Lv5 Shards, Lv8 Shard Gain, Lv12 Damage, Lv20 30 members).\n'
               'Daily raid bosses rotate Mon-Sat by element. Sunday is rest day.\n'
               'Guild Wars: Mon-Tue prep, Wed-Fri battle, Sat results. Winners claim territories.\n'
               'Earn Guild Coins from boss damage and donations. Spend in the Guild Shop.',
@@ -551,10 +551,6 @@ class _StatsContent extends StatelessWidget {
         '= 1.0 (base)\n'
         'Increased by Prestige multipliers (+5% per rebirth), passive nodes, and ally bonuses.\n'
         'CHA no longer multiplies XP — invest in Prestige or passive nodes for XP gains.'),
-    ('Hit Chance (HIT%)',
-        'Item stat found on weapons and accessories.\n'
-        'Each point = 1% chance to guarantee a hit regardless of enemy armor.\n'
-        'Stacks additively. Does not bypass zone miss effects.'),
     ('Boss Abilities',
         'Every named boss has 2 unique abilities that fire on cooldown during their turn.\n'
         'Effect types: Bonus Damage (instant hit), DoT (damage per round), Stun (skip your turn).\n'
@@ -570,11 +566,10 @@ class _StatsContent extends StatelessWidget {
   static const _economy = [
     ('Idle Rate', '5/tick (flat base) while not in battle. Boosted by Prestige shop, passive nodes, and WIS-stat equipment.'),
     ('Gold Rate',  '1× bonus gold per kill (flat base). Boosted by Prestige multipliers, passive nodes, and gear.'),
-    ('Shards (◆)',  'From Dungeon runs, treasure rooms, locked chests. Spent on Abilities & Allies.'),
+    ('Shards (◆)',  'From kills, Dungeons, and Expeditions. Spent on ability upgrades, item upgrades, and the Passive Tree.'),
     ('Echoes (🔊)', 'From Gauntlet and Boss Rush. Spent on Upgrades.'),
-    ('Essence (✦)', 'From campaign kills & Gauntlet runs. Spent on the Passive Tree.'),
     ('Souls (☠)',  'From Prestige. Spent in the Prestige Shop.'),
-    ('Gem Shards 💠', 'Earned from PvP Arena battles. Used to craft elemental Gems.'),
+    ('Arcane Dust 🌀', 'From PvP, Guild rewards, and disenchanting gems, runes, and gear. Used to craft Gems and ability Runes.'),
   ];
 }
 
@@ -837,7 +832,7 @@ class _ItemsRunesContent extends StatelessWidget {
           color: Color(0xFFcc88ff),
           body: '6 elemental gems matching damage types: Ruby (Fire), Sapphire (Cold), Diamond (Lightning), Emerald (Poison), Amethyst (Void), Onyx (Physical).\n'
               '5 tiers: Flawed (3%), Standard (6%), Polished (10%), Radiant (15%), Exalted (22%).\n'
-              'Weapon gems = +DMG%. Armor gems = +RES%. Crafted from Gem Shards (earned in PvP).',
+              'Weapon gems = +DMG%. Armor gems = +RES%. Crafted from Arcane Dust.',
         ),
         _Entry(
           icon: '🔮',
@@ -847,7 +842,7 @@ class _ItemsRunesContent extends StatelessWidget {
               'Effects: +damage%, +duration, −cooldown. Socket into Rings or Amulets.\n'
               'Drop sources: Campaign bosses (10%), Dungeon bosses (10%), Gauntlet clear (guaranteed),\n'
               'Boss Rush clear (guaranteed), Endless every 10 stages, Long expeditions (10%).\n'
-              'Duplicate drops auto-convert to Rune Dust.',
+              'Duplicate drops auto-convert to Arcane Dust.',
         ),
         _Entry(
           icon: '🏺',
@@ -922,13 +917,12 @@ class _EventsEconomyContent extends StatelessWidget {
           title: 'Currencies',
           color: Color(0xFFdaa520),
           body: '💰 Gold — kills, idle, expeditions. Buys gear, upgrades, shop items.\n'
-              '◆ Shards — dungeon, campaign. Upgrades abilities and items.\n'
+              '◆ Shards — kills, dungeons, expeditions. Ability & item upgrades and passive nodes.\n'
               '🪙 ZCoins — login, events, gauntlet. Premium purchases.\n'
               '🔊 Echoes — gauntlet runs. Buys endless upgrades.\n'
-              '✦ Essence — dungeons, expeditions. Unlocks passive nodes.\n'
               '⬡ Mythril — boss rush, events. Forges artifacts.\n'
               'Ω Omega Tokens — world event kills. Event shop currency.\n'
-              '🔮 Rune Dust — salvaging gear + duplicate runes.',
+              '🌀 Arcane Dust — PvP, guild, disenchanting gems/runes/gear. Crafts gems & runes.',
         ),
         _Entry(
           icon: '⚜',

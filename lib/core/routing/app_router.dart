@@ -21,14 +21,11 @@ import '../../screens/ability_upgrade_screen.dart';
 import '../../screens/ability_scores_screen.dart';
 import '../../screens/passive_tree_screen.dart';
 import '../../screens/inventory_screen.dart';
-import '../../screens/aura_shop_screen.dart';
 import '../../screens/forge_screen.dart';
 import '../../screens/subclass_screen.dart';
 import '../../screens/prestige_screen.dart';
 import '../../screens/achievement_screen.dart';
-import '../../screens/shop_screen.dart';
 import '../../screens/settings_screen.dart';
-import '../../screens/mastery_screen.dart';
 import '../../screens/challenge_modifiers_screen.dart';
 import '../../screens/artifact_screen.dart';
 import '../../screens/ascension_screen.dart';
@@ -89,7 +86,6 @@ abstract final class Routes {
   static const abilityUpgrades = '/game/ability-upgrades';
   static const abilityScores  = '/game/ability-scores';
   static const passiveTree    = '/game/passive-tree';
-  static const mastery        = '/game/mastery';
   static const prestige       = '/game/prestige';
   static const ascension      = '/game/ascension';
   static const subclass       = '/game/subclass';
@@ -99,8 +95,6 @@ abstract final class Routes {
   static const forge      = '/game/forge';
   static const artifacts  = '/game/artifacts';
   static const runeForge  = '/game/rune-forge';
-  static const shop       = '/game/shop';
-  static const auraShop   = '/game/aura-shop';
 
   // Social / account
   static const leaderboard  = '/game/leaderboard';
@@ -186,10 +180,12 @@ GoRouter buildRouter({
           _route('events',   const WorldEventScreen()),
           _route('bounties', const BountyBoardScreen()),
 
-          // Challenge hub
+          // Challenge hub — a pure path grouper. The bare path redirects to the
+          // game shell; only the real child screens ever render.
           GoRoute(
             path: 'challenges',
-            pageBuilder: (_, s) => _fadeSlidePage(const ChallengeHubScreen(), s),
+            redirect: (_, s) =>
+                s.uri.path == Routes.challenges ? Routes.shell : null,
             routes: [
               _route('dungeon',   const DungeonScreen()),
               _route('gauntlet',  const GauntletScreen()),
@@ -198,10 +194,11 @@ GoRouter buildRouter({
             ],
           ),
 
-          // World hub
+          // World hub — same pattern.
           GoRoute(
             path: 'world',
-            pageBuilder: (_, s) => _fadeSlidePage(const WorldHubScreen(), s),
+            redirect: (_, s) =>
+                s.uri.path == Routes.world ? Routes.shell : null,
             routes: [
               _route('expedition', const ExpeditionScreen()),
               _route('pvp',        const PvpScreen()),
@@ -219,7 +216,6 @@ GoRouter buildRouter({
           _route('ability-upgrades', const AbilityUpgradeScreen()),
           _route('ability-scores',   const AbilityScoresScreen()),
           _route('passive-tree',     const PassiveTreeScreen()),
-          _route('mastery',          const MasteryScreen()),
           _route('prestige',         const PrestigeScreen()),
           _route('ascension',        const AscensionScreen()),
           _route('subclass',         const SubclassScreen()),
@@ -229,8 +225,6 @@ GoRouter buildRouter({
           _route('forge',      const ForgeScreen()),
           _route('artifacts',  const ArtifactScreen()),
           _route('rune-forge', const RuneScreen()),
-          _route('shop',       const ShopScreen()),
-          _route('aura-shop',  const AuraShopScreen()),
 
           // Social / account
           _route('leaderboard',   const LeaderboardScreen()),
@@ -252,20 +246,3 @@ GoRouter buildRouter({
   );
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Placeholder hub screens — replaced in later steps
-// ─────────────────────────────────────────────────────────────────────────────
-
-class ChallengeHubScreen extends StatelessWidget {
-  const ChallengeHubScreen({super.key});
-  @override
-  Widget build(BuildContext context) =>
-      const Scaffold(body: Center(child: Text('Challenge Hub — coming next')));
-}
-
-class WorldHubScreen extends StatelessWidget {
-  const WorldHubScreen({super.key});
-  @override
-  Widget build(BuildContext context) =>
-      const Scaffold(body: Center(child: Text('World Hub — coming next')));
-}

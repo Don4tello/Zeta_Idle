@@ -2,6 +2,7 @@ import 'dart:math';
 import 'dnd_class.dart';
 import 'hero_ability.dart';
 import 'hero_trait.dart';
+import 'subclass.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // PVP system — snapshot-based async matchmaking against other players.
@@ -20,6 +21,7 @@ class PvpSnapshot {
     required this.attackBonus,
     required this.damageMod,
     required this.armorClass,
+    this.subclassId,
     this.rating = 1000,
     this.wins   = 0,
     this.losses = 0,
@@ -34,6 +36,7 @@ class PvpSnapshot {
   final int attackBonus;
   final int damageMod;
   final int armorClass;
+  final String? subclassId; // chosen specialization (level 50+), null if none
   final int rating;
   final int wins;
   final int losses;
@@ -47,6 +50,7 @@ class PvpSnapshot {
     'attackBonus': attackBonus,
     'damageMod':   damageMod,
     'armorClass':  armorClass,
+    if (subclassId != null) 'subclassId': subclassId,
     'rating':      rating,
     'wins':        wins,
     'losses':      losses,
@@ -63,6 +67,7 @@ class PvpSnapshot {
         attackBonus: d['attackBonus'] as int?    ?? 2,
         damageMod:   d['damageMod']   as int?    ?? 0,
         armorClass:  d['armorClass']  as int?    ?? 10,
+        subclassId:  d['subclassId']  as String?,
         rating:      d['rating']      as int?    ?? 1000,
         wins:        d['wins']        as int?    ?? 0,
         losses:      d['losses']      as int?    ?? 0,
@@ -123,12 +128,15 @@ PvpSnapshot generateBotOpponent(int myRating) {
 // ── Dev opponents ─────────────────────────────────────────────────────────────
 
 // One snapshot per DndClass with a random trait, stats scaled to playerLevel.
+// Ratings are spread around the player's so a coalesced leaderboard (real
+// players topped up with these) reads like a genuine ladder.
 List<PvpSnapshot> generateDevOpponents(int playerLevel, int playerRating) {
   final rng    = Random();
   final traits = HeroTrait.all;
   return DndClass.values.map((cls) {
-    final trait = traits[rng.nextInt(traits.length)];
-    return _classSnapshot(cls, trait, playerLevel, playerRating, rng);
+    final trait  = traits[rng.nextInt(traits.length)];
+    final rating = (playerRating + rng.nextInt(601) - 300).clamp(100, 9999);
+    return _classSnapshot(cls, trait, playerLevel, rating, rng);
   }).toList();
 }
 
@@ -150,6 +158,14 @@ PvpSnapshot _classSnapshot(
   final scaledHp  = (baseHp  * (1.0 + trait.hpPct  / 100.0)).round();
   final scaledDmg = (atkMod  + (trait.dmgPct / 5.0)).round();
 
+  // Dev opponents at level 50+ show a random specialization of their class
+  // (50 = kSubclassUnlockLevel in GameState).
+  String? subclassId;
+  if (level >= 50) {
+    final pool = kSubclassCatalog.where((s) => s.classRequired == cls).toList();
+    if (pool.isNotEmpty) subclassId = pool[rng.nextInt(pool.length)].id;
+  }
+
   return PvpSnapshot(
     userId:      'bot_${cls.name}',
     displayName: _randomBotPlayerName(rng),
@@ -160,9 +176,10 @@ PvpSnapshot _classSnapshot(
     attackBonus: (atkMod + prof).clamp(0, 20),
     damageMod:   scaledDmg.clamp(0, 20),
     armorClass:  (10 + dexMod + (dexPrimary.contains(cls) ? 1 : 0)).clamp(10, 25),
+    subclassId:  subclassId,
     rating:      rating,
-    wins:        0,
-    losses:      0,
+    wins:        rng.nextInt(40),
+    losses:      rng.nextInt(30),
   );
 }
 

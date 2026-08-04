@@ -3,6 +3,7 @@ import '../models/equipment.dart';
 import '../models/gem.dart';
 import '../services/game_state.dart';
 import '../theme/app_theme.dart';
+import '../widgets/currency_info.dart';
 
 class ForgeScreen extends StatefulWidget {
   const ForgeScreen({super.key, this.embedded = false});
@@ -564,9 +565,14 @@ class _ForgeItemTile extends StatelessWidget {
                   Text(item.name,
                       style: TextStyle(fontSize: 14, color: item.rarityColor,
                           fontWeight: FontWeight.bold)),
-                  Text(
-                    item.bonuses.map((b) => '${b.stat.name} +${b.value}').join('  '),
-                    style: const TextStyle(fontSize: 11, color: AppTheme.textMuted),
+                  Tooltip(
+                    message: item.bonuses
+                        .map((b) => '+${b.value} ${b.stat.fullLabel} — ${b.stat.description}')
+                        .join('\n'),
+                    child: Text(
+                      item.bonuses.map((b) => '${b.stat.shortLabel} +${b.value}').join('  '),
+                      style: const TextStyle(fontSize: 11, color: AppTheme.textMuted),
+                    ),
                   ),
                 ],
               ),
@@ -658,22 +664,25 @@ class _GemsTabState extends State<_GemsTab> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // ── Shard counter ─────────────────────────────────────────────
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-            decoration: BoxDecoration(
-              color: const Color(0xFF231F1B),
-              border: Border.all(color: const Color(0xFF6688aa)),
-              borderRadius: BorderRadius.circular(4),
+          InfoTip(
+            message: CurrencyInfo.gemShards,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              decoration: BoxDecoration(
+                color: const Color(0xFF231F1B),
+                border: Border.all(color: const Color(0xFF6688aa)),
+                borderRadius: BorderRadius.circular(4),
+              ),
+              child: Row(children: [
+                const Text('🌀', style: TextStyle(fontSize: 19)),
+                const SizedBox(width: 10),
+                Text('ARCANE DUST',
+                    style: AppTheme.pixelHeading(fontSize: 11, color: const Color(0xFF88aacc), letterSpacing: 2)),
+                const Spacer(),
+                Text('${game.gemShards}',
+                    style: AppTheme.pixelHeading(fontSize: 17, color: const Color(0xFF88ddee))),
+              ]),
             ),
-            child: Row(children: [
-              const Text('💠', style: TextStyle(fontSize: 19)),
-              const SizedBox(width: 10),
-              Text('GEM SHARDS',
-                  style: AppTheme.pixelHeading(fontSize: 11, color: const Color(0xFF88aacc), letterSpacing: 2)),
-              const Spacer(),
-              Text('${game.gemShards}',
-                  style: AppTheme.pixelHeading(fontSize: 17, color: const Color(0xFF88ddee))),
-            ]),
           ),
           const SizedBox(height: 16),
 
@@ -1121,7 +1130,10 @@ class _UpgradeTabState extends State<_UpgradeTab> {
           const SizedBox(height: 8),
           ...items.map((item) {
             final isSelected = _selected?.id == item.id;
-            return GestureDetector(
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+              GestureDetector(
               onTap: () => setState(() => _selected = item),
               child: Container(
                 margin: const EdgeInsets.only(bottom: 6),
@@ -1158,8 +1170,13 @@ class _UpgradeTabState extends State<_UpgradeTab> {
                             ),
                         ]),
                         const SizedBox(height: 2),
-                        Text(item.bonuses.map((b) => '${_sn(b.stat)} +${b.value}').join('  '),
-                            style: const TextStyle(fontSize: 10, color: Colors.white54)),
+                        Tooltip(
+                          message: item.bonuses
+                              .map((b) => '+${b.value} ${b.stat.fullLabel} — ${b.stat.description}')
+                              .join('\n'),
+                          child: Text(item.bonuses.map((b) => '${_sn(b.stat)} +${b.value}').join('  '),
+                              style: const TextStyle(fontSize: 10, color: Colors.white54)),
+                        ),
                       ],
                     ),
                   ),
@@ -1167,11 +1184,24 @@ class _UpgradeTabState extends State<_UpgradeTab> {
                     Icon(Icons.check_circle, color: item.rarityColor, size: 16),
                 ]),
               ),
-            );
+              ),
+              // Upgrade preview + button appear directly below the selected item
+              if (isSelected) ...[
+                const SizedBox(height: 10),
+                _buildUpgradePanel(game),
+                const SizedBox(height: 4),
+              ],
+            ]);
           }),
+        ],
+      ],
+    );
+  }
 
-          if (_selected != null) ...[
-            const SizedBox(height: 12),
+  Widget _buildUpgradePanel(GameState game) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
             // Upgrade preview
             Container(
               padding: const EdgeInsets.all(12),
@@ -1252,7 +1282,7 @@ class _UpgradeTabState extends State<_UpgradeTab> {
               return TextButton(
                 onPressed: canAfford ? () {
                   game.upgradeItem(_selected!);
-                  game.audioService.playUiConfirm();
+                  game.audioService.playClaim();
                   if (!_selected!.canUpgrade) _selected = null;
                   setState(() {});
                 } : null,
@@ -1272,8 +1302,6 @@ class _UpgradeTabState extends State<_UpgradeTab> {
                 ]),
               );
             }),
-          ],
-        ],
       ],
     );
   }
@@ -1292,7 +1320,6 @@ class _UpgradeTabState extends State<_UpgradeTab> {
     ItemStat.goldPct         => 'Gold%',
     ItemStat.xpPct           => 'XP%',
     ItemStat.elemPenetration => 'PEN%',
-    ItemStat.hitChance       => 'HIT%',
     ItemStat.damagePercent   => 'DMG%',
   };
 }

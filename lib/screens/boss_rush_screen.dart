@@ -1,11 +1,11 @@
-import 'dart:async';
+﻿import 'dart:async';
 import 'dart:math';
 import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../data/enemy_data.dart';
 import '../models/boss_rush.dart';
+import '../models/damage_type.dart';
 import '../models/enemy.dart';
 import '../models/equipment.dart';
 import '../models/hero_ability.dart';
@@ -61,6 +61,13 @@ class _BossRushScreenState extends State<BossRushScreen> {
   late int _heroDmgMod;
   late int _heroAc;
   late int _heroMaxHpBase;
+  late DamageType _heroDmgType;
+  double _heroDmgAllPct   = 0;
+  double _heroPrestigeMult = 1.0;
+  int _heroCritChancePct = 0;
+  int _heroCritDmgMult   = 2;
+  Map<DamageType, int> _bossResistances = {};
+  bool _busyRound = false;
 
   GameState? _game;
 
@@ -81,22 +88,25 @@ class _BossRushScreenState extends State<BossRushScreen> {
     _timer?.cancel();
     _autoAttackTimer?.cancel();
     _autoRestartTimer?.cancel();
+    _game?.audioService.endBattleMusic();
     super.dispose();
   }
 
   void _startAttackTimer() {
     _autoAttackTimer?.cancel();
-    final ms = _game?.scaledInterval(600) ?? 600;
+    // 1200ms base matches the Dungeon so every arena mode paces the same.
+    final ms = _game?.scaledInterval(1200) ?? 1200;
     _autoAttackTimer = Timer.periodic(Duration(milliseconds: ms), (_) {
-      if (!_running || _done) return;
-      _doRound();
+      if (!_running || _done || _busyRound) return;
+      _busyRound = true;
+      _doRound().then((_) => _busyRound = false);
     });
   }
 
   void _cycleSpeed() {
     final game = _game;
     if (game == null) return;
-    final maxTier = kDebugMode ? 4 : (game.speedBoostActive ? 3 : 2);
+    final maxTier = kDebugMode ? 4 : (game.hasSpeedSub ? 4 : (game.speedBoostActive ? 3 : 2));
     game.setSpeedTier((game.speedTier % maxTier) + 1);
     _startAttackTimer();
   }
@@ -116,6 +126,11 @@ class _BossRushScreenState extends State<BossRushScreen> {
         + game.passiveTree.totalOf(PassiveEffect.damageFlat)
         + game.inventory.totalOf(ItemStat.damageBonus)
         + game.questDamageBonus;
+    _heroDmgType      = game.hero.activeDamageType;
+    _heroDmgAllPct    = game.heroAllDamagePctFor(_heroDmgType);
+    _heroPrestigeMult = game.prestigeLevel > 0 ? game.prestigeDamageMult : 1.0;
+    _heroCritChancePct = game.totalCritChancePct;
+    _heroCritDmgMult   = game.totalCritDamageMult.round();
     _heroAc      = game.hero.armorClass
         + game.passiveTree.totalOf(PassiveEffect.armorFlat)
         + game.inventory.totalOf(ItemStat.armorClass)
@@ -143,7 +158,7 @@ class _BossRushScreenState extends State<BossRushScreen> {
       _elapsedSec = 0;
       _log.clear();
     });
-    _log.add('? BOSS RUSH BEGINS � ${_bossStages.length} bosses await!');
+    _log.add('⚔ BOSS RUSH BEGINS — ${_bossStages.length} bosses await!');
     _spawnBoss();
 
     _timer = Timer.periodic(const Duration(seconds: 1), (_) {
@@ -152,6 +167,7 @@ class _BossRushScreenState extends State<BossRushScreen> {
     });
 
     _game = game;
+    game.audioService.startBattleMusic();
     _startAttackTimer();
   }
 
@@ -159,7 +175,7 @@ class _BossRushScreenState extends State<BossRushScreen> {
     final stageIdx    = _bossStages[_bossIndex];
     final base        = EnemyData.enemyForStage(stageIdx);
     final t           = _selectedTier - 1;
-    // Steep per-tier scaling � each tier is a meaningful difficulty jump.
+    // Steep per-tier scaling — each tier is a meaningful difficulty jump.
     final tierHpMult  = 1.0 + t * 0.40;
     final tierAtkMult = 1.0 + t * 0.25;
     final tierAcBonus = t ~/ 2;
@@ -167,13 +183,14 @@ class _BossRushScreenState extends State<BossRushScreen> {
     final bossLevel   = base.level + 2 + t;
     final boss = Enemy(
       id:          base.id,
-      name:        '? ${base.name} (Boss ${_bossIndex + 1})',
+      name:        '★ ${base.name} (Boss ${_bossIndex + 1})',
       description: base.description,
       maxHealth:   (base.maxHealth * 2 * tierHpMult).round(),
       attack:      (base.attack * 1.25 * tierAtkMult).round(),
       level:       bossLevel,
       armorClass:  base.armorClass + 2 + tierAcBonus,
     );
+    _bossResistances = base.resistances;
     _bossEnraged    = false;
     _enemyWeakenRem = 0;
     _enemyVulnRem   = 0;
@@ -183,10 +200,10 @@ class _BossRushScreenState extends State<BossRushScreen> {
       _enemyHp      = boss.maxHealth;
     });
     _log.add('');
-    _log.add('BOSS ${_bossIndex + 1}/5 � ${boss.name}  ${boss.maxHealth}HP');
+    _log.add('BOSS ${_bossIndex + 1}/5 — ${boss.name}  ${boss.maxHealth}HP');
   }
 
-  void _doRound() {
+  Future<void> _doRound() async {
     final boss = _currentBoss;
     if (boss == null) return;
     final game = GameStateProvider.of(context);
@@ -204,12 +221,13 @@ class _BossRushScreenState extends State<BossRushScreen> {
           _log.add('${boss.name} defeated!');
           _game?.recordExternalKill(isBoss: true, enemyName: boss.name);
           _arenaKey.currentState?.playEnemyDeath();
+          await Future.delayed(const Duration(milliseconds: 900));
           _bossIndex++;
           if (_bossIndex >= _bossStages.length) { _endRun(cleared: true); return; }
           final heal = (_heroMaxHp * 0.25).round();
           _heroHp = (_heroHp + heal).clamp(0, _heroMaxHp);
           _log.add('⚕ Recovered $heal HP before next boss.');
-          setState(() {});
+          if (mounted) setState(() {});
           _spawnBoss();
           return;
         }
@@ -220,24 +238,25 @@ class _BossRushScreenState extends State<BossRushScreen> {
     if (_tempAtkRounds > 0) { _tempAtkRounds--; if (_tempAtkRounds == 0) _tempAtkBonus = 0; }
     if (_tempAcRounds  > 0) { _tempAcRounds--;  if (_tempAcRounds  == 0) _tempAcBonus  = 0; }
 
-    // -- Hero attacks ------------------------------------------------------
-    final effectiveAtk = _heroAtk + _tempAtkBonus;
-    final heroRoll     = _rng.nextInt(20) + 1;
-    final crit         = heroRoll == 20;
-    final heroHit      = crit || (heroRoll + effectiveAtk) >= boss.armorClass;
-
-    if (heroHit) {
+    // -- Hero attacks (always lands, same as campaign; crit is chance-based;
+    //    ability ATK buff converts to crit chance) -------------------------
+    final critPct = _heroCritChancePct + _tempAtkBonus * 2;
+    final crit    = _rng.nextInt(100) < critPct;
+    {
       final dmgDie = _rng.nextInt(8) + 1;
-      var dmg = (crit ? dmgDie * 2 : dmgDie) + _heroDmgMod;
+      var dmg = (crit ? dmgDie * _heroCritDmgMult : dmgDie) + _heroDmgMod;
+      dmg = (dmg * (1 + _heroDmgAllPct / 100.0)).round();
+      final res = (_bossResistances[_heroDmgType] ?? 0).clamp(-200, 75);
+      if (res != 0) dmg = (dmg * (1 - res / 100.0)).round();
+      dmg = (dmg * _heroPrestigeMult).round();
       if (_enemyVulnRem > 0) dmg = (dmg * 1.25).round();
       dmg = dmg.clamp(1, 9999);
       _enemyHp -= dmg;
       _log.add('${crit ? 'CRIT! ' : 'Hit! '}$dmg dmg${_enemyVulnRem > 0 ? ' (vuln)' : ''}.');
+      game.audioService.playHitWithType(_heroDmgType);
       _arenaKey.currentState?.playHeroAttack(dmg,
           isCrit: crit, heroClass: game.hero.heroClass,
-          damageType: game.hero.activeDamageType);
-    } else {
-      _log.add('Miss!');
+          damageType: _heroDmgType);
     }
 
     if (_enemyHp <= 0) {
@@ -245,12 +264,13 @@ class _BossRushScreenState extends State<BossRushScreen> {
       _log.add('${boss.name} defeated!');
       _game?.recordExternalKill(isBoss: true, enemyName: boss.name);
       _arenaKey.currentState?.playEnemyDeath();
+      await Future.delayed(const Duration(milliseconds: 900));
       _bossIndex++;
       if (_bossIndex >= _bossStages.length) { _endRun(cleared: true); return; }
       final heal = (_heroMaxHp * 0.25).round();
       _heroHp = (_heroHp + heal).clamp(0, _heroMaxHp);
       _log.add('⚕ Recovered $heal HP before next boss.');
-      setState(() {});
+      if (mounted) setState(() {});
       _spawnBoss();
       return;
     }
@@ -258,118 +278,123 @@ class _BossRushScreenState extends State<BossRushScreen> {
     // -- Boss enrage at 30% HP ---------------------------------------------
     if (!_bossEnraged && _enemyHp / _enemyMaxHp < 0.30) {
       _bossEnraged = true;
-      _log.add('? ${boss.name} ENRAGES! +100% damage!');
+      _log.add('⚡ ${boss.name} ENRAGES! +100% damage!');
     }
 
     // -- Enemy attacks back ------------------------------------------------
     if (_enemyStunned) {
       _enemyStunned = false;
-      _log.add('${boss.name} is stunned � skips attack!');
-      setState(() {});
+      _log.add('${boss.name} is stunned — skips attack!');
+      if (mounted) setState(() {});
       return;
     }
-
-    final effectiveAc = _heroAc + _tempAcBonus;
-    final eRoll       = _rng.nextInt(20) + 1;
-    final eBonus      = boss.level ~/ 2;
-    final eHit        = eRoll == 20 || (eRoll + eBonus) >= effectiveAc;
-    if (eHit) {
+    // Enemy always lands (same as campaign); armor is flat damage reduction
+    // (min 1 so bosses always connect).
+    {
+      final armor  = _heroAc + _tempAcBonus;
       final atkMax = _enemyWeakenRem > 0
           ? max(1, (boss.attack * 0.7).round())
           : boss.attack;
       var rawDmg = atkMax > 0 ? _rng.nextInt(atkMax) + 1 : 1;
       if (_bossEnraged) rawDmg = (rawDmg * 2.0).round().clamp(1, 9999);
-      final dmg = (eRoll == 20 ? rawDmg * 2 : rawDmg).clamp(1, 9999);
+      final dmg = (rawDmg - armor).clamp(1, 9999);
       _heroHp -= dmg;
       _log.add('${boss.name} hits! $dmg dmg'
-          '${_bossEnraged ? ' ?' : ''}${_enemyWeakenRem > 0 ? ' (weakened)' : ''}.');
+          '${_bossEnraged ? ' ⚡' : ''}${_enemyWeakenRem > 0 ? ' (weakened)' : ''}.');
+      game.audioService.playPlayerHit();
       _arenaKey.currentState?.playEnemyAttack(dmg);
     }
 
     if (_heroHp <= 0) {
       _heroHp = 0;
+      if (mounted) setState(() {});
+      await (_arenaKey.currentState?.playHeroDeath() ?? Future.value());
+      await Future.delayed(const Duration(seconds: 3));
       _endRun(cleared: false);
       return;
     }
 
     if (_enemyWeakenRem > 0) _enemyWeakenRem--;
     if (_enemyVulnRem   > 0) _enemyVulnRem--;
-    setState(() {});
+    if (mounted) setState(() {});
   }
 
   void _applyAbilityEffect(GameState game, HeroAbility ability) {
     _arenaKey.currentState?.playAbilityBanner(ability.name, ability.effect, id: ability.id);
     _effectKey.currentState?.playEffect(ability.id);
+    game.audioService.playAbilityFull(ability.effect, _heroDmgType);
     final sv = game.scaledAbilityValue(ability);
     switch (ability.effect) {
       case AbilityEffect.bonusDamage:
         final dmg = (sv * 0.5).round().clamp(1, 9999);
         _enemyHp -= dmg;
-        _log.add('? ${ability.name}: $dmg ability damage!');
+        _log.add('✦ ${ability.name}: $dmg ability damage!');
         _arenaKey.currentState?.addExtraFloat(dmg);
 
       case AbilityEffect.heal:
         final h = sv.clamp(1, 9999);
         setState(() => _heroHp = (_heroHp + h).clamp(0, _heroMaxHp));
-        _log.add('? ${ability.name}: healed $h HP.');
+        _log.add('+ ${ability.name}: healed $h HP.');
         _arenaKey.currentState?.addExtraFloat(h, isHeal: true);
 
       case AbilityEffect.attackBonus:
         _tempAtkBonus  = sv;
         _tempAtkRounds = ability.duration > 0 ? ability.duration : 3;
-        _log.add('? ${ability.name}: +$sv DMG for $_tempAtkRounds rounds.');
+        _log.add('⚡ ${ability.name}: +$sv DMG for $_tempAtkRounds rounds.');
 
       case AbilityEffect.acBonus:
         _tempAcBonus  = sv;
         _tempAcRounds = ability.duration > 0 ? ability.duration : 3;
-        _log.add('? ${ability.name}: +$sv AC for $_tempAcRounds rounds.');
+        _log.add('◆ ${ability.name}: +$sv AC for $_tempAcRounds rounds.');
 
       case AbilityEffect.stun:
         _enemyStunned = true;
-        _log.add('? ${ability.name}: boss stunned!');
+        _log.add('◉ ${ability.name}: boss stunned!');
 
       case AbilityEffect.dot:
         final dmg = (sv * 0.6).round().clamp(1, 9999);
         _enemyHp -= dmg;
-        _log.add('? ${ability.name}: $dmg DoT damage!');
+        _log.add('✸ ${ability.name}: $dmg DoT damage!');
         _arenaKey.currentState?.addExtraFloat(dmg);
 
       case AbilityEffect.dodge:
         _tempAcBonus  = 6;
         _tempAcRounds = 1;
-        _log.add('? ${ability.name}: dodge � +6 AC this round.');
+        _log.add('◆ ${ability.name}: dodge — +6 AC this round.');
+
 
       case AbilityEffect.aura:
         final h = (sv * 0.5).round().clamp(1, 9999);
         setState(() => _heroHp = (_heroHp + h).clamp(0, _heroMaxHp));
-        _log.add('? ${ability.name}: aura healed $h HP.');
+        _log.add('+ ${ability.name}: aura healed $h HP.');
         _arenaKey.currentState?.addExtraFloat(h, isHeal: true);
 
       case AbilityEffect.debuffWeaken:
         _enemyWeakenRem = 3;
-        _log.add('? ${ability.name}: boss weakened for 3 rounds!');
+        _log.add('✸ ${ability.name}: boss weakened for 3 rounds!');
 
       case AbilityEffect.debuffVulnerable:
         _enemyVulnRem = 3;
-        _log.add('? ${ability.name}: boss vulnerable for 3 rounds!');
+        _log.add('⚡ ${ability.name}: boss vulnerable for 3 rounds!');
 
       case AbilityEffect.silence:
         _enemyStunned = true;
-        _log.add('? ${ability.name}: boss silenced!');
+        _log.add('◉ ${ability.name}: boss silenced!');
 
       case AbilityEffect.absorbShield:
         setState(() => _heroHp = (_heroHp + sv).clamp(0, _heroMaxHp));
-        _log.add('? ${ability.name}: +$sv HP barrier!');
+        _log.add('+ ${ability.name}: +$sv HP barrier!');
 
       case AbilityEffect.missChance:
         _enemyWeakenRem = ability.duration > 0 ? ability.duration : 2;
-        _log.add('? ${ability.name}: boss miss chance applied!');
+        _log.add('✸ ${ability.name}: boss miss chance applied!');
     }
   }
 
   void _endRun({required bool cleared}) {
     _timer?.cancel();
     _autoAttackTimer?.cancel();
+    _game?.audioService.endBattleMusic();
     final result = BossRushResult(
       bossesDefeated: cleared ? _bossStages.length : _bossIndex,
       totalBosses:    _bossStages.length,
@@ -419,7 +444,7 @@ class _BossRushScreenState extends State<BossRushScreen> {
     _log.add(
         'Defeated: ${result.bossesDefeated}/${result.totalBosses}  '
         'Score: ${result.score}  Rank: ${result.rank}');
-    _log.add('Rewards: +$shardReward ?  +$echoReward ??  +$mythrilReward mythril${crystalReward > 0 ? '  +$crystalReward zcoins' : ''}');
+    _log.add('Rewards: +$shardReward shard  +$echoReward echo  +$mythrilReward mythril${crystalReward > 0 ? '  +$crystalReward zcoins' : ''}');
   }
 
   String _fmt(int sec) {
@@ -436,6 +461,13 @@ class _BossRushScreenState extends State<BossRushScreen> {
         backgroundColor: const Color(0xFF2A2623),
         title: Text('BOSS RUSH',
             style: AppTheme.pixelHeading(fontSize: 14, letterSpacing: 2)),
+        leading: _running && !_done
+            ? IconButton(
+                icon: const Icon(Icons.arrow_back, color: Colors.white),
+                onPressed: () => _endRun(cleared: false),
+              )
+            : null,
+        automaticallyImplyLeading: !_running || _done,
         actions: [
           if (_running && _game != null)
             _InlineSpeedButton(
@@ -514,11 +546,11 @@ class _BossRushScreenState extends State<BossRushScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _BossLine('Stage 5',  'Pixie Boss',    '?'),
-                _BossLine('Stage 10', 'Hobgoblin Boss', '??'),
-                _BossLine('Stage 15', 'Wyvern Boss',   '???'),
-                _BossLine('Stage 20', 'Eye Watcher Boss', '????'),
-                _BossLine('Stage 25', 'Phoenix Boss',  '?????'),
+                _BossLine('Stage 5',  'Pixie Boss',    '★'),
+                _BossLine('Stage 10', 'Hobgoblin Boss', '★★'),
+                _BossLine('Stage 15', 'Wyvern Boss',   '★★★'),
+                _BossLine('Stage 20', 'Eye Watcher Boss', '★★★★'),
+                _BossLine('Stage 25', 'Phoenix Boss',  '★★★★★'),
               ],
             ),
           ),
@@ -599,17 +631,18 @@ class _BossRushScreenState extends State<BossRushScreen> {
               children: [
                 BattleArena(
                   key: _arenaKey,
+                  stageIndex:       _bossStages[_bossIndex.clamp(0, _bossStages.length - 1)],
                   heroName:         game.hero.name,
                   heroLevel:        game.hero.level,
                   heroCurrentHp:    _heroHp,
                   heroMaxHp:        _heroMaxHp,
                   heroAttack:       _heroAtk,
-                  heroSpriteId:     game.hero.spriteId,
+                  heroSpriteId:     game.heroBattleSpriteId,
                   heroGender:       game.hero.gender,
                   heroRace:         game.heroRace,
                   heroAuraColor:    game.heroAuraColor,
                   heroAuraIntensity: game.heroAuraIntensity,
-                  heroColorFilter:  game.heroSkinFilter,
+                  heroColorFilter:  game.heroSpriteFilter,
                   heroPet: game.equippedPet != null
                       ? PetBattleSprite(pet: game.equippedPet!)
                       : null,
@@ -651,28 +684,6 @@ class _BossRushScreenState extends State<BossRushScreen> {
                 final readyAt = _gCooldownUntil[id] ?? 0;
                 return (readyAt - _gAbilityRound).clamp(0, totalCd);
               },
-            ),
-          ),
-
-        // Flee button during active fight
-        if (_running && !_done)
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            color: const Color(0xFF0e1228),
-            child: SizedBox(
-              width: double.infinity,
-              height: 44,
-              child: OutlinedButton(
-                onPressed: () => _endRun(cleared: false),
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: const Color(0xFFcc4444),
-                  side: const BorderSide(color: Color(0xFFcc4444)),
-                  shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
-                ),
-                child: Text('FLEE',
-                    style: AppTheme.pixelHeading(
-                        fontSize: 13, color: const Color(0xFFcc4444), letterSpacing: 2)),
-              ),
             ),
           ),
 
@@ -829,7 +840,7 @@ class _BossProgressTrackState extends State<_BossProgressTrack>
     duration: const Duration(milliseconds: 850),
   )..repeat(reverse: true);
 
-  static const _icons  = ['??', '??', '??', '??', '??'];
+  static const _icons  = ['✦', '⚔', '◆', '◉', '★'];
   static const _names  = ['Pixie', 'Hobgoblin', 'Wyvern', 'Eye', 'Phoenix'];
   static const _total  = 5;
 
@@ -923,7 +934,7 @@ class _BossNode extends StatelessWidget {
                       : [],
                 ),
                 child: Text(
-                  defeated ? '?' : icon,
+                  defeated ? '✓' : icon,
                   style: TextStyle(
                     fontSize: defeated ? 17 : 21,
                     color: defeated ? const Color(0xFF44cc66)
@@ -1085,6 +1096,31 @@ class _BossRushStartSection extends StatelessWidget {
         ],
       ),
       const SizedBox(height: 10),
+      // ── Rewards preview: what you can find in a Boss Rush run ──────────
+      Container(
+        width: double.infinity,
+        margin: const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        decoration: BoxDecoration(
+          color: const Color(0xFF14100a),
+          border: Border.all(color: AppTheme.accentGold.withValues(alpha: 0.35)),
+          borderRadius: BorderRadius.circular(4),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('POSSIBLE REWARDS',
+                style: AppTheme.pixelHeading(
+                    fontSize: 11, letterSpacing: 2, color: AppTheme.accentGold)),
+            const SizedBox(height: 8),
+            const _RewardRow(icon: '🔷', label: 'Shards', detail: '10 per boss  ·  +30 on full clear'),
+            const _RewardRow(icon: '🌀', label: 'Echoes', detail: '6 per boss  ·  +25 on full clear'),
+            const _RewardRow(icon: '💎', label: 'ZCoins', detail: '15 on a full clear'),
+            const _RewardRow(icon: '⛏️', label: 'Mythril', detail: 'Scaled by final rank'),
+            const _RewardRow(icon: '🏺', label: 'Artifact', detail: 'Chance drop on A / S-rank clears'),
+          ],
+        ),
+      ),
       SizedBox(
         width: double.infinity,
         height: 52,
@@ -1104,7 +1140,7 @@ class _BossRushStartSection extends StatelessWidget {
           ),
           child: Text(
             remaining > 0
-                ? 'BEGIN BOSS RUSH  �  TIER $tier'
+                ? 'BEGIN BOSS RUSH  —  TIER $tier'
                 : 'NO ATTEMPTS LEFT',
             style: AppTheme.pixelHeading(
               fontSize: 14, letterSpacing: 2,
@@ -1133,7 +1169,7 @@ class _BossRushStartSection extends StatelessWidget {
               ZCoinIcon(size: 13, animate: false),
               const SizedBox(width: 5),
               Text(
-                '${GameState.kBossRushExtraCost} zcoins � Buy 1 extra attempt',
+                '${GameState.kBossRushExtraCost} zcoins — Buy 1 extra attempt',
                 style: TextStyle(fontSize: 12, color: canAfford ? const Color(0xFF88ccff) : Colors.white24),
               ),
             ]),
@@ -1141,6 +1177,31 @@ class _BossRushStartSection extends StatelessWidget {
         ),
       ],
     ]);
+  }
+}
+
+class _RewardRow extends StatelessWidget {
+  const _RewardRow({required this.icon, required this.label, required this.detail});
+  final String icon, label, detail;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 3),
+      child: Row(children: [
+        SizedBox(width: 22, child: Text(icon, style: const TextStyle(fontSize: 14))),
+        SizedBox(
+          width: 64,
+          child: Text(label,
+              style: const TextStyle(
+                  fontSize: 13, color: Colors.white, fontWeight: FontWeight.w600)),
+        ),
+        Expanded(
+          child: Text(detail,
+              style: const TextStyle(fontSize: 12, color: AppTheme.textMuted)),
+        ),
+      ]),
+    );
   }
 }
 
@@ -1155,12 +1216,12 @@ class _InlineSpeedButton extends StatelessWidget {
   final bool isDebug;
   final VoidCallback onCycle;
 
-  static const _debugLabels = ['1�', '1.5�', '5�', '10�'];
-  static const _prodLabels  = ['1�', '1.5�', '2�'];
+  static const _debugLabels = ['1×', '1.5×', '5×', '10×'];
+  static const _prodLabels  = ['1×', '1.5×', '2×', '3×'];
 
   String get _label => isDebug
       ? _debugLabels[(speedTier - 1).clamp(0, 3)]
-      : _prodLabels[(speedTier - 1).clamp(0, 2)];
+      : _prodLabels[(speedTier - 1).clamp(0, 3)];
 
   bool get _active => speedTier > 1;
 

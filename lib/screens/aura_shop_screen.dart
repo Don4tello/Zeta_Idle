@@ -1,5 +1,4 @@
-﻿import 'package:flutter/foundation.dart' show kDebugMode;
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'dart:math' show pi, sin;
 import '../models/attack_effect.dart';
 import '../models/hero_aura.dart';
@@ -7,78 +6,35 @@ import '../models/palette_skin.dart';
 import '../models/pet.dart';
 import '../models/waystone.dart';
 import '../services/game_state.dart';
-import '../services/iap_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/battle_sprites.dart';
 import '../widgets/zcoin_icon.dart';
 
-const _kCrystalSources = [
-  ('🏆', 'Achievements — claim unlocked achievements for crystal rewards'),
-  ('⚔️', 'Gauntlet — clear all 10 enemies in a Challenge Gauntlet run'),
-  ('🗝️', 'Dungeons — complete a dungeon for a small crystal bonus'),
-  ('🌟', 'Prestige & Ascension — first prestige and ascension grant zcoins'),
-  ('📅', 'Daily Login — day 7 login streak reward includes zcoins'),
-];
 
-class AuraShopScreen extends StatefulWidget {
-  const AuraShopScreen({super.key});
-
-  @override
-  State<AuraShopScreen> createState() => _AuraShopScreenState();
-}
-
-class _AuraShopScreenState extends State<AuraShopScreen>
-    with SingleTickerProviderStateMixin {
-  late TabController _tabs;
-
-  @override
-  void initState() {
-    super.initState();
-    _tabs = TabController(length: 5, vsync: this);
-  }
-
-  @override
-  void dispose() {
-    _tabs.dispose();
-    super.dispose();
-  }
+// ─── Small "bonuses stack" info banner ───────────────────────────────────────
+class _StackNote extends StatelessWidget {
+  const _StackNote(this.text);
+  final String text;
 
   @override
   Widget build(BuildContext context) {
-    final game = GameStateProvider.of(context);
-    return Scaffold(
-      backgroundColor: const Color(0xFF1B1A17),
-      appBar: AppBar(
-        backgroundColor: const Color(0xFF2A2623),
-        title: Text('COSMETICS', style: AppTheme.pixelHeading(fontSize: 14, letterSpacing: 2)),
-        actions: [
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-            child: _CrystalBadge(zcoins: game.zcoins),
-          ),
-        ],
-        bottom: TabBar(
-          controller: _tabs,
-          indicatorColor: AppTheme.accentGold,
-          labelColor: AppTheme.accentGold,
-          unselectedLabelColor: AppTheme.textMuted,
-          tabs: [
-            Tab(child: Text('AURAS', style: AppTheme.pixelHeading(fontSize: 11, letterSpacing: 1))),
-            Tab(child: Text('SKINS', style: AppTheme.pixelHeading(fontSize: 11, letterSpacing: 1))),
-            Tab(child: Text('PETS', style: AppTheme.pixelHeading(fontSize: 11, letterSpacing: 1))),
-            Tab(child: Text('ZCOINS', style: AppTheme.pixelHeading(fontSize: 11, letterSpacing: 1))),
-            Tab(child: Text('BOOSTS', style: AppTheme.pixelHeading(fontSize: 11, letterSpacing: 1))),
-          ],
-        ),
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: const Color(0xFF44cc66).withValues(alpha: 0.08),
+        border: Border.all(color: const Color(0xFF44cc66).withValues(alpha: 0.4)),
+        borderRadius: BorderRadius.circular(6),
       ),
-      body: TabBarView(
-        controller: _tabs,
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          CosmeticsAurasSection(game: game),
-          CosmeticsSkinsSection(game: game),
-          CosmeticsPetsSection(game: game),
-          _CrystalsTab(game: game),
-          CosmeticsBoostsSection(game: game),
+          const Text('✨', style: TextStyle(fontSize: 15)),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(text,
+                style: const TextStyle(
+                    fontSize: 12, color: Color(0xFFaaddaa), height: 1.4)),
+          ),
         ],
       ),
     );
@@ -97,6 +53,9 @@ class CosmeticsAurasSection extends StatelessWidget {
     final col = Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        const _StackNote('Bonuses from every aura you OWN stack automatically — '
+            'you keep them all. Equip one just to choose which glow you show.'),
+        const SizedBox(height: 12),
         if (game.equippedAuraId != null) ...[
           Text('EQUIPPED', style: AppTheme.pixelHeading(fontSize: 11, letterSpacing: 2, color: AppTheme.accentGold)),
           const SizedBox(height: 8),
@@ -242,7 +201,7 @@ class CosmeticsAurasSection extends StatelessWidget {
             onPressed: () {
               Navigator.pop(context);
               game.purchaseAura(aura.id);
-              game.audioService.playUiConfirm();
+              game.audioService.playClaim();
             },
             child: Text('CONFIRM', style: AppTheme.pixelHeading(fontSize: 11, color: AppTheme.accentGold)),
           ),
@@ -264,6 +223,9 @@ class CosmeticsSkinsSection extends StatelessWidget {
     final col = Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        const _StackNote('Bonuses from every skin you OWN stack automatically — '
+            'you keep them all. Equip one just to choose which look you wear.'),
+        const SizedBox(height: 12),
         if (game.equippedSkinId != null) ...[
           Text('EQUIPPED', style: AppTheme.pixelHeading(fontSize: 11, letterSpacing: 2, color: AppTheme.accentGold)),
           const SizedBox(height: 8),
@@ -408,7 +370,7 @@ class CosmeticsSkinsSection extends StatelessWidget {
             onPressed: () {
               Navigator.pop(context);
               game.purchaseSkin(skin.id);
-              game.audioService.playUiConfirm();
+              game.audioService.playClaim();
             },
             child: Text('CONFIRM', style: AppTheme.pixelHeading(fontSize: 11, color: AppTheme.accentGold)),
           ),
@@ -452,14 +414,16 @@ class _SkinPreview extends StatelessWidget {
     return Container(
       width: 44,
       height: 56,
+      clipBehavior: Clip.hardEdge,
       decoration: BoxDecoration(
         color: const Color(0xFF17150E),
         border: Border.all(color: AppTheme.cardBorder, width: 1),
       ),
-      child: Center(
-        child: SizedBox(
-          width: 32,
-          height: 42,
+      child: Padding(
+        padding: const EdgeInsets.all(4),
+        // Scale the full-size battle sprite down to fit neatly inside the box.
+        child: FittedBox(
+          fit: BoxFit.contain,
           child: BattleSprite(spriteId: spriteId, colorFilter: filter),
         ),
       ),
@@ -647,8 +611,7 @@ class CosmeticsPetsSection extends StatelessWidget {
           TextButton(
             onPressed: () {
               Navigator.pop(context);
-              game.purchasePet(pet.id);
-              game.audioService.playUiConfirm();
+              if (game.purchasePet(pet.id)) game.audioService.playCoin();
             },
             child: Text('ADOPT', style: AppTheme.pixelHeading(fontSize: 11, color: pet.color)),
           ),
@@ -682,146 +645,6 @@ class _PetAvatar extends StatelessWidget {
     );
   }
 }
-
-// ─── ZCoins tab ─────────────────��───────────────────────────────────────────
-
-class _CrystalsTab extends StatelessWidget {
-  const _CrystalsTab({required this.game});
-  final GameState game;
-
-  @override
-  Widget build(BuildContext context) {
-    final supported = IapService.platformSupported;
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Center(child: _CrystalBadge(zcoins: game.zcoins, large: true)),
-          const SizedBox(height: 20),
-          if (!supported) ...[
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: const Color(0xFF2A2623),
-                border: Border.all(color: const Color(0xFF3a4a6a)),
-                borderRadius: BorderRadius.circular(4),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(children: [
-                    const ZCoinIcon(size: 21),
-                    const SizedBox(width: 10),
-                    const Text('EARNING ZCOINS',
-                        style: TextStyle(color: Color(0xFF88aaff),
-                            fontSize: 13, fontWeight: FontWeight.bold, letterSpacing: 1.5)),
-                  ]),
-                  const SizedBox(height: 12),
-                  const Text(
-                    'On PC, ZCoins are earned through gameplay:',
-                    style: TextStyle(color: AppTheme.textLight, fontSize: 13),
-                  ),
-                  const SizedBox(height: 10),
-                  ..._kCrystalSources.map((s) => Padding(
-                    padding: const EdgeInsets.only(bottom: 6),
-                    child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                      Text(s.$1, style: const TextStyle(fontSize: 15)),
-                      const SizedBox(width: 8),
-                      Expanded(child: Text(s.$2,
-                          style: const TextStyle(color: AppTheme.textMuted, fontSize: 13, height: 1.4))),
-                    ]),
-                  )),
-                ],
-              ),
-            ),
-            if (kDebugMode) ...[
-              const SizedBox(height: 16),
-              Text('DEV MODE', style: AppTheme.pixelHeading(fontSize: 10, color: const Color(0xFFcc4444), letterSpacing: 2)),
-              const SizedBox(height: 8),
-              ...IapService.packages.map((pkg) => Padding(
-                padding: const EdgeInsets.only(bottom: 8),
-                child: _PackageCard(pkg: pkg, game: game, devMode: true),
-              )),
-            ],
-          ] else ...[
-            Text('ZCOIN PACKS', style: AppTheme.pixelHeading(fontSize: 11, letterSpacing: 2)),
-            const SizedBox(height: 10),
-            ...IapService.packages.map((pkg) => Padding(
-              padding: const EdgeInsets.only(bottom: 10),
-              child: _PackageCard(pkg: pkg, game: game, devMode: false),
-            )),
-          ],
-        ],
-      ),
-    );
-  }
-}
-
-class _PackageCard extends StatelessWidget {
-  const _PackageCard({required this.pkg, required this.game, required this.devMode});
-  final CrystalPackage pkg;
-  final GameState game;
-  final bool devMode;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-      decoration: BoxDecoration(
-        color: const Color(0xFF231F1B),
-        border: Border.all(color: AppTheme.cardBorder),
-        borderRadius: BorderRadius.circular(4),
-      ),
-      child: Row(
-        children: [
-          const ZCoinIcon(size: 29),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(pkg.label,
-                    style: AppTheme.pixelHeading(fontSize: 13, letterSpacing: 0)),
-                Text(devMode ? 'Debug grant (free)' : pkg.fallbackPrice,
-                    style: TextStyle(
-                        fontSize: 12,
-                        color: devMode ? const Color(0xFFcc4444) : AppTheme.accentGold)),
-              ],
-            ),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              if (devMode) {
-                game.grantCrystals(pkg.zcoins);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text('+${pkg.zcoins} ZCoins granted (debug)'),
-                    backgroundColor: const Color(0xFF2A2623),
-                    duration: const Duration(seconds: 2),
-                  ),
-                );
-              } else {
-                game.iapService.buyConsumable(pkg.productId);
-              }
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: devMode ? const Color(0xFF442222) : const Color(0xFF1a2a4a),
-              foregroundColor: devMode ? const Color(0xFFcc4444) : AppTheme.accentGold,
-              side: BorderSide(color: devMode ? const Color(0xFFcc4444) : AppTheme.accentGold),
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-            ),
-            child: Text(devMode ? 'GRANT' : 'BUY',
-                style: AppTheme.pixelHeading(fontSize: 11)),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// ─── Shared widgets ───────────────────────────────────────────────────────────
 
 class _AuraOrb extends StatefulWidget {
   const _AuraOrb({required this.aura, required this.size});
@@ -885,39 +708,6 @@ class _AuraOrbState extends State<_AuraOrb> with SingleTickerProviderStateMixin 
           ),
         );
       },
-    );
-  }
-}
-
-class _CrystalBadge extends StatelessWidget {
-  const _CrystalBadge({required this.zcoins, this.large = false});
-  final int zcoins;
-  final bool large;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: EdgeInsets.symmetric(horizontal: large ? 16 : 10, vertical: large ? 10 : 5),
-      decoration: BoxDecoration(
-        color: const Color(0xFF231F1B),
-        border: Border.all(color: const Color(0xFF6688ff), width: 1),
-        borderRadius: BorderRadius.circular(4),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          ZCoinIcon(size: large ? 20 : 14),
-          const SizedBox(width: 6),
-          Text(
-            '$zcoins',
-            style: AppTheme.pixelHeading(
-              fontSize: large ? 16 : 11,
-              color: const Color(0xFF88aaff),
-              letterSpacing: 0,
-            ),
-          ),
-        ],
-      ),
     );
   }
 }
@@ -1004,7 +794,9 @@ class _PetEvolutionRow extends StatelessWidget {
         _ActionButton(
           label: 'EVOLVE',
           color: canAfford ? petColor : AppTheme.cardBorder,
-          onTap: canAfford ? () => game.evolvePet(petId) : null,
+          onTap: canAfford
+              ? () { if (game.evolvePet(petId)) game.audioService.playCoin(); }
+              : null,
         ),
       ]),
     );
@@ -1053,8 +845,24 @@ class CosmeticsBoostsSection extends StatelessWidget {
           padding: const EdgeInsets.only(bottom: 8),
           child: _AttackEffectCard(game: game, effect: e),
         )),
-        const SizedBox(height: 20),
+      ],
+    );
+    if (!scrollable) return col;
+    return SingleChildScrollView(padding: const EdgeInsets.all(16), child: col);
+  }
+}
 
+// ─── Misc section (character slots & other odds and ends) ────────────────────
+class CosmeticsMiscSection extends StatelessWidget {
+  const CosmeticsMiscSection({required this.game, this.scrollable = true, super.key});
+  final GameState game;
+  final bool scrollable;
+
+  @override
+  Widget build(BuildContext context) {
+    final col = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
         // ── Extra Character Slots ──────────────────────────────────────────
         Text('CHARACTER SLOTS', style: AppTheme.pixelHeading(fontSize: 11, letterSpacing: 2, color: AppTheme.accentGold)),
         const SizedBox(height: 4),

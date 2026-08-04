@@ -14,15 +14,18 @@ class Guild {
     this.icon = '⚔',
     this.level = 1,
     this.xp = 0,
-    this.members = const [],
-    this.messages = const [],
+    List<GuildMember>? members,
+    List<GuildMessage>? messages,
     this.weeklyBoss,
     this.createdAt,
-    this.territories = const [],
-    this.ownedCosmetics = const [],
+    List<String>? territories,
+    List<String>? ownedCosmetics,
     this.equippedBanner,
     this.equippedFrame,
-  });
+  })  : members        = List.of(members ?? const []),
+        messages       = List.of(messages ?? const []),
+        territories    = List.of(territories ?? const []),
+        ownedCosmetics = List.of(ownedCosmetics ?? const []);
 
   final String id;
   String name;
@@ -273,8 +276,8 @@ class GuildPerk {
   static const all = [
     GuildPerk(id: 'shard_boost', name: 'Shard Affinity', icon: '◆',
         description: '+1% Shard drops per guild level above 5', levelRequired: 5),
-    GuildPerk(id: 'essence_boost', name: 'Essence Flow', icon: '✦',
-        description: '+1% Essence gains per guild level above 8', levelRequired: 8),
+    GuildPerk(id: 'essence_boost', name: 'Shard Flow', icon: '◆',
+        description: '+1% Shard gains per guild level above 8', levelRequired: 8),
     GuildPerk(id: 'guild_exp', name: 'Guild Expeditions', icon: '🗺',
         description: 'Unlock shared guild expeditions', levelRequired: 10),
     GuildPerk(id: 'dmg_boost', name: 'War Banner', icon: '🚩',
@@ -648,7 +651,7 @@ class GuildTerritory {
     GuildTerritory(id: 'gold_mine',     name: 'Gold Mine',       icon: '💰', bonus: 'gold',    bonusLabel: '+10% Gold for all members'),
     GuildTerritory(id: 'shard_quarry',  name: 'Shard Quarry',    icon: '◆',  bonus: 'shards',  bonusLabel: '+10% Shards for all members'),
     GuildTerritory(id: 'echo_chamber',  name: 'Echo Chamber',    icon: '🔊', bonus: 'echoes',  bonusLabel: '+10% Echoes for all members'),
-    GuildTerritory(id: 'essence_well',  name: 'Essence Well',    icon: '✦',  bonus: 'essence', bonusLabel: '+10% Essence for all members'),
+    GuildTerritory(id: 'essence_well',  name: 'Shard Well',      icon: '◆',  bonus: 'essence', bonusLabel: '+10% Shards for all members'),
     GuildTerritory(id: 'mythril_vein',  name: 'Mythril Vein',    icon: '⬡',  bonus: 'mythril', bonusLabel: '+15% Mythril from Boss Rush'),
     GuildTerritory(id: 'training_arena',name: 'Training Arena',   icon: '⚔',  bonus: 'xp',     bonusLabel: '+5% XP for all members'),
   ];
@@ -940,10 +943,10 @@ class GuildShopItem {
         description: '+30 Echoes', cost: 60, icon: '🔊'),
     GuildShopItem(id: 'guild_mythril_ore', name: 'Mythril Ore',
         description: '+10 Mythril', cost: 80, icon: '⬡'),
-    GuildShopItem(id: 'guild_gem_dust', name: 'Gem Dust',
-        description: '+25 Gem Shards', cost: 45, icon: '💠'),
-    GuildShopItem(id: 'guild_essence_vial', name: 'Essence Vial',
-        description: '+100 Essence', cost: 55, icon: '✦'),
+    GuildShopItem(id: 'guild_gem_dust', name: 'Arcane Dust',
+        description: '+25 Arcane Dust', cost: 45, icon: '🌀'),
+    GuildShopItem(id: 'guild_essence_vial', name: 'Shard Cache',
+        description: '+100 Shards', cost: 55, icon: '◆'),
     GuildShopItem(id: 'guild_crystal_chest', name: 'ZCoin Chest',
         description: '+20 ZCoins', cost: 70, icon: '🪙'),
   ];

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../data/unique_items_data.dart';
+import '../models/artifact.dart';
 import '../models/dnd_class.dart';
 import '../models/equipment.dart';
 import '../models/hero_ability.dart' show AbilityEffect;
@@ -24,11 +25,12 @@ class _ArmoryScreenState extends State<ArmoryScreen>
   late TabController _tabs;
   EquipmentItem? _expanded;
   String? _expandedSet;
+  String? _expandedArtifactSet;
 
   @override
   void initState() {
     super.initState();
-    _tabs = TabController(length: 3, vsync: this);
+    _tabs = TabController(length: 4, vsync: this);
     _tabs.addListener(() => setState(() {}));
   }
 
@@ -48,6 +50,7 @@ class _ArmoryScreenState extends State<ArmoryScreen>
         color: const Color(0xFF1C1916),
         child: TabBar(
           controller: _tabs,
+          isScrollable: true,
           indicatorColor: AppTheme.accentGold,
           labelColor: AppTheme.accentGold,
           unselectedLabelColor: AppTheme.textMuted,
@@ -56,6 +59,7 @@ class _ArmoryScreenState extends State<ArmoryScreen>
             Tab(text: 'UNIQUES'),
             Tab(text: 'MYTHIC'),
             Tab(text: 'SET ITEMS'),
+            Tab(text: 'ARTIFACTS'),
           ],
         ),
       ),
@@ -70,6 +74,10 @@ class _ArmoryScreenState extends State<ArmoryScreen>
             _SetList(game: game,
                 expanded: _expandedSet,
                 onExpand: (id) => setState(() => _expandedSet = _expandedSet == id ? null : id)),
+            _ArtifactSetList(game: game,
+                expanded: _expandedArtifactSet,
+                onExpand: (id) => setState(() =>
+                    _expandedArtifactSet = _expandedArtifactSet == id ? null : id)),
           ],
         ),
       ),
@@ -152,7 +160,7 @@ class _LegendaryList extends StatelessWidget {
       ),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [
-          const Text('✦', style: TextStyle(fontSize: 18, color: Color(0xFFE8A0FF))),
+          const Icon(Icons.auto_awesome, size: 18, color: Color(0xFFE8A0FF)),
           const SizedBox(width: 8),
           Text('$count Class Uniques',
               style: AppTheme.pixelHeading(fontSize: 12, color: const Color(0xFFE8A0FF))),
@@ -295,10 +303,10 @@ class _LegendaryCard extends StatelessWidget {
                 const SizedBox(height: 10),
                 Text('HOW TO FIND', style: AppTheme.pixelHeading(fontSize: 9, color: AppTheme.textMuted, letterSpacing: 1)),
                 const SizedBox(height: 6),
-                _DropRow('⚔  Campaign bosses', '2% per boss kill'),
-                _DropRow('🗼  Tower Ascension bosses', '2% per boss kill'),
-                _DropRow('💀  Boss Rush runs', '2% per boss kill'),
-                _DropRow('🛡  Gauntlet clear', 'Rare bonus drop'),
+                _DropRow('Campaign bosses', '2% per boss kill'),
+                _DropRow('Tower Ascension bosses', '2% per boss kill'),
+                _DropRow('Boss Rush runs', '2% per boss kill'),
+                _DropRow('Gauntlet clear', 'Rare bonus drop'),
                 const SizedBox(height: 4),
                 const Text(
                   'Drops are class-specific — only items for your class can drop.',
@@ -362,7 +370,7 @@ class _MythicList extends StatelessWidget {
               borderRadius: BorderRadius.circular(4),
             ),
             child: const Column(children: [
-              Text('🔥', style: TextStyle(fontSize: 32)),
+              Icon(Icons.local_fire_department, size: 32, color: Color(0xFFDD1111)),
               SizedBox(height: 8),
               Text('No Mythic items yet',
                   style: TextStyle(fontSize: 13, color: AppTheme.textMuted)),
@@ -389,7 +397,7 @@ class _MythicList extends StatelessWidget {
       ),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         const Row(children: [
-          Text('🔥', style: TextStyle(fontSize: 18)),
+          Icon(Icons.local_fire_department, size: 18, color: Color(0xFFDD1111)),
           SizedBox(width: 8),
           Text('Mythic Items',
               style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold,
@@ -467,7 +475,7 @@ class _MythicCard extends StatelessWidget {
           ),
           if (item.keyword != null) ...[
             const SizedBox(height: 6),
-            Text('✦ ${item.keyword!.name.toUpperCase()} keyword',
+            Text('${item.keyword!.name.toUpperCase()} keyword',
                 style: const TextStyle(fontSize: 9, color: Color(0xFFDD1111),
                     fontStyle: FontStyle.italic)),
           ],
@@ -517,7 +525,7 @@ class _SetList extends StatelessWidget {
       ),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         const Row(children: [
-          Text('◈', style: TextStyle(fontSize: 18, color: Color(0xFF88aaff))),
+          Icon(Icons.layers_outlined, size: 18, color: Color(0xFF88aaff)),
           SizedBox(width: 8),
           Text('Set Items', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFF88aaff))),
         ]),
@@ -709,9 +717,9 @@ class _SetCard extends StatelessWidget {
                 // Drop info
                 Text('HOW TO FIND', style: AppTheme.pixelHeading(fontSize: 9, color: AppTheme.textMuted, letterSpacing: 1)),
                 const SizedBox(height: 6),
-                _DropRow('⚔  Campaign bosses', '0.3% per boss kill'),
-                _DropRow('🗼  Tower Ascension bosses', '0.3% per boss kill'),
-                _DropRow('💀  Boss Rush runs', '0.3% per boss kill'),
+                _DropRow('Campaign bosses', '0.3% per boss kill'),
+                _DropRow('Tower Ascension bosses', '0.3% per boss kill'),
+                _DropRow('Boss Rush runs', '0.3% per boss kill'),
                 const SizedBox(height: 4),
                 const Text(
                   'Set items can drop any piece from the set at random.',
@@ -722,6 +730,200 @@ class _SetCard extends StatelessWidget {
           ],
         ]),
       ),
+    );
+  }
+}
+
+// ── Artifact sets ─────────────────────────────────────────────────────────────
+
+class _ArtifactSetList extends StatelessWidget {
+  const _ArtifactSetList({required this.game, required this.expanded, required this.onExpand});
+  final GameState game;
+  final String? expanded;
+  final ValueChanged<String?> onExpand;
+
+  @override
+  Widget build(BuildContext context) {
+    final equipped = game.equippedSetPieceCounts;
+    // Distinct owned pieces per set (whether equipped or not).
+    final ownedIdx = <String, Set<int>>{};
+    for (final a in game.ownedArtifacts) {
+      if (!a.isSetPiece) continue;
+      ownedIdx.putIfAbsent(a.setId!, () => <int>{}).add(a.setPieceIndex);
+    }
+
+    return ListView.builder(
+      padding: const EdgeInsets.all(12),
+      itemCount: ArtifactSet.all.length + 1,
+      itemBuilder: (ctx, i) {
+        if (i == 0) return _header();
+        final set = ArtifactSet.all[i - 1];
+        final isOpen = expanded == set.id;
+        return _ArtifactSetCard(
+          set: set,
+          equippedCount: equipped[set.id] ?? 0,
+          ownedCount: ownedIdx[set.id]?.length ?? 0,
+          isOpen: isOpen,
+          onTap: () => onExpand(isOpen ? null : set.id),
+        );
+      },
+    );
+  }
+
+  Widget _header() {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: kArtifactSetColor.withValues(alpha: 0.06),
+        border: Border.all(color: kArtifactSetColor.withValues(alpha: 0.5)),
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        const Row(children: [
+          Icon(Icons.auto_awesome, size: 18, color: kArtifactSetColor),
+          SizedBox(width: 8),
+          Text('Artifact Sets', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: kArtifactSetColor)),
+        ]),
+        const SizedBox(height: 6),
+        Text(
+          '${ArtifactSet.all.length} three-piece artifact sets. Equip 2 matching green pieces on '
+          'the artifact grid for a partial bonus, all 3 for the full bonus. Set pieces drop from '
+          'Dungeons, Boss Rush, and Campaign bosses.',
+          style: const TextStyle(fontSize: 11, color: AppTheme.textMuted, height: 1.5),
+        ),
+      ]),
+    );
+  }
+}
+
+class _ArtifactSetCard extends StatelessWidget {
+  const _ArtifactSetCard({
+    required this.set,
+    required this.equippedCount,
+    required this.ownedCount,
+    required this.isOpen,
+    required this.onTap,
+  });
+  final ArtifactSet set;
+  final int equippedCount;
+  final int ownedCount;
+  final bool isOpen;
+  final VoidCallback onTap;
+
+  static const _c = kArtifactSetColor;
+
+  @override
+  Widget build(BuildContext context) {
+    final progress = equippedCount / set.pieces.length;
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        margin: const EdgeInsets.only(bottom: 10),
+        decoration: BoxDecoration(
+          color: isOpen ? _c.withValues(alpha: 0.06) : AppTheme.cardBg,
+          border: Border.all(
+              color: equippedCount > 0 ? _c : _c.withValues(alpha: 0.3),
+              width: isOpen ? 1.5 : 1),
+          borderRadius: BorderRadius.circular(4),
+        ),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Padding(
+            padding: const EdgeInsets.all(12),
+            child: Row(children: [
+              Container(width: 10, height: 10,
+                  decoration: const BoxDecoration(color: _c, shape: BoxShape.circle)),
+              const SizedBox(width: 10),
+              Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text(set.name,
+                    style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: _c)),
+                Text(set.pieces.map((p) => p.type.label).join(' · '),
+                    style: const TextStyle(fontSize: 9, color: AppTheme.textMuted),
+                    maxLines: 1, overflow: TextOverflow.ellipsis),
+              ])),
+              Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
+                Text('$equippedCount / ${set.pieces.length}',
+                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold,
+                        color: equippedCount >= set.pieces.length ? _c : AppTheme.textMuted)),
+                const Text('equipped', style: TextStyle(fontSize: 8, color: AppTheme.textMuted)),
+              ]),
+              const SizedBox(width: 6),
+              Icon(isOpen ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
+                  size: 16, color: AppTheme.textMuted),
+            ]),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(12, 0, 12, 10),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(2),
+              child: LinearProgressIndicator(
+                value: progress.clamp(0.0, 1.0),
+                minHeight: 4,
+                backgroundColor: _c.withValues(alpha: 0.12),
+                valueColor: const AlwaysStoppedAnimation(_c),
+              ),
+            ),
+          ),
+          if (isOpen) ...[
+            const Divider(height: 1, color: Color(0xFF2a2520)),
+            Padding(
+              padding: const EdgeInsets.all(12),
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text('SET BONUSES', style: AppTheme.pixelHeading(fontSize: 9, color: AppTheme.textMuted, letterSpacing: 1)),
+                const SizedBox(height: 8),
+                _bonusTier('2', set.twoPieceBonus.summary, equippedCount >= 2),
+                const SizedBox(height: 6),
+                _bonusTier('3', set.threePieceBonus.summary, equippedCount >= 3),
+                const SizedBox(height: 12),
+                Text('SET PIECES', style: AppTheme.pixelHeading(fontSize: 9, color: AppTheme.textMuted, letterSpacing: 1)),
+                const SizedBox(height: 6),
+                Wrap(spacing: 6, runSpacing: 6, children: [
+                  for (final p in set.pieces)
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: _c.withValues(alpha: 0.06),
+                        border: Border.all(color: _c.withValues(alpha: 0.35)),
+                        borderRadius: BorderRadius.circular(3),
+                      ),
+                      child: Text('${p.name}  (${p.type.label})',
+                          style: const TextStyle(fontSize: 9, color: _c)),
+                    ),
+                ]),
+                const SizedBox(height: 10),
+                Text('COLLECTED  $ownedCount / ${set.pieces.length} distinct pieces owned',
+                    style: const TextStyle(fontSize: 10, color: AppTheme.textMuted, fontStyle: FontStyle.italic)),
+              ]),
+            ),
+          ],
+        ]),
+      ),
+    );
+  }
+
+  Widget _bonusTier(String pcs, String summary, bool active) {
+    return Container(
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: active ? _c.withValues(alpha: 0.10) : AppTheme.cardBg,
+        border: Border.all(color: active ? _c : AppTheme.cardBorder, width: active ? 1.5 : 1),
+        borderRadius: BorderRadius.circular(3),
+      ),
+      child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        SizedBox(width: 28,
+            child: Text('${pcs}pc',
+                style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold,
+                    color: active ? _c : AppTheme.textMuted))),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text(summary,
+              style: TextStyle(fontSize: 11,
+                  color: active ? _c : AppTheme.textMuted,
+                  fontWeight: active ? FontWeight.w600 : FontWeight.normal)),
+        ),
+        if (active) const Icon(Icons.check_circle, size: 14, color: _c),
+      ]),
     );
   }
 }

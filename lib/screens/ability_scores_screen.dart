@@ -11,17 +11,17 @@ class AbilityScoresScreen extends StatelessWidget {
   static const _accent = Color(0xFF66ccff);
 
   static const _stats = [
-    _StatDef('pwr',  'PWR', '⚔', Color(0xFFff6644), 'Power',
+    _StatDef('pwr',  'PWR', Icons.bolt,           Color(0xFFff6644), 'Power',
         '+2 flat attack damage per rank'),
-    _StatDef('agi',  'AGI', '💨', Color(0xFFffee44), 'Agility',
+    _StatDef('agi',  'AGI', Icons.speed,           Color(0xFFffee44), 'Agility',
         '+2% critical hit damage per rank'),
-    _StatDef('vit',  'VIT', '❤', Color(0xFF44ee66), 'Vitality',
+    _StatDef('vit',  'VIT', Icons.favorite,        Color(0xFF44ee66), 'Vitality',
         '+30 max HP per rank'),
-    _StatDef('prc',  'PRC', '🎯', Color(0xFFffaa22), 'Precision',
+    _StatDef('prc',  'PRC', Icons.gps_fixed,       Color(0xFFffaa22), 'Precision',
         '+1% critical hit chance per rank'),
-    _StatDef('for_', 'FOR', '🛡', Color(0xFF66aaff), 'Fortitude',
+    _StatDef('for_', 'FOR', Icons.shield,          Color(0xFF66aaff), 'Fortitude',
         '+1 armor class per 2 ranks'),
-    _StatDef('lck',  'LCK', '🍀', Color(0xFF88ff88), 'Luck',
+    _StatDef('lck',  'LCK', Icons.auto_awesome,    Color(0xFF88ff88), 'Luck',
         '+1% gold income per rank'),
   ];
 
@@ -72,13 +72,13 @@ class AbilityScoresScreen extends StatelessWidget {
 }
 
 class _StatDef {
-  const _StatDef(this.key, this.abbrev, this.emoji, this.color, this.name, this.desc);
-  final String key;
-  final String abbrev;
-  final String emoji;
-  final Color color;
-  final String name;
-  final String desc;
+  const _StatDef(this.key, this.abbrev, this.icon, this.color, this.name, this.desc);
+  final String   key;
+  final String   abbrev;
+  final IconData icon;
+  final Color    color;
+  final String   name;
+  final String   desc;
 }
 
 class _GoldBadge extends StatelessWidget {
@@ -95,7 +95,7 @@ class _GoldBadge extends StatelessWidget {
         borderRadius: BorderRadius.circular(3),
       ),
       child: Row(mainAxisSize: MainAxisSize.min, children: [
-        const Text('💰', style: TextStyle(fontSize: 12)),
+        const Icon(Icons.monetization_on, size: 13, color: Color(0xFFffcc44)),
         const SizedBox(width: 4),
         Text('$gold',
             style: AppTheme.pixelHeading(fontSize: 11, color: const Color(0xFFffcc44))),
@@ -116,7 +116,7 @@ class _InfoBanner extends StatelessWidget {
       ),
       child: const Text(
         'Ability Scores are permanent upgrades purchased with gold.\n'
-        'They directly enhance your hero\'s combat statistics.',
+        'Upgrade any score freely — gold is the only requirement.',
         style: TextStyle(color: Color(0xFFbbccdd), fontSize: 13, height: 1.5),
       ),
     );
@@ -126,7 +126,7 @@ class _InfoBanner extends StatelessWidget {
 class _StatCard extends StatelessWidget {
   const _StatCard({required this.game, required this.stat});
   final GameState game;
-  final _StatDef stat;
+  final _StatDef  stat;
 
   String _currentValue(GameState g) {
     final rank = g.abilityScoreRank(stat.key);
@@ -143,74 +143,153 @@ class _StatCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final rank = game.abilityScoreRank(stat.key);
-    final cost = game.abilityScoreUpgradeCost(stat.key);
-    final canAfford = game.gold >= cost;
+    final rank            = game.abilityScoreRank(stat.key);
+    final cost            = game.abilityScoreUpgradeCost(stat.key);
+    final atCap           = rank >= GameState.kAbilityScoreMaxRank;
+    final rebirthNeeded   = rank ~/ 10;
+    final gateMet         = rank >= 0; // Rebirth gate removed — always met.
+    final canAfford       = game.gold >= cost;
+    final canUpgrade      = !atCap && gateMet && canAfford;
+    final tierLabel       = 'Tier ${rebirthNeeded + 1}';
 
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: stat.color.withValues(alpha: 0.04),
-        border: Border.all(color: stat.color.withValues(alpha: 0.35)),
+        color: stat.color.withValues(alpha: gateMet ? 0.04 : 0.02),
+        border: Border.all(
+            color: stat.color.withValues(alpha: gateMet ? 0.35 : 0.15)),
         borderRadius: BorderRadius.circular(4),
       ),
       child: Row(children: [
-        Text(stat.emoji, style: const TextStyle(fontSize: 26)),
+        Icon(stat.icon, size: 28, color: stat.color.withValues(alpha: gateMet ? 1.0 : 0.4)),
         const SizedBox(width: 12),
         Expanded(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Row(children: [
               Text(stat.abbrev,
                   style: AppTheme.pixelHeading(
-                      fontSize: 13, letterSpacing: 1, color: stat.color)),
+                      fontSize: 13, letterSpacing: 1,
+                      color: stat.color.withValues(alpha: gateMet ? 1.0 : 0.4))),
               const SizedBox(width: 6),
               Text(stat.name,
                   style: TextStyle(
-                      color: stat.color.withValues(alpha: 0.7), fontSize: 12)),
+                      color: stat.color.withValues(alpha: gateMet ? 0.7 : 0.3),
+                      fontSize: 12)),
               const Spacer(),
-              Text('Rank $rank',
+              Text(atCap ? 'MAX' : 'Rank $rank / 1000',
                   style: TextStyle(
-                      color: stat.color.withValues(alpha: 0.6), fontSize: 11)),
+                      color: atCap
+                          ? const Color(0xFFffdd44)
+                          : stat.color.withValues(alpha: 0.6),
+                      fontSize: 11,
+                      fontWeight: atCap ? FontWeight.bold : FontWeight.normal)),
             ]),
             const SizedBox(height: 3),
             Text(stat.desc,
-                style: const TextStyle(color: Color(0xFFbbaa99), fontSize: 12)),
-            const SizedBox(height: 3),
+                style: TextStyle(
+                    color: const Color(0xFFbbaa99).withValues(alpha: gateMet ? 1.0 : 0.5),
+                    fontSize: 12)),
+            const SizedBox(height: 4),
             Row(children: [
               Text(_currentValue(game),
                   style: TextStyle(
-                      color: stat.color, fontSize: 12, fontWeight: FontWeight.bold)),
-              const SizedBox(width: 8),
-              Text('Next: $cost 💰',
+                      color: stat.color.withValues(alpha: gateMet ? 1.0 : 0.4),
+                      fontSize: 12, fontWeight: FontWeight.bold)),
+              const Spacer(),
+              if (atCap)
+                _TierChip(label: 'MAXED', color: const Color(0xFFffdd44))
+              else if (!gateMet)
+                _TierChip(
+                  label: '$tierLabel  •  Rebirth $rebirthNeeded required',
+                  color: const Color(0xFFff6644),
+                  icon: Icons.lock_outline,
+                )
+              else
+                _TierChip(label: '$tierLabel  •  ${rank % 10}/10', color: stat.color),
+            ]),
+            if (!atCap && gateMet) ...[
+              const SizedBox(height: 4),
+              Text('Next: ${cost.toString()} gold',
                   style: TextStyle(
                       color: canAfford
                           ? const Color(0xFFffcc88)
                           : const Color(0xFF886655),
                       fontSize: 11)),
-            ]),
+            ],
           ]),
         ),
         const SizedBox(width: 8),
         SizedBox(
           width: 64,
-          height: 48,
+          height: 52,
           child: HoldRepeatButton(
-            onPressed: canAfford ? () { game.upgradeAbilityScore(stat.key); game.audioService.playUiConfirm(); } : null,
+            onPressed: canUpgrade
+                ? () { game.upgradeAbilityScore(stat.key); game.audioService.playClaim(); }
+                : null,
             child: Container(
               decoration: BoxDecoration(
-                color: canAfford ? stat.color.withValues(alpha: 0.2) : const Color(0xFF1a1a1a),
+                color: atCap
+                    ? const Color(0xFF1a1a1a)
+                    : !gateMet
+                        ? const Color(0xFF1a1010)
+                        : canAfford
+                            ? stat.color.withValues(alpha: 0.2)
+                            : const Color(0xFF1a1a1a),
                 border: Border.all(
-                    color: canAfford ? stat.color.withValues(alpha: 0.6) : const Color(0xFF332211)),
+                    color: atCap
+                        ? const Color(0xFF554400)
+                        : !gateMet
+                            ? const Color(0xFF553322)
+                            : canAfford
+                                ? stat.color.withValues(alpha: 0.6)
+                                : const Color(0xFF332211)),
                 borderRadius: BorderRadius.circular(3),
               ),
               alignment: Alignment.center,
-              child: Text('UP',
-                  style: AppTheme.pixelHeading(
-                      fontSize: 11,
-                      color: canAfford ? stat.color : const Color(0xFF554433))),
+              child: atCap
+                  ? const Icon(Icons.check, size: 18, color: Color(0xFF554400))
+                  : !gateMet
+                      ? const Icon(Icons.lock, size: 18, color: Color(0xFF885544))
+                      : Text('UP',
+                          style: AppTheme.pixelHeading(
+                              fontSize: 11,
+                              color: canAfford
+                                  ? stat.color
+                                  : const Color(0xFF554433))),
             ),
           ),
         ),
+      ]),
+    );
+  }
+}
+
+class _TierChip extends StatelessWidget {
+  const _TierChip({required this.label, required this.color, this.icon});
+  final String   label;
+  final Color    color;
+  final IconData? icon;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.08),
+        border: Border.all(color: color.withValues(alpha: 0.35)),
+        borderRadius: BorderRadius.circular(3),
+      ),
+      child: Row(mainAxisSize: MainAxisSize.min, children: [
+        if (icon != null) ...[
+          Icon(icon, size: 10, color: color.withValues(alpha: 0.8)),
+          const SizedBox(width: 3),
+        ],
+        Text(label,
+            style: TextStyle(
+                color: color.withValues(alpha: 0.9),
+                fontSize: 10,
+                fontWeight: FontWeight.bold,
+                letterSpacing: 0.5)),
       ]),
     );
   }

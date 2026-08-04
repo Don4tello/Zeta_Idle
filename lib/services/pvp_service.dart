@@ -21,6 +21,11 @@ class PvpService {
     await _col.doc(userId).set(data, SetOptions(merge: true));
   }
 
+  /// Remove this user's PvP snapshot (used by account deletion).
+  Future<void> deleteSnapshot(String userId) async {
+    try { await _col.doc(userId).delete(); } catch (_) {}
+  }
+
   Future<List<PvpSnapshot>> fetchLeaderboard({int limit = 25}) async {
     final q = await _col
         .orderBy('rating', descending: true)

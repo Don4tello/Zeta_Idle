@@ -137,19 +137,6 @@ class _StatsBody extends StatelessWidget {
         ],
       ),
       _StatRow(
-        label: 'Essence ✨',
-        icon: Icons.auto_awesome,
-        color: const Color(0xFFaaff88),
-        total: AppTheme.fmtNumber(game.essence),
-        sources: [
-          _Source('Campaign kills', 'baseline per kill, scales with stage'),
-          _Source('Gauntlet runs', 'earned from challenge scores'),
-          _Source('Daily Challenges', 'chest reward'),
-          _Source('Passive Tree', '+% essence gain bonus'),
-          _Source('Pets & Auras', '+% essence gain bonus'),
-        ],
-      ),
-      _StatRow(
         label: 'ZCoins 🪙',
         icon: Icons.water_drop_outlined,
         color: const Color(0xFF88ddff),
@@ -282,7 +269,7 @@ class _StatsBody extends StatelessWidget {
       '⚔ Enemy HP +$enemyHpPct%',
       '⚔ Enemy ATK +$enemyAtkPct%',
       if (game.prestigeShop.isUnlocked('shard_bonus'))   '+30% Shards',
-      if (game.prestigeShop.isUnlocked('essence_bonus')) '+30% Essence',
+      if (game.prestigeShop.isUnlocked('essence_bonus')) '+30% Shard Gain',
       if (game.prestigeShop.isUnlocked('idle_bonus'))    '+5 Idle Rate',
       if (game.prestigeShop.isUnlocked('ability_disc'))  '-25% Ability Cost',
       if (game.prestigeShop.isUnlocked('start_gold'))    '+500 Start Gold',
@@ -599,17 +586,6 @@ class _StatsBody extends StatelessWidget {
         ],
       ),
       _StatRow(
-        label: 'Hit Chance bonus',
-        icon: Icons.gps_fixed,
-        color: const Color(0xFFffcc44),
-        total: '+${game.inventory.totalOf(ItemStat.hitChance)}%',
-        sources: [
-          _Source('Equipment (HIT)', '+${game.inventory.totalOf(ItemStat.hitChance)}%'),
-          _Source('How to get', 'HIT% stat on weapons & accessories'),
-          _Source('Effect', 'Force-hit ignoring AC (stacks with crit)'),
-        ],
-      ),
-      _StatRow(
         label: 'All Damage %',
         icon: Icons.trending_up,
         color: const Color(0xFFff6633),
@@ -835,9 +811,9 @@ class _StatsBody extends StatelessWidget {
         ],
       ),
       _StatRow(
-        label: 'Essence per Kill',
-        icon: Icons.auto_awesome,
-        color: const Color(0xFFaaff88),
+        label: 'Shard Gain %',
+        icon: Icons.diamond,
+        color: const Color(0xFF6699ff),
         total: '+${essPass + essPrest + game.petEssenceGain}%',
         sources: [
           _Source('Passives', '+$essPass%'),

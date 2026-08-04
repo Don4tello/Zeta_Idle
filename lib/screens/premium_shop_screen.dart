@@ -2,15 +2,17 @@
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import '../models/shop_catalog.dart';
+import '../models/palette_skin.dart';
 import '../services/ad_service.dart';
 import '../services/game_state.dart';
 import '../services/iap_service.dart';
 import '../theme/app_theme.dart';
+import '../widgets/battle_sprites.dart';
 import '../widgets/zcoin_icon.dart';
 import 'aura_shop_screen.dart';
 
 // Set false before publishing to stores
-const bool _kCheatsEnabled = true;
+const bool _kCheatsEnabled = false;
 
 class PremiumShopScreen extends StatefulWidget {
   const PremiumShopScreen({super.key});
@@ -21,10 +23,10 @@ class PremiumShopScreen extends StatefulWidget {
 
 class _PremiumShopScreenState extends State<PremiumShopScreen>
     with SingleTickerProviderStateMixin {
-  late final TabController _tabs = TabController(length: 5, vsync: this);
+  late final TabController _tabs = TabController(length: 8, vsync: this);
 
-  static const _tabLabels = ['BUNDLES', 'STARTER', 'SKINS', 'TITLES', 'VIP'];
-  static const _tabIcons  = ['💎', '🎁', '🎨', '👑', '⭐'];
+  static const _tabLabels = ['BUNDLES', 'STARTER', 'SKINS', 'AURAS', 'BOOSTS', 'MISC', 'TITLES', 'VIP'];
+  static const _tabIcons  = ['💎', '🎁', '🎨', '✨', '⚡', '🎒', '👑', '⭐'];
 
   @override
   void dispose() {
@@ -54,10 +56,10 @@ class _PremiumShopScreenState extends State<PremiumShopScreen>
         ],
         bottom: TabBar(
           controller: _tabs,
-          isScrollable: false,
-          tabAlignment: TabAlignment.fill,
-          labelStyle: AppTheme.pixelHeading(fontSize: 9, letterSpacing: 1),
-          labelPadding: const EdgeInsets.symmetric(horizontal: 4),
+          isScrollable: true,
+          tabAlignment: TabAlignment.start,
+          labelStyle: AppTheme.pixelHeading(fontSize: 10, letterSpacing: 1),
+          labelPadding: const EdgeInsets.symmetric(horizontal: 12),
           unselectedLabelColor: AppTheme.textMuted,
           indicatorColor: AppTheme.accentGold,
           tabs: List.generate(_tabLabels.length, (i) =>
@@ -99,7 +101,24 @@ class _PremiumShopScreenState extends State<PremiumShopScreen>
           ),
 
           // ── SKINS ─────────────────────────────────────────────
-          _CosmeticsInlineTab(game: game),
+          ListView(
+            padding: const EdgeInsets.all(14),
+            children: [
+              _PremiumSkinShowcase(game: game),
+              const SizedBox(height: 18),
+              CosmeticsSkinsSection(game: game, scrollable: false),
+              const SizedBox(height: 24),
+            ],
+          ),
+
+          // ── AURAS ─────────────────────────────────────────────
+          CosmeticsAurasSection(game: game),
+
+          // ── BOOSTS & ATTACK EFFECTS ───────────────────────────
+          CosmeticsBoostsSection(game: game),
+
+          // ── MISC (character slots) ────────────────────────────
+          CosmeticsMiscSection(game: game),
 
           // ── TITLES ────────────────────────────────────────────
           ListView(
@@ -145,6 +164,240 @@ class _SectionLabel extends StatelessWidget {
           Text(title, style: AppTheme.pixelHeading(fontSize: 11, letterSpacing: 2, color: AppTheme.accentGold)),
           Text(subtitle, style: const TextStyle(fontSize: 10, color: AppTheme.textMuted)),
         ],
+      ),
+    );
+  }
+}
+
+// ─── Premium class-skin showcase (real-money $4.99 endgame armour) ───────────
+class _PremiumSkinShowcase extends StatelessWidget {
+  const _PremiumSkinShowcase({required this.game});
+  final GameState game;
+
+  @override
+  Widget build(BuildContext context) {
+    final def = premiumSkinForClass(game.hero.heroClass);
+    if (def == null) return const SizedBox.shrink();
+
+    final owned    = game.premiumSkinOwned(def.id);
+    final equipped = game.equippedPremiumSkinId == def.id;
+    final storePrice = game.iapService.priceFor(def.productId);
+    final price = storePrice.isNotEmpty ? storePrice : def.fallbackPrice;
+    final accent = def.accentColor;
+
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            def.previewColor.withValues(alpha: 0.22),
+            const Color(0xFF17140F),
+            accent.withValues(alpha: 0.14),
+          ],
+        ),
+        border: Border.all(color: accent.withValues(alpha: 0.6), width: 1.5),
+        borderRadius: BorderRadius.circular(8),
+        boxShadow: [
+          BoxShadow(color: accent.withValues(alpha: 0.18), blurRadius: 14, spreadRadius: 1),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header ribbon
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [accent.withValues(alpha: 0.30), Colors.transparent],
+              ),
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(7)),
+            ),
+            child: Row(
+              children: [
+                const Text('👑', style: TextStyle(fontSize: 16)),
+                const SizedBox(width: 8),
+                Text('PREMIUM CLASS ARMOR',
+                    style: AppTheme.pixelHeading(
+                        fontSize: 11, letterSpacing: 2, color: accent)),
+              ],
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(14, 6, 14, 14),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Large sprite preview
+                Container(
+                  width: 88,
+                  height: 116,
+                  decoration: BoxDecoration(
+                    color: Colors.black.withValues(alpha: 0.28),
+                    border: Border.all(color: accent.withValues(alpha: 0.45)),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  alignment: Alignment.center,
+                  child: StaticEnemySprite(spriteId: def.id, size: 96),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(def.name,
+                          style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: accent)),
+                      const SizedBox(height: 2),
+                      Text('${game.hero.heroClass.displayName} · Endgame skin',
+                          style: const TextStyle(fontSize: 12, color: AppTheme.textMuted)),
+                      const SizedBox(height: 8),
+                      Text(def.description,
+                          style: const TextStyle(
+                              fontSize: 13, color: AppTheme.textLight, height: 1.35)),
+                      const SizedBox(height: 12),
+                      _buildAction(owned, equipped, price),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          // Bundled bonuses (all ZCoin-skin bonuses combined)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(14, 0, 14, 14),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Icon(Icons.auto_awesome, size: 13, color: accent),
+                    const SizedBox(width: 6),
+                    Text('INCLUDED BONUSES',
+                        style: AppTheme.pixelHeading(
+                            fontSize: 10, letterSpacing: 1.5, color: accent)),
+                    const SizedBox(width: 6),
+                    const Expanded(
+                      child: Text('every shop skin bonus, combined',
+                          style: TextStyle(fontSize: 10, color: AppTheme.textMuted)),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 6,
+                  runSpacing: 6,
+                  children: [
+                    for (final label in premiumSkinBonusLabels())
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: accent.withValues(alpha: 0.12),
+                          border: Border.all(color: accent.withValues(alpha: 0.4)),
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: Text(label,
+                            style: const TextStyle(
+                                fontSize: 12, color: AppTheme.textLight)),
+                      ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAction(bool owned, bool equipped, String price) {
+    final def = premiumSkinForClass(game.hero.heroClass)!;
+    final accent = def.accentColor;
+
+    if (equipped) {
+      return Row(children: [
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          decoration: BoxDecoration(
+            color: accent.withValues(alpha: 0.18),
+            border: Border.all(color: accent),
+            borderRadius: BorderRadius.circular(6),
+          ),
+          child: Text('✓ EQUIPPED',
+              style: AppTheme.pixelHeading(fontSize: 11, color: accent)),
+        ),
+        const SizedBox(width: 8),
+        _PremiumButton(
+          label: 'UNEQUIP',
+          filled: false,
+          color: AppTheme.textMuted,
+          onTap: () => game.equipPremiumSkin(null),
+        ),
+      ]);
+    }
+    if (owned) {
+      return _PremiumButton(
+        label: 'EQUIP',
+        filled: true,
+        color: accent,
+        onTap: () => game.equipPremiumSkin(def.id),
+      );
+    }
+    final iap = game.iapService;
+    final storeReady = iap.storeAvailable && iap.priceFor(def.productId).isNotEmpty;
+    return _PremiumButton(
+      label: 'UNLOCK  ·  $price',
+      filled: true,
+      color: const Color(0xFFffcc44),
+      onTap: () {
+        if (storeReady) {
+          // Real purchase — fulfilled asynchronously via the purchase stream.
+          iap.buyNonConsumable(def.productId);
+        } else if (_kCheatsEnabled) {
+          // Store not configured yet (e.g. sideloaded test build): unlock now so
+          // the skin can be tested. Disabled once _kCheatsEnabled is false.
+          game.unlockPremiumSkin(def.id);
+        }
+      },
+    );
+  }
+}
+
+class _PremiumButton extends StatelessWidget {
+  const _PremiumButton({
+    required this.label,
+    required this.filled,
+    required this.color,
+    required this.onTap,
+  });
+  final String label;
+  final bool filled;
+  final Color color;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      behavior: HitTestBehavior.opaque,
+      child: Container(
+        constraints: const BoxConstraints(minHeight: 48),
+        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+        decoration: BoxDecoration(
+          color: filled ? color.withValues(alpha: 0.9) : Colors.transparent,
+          border: Border.all(color: color, width: 1.5),
+          borderRadius: BorderRadius.circular(6),
+        ),
+        alignment: Alignment.center,
+        child: Text(label,
+            style: AppTheme.pixelHeading(
+                fontSize: 12,
+                letterSpacing: 1,
+                color: filled ? const Color(0xFF17140F) : color)),
       ),
     );
   }
@@ -551,7 +804,7 @@ class _AdRewardDialog extends StatelessWidget {
           borderRadius: BorderRadius.circular(8),
         ),
         child: Column(mainAxisSize: MainAxisSize.min, children: [
-          const Text('🪙', style: TextStyle(fontSize: 48)),
+          const ZCoinIcon(size: 48),
           const SizedBox(height: 12),
           Text('REWARD EARNED',
               style: AppTheme.pixelHeading(
@@ -627,79 +880,6 @@ class _RestorePurchasesButtonState extends State<_RestorePurchasesButton> {
             : const Text('Restore Purchases',
                 style: TextStyle(fontSize: 11, color: AppTheme.textMuted,
                     decoration: TextDecoration.underline)),
-      ),
-    );
-  }
-}
-
-// ─── Cosmetics inline tab (replaces the old "browse" card) ───────────────────
-
-class _CosmeticsInlineTab extends StatelessWidget {
-  const _CosmeticsInlineTab({required this.game});
-  final GameState game;
-
-  static const _sections = [
-    ('✨', 'AURAS',   'Equip a battle aura for your hero',               Color(0xFF66ccff)),
-    ('🎨', 'SKINS',   'Palette skins that recolour your hero sprite',    Color(0xFFcc88ff)),
-    ('🐾', 'PETS',    'Battle companions with passive bonuses',           Color(0xFF66dd88)),
-    ('⚡', 'BOOSTS',  'Waystones, attack effects & character slots',      Color(0xFFffcc44)),
-  ];
-
-  @override
-  Widget build(BuildContext context) {
-    return ListView(
-      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 14),
-      children: [
-        _cosmeticSection(context, 0, CosmeticsAurasSection(game: game, scrollable: false)),
-        _cosmeticSection(context, 1, CosmeticsSkinsSection(game: game, scrollable: false)),
-        _cosmeticSection(context, 2, CosmeticsPetsSection(game: game, scrollable: false)),
-        _cosmeticSection(context, 3, CosmeticsBoostsSection(game: game, scrollable: false)),
-        const SizedBox(height: 24),
-      ],
-    );
-  }
-
-  Widget _cosmeticSection(BuildContext context, int idx, Widget content) {
-    final (icon, label, sublabel, color) = _sections[idx];
-    return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      decoration: BoxDecoration(
-        color: const Color(0xFF1C1916),
-        border: Border.all(color: color.withValues(alpha: 0.3)),
-        borderRadius: BorderRadius.circular(6),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Section header
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [color.withValues(alpha: 0.18), Colors.transparent],
-                begin: Alignment.centerLeft,
-                end: Alignment.centerRight,
-              ),
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(5)),
-              border: Border(bottom: BorderSide(color: color.withValues(alpha: 0.25))),
-            ),
-            child: Row(children: [
-              Text(icon, style: const TextStyle(fontSize: 18)),
-              const SizedBox(width: 10),
-              Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text(label,
-                    style: AppTheme.pixelHeading(fontSize: 12, letterSpacing: 2, color: color)),
-                Text(sublabel,
-                    style: const TextStyle(fontSize: 10, color: AppTheme.textMuted)),
-              ]),
-            ]),
-          ),
-          // Section content (no own scroll view)
-          Padding(
-            padding: const EdgeInsets.all(12),
-            child: content,
-          ),
-        ],
       ),
     );
   }
@@ -784,12 +964,6 @@ class _DebugGrantPanelState extends State<_DebugGrantPanel> {
           ('+50',  () => g.debugGrantEchoes(50)),
           ('+200', () => g.debugGrantEchoes(200)),
           ('+500', () => g.debugGrantEchoes(500)),
-        ]),
-
-        _section('ESSENCE  (${g.essence})', const Color(0xFF88ffcc), [
-          ('+50',  () => g.debugGrantEssence(50)),
-          ('+200', () => g.debugGrantEssence(200)),
-          ('+500', () => g.debugGrantEssence(500)),
         ]),
 
         _section('MYTHRIL  (${g.mythril})', const Color(0xFFffaa44), [

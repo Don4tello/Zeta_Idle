@@ -1,5 +1,6 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
+import 'damage_type.dart';
 
 // ---------------------------------------------------------------------------
 // ArtifactBaseType — 7 item categories, each with a unique painted icon
@@ -35,12 +36,31 @@ extension ArtifactBaseTypeExt on ArtifactBaseType {
     ArtifactBaseType.tapestry: 3,
     ArtifactBaseType.charm:    5,
     ArtifactBaseType.gemstone: 5,
-    ArtifactBaseType.cross:    0,
+    ArtifactBaseType.cross:    5,
   };
 
-  String get imagePath => 'assets/images/artifact_${name}_1.png';
+  // Cross uses hand-supplied artwork with mixed extensions (cross_1.png,
+  // cross_2.jpg, …). Rarity is spread across the set for visible variety.
+  static const _crossFiles = <String>[
+    'assets/images/cross_1.png',
+    'assets/images/cross_2.jpg',
+    'assets/images/cross_3.png',
+    'assets/images/cross_4.jpg',
+    'assets/images/cross_5.png',
+  ];
+
+  String get imagePath => this == ArtifactBaseType.cross
+      ? _crossFiles.first
+      : 'assets/images/artifact_${name}_1.png';
 
   String imagePathForRarity(ArtifactRarity rarity) {
+    if (this == ArtifactBaseType.cross) {
+      return switch (rarity) {
+        ArtifactRarity.common => _crossFiles[0],
+        ArtifactRarity.magic  => _crossFiles[2],
+        ArtifactRarity.rare   => _crossFiles[4],
+      };
+    }
     final count = _imageCount[this] ?? 0;
     if (count == 0) return imagePath; // will trigger errorBuilder fallback
     final idx = switch (rarity) {
@@ -208,6 +228,247 @@ class ArtifactAffix {
 }
 
 // ---------------------------------------------------------------------------
+// ArtifactSet — 10 three-piece sets. Equipping 2 pieces grants a partial
+// bonus; equipping all 3 grants the partial bonus PLUS the full-set bonus.
+// Set pieces are always rendered green and never roll affixes.
+// ---------------------------------------------------------------------------
+
+// Signature green shared by every set piece + set UI.
+const Color kArtifactSetColor = Color(0xFF3fd463);
+
+class ArtifactSetBonus {
+  const ArtifactSetBonus({
+    this.dmgPct     = 0,   // increased damage %  (all types)
+    this.acBonus    = 0,
+    this.hpPct      = 0,
+    this.shardPct   = 0,
+    this.goldPct    = 0,
+    this.xpPct      = 0,
+    this.elemType,         // if set, elemDmgPct applies only to this type
+    this.elemDmgPct = 0,
+  });
+  final int dmgPct, acBonus, hpPct, shardPct, goldPct, xpPct, elemDmgPct;
+  final DamageType? elemType;
+
+  /// Human-readable "+X% damage  •  +Y% HP …" summary.
+  String get summary {
+    final parts = <String>[
+      if (dmgPct     != 0) '+$dmgPct% damage',
+      if (elemType != null && elemDmgPct != 0)
+        '+$elemDmgPct% ${elemType!.label} damage',
+      if (acBonus    != 0) '+$acBonus AC',
+      if (hpPct      != 0) '+$hpPct% HP',
+      if (shardPct   != 0) '+$shardPct% shards',
+      if (goldPct    != 0) '+$goldPct% gold',
+      if (xpPct      != 0) '+$xpPct% XP',
+    ];
+    return parts.isEmpty ? '—' : parts.join('  •  ');
+  }
+}
+
+class ArtifactSetPieceDef {
+  const ArtifactSetPieceDef({required this.type, required this.name});
+  final ArtifactBaseType type;
+  final String name;
+}
+
+class ArtifactSet {
+  const ArtifactSet({
+    required this.id,
+    required this.name,
+    required this.pieces,       // exactly 3
+    required this.twoPieceBonus,
+    required this.threePieceBonus,
+  });
+
+  final String id;
+  final String name;
+  final List<ArtifactSetPieceDef> pieces;
+  final ArtifactSetBonus twoPieceBonus;
+  final ArtifactSetBonus threePieceBonus;
+
+  static const all = <ArtifactSet>[
+    // ── Balanced offence / survivability ──────────────────────────────
+    ArtifactSet(
+      id: 'set_ancients', name: 'Relics of the Ancients',
+      pieces: [
+        ArtifactSetPieceDef(type: ArtifactBaseType.tapestry, name: 'Ancient Tapestry'),
+        ArtifactSetPieceDef(type: ArtifactBaseType.cross,    name: 'Ancient Cross'),
+        ArtifactSetPieceDef(type: ArtifactBaseType.gemstone, name: 'Ancient Gemstone'),
+      ],
+      twoPieceBonus:   ArtifactSetBonus(dmgPct: 8, hpPct: 8),
+      threePieceBonus: ArtifactSetBonus(dmgPct: 15, hpPct: 12, acBonus: 2),
+    ),
+    // ── Pure damage ──────────────────────────────────────────────────
+    ArtifactSet(
+      id: 'set_warlord', name: "Warlord's Panoply",
+      pieces: [
+        ArtifactSetPieceDef(type: ArtifactBaseType.sword, name: "Warlord's Blade"),
+        ArtifactSetPieceDef(type: ArtifactBaseType.idol,  name: "Warlord's Idol"),
+        ArtifactSetPieceDef(type: ArtifactBaseType.charm, name: "Warlord's Charm"),
+      ],
+      twoPieceBonus:   ArtifactSetBonus(dmgPct: 15),
+      threePieceBonus: ArtifactSetBonus(dmgPct: 30),
+    ),
+    // ── XP / shards ──────────────────────────────────────────────────
+    ArtifactSet(
+      id: 'set_scholar', name: "Scholar's Legacy",
+      pieces: [
+        ArtifactSetPieceDef(type: ArtifactBaseType.book,     name: "Scholar's Tome"),
+        ArtifactSetPieceDef(type: ArtifactBaseType.gemstone, name: "Scholar's Lens"),
+        ArtifactSetPieceDef(type: ArtifactBaseType.charm,    name: "Scholar's Talisman"),
+      ],
+      twoPieceBonus:   ArtifactSetBonus(xpPct: 15, shardPct: 10),
+      threePieceBonus: ArtifactSetBonus(xpPct: 25, shardPct: 18),
+    ),
+    // ── Heavy armour (lots of AC) ────────────────────────────────────
+    ArtifactSet(
+      id: 'set_guardian', name: "Guardian's Aegis",
+      pieces: [
+        ArtifactSetPieceDef(type: ArtifactBaseType.cross,    name: 'Guardian Cross'),
+        ArtifactSetPieceDef(type: ArtifactBaseType.tapestry, name: 'Guardian Banner'),
+        ArtifactSetPieceDef(type: ArtifactBaseType.idol,     name: 'Guardian Idol'),
+      ],
+      twoPieceBonus:   ArtifactSetBonus(acBonus: 8, hpPct: 6),
+      threePieceBonus: ArtifactSetBonus(acBonus: 16, hpPct: 12),
+    ),
+    // ── Gold / shards ────────────────────────────────────────────────
+    ArtifactSet(
+      id: 'set_fortune', name: "Fortune's Favor",
+      pieces: [
+        ArtifactSetPieceDef(type: ArtifactBaseType.gemstone, name: 'Fortune Gemstone'),
+        ArtifactSetPieceDef(type: ArtifactBaseType.charm,    name: 'Fortune Charm'),
+        ArtifactSetPieceDef(type: ArtifactBaseType.book,     name: 'Fortune Ledger'),
+      ],
+      twoPieceBonus:   ArtifactSetBonus(goldPct: 15, shardPct: 10),
+      threePieceBonus: ArtifactSetBonus(goldPct: 30, shardPct: 18),
+    ),
+    // ── Damage + survivability ───────────────────────────────────────
+    ArtifactSet(
+      id: 'set_bloodforge', name: 'Bloodforge Regalia',
+      pieces: [
+        ArtifactSetPieceDef(type: ArtifactBaseType.sword,    name: 'Bloodforge Sword'),
+        ArtifactSetPieceDef(type: ArtifactBaseType.cross,    name: 'Bloodforge Sigil'),
+        ArtifactSetPieceDef(type: ArtifactBaseType.gemstone, name: 'Bloodforge Ruby'),
+      ],
+      twoPieceBonus:   ArtifactSetBonus(dmgPct: 10, hpPct: 8),
+      threePieceBonus: ArtifactSetBonus(dmgPct: 20, hpPct: 15),
+    ),
+    // ── Extreme health ───────────────────────────────────────────────
+    ArtifactSet(
+      id: 'set_mystic', name: 'Mystic Convergence',
+      pieces: [
+        ArtifactSetPieceDef(type: ArtifactBaseType.idol,     name: 'Mystic Idol'),
+        ArtifactSetPieceDef(type: ArtifactBaseType.book,     name: 'Mystic Codex'),
+        ArtifactSetPieceDef(type: ArtifactBaseType.tapestry, name: 'Mystic Weave'),
+      ],
+      twoPieceBonus:   ArtifactSetBonus(hpPct: 25),
+      threePieceBonus: ArtifactSetBonus(hpPct: 50, dmgPct: 5),
+    ),
+    // ── AC + damage bruiser ──────────────────────────────────────────
+    ArtifactSet(
+      id: 'set_ironbound', name: 'Ironbound Covenant',
+      pieces: [
+        ArtifactSetPieceDef(type: ArtifactBaseType.sword,    name: 'Ironbound Edge'),
+        ArtifactSetPieceDef(type: ArtifactBaseType.tapestry, name: 'Ironbound Standard'),
+        ArtifactSetPieceDef(type: ArtifactBaseType.cross,    name: 'Ironbound Seal'),
+      ],
+      twoPieceBonus:   ArtifactSetBonus(acBonus: 6, dmgPct: 8),
+      threePieceBonus: ArtifactSetBonus(acBonus: 12, dmgPct: 15),
+    ),
+    // ── Jack-of-all-trades ───────────────────────────────────────────
+    ArtifactSet(
+      id: 'set_starlit', name: 'Starlit Reliquary',
+      pieces: [
+        ArtifactSetPieceDef(type: ArtifactBaseType.gemstone, name: 'Starlit Gem'),
+        ArtifactSetPieceDef(type: ArtifactBaseType.idol,     name: 'Starlit Idol'),
+        ArtifactSetPieceDef(type: ArtifactBaseType.charm,    name: 'Starlit Charm'),
+      ],
+      twoPieceBonus:   ArtifactSetBonus(dmgPct: 5, acBonus: 3, hpPct: 6, goldPct: 6),
+      threePieceBonus: ArtifactSetBonus(dmgPct: 10, acBonus: 5, hpPct: 12, goldPct: 10, xpPct: 10),
+    ),
+    // ── Extreme health + XP ──────────────────────────────────────────
+    ArtifactSet(
+      id: 'set_vigil', name: 'Eternal Vigil',
+      pieces: [
+        ArtifactSetPieceDef(type: ArtifactBaseType.cross, name: 'Vigil Cross'),
+        ArtifactSetPieceDef(type: ArtifactBaseType.book,  name: 'Vigil Journal'),
+        ArtifactSetPieceDef(type: ArtifactBaseType.sword, name: 'Vigil Sword'),
+      ],
+      twoPieceBonus:   ArtifactSetBonus(hpPct: 20, xpPct: 10),
+      threePieceBonus: ArtifactSetBonus(hpPct: 38, xpPct: 18),
+    ),
+
+    // ── Elemental sets — +25% at 2 pieces, +50% at 3 pieces ──────────
+    ArtifactSet(
+      id: 'set_warblade', name: 'Warblade Panoply',
+      pieces: [
+        ArtifactSetPieceDef(type: ArtifactBaseType.sword,    name: 'Warblade Edge'),
+        ArtifactSetPieceDef(type: ArtifactBaseType.cross,    name: 'Warblade Crest'),
+        ArtifactSetPieceDef(type: ArtifactBaseType.tapestry, name: 'Warblade Banner'),
+      ],
+      twoPieceBonus:   ArtifactSetBonus(elemType: DamageType.physical, elemDmgPct: 25),
+      threePieceBonus: ArtifactSetBonus(elemType: DamageType.physical, elemDmgPct: 50),
+    ),
+    ArtifactSet(
+      id: 'set_cinderforge', name: 'Cinderforge Vestments',
+      pieces: [
+        ArtifactSetPieceDef(type: ArtifactBaseType.sword,    name: 'Cinderforge Brand'),
+        ArtifactSetPieceDef(type: ArtifactBaseType.idol,     name: 'Cinderforge Idol'),
+        ArtifactSetPieceDef(type: ArtifactBaseType.tapestry, name: 'Cinderforge Shroud'),
+      ],
+      twoPieceBonus:   ArtifactSetBonus(elemType: DamageType.fire, elemDmgPct: 25),
+      threePieceBonus: ArtifactSetBonus(elemType: DamageType.fire, elemDmgPct: 50),
+    ),
+    ArtifactSet(
+      id: 'set_frostwarden', name: 'Frostwarden Relics',
+      pieces: [
+        ArtifactSetPieceDef(type: ArtifactBaseType.cross,    name: 'Frostwarden Cross'),
+        ArtifactSetPieceDef(type: ArtifactBaseType.gemstone, name: 'Frostwarden Shard'),
+        ArtifactSetPieceDef(type: ArtifactBaseType.charm,    name: 'Frostwarden Charm'),
+      ],
+      twoPieceBonus:   ArtifactSetBonus(elemType: DamageType.cold, elemDmgPct: 25),
+      threePieceBonus: ArtifactSetBonus(elemType: DamageType.cold, elemDmgPct: 50),
+    ),
+    ArtifactSet(
+      id: 'set_stormcaller', name: 'Stormcaller Regalia',
+      pieces: [
+        ArtifactSetPieceDef(type: ArtifactBaseType.book,     name: 'Stormcaller Codex'),
+        ArtifactSetPieceDef(type: ArtifactBaseType.sword,    name: 'Stormcaller Fang'),
+        ArtifactSetPieceDef(type: ArtifactBaseType.gemstone, name: 'Stormcaller Prism'),
+      ],
+      twoPieceBonus:   ArtifactSetBonus(elemType: DamageType.lightning, elemDmgPct: 25),
+      threePieceBonus: ArtifactSetBonus(elemType: DamageType.lightning, elemDmgPct: 50),
+    ),
+    ArtifactSet(
+      id: 'set_venomshroud', name: 'Venomshroud Vestments',
+      pieces: [
+        ArtifactSetPieceDef(type: ArtifactBaseType.tapestry, name: 'Venomshroud Veil'),
+        ArtifactSetPieceDef(type: ArtifactBaseType.charm,    name: 'Venomshroud Fetish'),
+        ArtifactSetPieceDef(type: ArtifactBaseType.idol,     name: 'Venomshroud Idol'),
+      ],
+      twoPieceBonus:   ArtifactSetBonus(elemType: DamageType.poison, elemDmgPct: 25),
+      threePieceBonus: ArtifactSetBonus(elemType: DamageType.poison, elemDmgPct: 50),
+    ),
+    ArtifactSet(
+      id: 'set_voidtouched', name: 'Voidtouched Relics',
+      pieces: [
+        ArtifactSetPieceDef(type: ArtifactBaseType.gemstone, name: 'Voidtouched Gem'),
+        ArtifactSetPieceDef(type: ArtifactBaseType.cross,    name: 'Voidtouched Cross'),
+        ArtifactSetPieceDef(type: ArtifactBaseType.book,     name: 'Voidtouched Grimoire'),
+      ],
+      twoPieceBonus:   ArtifactSetBonus(elemType: DamageType.void_, elemDmgPct: 25),
+      threePieceBonus: ArtifactSetBonus(elemType: DamageType.void_, elemDmgPct: 50),
+    ),
+  ];
+
+  static ArtifactSet? byId(String? id) {
+    if (id == null) return null;
+    return all.where((s) => s.id == id).firstOrNull;
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Artifact — generated instance
 // ---------------------------------------------------------------------------
 
@@ -218,6 +479,8 @@ class Artifact {
     this.prefix,
     this.suffix,
     required this.dropLevel,
+    this.setId,
+    this.setPieceIndex = 0,
   });
 
   final String         uid;
@@ -225,8 +488,13 @@ class Artifact {
   final ArtifactAffix? prefix;
   final ArtifactAffix? suffix;
   final int            dropLevel;
+  final String?        setId;        // non-null → belongs to an ArtifactSet
+  final int            setPieceIndex; // 0..2, which piece of the set
 
   ArtifactBaseType get type => base.type;
+
+  bool get isSetPiece => setId != null;
+  ArtifactSet? get set => ArtifactSet.byId(setId);
 
   ArtifactRarity get rarity {
     final count = (prefix != null ? 1 : 0) + (suffix != null ? 1 : 0);
@@ -237,7 +505,16 @@ class Artifact {
     };
   }
 
+  /// Display colour — set pieces are green, otherwise rarity colour.
+  Color get displayColor => isSetPiece ? kArtifactSetColor : rarity.color;
+
   String get name {
+    if (isSetPiece) {
+      final s = set;
+      if (s != null && setPieceIndex >= 0 && setPieceIndex < s.pieces.length) {
+        return s.pieces[setPieceIndex].name;
+      }
+    }
     final p = prefix?.name;
     final s = suffix?.name;
     if (p != null && s != null) return '$p ${base.name} $s';
@@ -246,7 +523,8 @@ class Artifact {
     return base.name;
   }
 
-  String get flavorText => base.flavorText;
+  String get flavorText =>
+      isSetPiece ? 'Part of the ${set?.name ?? 'set'}.' : base.flavorText;
 
   double get _scale => 1.0 + dropLevel * 0.04;
 
@@ -265,6 +543,8 @@ class Artifact {
     'prefixId': prefix?.id,
     'suffixId': suffix?.id,
     'dropLv':   dropLevel,
+    if (setId != null) 'setId': setId,
+    if (setId != null) 'setPiece': setPieceIndex,
   };
 
   static Artifact fromJson(Map<String, dynamic> json) {
@@ -276,6 +556,8 @@ class Artifact {
       prefix:    ArtifactAffix.byId(json['prefixId'] as String?),
       suffix:    ArtifactAffix.byId(json['suffixId'] as String?),
       dropLevel: (json['dropLv'] as num).toInt(),
+      setId:     json['setId'] as String?,
+      setPieceIndex: (json['setPiece'] as num?)?.toInt() ?? 0,
     );
   }
 }
@@ -287,7 +569,32 @@ class Artifact {
 class ArtifactGenerator {
   ArtifactGenerator._();
 
+  // Chance for any drop to instead be a green set piece (scales a little with
+  // depth so late-game runs assemble sets faster).
+  static double _setPieceChance(int lv) {
+    if (lv >= 31) return 0.22;
+    if (lv >= 16) return 0.18;
+    if (lv >= 6)  return 0.14;
+    return 0.10;
+  }
+
+  static Artifact rollSetPiece({required int dropLevel, required Random rng}) {
+    final set = ArtifactSet.all[rng.nextInt(ArtifactSet.all.length)];
+    final idx = rng.nextInt(set.pieces.length);
+    final type = set.pieces[idx].type;
+    final base = ArtifactBase.all.firstWhere((b) => b.type == type);
+    final uid  = '${DateTime.now().millisecondsSinceEpoch}_${rng.nextInt(999999)}';
+    return Artifact(
+      uid: uid, base: base, dropLevel: dropLevel.clamp(1, 50),
+      setId: set.id, setPieceIndex: idx,
+    );
+  }
+
   static Artifact roll({required int dropLevel, required Random rng}) {
+    final lv0 = dropLevel.clamp(1, 50);
+    if (rng.nextDouble() < _setPieceChance(lv0)) {
+      return rollSetPiece(dropLevel: dropLevel, rng: rng);
+    }
     final base = ArtifactBase.all[rng.nextInt(ArtifactBase.all.length)];
     final uid  = '${DateTime.now().millisecondsSinceEpoch}_${rng.nextInt(999999)}';
     final lv   = dropLevel.clamp(1, 50);

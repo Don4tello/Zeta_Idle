@@ -1,13 +1,17 @@
-import 'dart:async';
+﻿import 'dart:async';
 import 'dart:math';
 import 'package:flutter/material.dart';
+import '../models/damage_type.dart';
 import '../models/dungeon.dart';
+import '../models/equipment.dart';
 import '../models/hero_ability.dart';
+import '../models/passive_tree.dart';
 import '../screens/main_shell.dart';
 import '../services/game_state.dart';
 import '../theme/app_theme.dart';
 import '../widgets/arena_ability_effect.dart';
 import '../widgets/battle_arena.dart';
+import '../widgets/battle_sprites.dart';
 import '../widgets/battle_split_panel.dart';
 import '../widgets/tier_selector.dart';
 import '../widgets/pet_battle_sprite.dart';
@@ -65,7 +69,9 @@ class _DungeonScreenState extends State<DungeonScreen> {
                                game.startDungeon(tier: _selectedTier);
                              }),
                            ),
-      _ when run.currentRoom == null || !run.currentRoom!.resolved
+      _ when run.currentRoom == null
+                        => _RoomChoiceView(run: run, game: game, onChosen: _onDoorChosen),
+      _ when !run.currentRoom!.resolved
                         => _RoomDetail(run: run, game: game, onResolved: _onRoomResolved),
       _                 => _RoomResult(run: run, game: game, onNext: _afterRoom),
     };
@@ -76,7 +82,7 @@ class _DungeonScreenState extends State<DungeonScreen> {
         backgroundColor: const Color(0xFF2A2623),
         title: run == null
             ? Text('THE DUNGEON', style: AppTheme.pixelHeading(fontSize: 14, letterSpacing: 2))
-            : Text('T${run.tier}  FL.${run.floor}  �  THE DUNGEON',
+            : Text('T${run.tier}  FL.${run.floor}  —  THE DUNGEON',
                 style: AppTheme.pixelHeading(fontSize: 12, letterSpacing: 1)),
         leading: run != null && !run.isOver
             ? IconButton(
@@ -94,6 +100,11 @@ class _DungeonScreenState extends State<DungeonScreen> {
     _autoTimer?.cancel();
     _autoRun = false;
     setState(() => GameStateProvider.of(context).abandonDungeon());
+  }
+
+  void _onDoorChosen() {
+    setState(() {});
+    if (_autoRun) _scheduleAutoAction();
   }
 
   void _onRoomResolved() {
@@ -146,7 +157,36 @@ class _DungeonScreenState extends State<DungeonScreen> {
     }
 
     final room = run.currentRoom;
-    if (room == null) return;
+    if (room == null) {
+      if (run.roomChoices.isEmpty) return;
+      // Auto-run picks a door: rest when hurt, avoid traps, favour loot.
+      _autoTimer = Timer(const Duration(milliseconds: 700), () {
+        if (!mounted || !_autoRun) return;
+        final g = GameStateProvider.of(context);
+        final r = g.activeDungeon;
+        if (r == null || r.currentRoom != null || r.roomChoices.isEmpty) return;
+        final hurt = r.heroHp < r.heroMaxHp * 0.5;
+        int score(DungeonRoom d) => switch (d.type) {
+          DungeonRoomType.restSite    => hurt ? 100 : 20,
+          DungeonRoomType.treasure    => 60,
+          DungeonRoomType.shrine      => 50,
+          DungeonRoomType.lockedChest => 40,
+          DungeonRoomType.combat      => 35,
+          DungeonRoomType.elite       => 30,
+          DungeonRoomType.ambush      => 25,
+          DungeonRoomType.trap        => 10,
+          DungeonRoomType.boss        => 90,
+        };
+        var pick = r.roomChoices.first;
+        for (final d in r.roomChoices) {
+          if (score(d) > score(pick)) pick = d;
+        }
+        g.chooseDungeonRoom(pick);
+        setState(() {});
+        _scheduleAutoAction();
+      });
+      return;
+    }
 
     const combatTypes = {
       DungeonRoomType.combat, DungeonRoomType.elite,
@@ -156,6 +196,14 @@ class _DungeonScreenState extends State<DungeonScreen> {
     if (room.resolved) {
       _autoTimer = Timer(const Duration(milliseconds: 700), () {
         if (!mounted || !_autoRun) return;
+        final g = GameStateProvider.of(context);
+        final r = g.activeDungeon;
+        if (r != null && r.relicChoices.isNotEmpty) {
+          g.chooseDungeonRelic(r.relicChoices.first);
+          setState(() {});
+          _scheduleAutoAction();
+          return;
+        }
         _afterRoom();
       });
     } else if (!combatTypes.contains(room.type)) {
@@ -262,8 +310,9 @@ class _DungeonLobby extends StatelessWidget {
           TutorialTip(
             tutorialKey: 'dungeon',
             game: game,
-            text: 'Rooms are chosen for you automatically. Each run starts with 3 consumables. '
-                'Loot is yours immediately � even if your hero falls.',
+            text: 'Choose one of two doors each floor. Slain enemies drop Bones — spend them '
+                'at the Traveling Merchant for run-long buffs. Loot is yours immediately, '
+                'even if your hero falls.',
           ),
           const SizedBox(height: 16),
           // Tier selector
@@ -284,7 +333,7 @@ class _DungeonLobby extends StatelessWidget {
               borderRadius: BorderRadius.circular(4),
             ),
             child: Row(children: [
-              const Text('?', style: TextStyle(fontSize: 14)),
+              const Text('✦', style: TextStyle(fontSize: 14)),
               const SizedBox(width: 8),
               Expanded(child: Text(
                 'AFFIX: ${game.dungeonAffixLabel}',
@@ -306,7 +355,7 @@ class _DungeonLobby extends StatelessWidget {
                     borderRadius: BorderRadius.circular(3),
                   ),
                   child: Text(
-                    '?? 5 ??',
+                    '↻ 5 ◆',
                     style: TextStyle(
                       fontSize: 9,
                       color: game.canRerollDungeonAffix
@@ -408,15 +457,15 @@ class _InfoCard extends StatelessWidget {
           Text('WHAT TO EXPECT', style: AppTheme.pixelHeading(fontSize: 10, letterSpacing: 2, color: AppTheme.textMuted)),
           const SizedBox(height: 10),
           for (final row in [
-            ('?', 'Combat � fight for gold'),
-            ('??', 'Elite � tougher foe, guaranteed item drop'),
-            ('??', 'Ambush � enemy strikes first, high gold'),
-            ('??', 'Rest Site � recover 20% HP'),
-            ('??', 'Treasure � claim gold & shards'),
-            ('??', 'Shrine � choose a run-long blessing'),
-            ('??', 'Locked Chest � spend shards for a rare item'),
-            ('?', 'Trap � unavoidable damage'),
-            ('?', 'Boss (every 5th floor) � high risk, high reward'),
+            ('⚔', 'Combat — fight for gold'),
+            ('★', 'Elite — tougher foe, guaranteed item drop'),
+            ('‼', 'Ambush — enemy strikes first, high gold'),
+            ('⊕', 'Rest Site — recover 20% HP'),
+            ('✦', 'Treasure — claim gold & shards'),
+            ('✧', 'Shrine — choose a run-long blessing'),
+            ('◆', 'Locked Chest — spend shards for a rare item'),
+            ('✸', 'Trap — unavoidable damage'),
+            ('☠', 'Boss (every 5th floor) — high risk, high reward'),
           ])
             Padding(
               padding: const EdgeInsets.only(bottom: 6),
@@ -427,7 +476,7 @@ class _InfoCard extends StatelessWidget {
               ]),
             ),
           const SizedBox(height: 6),
-          const Text('You start each run with 3 consumables.',
+          const Text('Slain enemies drop Bones — spend them at the Traveling Merchant.',
               style: TextStyle(fontSize: 12, color: AppTheme.textMuted, fontStyle: FontStyle.italic)),
         ],
       ),
@@ -440,9 +489,9 @@ class _LootPreviewCard extends StatelessWidget {
   final int deepestFloor;
 
   static String _itemTierLabel(int floor) {
-    if (floor >= 20) return 'Rare�Legendary';
-    if (floor >= 10) return 'Uncommon�Rare';
-    if (floor >= 5)  return 'Common�Uncommon';
+    if (floor >= 20) return 'Rare–Legendary';
+    if (floor >= 10) return 'Uncommon–Rare';
+    if (floor >= 5)  return 'Common–Uncommon';
     return 'Common';
   }
 
@@ -464,25 +513,19 @@ class _LootPreviewCard extends StatelessWidget {
         children: [
           Text('EXPECTED LOOT', style: AppTheme.pixelHeading(fontSize: 10, letterSpacing: 2, color: AppTheme.textMuted)),
           const SizedBox(height: 10),
-          Row(children: [
-            const Text('?', style: TextStyle(fontSize: 14)),
-            const SizedBox(width: 8),
-            Expanded(child: Text('Mythril: ~$mythrilAt5 (floor 5)  ?  ~$mythrilAt10 (floor 10)',
-                style: const TextStyle(fontSize: 12, color: AppTheme.textLight))),
-          ]),
+          _lootRow('💰', 'Gold', 'From combat, treasure rooms & rest supplies'),
           const SizedBox(height: 6),
-          Row(children: [
-            const Text('??', style: TextStyle(fontSize: 14)),
-            const SizedBox(width: 8),
-            Expanded(child: Text('Item tier at your depth: $tier',
-                style: const TextStyle(fontSize: 12, color: AppTheme.textLight))),
-          ]),
+          _lootRow('◆', 'Shards', 'Treasure rooms & chests along the run'),
+          const SizedBox(height: 6),
+          _lootRow('⚔', 'Items', 'Item tier at your depth: $tier  (elites & bosses drop better)'),
+          const SizedBox(height: 6),
+          _lootRow('✦', 'Mythril', '~$mythrilAt5 at floor 5  •  ~$mythrilAt10 at floor 10'),
           if (deepestFloor > 0) ...[
             const SizedBox(height: 6),
             Row(children: [
-              const Text('??', style: TextStyle(fontSize: 14)),
+              const Text('★', style: TextStyle(fontSize: 14)),
               const SizedBox(width: 8),
-              Text('Your best: floor $deepestFloor  ?  ~${(deepestFloor / 2).floor().clamp(0, 10)} mythril',
+              Text('Your best: floor $deepestFloor  •  ~${(deepestFloor / 2).floor().clamp(0, 10)} mythril',
                   style: const TextStyle(fontSize: 12, color: Color(0xFFFFCC44))),
             ]),
           ],
@@ -490,6 +533,24 @@ class _LootPreviewCard extends StatelessWidget {
       ),
     );
   }
+
+  Widget _lootRow(String icon, String label, String detail) => Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(width: 20, child: Text(icon, style: const TextStyle(fontSize: 14))),
+          const SizedBox(width: 4),
+          SizedBox(
+            width: 58,
+            child: Text(label,
+                style: const TextStyle(
+                    fontSize: 12, color: Colors.white, fontWeight: FontWeight.w600)),
+          ),
+          Expanded(
+            child: Text(detail,
+                style: const TextStyle(fontSize: 12, color: AppTheme.textLight)),
+          ),
+        ],
+      );
 }
 
 // Tier selector is now shared via TierSelector widget
@@ -564,7 +625,7 @@ class _DungeonEnterSection extends StatelessWidget {
                 ZCoinIcon(size: 13, animate: false),
                 const SizedBox(width: 5),
                 Text(
-                  '${GameState.kDungeonExtraCost} ZCoins � Buy 1 extra attempt',
+                  '${GameState.kDungeonExtraCost} ZCoins — Buy 1 extra attempt',
                   style: TextStyle(fontSize: 12, color: canAfford ? const Color(0xFF88ccff) : Colors.white24),
                 ),
               ]),
@@ -579,8 +640,9 @@ class _DungeonEnterSection extends StatelessWidget {
 // -- Hero HP bar (shared) ------------------------------------------------------
 
 class _HeroBar extends StatelessWidget {
-  const _HeroBar({required this.run});
+  const _HeroBar({required this.run, this.game});
   final DungeonRun run;
+  final GameState? game;
 
   @override
   Widget build(BuildContext context) {
@@ -601,7 +663,23 @@ class _HeroBar extends StatelessWidget {
             child: Column(
               children: [
                 Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-                  Text('HP', style: AppTheme.pixelHeading(fontSize: 10, letterSpacing: 2, color: hpColor)),
+                  Row(children: [
+                    if (game != null) ...[
+                      SizedBox(
+                        width: 26, height: 26,
+                        child: FittedBox(
+                          fit: BoxFit.contain,
+                          child: BattleSprite(
+                            spriteId: game!.hero.spriteId,
+                            gender: game!.hero.gender,
+                            race: game!.heroRace,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                    ],
+                    Text('HP', style: AppTheme.pixelHeading(fontSize: 10, letterSpacing: 2, color: hpColor)),
+                  ]),
                   Text('${run.heroHp} / ${run.heroMaxHp}',
                       style: TextStyle(fontSize: 12, color: hpColor, fontWeight: FontWeight.bold)),
                 ]),
@@ -615,19 +693,46 @@ class _HeroBar extends StatelessWidget {
                     valueColor: AlwaysStoppedAnimation<Color>(hpColor),
                   ),
                 ),
-                if (run.blessings.isNotEmpty) ...[
+                // -- Run summary: earnings + next boss countdown ------------
+                const SizedBox(height: 6),
+                Row(children: [
+                  Text('💰 ${run.goldEarned}',
+                      style: const TextStyle(fontSize: 11, color: Color(0xFFffcc44), fontWeight: FontWeight.bold)),
+                  const SizedBox(width: 12),
+                  Text('◆ ${run.shardsEarned}',
+                      style: const TextStyle(fontSize: 11, color: Color(0xFF88aaff), fontWeight: FontWeight.bold)),
+                  const SizedBox(width: 12),
+                  Text('🦴 ${run.bones}',
+                      style: const TextStyle(fontSize: 11, color: Color(0xFFe8dcc0), fontWeight: FontWeight.bold)),
+                  const Spacer(),
+                  Builder(builder: (_) {
+                    final toBoss = run.floor % 5 == 0 ? 0 : 5 - (run.floor % 5);
+                    return Text(
+                      toBoss == 0 ? '☠ BOSS FLOOR' : '☠ Boss in $toBoss',
+                      style: TextStyle(
+                        fontSize: 11, fontWeight: FontWeight.bold,
+                        color: toBoss == 0 ? const Color(0xFFff5555)
+                            : toBoss == 1 ? const Color(0xFFcc8833)
+                            : AppTheme.textMuted,
+                      ),
+                    );
+                  }),
+                ]),
+                // -- Active effects: blessings, shrine boons/curses, relics --
+                if (run.blessings.isNotEmpty || run.shrineEffects.isNotEmpty) ...[
                   const SizedBox(height: 6),
                   Wrap(
                     spacing: 6,
-                    children: run.blessings.map((b) => Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF1a3a2a),
-                        border: Border.all(color: const Color(0xFF44cc88)),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Text(b.label, style: const TextStyle(fontSize: 10, color: Color(0xFF44cc88))),
-                    )).toList(),
+                    runSpacing: 4,
+                    children: [
+                      ...run.blessings.map((b) => _effectChip(b.label, const Color(0xFF44cc88))),
+                      ...run.shrineEffects.map((e) => _effectChip(
+                            '${e.icon} ${e.name}',
+                            e.id.startsWith('relic_') ? const Color(0xFFcc88ff)
+                                : e.isCurse ? const Color(0xFFcc4444)
+                                : const Color(0xFF44cc88),
+                          )),
+                    ],
                   ),
                 ],
               ],
@@ -637,6 +742,16 @@ class _HeroBar extends StatelessWidget {
       ),
     );
   }
+
+  Widget _effectChip(String label, Color color) => Container(
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.12),
+          border: Border.all(color: color),
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Text(label, style: TextStyle(fontSize: 10, color: color)),
+      );
 }
 
 // -- Floor themes --------------------------------------------------------------
@@ -644,11 +759,11 @@ class _HeroBar extends StatelessWidget {
 typedef _FloorTheme = ({String name, Color color, String prefix, String icon});
 
 const _kFloorThemes = <_FloorTheme>[
-  (name: 'Outer Crypts',   color: Color(0xFF7788aa), prefix: 'Hollow',   icon: '??'),
-  (name: 'Fetid Tunnels',  color: Color(0xFF55aa55), prefix: 'Blighted', icon: '??'),
-  (name: 'Infernal Halls', color: Color(0xFFcc5522), prefix: 'Infernal', icon: '??'),
-  (name: 'Shadow Depths',  color: Color(0xFF7755aa), prefix: 'Shadow',   icon: '??'),
-  (name: 'Abyss Core',     color: Color(0xFF992222), prefix: 'Abyssal',  icon: '??'),
+  (name: 'Outer Crypts',   color: Color(0xFF7788aa), prefix: 'Hollow',   icon: '☠'),
+  (name: 'Fetid Tunnels',  color: Color(0xFF55aa55), prefix: 'Blighted', icon: '✸'),
+  (name: 'Infernal Halls', color: Color(0xFFcc5522), prefix: 'Infernal', icon: '✦'),
+  (name: 'Shadow Depths',  color: Color(0xFF7755aa), prefix: 'Shadow',   icon: '◆'),
+  (name: 'Abyss Core',     color: Color(0xFF992222), prefix: 'Abyssal',  icon: '★'),
 ];
 
 _FloorTheme _themeForFloor(int floor, int totalFloors) {
@@ -664,15 +779,15 @@ class _FloorStrip extends StatelessWidget {
   final DungeonRun run;
 
   static const _roomIcons = <DungeonRoomType, String>{
-    DungeonRoomType.combat:      '?',
-    DungeonRoomType.elite:       '??',
-    DungeonRoomType.ambush:      '??',
-    DungeonRoomType.treasure:    '??',
-    DungeonRoomType.shrine:      '??',
-    DungeonRoomType.lockedChest: '??',
-    DungeonRoomType.trap:        '?',
-    DungeonRoomType.restSite:    '??',
-    DungeonRoomType.boss:        '?',
+    DungeonRoomType.combat:      '⚔',
+    DungeonRoomType.elite:       '★',
+    DungeonRoomType.ambush:      '‼',
+    DungeonRoomType.treasure:    '✦',
+    DungeonRoomType.shrine:      '✧',
+    DungeonRoomType.lockedChest: '◆',
+    DungeonRoomType.trap:        '✸',
+    DungeonRoomType.restSite:    '⊕',
+    DungeonRoomType.boss:        '☠',
   };
 
   static const _roomColors = <DungeonRoomType, Color>{
@@ -691,7 +806,7 @@ class _FloorStrip extends StatelessWidget {
   Widget build(BuildContext context) {
     final cur = run.floor;
     final currentType = run.currentRoom?.type;
-    final totalFloors = run.tier * 8;
+    const totalFloors = DungeonRun.clearFloor;
     final theme = _themeForFloor(cur, totalFloors);
 
     return Container(
@@ -706,7 +821,7 @@ class _FloorStrip extends StatelessWidget {
           Column(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              Text('?', style: TextStyle(fontSize: 10, color: AppTheme.textMuted.withValues(alpha: 0.5))),
+              Text('•', style: TextStyle(fontSize: 10, color: AppTheme.textMuted.withValues(alpha: 0.5))),
               const SizedBox(height: 2),
               Text('F$cur', style: AppTheme.pixelHeading(fontSize: 10, color: AppTheme.accentGold)),
               const SizedBox(height: 2),
@@ -731,15 +846,15 @@ class _FloorStrip extends StatelessWidget {
                 final Color bg;
 
                 if (isCurrent && currentType != null) {
-                  icon = _roomIcons[currentType] ?? '?';
+                  icon = _roomIcons[currentType] ?? '☠';
                   nodeColor = _roomColors[currentType] ?? AppTheme.accentGold;
                   bg = nodeColor.withValues(alpha: 0.15);
                 } else if (isPast) {
-                  icon = isBoss ? '?' : '?';
+                  icon = isBoss ? '☠' : '✓';
                   nodeColor = const Color(0xFF44cc88).withValues(alpha: 0.7);
                   bg = nodeColor.withValues(alpha: 0.06);
                 } else {
-                  icon = isBoss ? '?' : '�';
+                  icon = isBoss ? '☠' : '•';
                   nodeColor = isBoss
                       ? const Color(0xFFcc4444).withValues(alpha: 0.4)
                       : AppTheme.textMuted.withValues(alpha: 0.2);
@@ -772,73 +887,215 @@ class _FloorStrip extends StatelessWidget {
   }
 }
 
-// -- Consumable bar (shared) ---------------------------------------------------
+// -- Room choice (two doors) ---------------------------------------------------
 
-class _ConsumableBar extends StatelessWidget {
-  const _ConsumableBar({required this.run, required this.onUse});
+class _RoomChoiceView extends StatelessWidget {
+  const _RoomChoiceView({required this.run, required this.game, required this.onChosen});
   final DungeonRun run;
-  final void Function(DungeonConsumableType) onUse;
+  final GameState game;
+  final VoidCallback onChosen;
 
   @override
   Widget build(BuildContext context) {
+    final doors = run.roomChoices;
+    final nextIsBoss = (run.floor + 1) % 5 == 0;
+    final theme = _themeForFloor(run.floor, DungeonRun.clearFloor);
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      decoration: const BoxDecoration(
-        color: Color(0xFF231F1B),
-        border: Border(top: BorderSide(color: AppTheme.cardBorder)),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [
+            theme.color.withValues(alpha: 0.10),
+            const Color(0xFF1B1A17),
+            theme.color.withValues(alpha: 0.05),
+          ],
+        ),
       ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-        children: run.consumables.map((c) {
-          final available = !c.used;
-          final (icon, color) = switch (c.type) {
-            DungeonConsumableType.healthPotion => ('??', const Color(0xFF44cc66)),
-            DungeonConsumableType.damageBoost  => ('?', const Color(0xFFff6644)),
-            DungeonConsumableType.ironShield   => ('??', const Color(0xFF66aaff)),
-          };
-          return Tooltip(
-            message: c.desc,
-            child: GestureDetector(
-              onTap: available ? () => onUse(c.type) : null,
-              child: AnimatedOpacity(
-                duration: const Duration(milliseconds: 200),
-                opacity: available ? 1.0 : 0.25,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                  decoration: BoxDecoration(
-                    color: available
-                        ? color.withValues(alpha: 0.10)
-                        : const Color(0xFF1a1a1a),
-                    border: Border.all(
-                      color: available ? color : AppTheme.cardBorder,
-                      width: available ? 1.5 : 1,
-                    ),
-                    borderRadius: BorderRadius.circular(6),
-                    boxShadow: available ? [
-                      BoxShadow(color: color.withValues(alpha: 0.15), blurRadius: 6),
-                    ] : null,
-                  ),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(icon, style: const TextStyle(fontSize: 18)),
-                      const SizedBox(height: 3),
-                      Text(
-                        c.label.split(' ').last,
-                        style: TextStyle(
-                          fontSize: 9,
-                          color: available ? color : AppTheme.textMuted,
-                          fontWeight: FontWeight.bold,
-                          letterSpacing: 0.5,
+      child: Column(
+      children: [
+        _HeroBar(run: run, game: game),
+        const SizedBox(height: 12),
+        Text('${theme.icon} ${theme.name.toUpperCase()}',
+            style: AppTheme.pixelHeading(fontSize: 10, letterSpacing: 2, color: theme.color)),
+        const SizedBox(height: 4),
+        Text('CHOOSE YOUR PATH',
+            style: AppTheme.pixelHeading(fontSize: 13, letterSpacing: 3, color: AppTheme.accentGold)),
+        if (nextIsBoss)
+          Padding(
+            padding: const EdgeInsets.only(top: 6),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+              decoration: BoxDecoration(
+                color: const Color(0xFFcc4444).withValues(alpha: 0.12),
+                border: Border.all(color: const Color(0xFFcc4444).withValues(alpha: 0.6)),
+                borderRadius: BorderRadius.circular(3),
+              ),
+              child: const Text('☠ NEXT FLOOR: BOSS',
+                  style: TextStyle(fontSize: 11, color: Color(0xFFff6666), fontWeight: FontWeight.bold, letterSpacing: 1)),
+            ),
+          ),
+        const SizedBox(height: 10),
+        // Scrollable so tall cards never overflow; IntrinsicHeight keeps both
+        // doors the same height while letting them grow to fit their content.
+        Expanded(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+            child: ConstrainedBox(
+              constraints: BoxConstraints(
+                minHeight: MediaQuery.of(context).size.height * 0.42,
+              ),
+              child: IntrinsicHeight(
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    for (var i = 0; i < doors.length; i++) ...[
+                      if (i > 0) const SizedBox(width: 10),
+                      Expanded(
+                        child: _DoorCard(
+                          room: doors[i],
+                          onTap: () { game.chooseDungeonRoom(doors[i]); onChosen(); },
                         ),
                       ),
                     ],
-                  ),
+                  ],
                 ),
               ),
             ),
-          );
-        }).toList(),
+          ),
+        ),
+      ],
+      ),
+    );
+  }
+}
+
+class _DoorCard extends StatelessWidget {
+  const _DoorCard({required this.room, required this.onTap});
+  final DungeonRoom room;
+  final VoidCallback onTap;
+
+  static const _combatTypes = {
+    DungeonRoomType.combat, DungeonRoomType.elite,
+    DungeonRoomType.ambush, DungeonRoomType.boss,
+  };
+
+  // Non-combat "event" doors are shown face-down — you don't know if it's a
+  // reward (treasure/shrine/rest/chest) or a trap until you commit. Combat
+  // doors stay revealed so you can see the foe you'd be fighting.
+  static const _mysteryTypes = {
+    DungeonRoomType.trap, DungeonRoomType.treasure, DungeonRoomType.shrine,
+    DungeonRoomType.restSite, DungeonRoomType.lockedChest,
+  };
+  bool get _mystery => !room.isGoblin && _mysteryTypes.contains(room.type);
+
+  List<String> get _detailLines => room.isGoblin
+      ? [
+          '${room.enemyMaxHp ?? '?'} HP  •  flees after 5 rounds',
+          '6× gold if you slay it in time!',
+        ]
+      : switch (room.type) {
+    DungeonRoomType.combat ||
+    DungeonRoomType.elite ||
+    DungeonRoomType.ambush ||
+    DungeonRoomType.boss  => [
+        room.enemyName ?? 'Enemy',
+        '${room.enemyMaxHp ?? '?'} HP  •  ${room.enemyAtk ?? '?'} ATK',
+        if (room.eliteTraitLabel != null) '★ ${room.eliteTraitLabel}',
+        if (room.type == DungeonRoomType.elite) 'Guaranteed item drop',
+        if (room.type == DungeonRoomType.ambush) 'Strikes first — high gold',
+      ],
+    DungeonRoomType.trap        => [room.trapName ?? 'Trap', '-${room.trapDamage ?? '?'} HP'],
+    DungeonRoomType.treasure    => ['+${room.treasureGold ?? 0} gold', '+${room.treasureShards ?? 0} shards'],
+    DungeonRoomType.shrine      => ['A blessing...', 'or a curse?'],
+    DungeonRoomType.lockedChest => ['Rare item inside', '${room.chestShardCost ?? 30} shards to open'],
+    DungeonRoomType.restSite    => ['Make camp', 'Recover HP'],
+  };
+
+  @override
+  Widget build(BuildContext context) {
+    final mystery = _mystery;
+    final color = mystery
+        ? const Color(0xFF9d8ec4) // neutral arcane purple — doesn't leak the type
+        : room.isGoblin
+            ? const Color(0xFFffcc33)
+            : _FloorStrip._roomColors[room.type] ?? AppTheme.accentGold;
+    final icon  = mystery ? '?' : _FloorStrip._roomIcons[room.type] ?? '?';
+    final showSprite = !mystery && _combatTypes.contains(room.type) && room.enemyId != null;
+    final title = mystery
+        ? 'MYSTERY'
+        : room.isGoblin ? '💰 TREASURE GOBLIN' : room.typeName.toUpperCase();
+    final lines = mystery
+        ? const ['An unmarked door.', 'Fortune or peril?']
+        : _detailLines;
+
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [color.withValues(alpha: 0.12), const Color(0xFF17140f)],
+          ),
+          border: Border.all(color: color.withValues(alpha: 0.65), width: 1.5),
+          borderRadius: BorderRadius.circular(6),
+          boxShadow: [BoxShadow(color: color.withValues(alpha: 0.12), blurRadius: 10)],
+        ),
+        padding: const EdgeInsets.fromLTRB(14, 18, 14, 16),
+        child: Column(
+          // Content group at the top, ENTER anchored at the bottom — keeps both
+          // doors balanced regardless of how many detail lines each has.
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (showSprite)
+                  StaticEnemySprite(spriteId: room.enemyId!, size: 76)
+                else if (mystery)
+                  Text(icon, style: TextStyle(
+                      fontSize: 56, fontWeight: FontWeight.bold, color: color,
+                      shadows: [Shadow(color: color.withValues(alpha: 0.6), blurRadius: 14)]))
+                else
+                  Text(icon, style: TextStyle(fontSize: 44, color: color)),
+                const SizedBox(height: 14),
+                Text(title,
+                    textAlign: TextAlign.center,
+                    style: AppTheme.pixelHeading(fontSize: 12, letterSpacing: 1, color: color)),
+                const SizedBox(height: 10),
+                for (var i = 0; i < lines.length; i++)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 5),
+                    child: Text(
+                      lines[i],
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        // First line (enemy name / primary) reads brighter; the
+                        // stat/trait/drop lines below are muted secondary detail.
+                        fontSize: i == 0 ? 12.5 : 11,
+                        height: 1.4,
+                        fontStyle: mystery ? FontStyle.italic : FontStyle.normal,
+                        fontWeight: (i == 0 && !mystery) ? FontWeight.w600 : FontWeight.normal,
+                        color: i == 0 && !mystery ? AppTheme.textLight : AppTheme.textMuted,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+              decoration: BoxDecoration(
+                border: Border.all(color: color),
+                borderRadius: BorderRadius.circular(3),
+              ),
+              child: Text('ENTER',
+                  style: AppTheme.pixelHeading(fontSize: 11, letterSpacing: 2, color: color)),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -874,7 +1131,7 @@ class _RoomDetail extends StatelessWidget {
 
     return Column(
       children: [
-        _HeroBar(run: run),
+        _HeroBar(run: run, game: game),
         // -- Pinned action buttons just below health bar -------------------
         _buildRoomActionBar(room),
         Expanded(
@@ -890,7 +1147,6 @@ class _RoomDetail extends StatelessWidget {
             },
           ),
         ),
-        _ConsumableBar(run: run, onUse: (t) { game.useDungeonConsumable(t); onResolved(); }),
       ],
     );
   }
@@ -929,7 +1185,7 @@ class _RoomDetail extends StatelessWidget {
           RestEventType.badWeather => ('WEATHER THE STORM  (-$rdmg / +$heal HP)', const Color(0xFF88aacc), const Color(0xFF101a2a)),
           RestEventType.haunted    => ('ENDURE THE NIGHT  (+$heal HP)', const Color(0xFFaa88cc), const Color(0xFF1a0e2a)),
           RestEventType.wanderer   => ('ACCEPT AID  (+$heal HP)', const Color(0xFF44cc88), const Color(0xFF0a2a1a)),
-          RestEventType.supplies   => ('COLLECT SUPPLIES  (+$heal HP, +${room.restBonusGold}??)', AppTheme.accentGold, const Color(0xFF2a1f00)),
+          RestEventType.supplies   => ('COLLECT SUPPLIES  (+$heal HP, +${room.restBonusGold}g)', AppTheme.accentGold, const Color(0xFF2a1f00)),
           RestEventType.peaceful   => ('REST  (+$heal HP)', const Color(0xFF44cc88), const Color(0xFF0e2a1a)),
           RestEventType.merchant   => ('LEAVE SHOP  (+$heal HP)', const Color(0xFFddaa44), const Color(0xFF2a1f08)),
         };
@@ -942,18 +1198,11 @@ class _RoomDetail extends StatelessWidget {
       case DungeonRoomType.trap:
         final dmg  = room.trapDamage ?? 0;
         final pct  = run.heroMaxHp > 0 ? (dmg * 100 / run.heroMaxHp).round() : 0;
-        final hasPot = run.consumables
-            .any((c) => c.type == DungeonConsumableType.healthPotion && !c.used);
         return Padding(
           padding: pad,
           child: Row(children: [
             btn('PROCEED  (-$dmg HP / $pct%)', const Color(0xFFcc8833), const Color(0xFF3a2200),
                 () { game.resolveDungeonTrap(); onResolved(); }),
-            if (hasPot) ...[
-              const SizedBox(width: 8),
-              btn('USE POTION', const Color(0xFF44cc88), const Color(0xFF0e2a1a),
-                  () { game.useDungeonConsumable(DungeonConsumableType.healthPotion); onResolved(); }),
-            ],
           ]),
         );
       case DungeonRoomType.lockedChest:
@@ -966,7 +1215,7 @@ class _RoomDetail extends StatelessWidget {
             children: [
               Row(children: [
                 btn(
-                  canShards ? 'OPEN  ($cost ?)' : 'NOT ENOUGH SHARDS',
+                  canShards ? 'OPEN  ($cost ◆)' : 'NOT ENOUGH SHARDS',
                   canShards ? const Color(0xFF88aaff) : AppTheme.cardBorder,
                   AppTheme.cardBg,
                   canShards ? () { game.openDungeonChest(); onResolved(); } : () {},
@@ -979,7 +1228,7 @@ class _RoomDetail extends StatelessWidget {
                 const SizedBox(height: 8),
                 Row(children: [
                   btn(
-                    'OPEN WITH ?? ${GameState.chestCrystalCost} ZCOINS',
+                    'OPEN WITH ◆ ${GameState.chestCrystalCost} ZCOINS',
                     const Color(0xFFcc88ff),
                     AppTheme.cardBg,
                     () { game.openDungeonChestWithCrystals(); onResolved(); },
@@ -1031,6 +1280,12 @@ class _AnimatedCombatRoomState extends State<_AnimatedCombatRoom> {
   late int _heroAtk;
   late int _heroAc;
   late int _heroDmgMod;
+  late int _heroWeaponBase;
+  late DamageType _heroDmgType;
+  double _heroDmgAllPct    = 0;
+  double _heroPrestigeMult = 1.0;
+  late int _heroCritChancePct;
+  late int _heroCritDmgMult;
 
   int _abilityRound = 0;
   final Map<String, int> _abilityCooldownUntil = {};
@@ -1041,18 +1296,73 @@ class _AnimatedCombatRoomState extends State<_AnimatedCombatRoom> {
   bool _dodgeThisRound        = false;
   bool _enemyStunnedThisRound = false;
 
+  // Run-wide modifiers (blessings, shrine effects, allies, consumables)
+  double _dmgDealtMult  = 1.0;
+  double _dmgTakenMult  = 1.0;
+  double _healMult      = 1.0;
+  bool _swiftness       = false;
+  int _ambushPreHit     = 0;
+  double _allyGoldMult  = 1.0;
+  int _enemyShield      = 0;   // arcane affix: absorbs first N damage
+  int _burnTick         = 0;   // burning affix: hero DoT per round
+  int _eliteBlockHits   = 0;   // shielded elite: blocks first N hits
+
   @override
   void initState() {
     super.initState();
     final g = widget.game;
     _heroHp    = widget.run.heroHp;
     _heroMaxHp = widget.run.heroMaxHp;
-    _enemyHp   = widget.room.enemyMaxHp ?? 10;
+    // Frozen affix: +20% enemy HP; Arcane: damage-absorb shield; Burning: hero DoT
+    _enemyHp   = ((widget.room.enemyMaxHp ?? 10) * g.dungeonAffixHpMult).round();
     _enemyMaxHp = _enemyHp;
-    _heroAtk   = g.hero.attackBonus;
-    _heroAc    = g.hero.armorClass;
-    _heroDmgMod = 0; // STR no longer gives flat damage
-    // Dungeon caps at tier 3 (max 2� release / 5� debug) � higher tiers bleed
+    _enemyShield = g.dungeonAffixEnemyShield;
+    _burnTick    = g.dungeonAffixBurnTick(_heroMaxHp);
+    _heroAtk = g.hero.attackBonus
+        + g.passiveTree.totalOf(PassiveEffect.attackFlat)
+        + g.inventory.totalOf(ItemStat.attackBonus)
+        + g.inventory.totalOf(ItemStat.strength)
+        + g.petAttackBonus + g.skinAttackBonus
+        + g.questAttackBonus + g.bestiaryChapterBonus;
+    _heroAc = g.hero.armorClass
+        + g.passiveTree.totalOf(PassiveEffect.armorFlat)
+        + g.inventory.totalOf(ItemStat.armorClass)
+        + g.petArmor + g.skinArmor + g.questACBonus;
+    _heroDmgMod      = g.heroFlatDmgBonus;
+    _heroWeaponBase  = g.inventory.equippedWeaponDamage;
+    _heroDmgType     = g.hero.activeDamageType;
+    _heroDmgAllPct   = g.heroAllDamagePctFor(_heroDmgType);
+    _heroPrestigeMult = g.prestigeLevel > 0 ? g.prestigeDamageMult : 1.0;
+    _heroCritChancePct = g.totalCritChancePct;
+    _heroCritDmgMult   = g.totalCritDamageMult.round();
+
+    // Run blessings + shrine effects apply to the watched fight
+    final run = widget.run;
+    _heroAtk    += run.blessingAtk;
+    _heroAc     += run.blessingAc;
+    _heroDmgMod += run.blessingDmg;
+    _dmgDealtMult = run.damageDealtMult;
+    _dmgTakenMult = run.damageTakenMult;
+    _healMult     = run.healMult * g.dungeonAffixHealMult; // cursed affix halves healing
+    _swiftness    = run.hasSwiftness;
+
+    // Elite trait setup + announce
+    if (widget.room.eliteTrait == 'shielded') _eliteBlockHits = 3;
+    if (widget.room.eliteTraitLabel != null) {
+      _log.add('★ Elite: ${widget.room.eliteTraitLabel}');
+    }
+
+    // Ambush: enemy lands a free hit before round 1
+    if (widget.isAmbush) {
+      final eAtk = widget.room.enemyAtk ?? 5;
+      final pre = ((_rng.nextInt(eAtk ~/ 3 + 1) + 1) * _dmgTakenMult).round().clamp(1, 9999);
+      _heroHp = (_heroHp - pre).clamp(1, _heroMaxHp); // can't die to the pre-hit
+      _totalTaken += pre;
+      _ambushPreHit = pre;
+      _log.add('‼ Ambush! You take $pre damage before the fight begins.');
+    }
+
+    // Dungeon caps at tier 3 (max 2— release / 5— debug) — higher tiers bleed
     // in from the campaign speed button and make the dungeon impossibly fast.
     if (g.speedTier > 3) g.setSpeedTier(3);
     g.audioService.startBattleMusic();
@@ -1068,7 +1378,7 @@ class _AnimatedCombatRoomState extends State<_AnimatedCombatRoom> {
   String get _displayEnemyName {
     final raw = widget.room.enemyName ?? 'Enemy';
     if (widget.isBoss) return raw;
-    final theme = _themeForFloor(widget.run.floor, widget.run.tier * 8);
+    final theme = _themeForFloor(widget.run.floor, DungeonRun.clearFloor);
     return '${theme.prefix} $raw';
   }
 
@@ -1076,23 +1386,24 @@ class _AnimatedCombatRoomState extends State<_AnimatedCombatRoom> {
     final enemyName = _displayEnemyName;
     if (g.allyUnlocked('greybeard') && _allyUsed.add('greybeard')) {
       _bonusAtk += 5;
-      _log.add('?? Greybeard: War Cry! +5 ATK for this fight.');
+      _log.add('⚔ Greybeard: War Cry! +5 ATK for this fight.');
     }
     if (g.allyUnlocked('elder_voss') && _allyUsed.add('elder_voss')) {
       final burst = (_enemyMaxHp * 0.10).round().clamp(1, 9999);
       _enemyHp = (_enemyHp - burst).clamp(0, _enemyMaxHp);
-      _log.add('?? Voss: Arcane Surge! $enemyName takes $burst arcane damage!');
+      _log.add('⚡ Voss: Arcane Surge! $enemyName takes $burst arcane damage!');
     }
     if (g.allyUnlocked('coin_felix') && _allyUsed.add('coin_felix')) {
-      _log.add('?? Felix: Bribe! $enemyName will drop 2� gold!');
+      _allyGoldMult = 2.0;
+      _log.add('💰 Felix: Bribe! $enemyName will drop 2x gold!');
     }
     if (g.allyUnlocked('shadow_lena') && _allyUsed.add('shadow_lena')) {
       _bonusAtk += 8;
-      _log.add("?? Lena: Backstab! +8 ATK for first strike.");
+      _log.add('⚔ Lena: Backstab! +8 ATK for first strike.');
     }
     if (g.allyUnlocked('golem_ruk') && _allyUsed.add('golem_ruk')) {
       _bonusAc += 4;
-      _log.add('?? Ruk: Stone Skin! +4 ARM for this fight.');
+      _log.add('◆ Ruk: Stone Skin! +4 ARM for this fight.');
     }
   }
 
@@ -1103,7 +1414,7 @@ class _AnimatedCombatRoomState extends State<_AnimatedCombatRoom> {
       _allyUsed.add('mira_heal');
       final heal = (_heroMaxHp * 0.25).round().clamp(1, _heroMaxHp);
       _heroHp = (_heroHp + heal).clamp(0, _heroMaxHp);
-      _log.add('?? Mira: Field Triage! Healed for $heal HP!');
+      _log.add('⊕ Mira: Field Triage! Healed for $heal HP!');
     }
   }
 
@@ -1114,9 +1425,8 @@ class _AnimatedCombatRoomState extends State<_AnimatedCombatRoom> {
     super.dispose();
   }
 
-  void _doRound() {
+  Future<void> _doRound() async {
     if (_finished || !mounted) return;
-    final eAc       = widget.room.enemyAc  ?? 10;
     final eAtk      = widget.room.enemyAtk ?? 5;
     final enemyName = _displayEnemyName;
     final heroName  = widget.game.hero.name;
@@ -1124,8 +1434,19 @@ class _AnimatedCombatRoomState extends State<_AnimatedCombatRoom> {
     _abilityRound++;
     _dodgeThisRound        = false;
     _enemyStunnedThisRound = false;
-    final heroRoll = _rng.nextInt(20) + 1;
-    final eRoll    = _rng.nextInt(20) + 1;
+
+    // Treasure goblin flees after 5 rounds
+    if (widget.room.isGoblin && _abilityRound > 5 && _enemyHp > 0) {
+      _finished = true;
+      _timer?.cancel();
+      setState(() => _log.add('💰 The Treasure Goblin cackles and vanishes with its hoard!'));
+      await Future.delayed(const Duration(milliseconds: 900));
+      if (mounted) {
+        widget.game.applyDungeonGoblinEscape();
+        widget.onResolved();
+      }
+      return;
+    }
 
     // -- Fire ready abilities --------------------------------------------------
     for (final ability in widget.game.unlockedAbilities) {
@@ -1138,78 +1459,96 @@ class _AnimatedCombatRoomState extends State<_AnimatedCombatRoom> {
     }
 
     if (_enemyHp <= 0) {
-      _finished = true;
-      _timer?.cancel();
-      setState(() => _log.add('? $enemyName is defeated!'));
-      GameStateProvider.of(context).recordExternalKill(enemyName: enemyName);
-      Future.delayed(const Duration(milliseconds: 320), () {
-        if (!mounted) return;
-        _arenaKey.currentState?.playEnemyDeath();
-        Future.delayed(const Duration(milliseconds: 500), () {
-          if (mounted) {
-            widget.game.resolveDungeonCombat();
-            widget.run.isDead = false;
-            widget.run.lastCombatSummary = 'Victory in $_abilityRound rounds! Dealt $_totalDealt dmg, took $_totalTaken.';
-            widget.onResolved();
-          }
-        });
-      });
+      _finishVictory(enemyName);
       return;
     }
 
-    // Hero strikes
-    final crit = heroRoll == 20;
-    if (crit || (heroRoll + _heroAtk + _bonusAtk) >= eAc) {
-      final die = _rng.nextInt(8) + 1;
-      final dmg = ((crit ? die * 2 : die) + _heroDmgMod).clamp(1, 9999);
+    // Hero strikes (Swiftness blessing: two strikes on round 1).
+    // Hero always lands (same as the campaign); crit is purely chance-based.
+    final strikes = (_abilityRound == 1 && _swiftness) ? 2 : 1;
+    // Ally ATK buffs (Greybeard/Lena) convert to crit chance, like the campaign.
+    final critPct = _heroCritChancePct + _bonusAtk * 2;
+    for (var s = 0; s < strikes && _enemyHp > 0; s++) {
+      final crit = _rng.nextInt(100) < critPct;
+      final die = _heroWeaponBase > 0
+          ? _heroWeaponBase + _rng.nextInt((_heroWeaponBase ~/ 3).clamp(1, 50))
+          : _rng.nextInt(8) + 1;
+      var dmg = ((crit ? die * _heroCritDmgMult : die) + _heroDmgMod).clamp(1, 9999);
+      dmg = (dmg * (1 + _heroDmgAllPct / 100) * _heroPrestigeMult * _dmgDealtMult)
+          .round().clamp(1, 9999);
+      if (_eliteBlockHits > 0) {
+        _eliteBlockHits--;
+        setState(() => _log.add('★ $enemyName blocks the hit! ($_eliteBlockHits blocks left)'));
+        continue;
+      }
+      if (_enemyShield > 0) {
+        final absorbed = dmg < _enemyShield ? dmg : _enemyShield;
+        _enemyShield -= absorbed;
+        dmg = (dmg - absorbed).clamp(0, 9999);
+        _log.add('✦ Arcane ward absorbs $absorbed damage!');
+        if (dmg == 0) { setState(() {}); continue; }
+      }
       setState(() {
         _enemyHp = (_enemyHp - dmg).clamp(0, _enemyMaxHp);
         _totalDealt += dmg;
         _log.add(crit
-            ? '?? CRIT $dmg dmg! ($enemyName: $_enemyHp/$_enemyMaxHp)'
+            ? '⚡ CRIT $dmg dmg! ($enemyName: $_enemyHp/$_enemyMaxHp)'
             : 'Hit! $dmg dmg ($enemyName: $_enemyHp/$_enemyMaxHp)');
       });
       _arenaKey.currentState?.playHeroAttack(dmg, isCrit: crit, heroClass: widget.game.hero.heroClass);
-    } else {
-      setState(() => _log.add('Miss! $heroName\'s attack glances off.'));
     }
 
     if (_enemyHp <= 0) {
-      _finished = true;
-      _timer?.cancel();
-      setState(() => _log.add('? $enemyName is defeated!'));
-      GameStateProvider.of(context).recordExternalKill(enemyName: enemyName);
-      Future.delayed(const Duration(milliseconds: 320), () {
-        if (!mounted) return;
-        _arenaKey.currentState?.playEnemyDeath();
-        Future.delayed(const Duration(milliseconds: 500), () {
-          if (mounted) {
-            widget.game.resolveDungeonCombat();
-            widget.run.isDead = false;
-            widget.run.lastCombatSummary = 'Victory in $_abilityRound rounds! Dealt $_totalDealt dmg, took $_totalTaken.';
-            widget.onResolved();
-          }
-        });
-      });
+      _finishVictory(enemyName);
       return;
     }
 
-    // Enemy strikes (skip if stunned or hero dodges)
+    // Enemy strikes (skip if stunned, hero dodges, or Iron Ward blocks).
+    // Elite traits: swift = two attacks, frenzied = +40% ATK below half HP,
+    // vampiric = heals 30% of the damage it deals.
     if (_enemyStunnedThisRound) {
-      setState(() => _log.add('$enemyName is stunned � skips attack!'));
+      setState(() => _log.add('$enemyName is stunned — skips attack!'));
     } else {
-      final eBonus = (eAtk ~/ 8).clamp(0, 12);
-      if (!_dodgeThisRound && (eRoll == 20 || (eRoll + eBonus) >= _heroAc + _bonusAc)) {
-        final dmg = (_rng.nextInt(eAtk > 0 ? eAtk : 1) + 1).clamp(1, 9999);
+      final trait = widget.room.eliteTrait;
+      var effAtk = eAtk;
+      if (trait == 'frenzied' && _enemyHp * 2 < _enemyMaxHp) {
+        effAtk = (eAtk * 1.4).round();
+      }
+      final attacks = trait == 'swift' ? 2 : 1;
+      final armor = _heroAc + _bonusAc;
+      for (var a = 0; a < attacks && _heroHp > 0; a++) {
+        // Attacks always land now (same model as the campaign). Ability-dodge
+        // fully negates; Iron Ward blocks one hit; otherwise armor is flat
+        // damage reduction (min 1 so bosses always connect).
+        if (_dodgeThisRound) {
+          setState(() => _log.add('$heroName dodges!'));
+          continue;
+        }
+        final raw = _rng.nextInt(effAtk > 0 ? effAtk : 1) + 1;
+        final dmg = ((raw - armor).clamp(1, 9999) * _dmgTakenMult).round().clamp(1, 9999);
         setState(() {
           _heroHp = (_heroHp - dmg).clamp(0, _heroMaxHp);
           _totalTaken += dmg;
           _log.add('$enemyName hits $dmg dmg (You: $_heroHp/$_heroMaxHp)');
         });
         _arenaKey.currentState?.playEnemyAttack(dmg);
-      } else {
-        setState(() => _log.add(_dodgeThisRound ? '$heroName dodges!' : '$enemyName misses!'));
+        if (trait == 'vampiric') {
+          final drain = (dmg * 0.3).round().clamp(1, 9999);
+          setState(() {
+            _enemyHp = (_enemyHp + drain).clamp(0, _enemyMaxHp);
+            _log.add('★ $enemyName drains $drain HP!');
+          });
+        }
       }
+    }
+
+    // Burning affix: fire DoT at the end of every round
+    if (_burnTick > 0 && _heroHp > 0) {
+      setState(() {
+        _heroHp = (_heroHp - _burnTick).clamp(0, _heroMaxHp);
+        _totalTaken += _burnTick;
+        _log.add('✸ Burning air: -$_burnTick HP (You: $_heroHp/$_heroMaxHp)');
+      });
     }
 
     _checkAllyHpAbilities(widget.game);
@@ -1217,18 +1556,50 @@ class _AnimatedCombatRoomState extends State<_AnimatedCombatRoom> {
     if (_heroHp <= 0) {
       _finished = true;
       _timer?.cancel();
-      setState(() => _log.add('?? $heroName has fallen!'));
-      Future.delayed(const Duration(milliseconds: 400), () {
-        if (mounted) {
-          widget.game.resolveDungeonCombat();
-          widget.run.lastCombatSummary = 'Fallen after $_abilityRound rounds. Dealt $_totalDealt dmg, took $_totalTaken.';
-          widget.onResolved();
-        }
-      });
+      setState(() => _log.add('☠ $heroName has fallen!'));
+      await (_arenaKey.currentState?.playHeroDeath() ?? Future.value());
+      await Future.delayed(const Duration(seconds: 3));
+      if (mounted) {
+        widget.game.applyDungeonCombatOutcome(
+          victory: false,
+          heroHpAfter: 0,
+          damageDealt: _totalDealt,
+          damageTaken: _totalTaken,
+          rounds: _abilityRound,
+          ambushPreHit: _ambushPreHit,
+        );
+        widget.onResolved();
+      }
       return;
     }
 
     setState(() {});
+  }
+
+  void _finishVictory(String enemyName) {
+    _finished = true;
+    _timer?.cancel();
+    final boneDrop = widget.isBoss ? 3 : widget.isElite ? 2 : 1;
+    setState(() => _log.add('✓ $enemyName is defeated!   🦴 +$boneDrop Bones'));
+    GameStateProvider.of(context).recordExternalKill(enemyName: enemyName);
+    Future.delayed(const Duration(milliseconds: 320), () {
+      if (!mounted) return;
+      _arenaKey.currentState?.playEnemyDeath();
+      Future.delayed(const Duration(milliseconds: 500), () {
+        if (mounted) {
+          widget.game.applyDungeonCombatOutcome(
+            victory: true,
+            heroHpAfter: _heroHp,
+            damageDealt: _totalDealt,
+            damageTaken: _totalTaken,
+            rounds: _abilityRound,
+            ambushPreHit: _ambushPreHit,
+            goldMult: _allyGoldMult,
+          );
+          widget.onResolved();
+        }
+      });
+    });
   }
 
   void _applyAbilityInAnimation(HeroAbility ability, int sv, String enemyName) {
@@ -1236,61 +1607,62 @@ class _AnimatedCombatRoomState extends State<_AnimatedCombatRoom> {
     _effectKey.currentState?.playEffect(ability.id);
     switch (ability.effect) {
       case AbilityEffect.bonusDamage:
-        final dmg = (sv * 0.5).round().clamp(1, 9999);
+        final dmg = (sv * 0.5 * _dmgDealtMult).round().clamp(1, 9999);
         setState(() {
           _enemyHp = (_enemyHp - dmg).clamp(0, _enemyMaxHp);
           _totalDealt += dmg;
-          _log.add('? ${ability.name}: $dmg damage ($enemyName: $_enemyHp/$_enemyMaxHp)');
+          _log.add('✦ ${ability.name}: $dmg damage ($enemyName: $_enemyHp/$_enemyMaxHp)');
         });
         _arenaKey.currentState?.addExtraFloat(dmg);
       case AbilityEffect.dot:
-        final dmg = (sv * 0.6).round().clamp(1, 9999);
+        final dmg = (sv * 0.6 * _dmgDealtMult).round().clamp(1, 9999);
         setState(() {
           _enemyHp = (_enemyHp - dmg).clamp(0, _enemyMaxHp);
           _totalDealt += dmg;
-          _log.add('? ${ability.name}: $dmg DoT ($enemyName: $_enemyHp/$_enemyMaxHp)');
+          _log.add('✸ ${ability.name}: $dmg DoT ($enemyName: $_enemyHp/$_enemyMaxHp)');
         });
         _arenaKey.currentState?.addExtraFloat(dmg);
       case AbilityEffect.heal:
-        setState(() {
-          _heroHp = (_heroHp + sv).clamp(0, _heroMaxHp);
-          _log.add('? ${ability.name}: +$sv HP (You: $_heroHp/$_heroMaxHp)');
-        });
-        _arenaKey.currentState?.addExtraFloat(sv, isHeal: true);
-      case AbilityEffect.aura:
-        final h = (sv * 0.5).round().clamp(1, 9999);
+        final h = (sv * _healMult).round().clamp(1, 9999);
         setState(() {
           _heroHp = (_heroHp + h).clamp(0, _heroMaxHp);
-          _log.add('? ${ability.name}: +$h HP (You: $_heroHp/$_heroMaxHp)');
+          _log.add('⊕ ${ability.name}: +$h HP (You: $_heroHp/$_heroMaxHp)');
+        });
+        _arenaKey.currentState?.addExtraFloat(h, isHeal: true);
+      case AbilityEffect.aura:
+        final h = (sv * 0.5 * _healMult).round().clamp(1, 9999);
+        setState(() {
+          _heroHp = (_heroHp + h).clamp(0, _heroMaxHp);
+          _log.add('⊕ ${ability.name}: +$h HP (You: $_heroHp/$_heroMaxHp)');
         });
         _arenaKey.currentState?.addExtraFloat(h, isHeal: true);
       case AbilityEffect.attackBonus:
         _bonusAtk += sv;
-        setState(() => _log.add('? ${ability.name}: +$sv ATK!'));
+        setState(() => _log.add('⚡ ${ability.name}: +$sv ATK!'));
       case AbilityEffect.acBonus:
         _bonusAc += sv;
-        setState(() => _log.add('? ${ability.name}: +$sv AC!'));
+        setState(() => _log.add('◆ ${ability.name}: +$sv AC!'));
       case AbilityEffect.stun:
         _enemyStunnedThisRound = true;
-        setState(() => _log.add('? ${ability.name}: enemy stunned!'));
+        setState(() => _log.add('◉ ${ability.name}: enemy stunned!'));
       case AbilityEffect.dodge:
         _dodgeThisRound = true;
-        setState(() => _log.add('? ${ability.name}: dodge!'));
+        setState(() => _log.add('◆ ${ability.name}: dodge!'));
       case AbilityEffect.debuffWeaken:
-        setState(() => _log.add('? ${ability.name}: enemy weakened!'));
+        setState(() => _log.add('✸ ${ability.name}: enemy weakened!'));
       case AbilityEffect.debuffVulnerable:
-        setState(() => _log.add('? ${ability.name}: enemy vulnerable!'));
+        setState(() => _log.add('⚡ ${ability.name}: enemy vulnerable!'));
       case AbilityEffect.silence:
         _enemyStunnedThisRound = true;
-        setState(() => _log.add('? ${ability.name}: enemy silenced!'));
+        setState(() => _log.add('◉ ${ability.name}: enemy silenced!'));
       case AbilityEffect.absorbShield:
         setState(() {
           _heroHp = (_heroHp + sv).clamp(0, _heroMaxHp);
-          _log.add('? ${ability.name}: +$sv HP barrier!');
+          _log.add('+ ${ability.name}: +$sv HP barrier!');
         });
         _arenaKey.currentState?.addExtraFloat(sv, isHeal: true);
       case AbilityEffect.missChance:
-        setState(() => _log.add('? ${ability.name}: enemy miss chance applied!'));
+        setState(() => _log.add('✸ ${ability.name}: enemy miss chance applied!'));
     }
   }
 
@@ -1361,17 +1733,18 @@ class _AnimatedCombatRoomState extends State<_AnimatedCombatRoom> {
             children: [
               BattleArena(
                 key: _arenaKey,
+                stageIndex:        (widget.run.floor - 1).clamp(0, 24),
                 heroName:          g.hero.name,
                 heroLevel:         g.hero.level,
                 heroCurrentHp:     _heroHp,
                 heroMaxHp:         _heroMaxHp,
                 heroAttack:        _heroAtk,
-                heroSpriteId:      g.hero.spriteId,
+                heroSpriteId:      g.heroBattleSpriteId,
                 heroGender:        g.hero.gender,
                 heroRace:          g.heroRace,
                 heroAuraColor:     g.heroAuraColor,
                 heroAuraIntensity: g.heroAuraIntensity,
-                heroColorFilter:   g.heroSkinFilter,
+                heroColorFilter:   g.heroSpriteFilter,
                 heroPet: g.equippedPet != null
                     ? PetBattleSprite(pet: g.equippedPet!)
                     : null,
@@ -1432,9 +1805,9 @@ class _TreasureDetail extends StatelessWidget {
                   style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: AppTheme.textLight)),
               const SizedBox(height: 16),
               Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                _LootChip('?? +${room.treasureGold ?? 0}', AppTheme.accentGold),
+                _LootChip('💰 +${room.treasureGold ?? 0}', AppTheme.accentGold),
                 const SizedBox(width: 12),
-                _LootChip('? +${room.treasureShards ?? 0}', const Color(0xFF88aaff)),
+                _LootChip('◆ +${room.treasureShards ?? 0}', const Color(0xFF88aaff)),
               ]),
             ],
           ),
@@ -1507,7 +1880,7 @@ class _ShrineDetailState extends State<_ShrineDetail> {
     return Column(children: [
       Text(e.icon, style: const TextStyle(fontSize: 40)),
       const SizedBox(height: 6),
-      Text(e.isCurse ? '?? CURSED!' : '? BLESSED!',
+      Text(e.isCurse ? '✸ CURSED!' : '✧ BLESSED!',
           style: AppTheme.pixelHeading(fontSize: 14, letterSpacing: 2, color: color)),
       const SizedBox(height: 8),
       Container(
@@ -1567,10 +1940,10 @@ class _ShrineDetailState extends State<_ShrineDetail> {
     // -- Pre-entry: variant-specific narrative --------------------------------
     final variant = widget.room.shrineVariant;
     final (shrineIcon, shrineTitle, shrineFlavor, enterLabel, shrineColor) = switch (variant) {
-      ShrineVariant.corrupted  => ('??', 'Corrupted Shrine',  'Dark energies pulse and writhe. A curse is certain � but power awaits.', 'ACCEPT THE CURSE', const Color(0xFFcc4444)),
-      ShrineVariant.benevolent => ('?', 'Blessed Shrine',    'Warm divine light emanates from this place. A blessing is guaranteed.', 'RECEIVE BLESSING', const Color(0xFF44cc88)),
-      ShrineVariant.twin       => ('??', 'Ancient Shrine',    'Two forces stir within � you will receive both a blessing and a curse.', 'ENTER  (2 EFFECTS)', const Color(0xFFcc88ff)),
-      ShrineVariant.normal     => ('??', 'Ancient Shrine',    'A mysterious shrine pulses with unknown energy.\nEnter to receive a blessing... or a curse.\nYou won\'t know which until it\'s too late.', '? ENTER SHRINE', const Color(0xFFcc88ff)),
+      ShrineVariant.corrupted  => ('☠', 'Corrupted Shrine',  'Dark energies pulse and writhe. A curse is certain — but power awaits.', 'ACCEPT THE CURSE', const Color(0xFFcc4444)),
+      ShrineVariant.benevolent => ('✧', 'Blessed Shrine',    'Warm divine light emanates from this place. A blessing is guaranteed.', 'RECEIVE BLESSING', const Color(0xFF44cc88)),
+      ShrineVariant.twin       => ('✦', 'Ancient Shrine',    'Two forces stir within — you will receive both a blessing and a curse.', 'ENTER  (2 EFFECTS)', const Color(0xFFcc88ff)),
+      ShrineVariant.normal     => ('✧', 'Ancient Shrine',    'A mysterious shrine pulses with unknown energy.\nEnter to receive a blessing... or a curse.\nYou won\'t know which until it\'s too late.', 'ENTER SHRINE', const Color(0xFFcc88ff)),
     };
 
     return Column(
@@ -1633,7 +2006,7 @@ class _ShrineDetailState extends State<_ShrineDetail> {
                 side: const BorderSide(color: Color(0xFF44cc88)),
               ),
               child: Text(
-                '??  GUARANTEE BLESSING  (${GameState.shrineBlissCost} ??)',
+                '✧  GUARANTEE BLESSING  (${GameState.shrineBlissCost} ◆)',
                 style: const TextStyle(fontSize: 11, color: Color(0xFF44cc88), fontWeight: FontWeight.bold),
               ),
             ),
@@ -1652,13 +2025,13 @@ class _TrapDetail extends StatelessWidget {
   final VoidCallback onResolved;
 
   static const _trapVisuals = <String, (String, int)>{
-    'Poison Spikes': ('?', 0xFF44cc44),
-    'Fire Jet':      ('??', 0xFFff6633),
-    'Boulder Trap':  ('??', 0xFF998866),
-    'Arcane Curse':  ('??', 0xFF9966ff),
-    'Acid Pool':     ('??', 0xFF88ee22),
-    'Void Rift':     ('??', 0xFF6644cc),
-    'Shadow Snare':  ('??', 0xFF8888aa),
+    'Poison Spikes': ('✸', 0xFF44cc44),
+    'Fire Jet':      ('✦', 0xFFff6633),
+    'Boulder Trap':  ('◆', 0xFF998866),
+    'Arcane Curse':  ('✸', 0xFF9966ff),
+    'Acid Pool':     ('✸', 0xFF88ee22),
+    'Void Rift':     ('★', 0xFF6644cc),
+    'Shadow Snare':  ('◆', 0xFF8888aa),
   };
 
   @override
@@ -1989,7 +2362,7 @@ class _LockedChestDetailState extends State<_LockedChestDetail>
             borderRadius: BorderRadius.circular(4),
           ),
           child: Column(children: [
-            // Chest visual � pixel art style
+            // Chest visual — pixel art style
             AnimatedBuilder(
               animation: _glow,
               builder: (_, child) => Container(
@@ -2018,7 +2391,7 @@ class _LockedChestDetailState extends State<_LockedChestDetail>
             const SizedBox(height: 14),
             // Shard option
             Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-              const Text('?', style: TextStyle(fontSize: 17, color: Color(0xFF88aaff))),
+              const Text('◆', style: TextStyle(fontSize: 17, color: Color(0xFF88aaff))),
               const SizedBox(width: 6),
               Text('$cost shards',
                   style: TextStyle(
@@ -2118,13 +2491,13 @@ class _RestSiteDetailState extends State<_RestSiteDetail> {
     final newHp = (run.heroHp - dmg + heal).clamp(0, run.heroMaxHp);
 
     final (icon, accentColor) = switch (room.restEventType) {
-      RestEventType.ambush     => ('?', const Color(0xFFcc6644)),
-      RestEventType.badWeather => ('??', const Color(0xFF88aacc)),
-      RestEventType.haunted    => ('??', const Color(0xFFaa88cc)),
-      RestEventType.wanderer   => ('??', const Color(0xFF44cc88)),
-      RestEventType.supplies   => ('??', AppTheme.accentGold),
-      RestEventType.peaceful   => ('??', const Color(0xFF44cc88)),
-      RestEventType.merchant   => ('??', const Color(0xFFddaa44)),
+      RestEventType.ambush     => ('‼', const Color(0xFFcc6644)),
+      RestEventType.badWeather => ('✸', const Color(0xFF88aacc)),
+      RestEventType.haunted    => ('◉', const Color(0xFFaa88cc)),
+      RestEventType.wanderer   => ('►', const Color(0xFF44cc88)),
+      RestEventType.supplies   => ('✦', AppTheme.accentGold),
+      RestEventType.peaceful   => ('⊕', const Color(0xFF44cc88)),
+      RestEventType.merchant   => ('◆', const Color(0xFFddaa44)),
     };
 
     if (room.restEventType == RestEventType.merchant) {
@@ -2155,13 +2528,13 @@ class _RestSiteDetailState extends State<_RestSiteDetail> {
                   textAlign: TextAlign.center),
             const SizedBox(height: 14),
             if (dmg > 0) ...[
-              _LootChip('?? -$dmg HP  (${(dmg * 100 / run.heroMaxHp).round()}% of max)', const Color(0xFFcc4444)),
+              _LootChip('✸ -$dmg HP  (${(dmg * 100 / run.heroMaxHp).round()}% of max)', const Color(0xFFcc4444)),
               const SizedBox(height: 6),
             ],
-            _LootChip('? +$heal HP  (? $newHp / ${run.heroMaxHp})', const Color(0xFF44cc88)),
+            _LootChip('⊕ +$heal HP  (→ $newHp / ${run.heroMaxHp})', const Color(0xFF44cc88)),
             if (room.restBonusGold > 0) ...[
               const SizedBox(height: 6),
-              _LootChip('?? +${room.restBonusGold} gold', AppTheme.accentGold),
+              _LootChip('💰 +${room.restBonusGold} gold', AppTheme.accentGold),
             ],
           ]),
         ),
@@ -2173,7 +2546,7 @@ class _RestSiteDetailState extends State<_RestSiteDetail> {
     final game  = widget.game;
     final room  = widget.room;
     final run   = widget.run;
-    final stock = DungeonMerchantItem.stockForFloor(run.floor);
+    final stock = DungeonMerchantItem.stockForTier(run.tier, run.floor);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -2186,7 +2559,7 @@ class _RestSiteDetailState extends State<_RestSiteDetail> {
             borderRadius: BorderRadius.circular(4),
           ),
           child: Column(children: [
-            const Text('??', style: TextStyle(fontSize: 40)),
+            const Text('⊕', style: TextStyle(fontSize: 40)),
             const SizedBox(height: 8),
             Text(room.restEventTitle,
                 style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: accent)),
@@ -2195,10 +2568,22 @@ class _RestSiteDetailState extends State<_RestSiteDetail> {
               Text(room.restEventFlavor,
                   style: const TextStyle(fontSize: 12, color: AppTheme.textMuted, height: 1.5),
                   textAlign: TextAlign.center),
+            const SizedBox(height: 4),
+            const Text('"Bones for trinkets, traveller. More bones, finer wares."',
+                style: TextStyle(fontSize: 11, color: AppTheme.textMuted, fontStyle: FontStyle.italic, height: 1.4),
+                textAlign: TextAlign.center),
             const SizedBox(height: 12),
-            Text('?? ${game.gold} gold available',
-                style: const TextStyle(
-                    fontSize: 13, color: AppTheme.accentGold, fontWeight: FontWeight.bold)),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+              decoration: BoxDecoration(
+                color: const Color(0xFF0e0c08),
+                border: Border.all(color: const Color(0xFFccbb99).withValues(alpha: 0.5)),
+                borderRadius: BorderRadius.circular(3),
+              ),
+              child: Text('🦴  ${run.bones} Bones',
+                  style: const TextStyle(
+                      fontSize: 14, color: Color(0xFFe8dcc0), fontWeight: FontWeight.bold)),
+            ),
           ]),
         ),
         const SizedBox(height: 12),
@@ -2206,7 +2591,7 @@ class _RestSiteDetailState extends State<_RestSiteDetail> {
           _MerchantItemRow(
             item: item,
             purchased: _purchased.contains(item.id),
-            canAfford: game.gold >= item.cost,
+            canAfford: run.bones >= item.boneCost,
             onBuy: () {
               final bought = game.buyDungeonMerchantItem(item.id);
               if (bought != null) setState(() => _purchased.add(item.id));
@@ -2285,16 +2670,69 @@ class _MerchantItemRow extends StatelessWidget {
                 ),
                 borderRadius: BorderRadius.circular(3),
               ),
-              child: Text('${item.cost} ??',
+              child: Text('${item.boneCost} 🦴',
                   style: TextStyle(
-                      fontSize: 11,
+                      fontSize: 12,
                       color: canAfford
-                          ? AppTheme.accentGold
+                          ? const Color(0xFFe8dcc0)
                           : Colors.white24,
                       fontWeight: FontWeight.bold)),
             ),
           ),
       ]),
+    );
+  }
+}
+
+// -- Relic picker (after boss kills) -------------------------------------------
+
+class _RelicPicker extends StatelessWidget {
+  const _RelicPicker({required this.run, required this.game});
+  final DungeonRun run;
+  final GameState game;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text('☠ BOSS SLAIN — CLAIM A RELIC',
+            textAlign: TextAlign.center,
+            style: AppTheme.pixelHeading(fontSize: 12, letterSpacing: 2, color: const Color(0xFFcc88ff))),
+        const SizedBox(height: 8),
+        for (final relic in run.relicChoices)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 6),
+            child: GestureDetector(
+              onTap: () => game.chooseDungeonRelic(relic),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF1a0a2a).withValues(alpha: 0.6),
+                  border: Border.all(color: const Color(0xFFcc88ff).withValues(alpha: 0.6)),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: Row(children: [
+                  Text(relic.icon, style: const TextStyle(fontSize: 22)),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(relic.name,
+                            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFFdd99ff))),
+                        const SizedBox(height: 2),
+                        Text(relic.description,
+                            style: const TextStyle(fontSize: 12, color: AppTheme.textLight)),
+                      ],
+                    ),
+                  ),
+                  const Icon(Icons.chevron_right, color: Color(0xFFcc88ff), size: 20),
+                ]),
+              ),
+            ),
+          ),
+      ],
     );
   }
 }
@@ -2314,8 +2752,8 @@ class _RoomResult extends StatelessWidget {
 
     return Column(
       children: [
-        _HeroBar(run: run),
-        // Action button always visible at top � above the scrollable result
+        _HeroBar(run: run, game: game),
+        // Action button always visible at top — above the scrollable result
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
           child: isDead
@@ -2333,22 +2771,24 @@ class _RoomResult extends StatelessWidget {
                         style: AppTheme.pixelHeading(fontSize: 14, letterSpacing: 1, color: AppTheme.textMuted)),
                   ),
                 )
-              : SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton.icon(
-                    onPressed: onNext,
-                    icon: const Text('?', style: TextStyle(fontSize: 16)),
-                    label: Text('DESCEND TO FLOOR ${run.floor + 1}',
-                        style: AppTheme.pixelHeading(fontSize: 13, letterSpacing: 1, color: const Color(0xFF44cc88))),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF0d1e14),
-                      foregroundColor: const Color(0xFF44cc88),
-                      side: const BorderSide(color: Color(0xFF44cc88), width: 1.5),
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+              : run.relicChoices.isNotEmpty
+                  ? _RelicPicker(run: run, game: game)
+                  : SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton.icon(
+                        onPressed: onNext,
+                        icon: const Text('⚔', style: TextStyle(fontSize: 16)),
+                        label: Text('DESCEND TO FLOOR ${run.floor + 1}',
+                            style: AppTheme.pixelHeading(fontSize: 13, letterSpacing: 1, color: const Color(0xFF44cc88))),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF0d1e14),
+                          foregroundColor: const Color(0xFF44cc88),
+                          side: const BorderSide(color: Color(0xFF44cc88), width: 1.5),
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+                        ),
+                      ),
                     ),
-                  ),
-                ),
         ),
         Expanded(
           child: SingleChildScrollView(
@@ -2370,9 +2810,13 @@ class _RoomResult extends StatelessWidget {
                     children: [
                       if (room.type == DungeonRoomType.combat || room.type == DungeonRoomType.boss ||
                           room.type == DungeonRoomType.elite || room.type == DungeonRoomType.ambush) ...[
-                        Text(isDead ? '?? Fallen' : '? Victory',
+                        Text(isDead ? '☠ Fallen'
+                                : room.goblinEscaped ? '💰 It got away!'
+                                : '✓ Victory',
                             style: TextStyle(fontSize: 19, fontWeight: FontWeight.bold,
-                                color: isDead ? const Color(0xFFcc4444) : const Color(0xFF44cc88))),
+                                color: isDead ? const Color(0xFFcc4444)
+                                    : room.goblinEscaped ? const Color(0xFFffcc33)
+                                    : const Color(0xFF44cc88))),
                         if (run.ambushPreHit > 0 && isDead) ...[
                           const SizedBox(height: 4),
                           Text('Ambush hit dealt ${run.ambushPreHit} before the fight.',
@@ -2383,10 +2827,10 @@ class _RoomResult extends StatelessWidget {
                         Text(run.lastCombatSummary,
                             style: const TextStyle(fontSize: 12, color: AppTheme.textMuted),
                             textAlign: TextAlign.center),
-                        if (!isDead) ...[
+                        if (!isDead && !room.goblinEscaped) ...[
                           const SizedBox(height: 12),
                           Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                            _LootChip('?? +${_calcCombatGold(run, room)}', AppTheme.accentGold),
+                            _LootChip('💰 +${_calcCombatGold(run, room)}', AppTheme.accentGold),
                           ]),
                           if (room.hasItemDrop && game.dungeonLastDrop != null) ...[
                             const SizedBox(height: 8),
@@ -2397,28 +2841,28 @@ class _RoomResult extends StatelessWidget {
                                 border: Border.all(color: game.dungeonLastDrop!.rarityColor.withValues(alpha: 0.5)),
                                 borderRadius: BorderRadius.circular(4),
                               ),
-                              child: Text('?? ${game.dungeonLastDrop!.name} (${game.dungeonLastDrop!.rarityLabel}) ? Bag',
+                              child: Text('✦ ${game.dungeonLastDrop!.name} (${game.dungeonLastDrop!.rarityLabel}) → Bag',
                                   style: TextStyle(fontSize: 12, color: game.dungeonLastDrop!.rarityColor,
                                       fontWeight: FontWeight.bold)),
                             ),
                           ],
                         ],
                       ] else if (room.type == DungeonRoomType.restSite) ...[
-                        const Text('? Rested',
+                        const Text('⊕ Rested',
                             style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: Color(0xFF44cc88))),
                         const SizedBox(height: 8),
-                        _LootChip('? +${room.restoreHp} HP', const Color(0xFF44cc88)),
+                        _LootChip('⊕ +${room.restoreHp} HP', const Color(0xFF44cc88)),
                       ] else if (room.type == DungeonRoomType.treasure) ...[
-                        const Text('? Treasure collected',
+                        const Text('✦ Treasure collected',
                             style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: Color(0xFF44cc88))),
                         const SizedBox(height: 8),
                         Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                          _LootChip('?? +${room.treasureGold}', AppTheme.accentGold),
+                          _LootChip('💰 +${room.treasureGold}', AppTheme.accentGold),
                           const SizedBox(width: 10),
-                          _LootChip('? +${room.treasureShards}', const Color(0xFF88aaff)),
+                          _LootChip('◆ +${room.treasureShards}', const Color(0xFF88aaff)),
                         ]),
                       ] else if (room.type == DungeonRoomType.shrine) ...[
-                        const Text('? Blessing received',
+                        const Text('✧ Blessing received',
                             style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: Color(0xFF44cc88))),
                         if (run.blessings.isNotEmpty)
                           Padding(
@@ -2427,7 +2871,7 @@ class _RoomResult extends StatelessWidget {
                                 style: const TextStyle(fontSize: 14, color: Color(0xFF44cc88))),
                           ),
                       ] else if (room.type == DungeonRoomType.trap) ...[
-                        Text(isDead ? '?? Slain by the trap' : '? Trap survived',
+                        Text(isDead ? '☠ Slain by the trap' : '✸ Trap survived',
                             style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold,
                                 color: isDead ? const Color(0xFFcc4444) : const Color(0xFF44cc88))),
                         Padding(
@@ -2436,7 +2880,7 @@ class _RoomResult extends StatelessWidget {
                               style: const TextStyle(fontSize: 14, color: Color(0xFFcc8833))),
                         ),
                       ] else if (room.type == DungeonRoomType.lockedChest) ...[
-                        const Text('? Chest opened',
+                        const Text('◆ Chest opened',
                             style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: Color(0xFF44cc88))),
                         if (game.dungeonLastDrop != null) ...[
                           const SizedBox(height: 8),
@@ -2447,7 +2891,7 @@ class _RoomResult extends StatelessWidget {
                               border: Border.all(color: game.dungeonLastDrop!.rarityColor.withValues(alpha: 0.5)),
                               borderRadius: BorderRadius.circular(4),
                             ),
-                            child: Text('?? ${game.dungeonLastDrop!.name} (${game.dungeonLastDrop!.rarityLabel}) ? Bag',
+                            child: Text('✦ ${game.dungeonLastDrop!.name} (${game.dungeonLastDrop!.rarityLabel}) → Bag',
                                 style: TextStyle(fontSize: 12, color: game.dungeonLastDrop!.rarityColor,
                                     fontWeight: FontWeight.bold)),
                           ),
@@ -2476,8 +2920,6 @@ class _RoomResult extends StatelessWidget {
             ),
           ),
         ),
-        if (!isDead)
-          _ConsumableBar(run: run, onUse: (t) => game.useDungeonConsumable(t)),
       ],
     );
   }
@@ -2526,22 +2968,44 @@ class _DungeonSummary extends StatelessWidget {
             decoration: BoxDecoration(
               color: const Color(0xFF231F1B),
               border: Border.all(
-                color: run.isDead ? const Color(0xFFcc4444) : AppTheme.accentGold,
+                color: run.isDead ? const Color(0xFFcc4444)
+                    : run.isCleared ? const Color(0xFF44cc88)
+                    : AppTheme.accentGold,
                 width: 1.5,
               ),
               borderRadius: BorderRadius.circular(4),
             ),
             child: Column(
               children: [
-                Text(run.isDead ? '??' : '??', style: const TextStyle(fontSize: 49)),
+                Text(run.isDead ? '☠' : '★', style: const TextStyle(fontSize: 49)),
                 const SizedBox(height: 8),
                 Text(
-                  run.isDead ? 'YOU HAVE FALLEN' : 'RUN ENDED',
+                  run.isDead ? 'YOU HAVE FALLEN'
+                      : run.isCleared ? 'DUNGEON CLEARED!'
+                      : 'RUN ENDED',
                   style: AppTheme.pixelHeading(
                     fontSize: 15, letterSpacing: 2,
-                    color: run.isDead ? const Color(0xFFcc4444) : AppTheme.textLight,
+                    color: run.isDead ? const Color(0xFFcc4444)
+                        : run.isCleared ? const Color(0xFF44cc88)
+                        : AppTheme.textLight,
                   ),
                 ),
+                if (run.isCleared) ...[
+                  const SizedBox(height: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF44cc88).withValues(alpha: 0.10),
+                      border: Border.all(color: const Color(0xFF44cc88).withValues(alpha: 0.5)),
+                      borderRadius: BorderRadius.circular(3),
+                    ),
+                    child: Text(
+                      'The Dungeon Lord has fallen!\n+5 mythril  •  +${2 * run.tier} Z-Coins  •  +${500 * run.tier} gold  •  bonus item',
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(fontSize: 12, color: Color(0xFF66ddaa), height: 1.5),
+                    ),
+                  ),
+                ],
                 const SizedBox(height: 4),
                 Text('TIER ${run.tier}',
                     style: AppTheme.pixelHeading(fontSize: 11, color: AppTheme.textMuted, letterSpacing: 2)),
@@ -2568,7 +3032,7 @@ class _DungeonSummary extends StatelessWidget {
                       border: Border.all(color: const Color(0xFF44cc88).withValues(alpha: 0.5)),
                       borderRadius: BorderRadius.circular(20),
                     ),
-                    child: Text('? Tier ${run.tier} cleared � AUTO unlocked!',
+                    child: Text('✓ Tier ${run.tier} cleared — AUTO unlocked!',
                         style: AppTheme.pixelHeading(fontSize: 11, color: const Color(0xFF44cc88))),
                   ),
                 ],
@@ -2581,7 +3045,7 @@ class _DungeonSummary extends StatelessWidget {
                       border: Border.all(color: AppTheme.accentGold.withValues(alpha: 0.5)),
                       borderRadius: BorderRadius.circular(20),
                     ),
-                    child: Text('? New record!',
+                    child: Text('★ New record!',
                         style: AppTheme.pixelHeading(fontSize: 11, color: AppTheme.accentGold)),
                   ),
                 ],
@@ -2610,7 +3074,7 @@ class _DungeonSummary extends StatelessWidget {
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
                   ),
                   child: Text(
-                    autoRun ? '? STOP' : '? AUTO',
+                    autoRun ? '◉ STOP' : '✦ AUTO',
                     style: AppTheme.pixelHeading(
                       fontSize: 13, letterSpacing: 1,
                       color: autoRun ? const Color(0xFF44cc88) : AppTheme.textMuted,

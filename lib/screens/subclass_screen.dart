@@ -2,70 +2,81 @@
 import '../models/subclass.dart';
 import '../services/game_state.dart';
 import '../theme/app_theme.dart';
+import '../widgets/battle_sprites.dart';
 
 class SubclassScreen extends StatelessWidget {
-  const SubclassScreen({super.key});
+  const SubclassScreen({super.key, this.embedded = false});
+  final bool embedded;
 
   @override
   Widget build(BuildContext context) {
-    final game    = GameStateProvider.of(context);
-    final options = subclassesForClass(game.hero.heroClass);
-
+    final game = GameStateProvider.of(context);
+    final body = SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
+      child: _buildBody(context, game),
+    );
+    if (embedded) return body;
     return Scaffold(
       backgroundColor: const Color(0xFF1B1A17),
       appBar: AppBar(
         backgroundColor: const Color(0xFF2A2623),
-        title: Text('CHOOSE SUBCLASS',
+        title: Text('SPECIALIZATION',
             style: AppTheme.pixelHeading(fontSize: 14, letterSpacing: 2)),
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            if (game.subclassId != null) ...[
-              _ChosenBanner(game: game),
-              const SizedBox(height: 16),
-            ] else ...[
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(14),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF2A2623),
-                  border: Border.all(color: AppTheme.accentGold.withValues(alpha: 0.5)),
-                  borderRadius: BorderRadius.circular(4),
+      body: body,
+    );
+  }
+
+  Widget _buildBody(BuildContext context, GameState game) {
+    final options = subclassesForClass(game.hero.heroClass);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (game.subclassId != null) ...[
+          _ChosenBanner(game: game),
+          const SizedBox(height: 10),
+          _RespecButton(game: game),
+          const SizedBox(height: 16),
+        ] else ...[
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: const Color(0xFF2A2623),
+              border: Border.all(color: AppTheme.accentGold.withValues(alpha: 0.5)),
+              borderRadius: BorderRadius.circular(4),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('LEVEL 50 SPECIALIZATION',
+                    style: AppTheme.pixelHeading(fontSize: 11, letterSpacing: 2, color: AppTheme.accentGold)),
+                const SizedBox(height: 6),
+                Text(
+                  'Choose a specialization for your ${game.hero.heroClass.displayName}. '
+                  'It grants a powerful capstone bonus plus stat bonuses, applied immediately. '
+                  'You can change it later for ${GameState.kSubclassRespecCost} ZCoins.',
+                  style: const TextStyle(fontSize: 13, color: AppTheme.textLight),
                 ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('LEVEL 10 MILESTONE',
-                        style: AppTheme.pixelHeading(fontSize: 11, letterSpacing: 2, color: AppTheme.accentGold)),
-                    const SizedBox(height: 6),
-                    const Text(
-                      'Choose one subclass for your hero. This choice is permanent until you Prestige.\n'
-                      'Stat bonuses are applied immediately.',
-                      style: TextStyle(fontSize: 13, color: AppTheme.textLight),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 16),
-            ],
-            Text('${game.hero.heroClass.displayName.toUpperCase()} SUBCLASSES',
-                style: AppTheme.pixelHeading(fontSize: 11, letterSpacing: 2)),
-            const SizedBox(height: 10),
-            ...options.map((sub) => Padding(
-              padding: const EdgeInsets.only(bottom: 12),
-              child: _SubclassCard(
-                sub: sub,
-                chosen: game.subclassId == sub.id,
-                locked: game.subclassId != null && game.subclassId != sub.id,
-                onChoose: () => _confirmPick(context, game, sub),
-              ),
-            )),
-          ],
-        ),
-      ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+        ],
+        Text('${game.hero.heroClass.displayName.toUpperCase()} SPECIALIZATIONS  (${options.length})',
+            style: AppTheme.pixelHeading(fontSize: 11, letterSpacing: 2)),
+        const SizedBox(height: 10),
+        ...options.map((sub) => Padding(
+          padding: const EdgeInsets.only(bottom: 12),
+          child: _SubclassCard(
+            sub: sub,
+            spriteId: 'hero_${game.hero.heroClass.name}',
+            chosen: game.subclassId == sub.id,
+            locked: game.subclassId != null && game.subclassId != sub.id,
+            onChoose: () => _confirmPick(context, game, sub),
+          ),
+        )),
+      ],
     );
   }
 
@@ -93,14 +104,14 @@ class SubclassScreen extends StatelessWidget {
                   style: const TextStyle(fontSize: 14, color: AppTheme.accentGold, fontWeight: FontWeight.bold)),
               const SizedBox(height: 8),
             ],
-            Text('SPECIAL EFFECT',
+            Text(sub.bonusSummary.isNotEmpty ? 'CAPSTONE BONUS' : 'SPECIAL EFFECT',
                 style: AppTheme.pixelHeading(fontSize: 10, letterSpacing: 2, color: AppTheme.textMuted)),
             const SizedBox(height: 4),
-            Text(sub.effectLabel,
+            Text(sub.bonusSummary.isNotEmpty ? sub.bonusSummary : sub.effectLabel,
                 style: const TextStyle(fontSize: 14, color: AppTheme.textLight)),
             const SizedBox(height: 12),
-            Text('This choice is PERMANENT until you Prestige.',
-                style: const TextStyle(fontSize: 12, color: Color(0xFFcc4444))),
+            Text('You can change this later for ${GameState.kSubclassRespecCost} ZCoins.',
+                style: const TextStyle(fontSize: 12, color: AppTheme.textMuted)),
           ],
         ),
         actions: [
@@ -111,12 +122,72 @@ class SubclassScreen extends StatelessWidget {
           ),
           TextButton(
             onPressed: () {
-              Navigator.pop(context);
               game.pickSubclass(sub.id);
-              Navigator.pop(context); // back to home
+              Navigator.pop(context); // close the dialog; screen rebuilds
             },
             child: Text('CONFIRM',
                 style: AppTheme.pixelHeading(fontSize: 11, color: AppTheme.accentGold)),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _RespecButton extends StatelessWidget {
+  const _RespecButton({required this.game});
+  final GameState game;
+
+  @override
+  Widget build(BuildContext context) {
+    final canAfford = game.zcoins >= GameState.kSubclassRespecCost;
+    return SizedBox(
+      width: double.infinity,
+      child: OutlinedButton(
+        onPressed: () => _confirmRespec(context),
+        style: OutlinedButton.styleFrom(
+          foregroundColor: canAfford ? const Color(0xFF66aaff) : AppTheme.textMuted,
+          side: BorderSide(color: canAfford ? const Color(0xFF335577) : AppTheme.cardBorder),
+          padding: const EdgeInsets.symmetric(vertical: 10),
+        ),
+        child: Text('CHANGE SPECIALIZATION  —  ${GameState.kSubclassRespecCost} ZCoins',
+            style: AppTheme.pixelHeading(fontSize: 10, letterSpacing: 1,
+                color: canAfford ? const Color(0xFF66aaff) : AppTheme.textMuted)),
+      ),
+    );
+  }
+
+  void _confirmRespec(BuildContext context) {
+    showDialog<void>(
+      context: context,
+      builder: (_) => AlertDialog(
+        backgroundColor: const Color(0xFF2A2623),
+        title: Text('Change specialization?',
+            style: AppTheme.pixelHeading(fontSize: 14, color: const Color(0xFF66aaff))),
+        content: Text(
+          'Spend ${GameState.kSubclassRespecCost} ZCoins to clear your current specialization '
+          'and choose a new one?\n\nYour ZCoins: ${game.zcoins}',
+          style: const TextStyle(fontSize: 13, color: AppTheme.textLight),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('CANCEL',
+                style: AppTheme.pixelHeading(fontSize: 11, color: AppTheme.textMuted)),
+          ),
+          TextButton(
+            onPressed: () {
+              final ok = game.respecSubclass();
+              Navigator.pop(context);
+              if (!ok) {
+                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                  content: Text('Not enough ZCoins to respec.'),
+                  duration: Duration(seconds: 2),
+                ));
+              }
+            },
+            child: Text('CONFIRM',
+                style: AppTheme.pixelHeading(fontSize: 11, color: const Color(0xFF66aaff))),
           ),
         ],
       ),
@@ -162,7 +233,7 @@ class _ChosenBanner extends StatelessWidget {
           Text(sub.name,
               style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: AppTheme.accentGold)),
           const SizedBox(height: 4),
-          Text(sub.effectLabel,
+          Text(sub.bonusSummary.isNotEmpty ? sub.bonusSummary : sub.effectLabel,
               style: const TextStyle(fontSize: 13, color: AppTheme.textLight)),
           if (sub.statLine.isNotEmpty) ...[
             const SizedBox(height: 4),
@@ -178,12 +249,14 @@ class _ChosenBanner extends StatelessWidget {
 class _SubclassCard extends StatelessWidget {
   const _SubclassCard({
     required this.sub,
+    required this.spriteId,
     required this.chosen,
     required this.locked,
     required this.onChoose,
   });
 
   final Subclass sub;
+  final String spriteId;
   final bool chosen;
   final bool locked;
   final VoidCallback onChoose;
@@ -211,6 +284,18 @@ class _SubclassCard extends StatelessWidget {
           children: [
             Row(
               children: [
+                Container(
+                  width: 42, height: 42,
+                  margin: const EdgeInsets.only(right: 10),
+                  decoration: BoxDecoration(
+                    color: sub.spriteSwatch.withValues(alpha: 0.12),
+                    border: Border.all(color: sub.spriteSwatch.withValues(alpha: 0.5)),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  alignment: Alignment.center,
+                  child: StaticEnemySprite(
+                      spriteId: spriteId, size: 36, colorFilter: sub.spriteColorFilter),
+                ),
                 Expanded(
                   child: Text(sub.name,
                       style: TextStyle(
@@ -245,11 +330,14 @@ class _SubclassCard extends StatelessWidget {
                 borderRadius: BorderRadius.circular(3),
               ),
               child: Row(
-                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const Text('⚡ ', style: TextStyle(fontSize: 12)),
-                  Text(sub.effectLabel,
-                      style: const TextStyle(fontSize: 12, color: Color(0xFF88aaff))),
+                  Expanded(
+                    child: Text(
+                        sub.bonusSummary.isNotEmpty ? sub.bonusSummary : sub.effectLabel,
+                        style: const TextStyle(fontSize: 12, color: Color(0xFF88aaff))),
+                  ),
                 ],
               ),
             ),

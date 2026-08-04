@@ -2,6 +2,7 @@
 import '../models/prestige_shop.dart';
 import '../services/game_state.dart';
 import '../theme/app_theme.dart';
+import '../widgets/currency_info.dart';
 import 'main_shell.dart' show TutorialTip;
 
 class PrestigeScreen extends StatelessWidget {
@@ -150,7 +151,7 @@ class _RebirthPanel extends StatelessWidget {
           const SizedBox(height: 4),
           _ResetRow(
             label: 'Keeps',
-            items: const ['Shards', 'Echoes', 'Essence', 'Abilities', 'Passive tree', 'Cosmetics'],
+            items: const ['Shards', 'Echoes', 'Abilities', 'Passive tree', 'Cosmetics'],
             keepColor: true,
           ),
           const SizedBox(height: 8),
@@ -370,7 +371,7 @@ class _BonusPanel extends StatelessWidget {
     if (s.isUnlocked('start_gold'))          chips.add('+20% Gold Income');
     if (s.isUnlocked('war_spoils'))          chips.add('+35% More Gold');
     if (s.isUnlocked('carrion_picker'))      chips.add('+50% Shards');
-    if (s.isUnlocked('essence_bonus'))       chips.add('+50% Essence');
+    if (s.isUnlocked('essence_bonus'))       chips.add('+50% Shard Gain');
     if (s.isUnlocked('treasure_sense'))      chips.add('+35% Battle Gold');
     if (s.isUnlocked('swift_learner'))       chips.add('+30% XP');
     if (s.isUnlocked('head_start'))          chips.add('Start Stage 11');
@@ -610,7 +611,7 @@ class _ShopNode extends StatelessWidget {
                 const SizedBox(height: 6),
                 TextButton(
                   onPressed: canBuy
-                      ? () { game.purchasePrestigeNode(node.id); game.audioService.playUiConfirm(); }
+                      ? () { game.purchasePrestigeNode(node.id); game.audioService.playClaim(); }
                       : null,
                   style: TextButton.styleFrom(
                     foregroundColor: const Color(0xFFcc8844),
@@ -657,35 +658,38 @@ class _SoulBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final color = dim ? AppTheme.textMuted : const Color(0xFFcc8844);
-    return Container(
-      padding:
-          EdgeInsets.symmetric(horizontal: large ? 14 : 8, vertical: large ? 8 : 4),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.08),
-        border: Border.all(color: color.withValues(alpha: dim ? 0.3 : 0.7)),
-        borderRadius: BorderRadius.circular(4),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text('✦', style: TextStyle(fontSize: large ? 18 : 13, color: color)),
-          const SizedBox(width: 5),
-          Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text('$souls',
-                  style: TextStyle(
-                      fontSize: large ? 16 : 12,
-                      fontWeight: FontWeight.bold,
-                      color: color)),
-              Text(label,
-                  style: TextStyle(
-                      fontSize: large ? 9 : 8,
-                      color: color.withValues(alpha: 0.7))),
-            ],
-          ),
-        ],
+    return InfoTip(
+      message: CurrencyInfo.paragonPoints,
+      child: Container(
+        padding:
+            EdgeInsets.symmetric(horizontal: large ? 14 : 8, vertical: large ? 8 : 4),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.08),
+          border: Border.all(color: color.withValues(alpha: dim ? 0.3 : 0.7)),
+          borderRadius: BorderRadius.circular(4),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text('✦', style: TextStyle(fontSize: large ? 18 : 13, color: color)),
+            const SizedBox(width: 5),
+            Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('$souls',
+                    style: TextStyle(
+                        fontSize: large ? 16 : 12,
+                        fontWeight: FontWeight.bold,
+                        color: color)),
+                Text(label,
+                    style: TextStyle(
+                        fontSize: large ? 9 : 8,
+                        color: color.withValues(alpha: 0.7))),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }

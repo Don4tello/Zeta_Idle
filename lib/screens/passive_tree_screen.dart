@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../models/passive_tree.dart';
 import '../services/game_state.dart';
 import '../theme/app_theme.dart';
+import '../widgets/currency_info.dart';
 import 'main_shell.dart' show TutorialTip;
 
 class PassiveTreeScreen extends StatelessWidget {
@@ -46,14 +47,14 @@ class PassiveTreeScreen extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(12, 8, 12, 4),
       child: Row(children: [
         Tooltip(
-          message: AppTheme.resourceTooltips['essence']!,
+          message: CurrencyInfo.shards,
           child: Row(mainAxisSize: MainAxisSize.min, children: [
-            const Icon(Icons.auto_awesome, color: Color(0xFFaaff88), size: 13),
+            const Icon(Icons.diamond, color: Color(0xFF6699ff), size: 13),
             const SizedBox(width: 5),
             Text(
-              '${game.essence}',
+              '${game.shards}',
               style: GoogleFonts.rajdhani(
-                color: const Color(0xFFaaff88),
+                color: const Color(0xFF6699ff),
                 fontSize: 15,
                 fontWeight: FontWeight.bold,
               ),
@@ -77,7 +78,7 @@ class PassiveTreeScreen extends StatelessWidget {
           TutorialTip(
             tutorialKey: 'passives',
             game: game,
-            text: 'You\'ve earned Essence ✦ — spend it here on permanent passive '
+            text: 'You\'ve earned Shards ◆ — spend them here on permanent passive '
                 'nodes that survive every rebirth. Your class branch is at the top. '
                 'Each node ranks up to 5 for bigger bonuses.',
           ),
@@ -248,7 +249,7 @@ class PassiveTreeScreen extends StatelessWidget {
             final rank = game.passiveTree.rankOf(node.id);
             final can = game.passiveTree.canUpgrade(node.id);
             final cost = game.passiveTree.costForNextRank(node.id);
-            final affordable = game.essence >= cost;
+            final affordable = game.shards >= cost;
             final maxed = game.passiveTree.isMaxRank(node.id);
             return Container(
               margin: const EdgeInsets.only(bottom: 4, left: 8, right: 8),
@@ -273,7 +274,7 @@ class PassiveTreeScreen extends StatelessWidget {
                 )),
                 if (!maxed)
                   GestureDetector(
-                    onTap: can && affordable ? () { game.upgradePassive(node.id); game.audioService.playUiConfirm(); } : null,
+                    onTap: can && affordable ? () { game.upgradePassive(node.id); game.audioService.playClaim(); } : null,
                     child: Container(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                       decoration: BoxDecoration(
@@ -350,12 +351,12 @@ class PassiveTreeScreen extends StatelessWidget {
           Padding(
             padding: const EdgeInsets.only(right: 16),
             child: Row(mainAxisSize: MainAxisSize.min, children: [
-              const Icon(Icons.auto_awesome, color: Color(0xFFaaff88), size: 14),
+              const Icon(Icons.diamond, color: Color(0xFF6699ff), size: 14),
               const SizedBox(width: 5),
               Text(
-                '${game.essence}',
+                '${game.shards}',
                 style: GoogleFonts.rajdhani(
-                  color: const Color(0xFFaaff88),
+                  color: const Color(0xFF6699ff),
                   fontSize: 17,
                   fontWeight: FontWeight.bold,
                 ),
@@ -421,7 +422,7 @@ class _NodeCard extends StatelessWidget {
     PassiveEffect.cooldownReduce  => 'Cooldown Reduction',
     PassiveEffect.abilityDamage   => 'Ability Damage',
     PassiveEffect.healBoost       => 'Heal Boost',
-    PassiveEffect.essenceGain     => 'Essence Gain',
+    PassiveEffect.essenceGain     => 'Shard Gain',
     PassiveEffect.allPenetration  => 'Elemental Penetration',
     PassiveEffect.fireDamage      => 'Fire Damage',
     PassiveEffect.coldDamage      => 'Cold Damage',
@@ -463,7 +464,7 @@ class _NodeCard extends StatelessWidget {
         final isMax      = game.passiveTree.isMaxRank(node.id);
         final canUpgrade = !locked && game.passiveTree.canUpgrade(node.id);
         final cost       = canUpgrade ? game.passiveTree.costForNextRank(node.id) : 0;
-        final canAfford  = canUpgrade && game.essence >= cost;
+        final canAfford  = canUpgrade && game.shards >= cost;
         return SafeArea(
         child: Padding(
           padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
@@ -548,7 +549,7 @@ class _NodeCard extends StatelessWidget {
                     onPressed: canAfford
                         ? () {
                             game.upgradePassive(node.id);
-                            game.audioService.playUiConfirm();
+                            game.audioService.playClaim();
                             setSheetState(() {});
                           }
                         : null,
@@ -598,7 +599,7 @@ class _NodeCard extends StatelessWidget {
     final isMax      = game.passiveTree.isMaxRank(node.id);
     final canUpgrade = !locked && game.passiveTree.canUpgrade(node.id);
     final cost       = canUpgrade ? game.passiveTree.costForNextRank(node.id) : 0;
-    final canAfford  = canUpgrade && game.essence >= cost;
+    final canAfford  = canUpgrade && game.shards >= cost;
 
     final borderColor = locked
         ? const Color(0xFF211E1A)

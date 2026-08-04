@@ -573,7 +573,7 @@ class _CardContent extends StatelessWidget {
                 costShards:   costS,
                 costCrystals: costC,
                 canAfford:    canAfford,
-                onTap:        () { game.upgradeAlly(def.id); game.audioService.playUiConfirm(); },
+                onTap:        () { game.upgradeAlly(def.id); game.audioService.playClaim(); },
               ),
           ]),
         ],

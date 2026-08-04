@@ -1,5 +1,6 @@
 ﻿import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import '../widgets/game_icons.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../core/routing/app_router.dart';
@@ -25,11 +26,11 @@ class HomeScreen extends StatelessWidget {
       if (stage < unlock) return null;
       final isNew = game.campaignStageIndex < unlock + 3 && game.prestigeLevel == 0;
       return _buildModeButtonBadged(
-        context, isNew ? '$label  ✨' : label, onTap, badge: badge || isNew);
+        context, isNew ? '$label  NEW' : label, onTap, badge: badge || isNew);
     }
 
     // Renders a section with header only when at least one child is visible.
-    Widget sec(String icon, String label, Color color, List<Widget?> items) {
+    Widget sec(GameIconType icon, String label, Color color, List<Widget?> items) {
       final visible = items.whereType<Widget>().toList();
       if (visible.isEmpty) return const SizedBox.shrink();
       return Column(
@@ -88,11 +89,11 @@ class HomeScreen extends StatelessWidget {
                         ),
                         child: Center(
                           child: BattleSprite(
-                            spriteId: game.hero.spriteId,
+                            spriteId: game.heroBattleSpriteId,
                             gender: game.hero.gender,
                             auraColor: game.heroAuraColor,
                             auraIntensity: game.heroAuraIntensity,
-                            colorFilter: game.heroSkinFilter,
+                            colorFilter: game.heroSpriteFilter,
                           ),
                         ),
                       )
@@ -209,19 +210,19 @@ class HomeScreen extends StatelessWidget {
                 Row(children: [
                   Expanded(
                       child: _buildResourceBox(
-                          '💰', 'GOLD', AppTheme.fmtNumber(game.gold),
+                          GameIconType.coin, 'GOLD', AppTheme.fmtNumber(game.gold),
                           accent: AppTheme.accentGold,
                           tooltip: 'Gold\nEarned from battles and idle income.\nSpend in Upgrades and the Shop.')),
                   const SizedBox(width: 8),
                   Expanded(
                       child: _buildResourceBox(
-                          '◆', 'SHARDS', AppTheme.fmtNumber(game.shards),
+                          GameIconType.diamond, 'SHARDS', AppTheme.fmtNumber(game.shards),
                           accent: const Color(0xFF44CCDD),
-                          tooltip: 'Shards\nEarned in Endless mode, Gauntlet runs, and achievements.\nSpend in the Forge to reforge and craft items.')),
+                          tooltip: 'Shards\nEarned from enemy kills, Dungeons, Expeditions, and Gauntlet.\nSpend on ability upgrades, item upgrades, and Passive Tree nodes.')),
                   const SizedBox(width: 8),
                   Expanded(
                       child: _buildResourceBox(
-                          '', 'ZCOINS', '${game.zcoins}',
+                          null, 'ZCOINS', '${game.zcoins}',
                           accent: const Color(0xFFAA66FF),
                           iconWidget: const ZCoinIcon(size: 19),
                           tooltip: 'ZCoins\nEarned from achievements and daily chests.\nSpend in the Aura Shop for skins, pets, and auras.')),
@@ -230,19 +231,13 @@ class HomeScreen extends StatelessWidget {
                 Row(children: [
                   Expanded(
                       child: _buildResourceBox(
-                          '⚗', 'ESSENCE', AppTheme.fmtNumber(game.essence),
-                          accent: const Color(0xFF44CC88),
-                          tooltip: 'Essence\nEarned from campaign kills, Gauntlet runs, and daily rewards.\nSpend in the Passive Tree to unlock permanent abilities.')),
-                  const SizedBox(width: 8),
-                  Expanded(
-                      child: _buildResourceBox(
-                          '🔩', 'MYTHRIL', '${game.mythril}',
+                          GameIconType.gear, 'MYTHRIL', '${game.mythril}',
                           accent: const Color(0xFF7799CC),
-                          tooltip: 'Mythril\nEarned from Rebirth (10 per rebirth).\nSpend in the Prestige Shop for permanent upgrades that survive resets.')),
+                          tooltip: 'Mythril\nEarned from Dungeons, Boss Rush, and prestige milestones.\nSpend on Artifact upgrades, dungeon affix rerolls, and shrine blessings.')),
                   const SizedBox(width: 8),
                   Expanded(
                       child: _buildResourceBox(
-                          '⚡', 'IDLE/min',
+                          GameIconType.bolt, 'IDLE/min',
                           '${game.idleGoldPerMinute}',
                           accent: const Color(0xFFFFAA44),
                           tooltip: 'Idle Gold / min\nGold earned automatically every minute while offline.\nIncreases with hero level, passive upgrades, and pets.')),
@@ -326,38 +321,38 @@ class HomeScreen extends StatelessWidget {
             ],
 
             // ── Combat ────────────────────────────────────────────────────────
-            sec('⚔', 'COMBAT', const Color(0xFFff6644), [
-              btn('📜  CAMPAIGN',           0,  () => context.push(Routes.campaign)),
-              btn('🏰  DUNGEON',            12, () => context.push(Routes.dungeon),
+            sec(GameIconType.swords, 'COMBAT', const Color(0xFFff6644), [
+              btn('CAMPAIGN',           0,  () => context.push(Routes.campaign)),
+              btn('DUNGEON',            12, () => context.push(Routes.dungeon),
                   badge: game.dungeonAttemptsRemaining > 0),
-              btn('⚔  CHALLENGE GAUNTLET', 11, () => context.push(Routes.gauntlet)),
-              btn('☠  BOSS RUSH',          15, () => context.push(Routes.bossRush),
+              btn('CHALLENGE GAUNTLET', 11, () => context.push(Routes.gauntlet)),
+              btn('BOSS RUSH',          15, () => context.push(Routes.bossRush),
                   badge: game.bossRushAttemptsRemaining > 0),
-              btn('🎯  DAILY CHALLENGES',   5,  () => context.push(Routes.daily),
+              btn('DAILY CHALLENGES',   5,  () => context.push(Routes.daily),
                   badge: game.hasClaimableDaily),
               stage >= 8 ? _LoginStreakButton() : null,
-              btn('📋  BOUNTY BOARD',       8,  () => context.push(Routes.bounties)),
+              btn('BOUNTY BOARD',       8,  () => context.push(Routes.bounties)),
             ]),
 
             // ── Hero Hub ──────────────────────────────────────────────────────
-            sec('🧙', 'HERO', const Color(0xFF66aaff), [
+            sec(GameIconType.armor, 'HERO', const Color(0xFF66aaff), [
               _HeroHubCard(),
             ]),
 
             // ── Progression ───────────────────────────────────────────────────
-            sec('⬆', 'PROGRESSION', const Color(0xFFaa88ff), [
-              btn('🏆  ACHIEVEMENTS', 5,  () => context.push(Routes.achievements),
+            sec(GameIconType.mountain, 'PROGRESSION', const Color(0xFFaa88ff), [
+              btn('ACHIEVEMENTS', 5,  () => context.push(Routes.achievements),
                   badge: game.achievementsClaimable > 0),
-              btn('✦  PRESTIGE',      20, () => context.push(Routes.prestige)),
-              btn('🌐  WORLD EVENT',  16, () => context.push(Routes.worldEvent)),
-              btn('✦  ASCENSION',    45, () => context.push(Routes.ascension)),
+              btn('PRESTIGE',      20, () => context.push(Routes.prestige)),
+              btn('WORLD EVENT',   16, () => context.push(Routes.worldEvent)),
+              btn('ASCENSION',     45, () => context.push(Routes.ascension)),
             ]),
 
             // ── Social ───────────────────────────────────────────────────────
-            sec('🏰', 'SOCIAL', const Color(0xFF44ccaa), [
-              btn('⚔  GUILD',               15, () => context.push(Routes.guild)),
-              btn('🏆  LEADERBOARD',         15, () => context.push(Routes.leaderboard)),
-              btn('⚠  CHALLENGE MODIFIERS', 25, () => context.push(Routes.challengeMods)),
+            sec(GameIconType.castle, 'SOCIAL', const Color(0xFF44ccaa), [
+              btn('GUILD',               15, () => context.push(Routes.guild)),
+              btn('LEADERBOARD',         15, () => context.push(Routes.leaderboard)),
+              btn('CHALLENGE MODIFIERS', 25, () => context.push(Routes.challengeMods)),
             ]),
 
             // ── Last action bar ───────────────────────────────────────────────
@@ -518,7 +513,7 @@ class HomeScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildResourceBox(String emoji, String label, String value,
+  Widget _buildResourceBox(GameIconType? icon, String label, String value,
       {Color? accent, String? tooltip, Widget? iconWidget}) {
     final c = accent ?? AppTheme.accentGold;
     final box = Container(
@@ -534,7 +529,7 @@ class HomeScreen extends StatelessWidget {
         borderRadius: BorderRadius.circular(4),
       ),
       child: Column(children: [
-        iconWidget ?? Text(emoji, style: const TextStyle(fontSize: 19)),
+        iconWidget ?? (icon != null ? GameIcon(icon, size: 19, color: c) : const SizedBox(width: 19, height: 19)),
         const SizedBox(height: 4),
         Text(label,
             style: AppTheme.pixelHeading(
@@ -606,8 +601,8 @@ class HomeScreen extends StatelessWidget {
 // ── Quick Access Grid ─────────────────────────────────────────────────────────
 
 class _QuickItem {
-  const _QuickItem(this.emoji, this.label, this.unlock, this.onTap);
-  final String emoji;
+  const _QuickItem(this.icon, this.label, this.unlock, this.onTap);
+  final GameIconType icon;
   final String label;
   final int unlock;
   final VoidCallback onTap;
@@ -621,11 +616,11 @@ class _QuickAccessGrid extends StatelessWidget {
   Widget build(BuildContext context) {
     final stage = game.campaignStageIndex;
     final all = [
-      _QuickItem('📜', 'CAMPAIGN',  0,  () => context.push(Routes.campaign)),
-      _QuickItem('🧙', 'HERO',      0,  () => context.push(Routes.heroHub)),
-      _QuickItem('🏰', 'DUNGEON',   8,  () => context.push(Routes.dungeon)),
-      _QuickItem('⚔️', 'GAUNTLET', 11, () => context.push(Routes.gauntlet)),
-      _QuickItem('☠', 'BOSS RUSH', 15, () => context.push(Routes.bossRush)),
+      _QuickItem(GameIconType.scroll,   'CAMPAIGN',  0,  () => context.push(Routes.campaign)),
+      _QuickItem(GameIconType.armor,    'HERO',      0,  () => context.push(Routes.heroHub)),
+      _QuickItem(GameIconType.key,      'DUNGEON',   8,  () => context.push(Routes.dungeon)),
+      _QuickItem(GameIconType.gauntlet, 'GAUNTLET', 11,  () => context.push(Routes.gauntlet)),
+      _QuickItem(GameIconType.skull,    'BOSS RUSH', 15, () => context.push(Routes.bossRush)),
     ];
     final items = all.where((i) => stage >= i.unlock).toList();
 
@@ -689,7 +684,7 @@ class _QuickTile extends StatelessWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text(item.emoji, style: const TextStyle(fontSize: 23)),
+              GameIcon(item.icon, size: 26, color: AppTheme.accentGold),
               const SizedBox(height: 6),
               Text(item.label,
                   style: AppTheme.pixelHeading(
@@ -712,7 +707,7 @@ class _SectionHeader extends StatelessWidget {
     required this.label,
     required this.color,
   });
-  final String icon;
+  final GameIconType icon;
   final String label;
   final Color color;
 
@@ -723,7 +718,9 @@ class _SectionHeader extends StatelessWidget {
         child: Container(height: 1, color: color.withValues(alpha: 0.25)),
       ),
       const SizedBox(width: 10),
-      Text('$icon  $label',
+      GameIcon(icon, size: 12, color: color),
+      const SizedBox(width: 6),
+      Text(label,
           style: AppTheme.pixelHeading(
               fontSize: 10, letterSpacing: 2, color: color)),
       const SizedBox(width: 10),
@@ -754,7 +751,7 @@ class _GettingStartedCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(children: [
-            const Text('🎯', style: TextStyle(fontSize: 13)),
+            const GameIcon(GameIconType.flag, size: 13, color: AppTheme.accentGold),
             const SizedBox(width: 6),
             Text('GETTING STARTED',
                 style: AppTheme.pixelHeading(
@@ -869,7 +866,7 @@ class _HeroHubCard extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('🧙  HERO',
+                  Text('HERO',
                       style: AppTheme.pixelHeading(
                           fontSize: 13, letterSpacing: 1, color: accent)),
                   const SizedBox(height: 5),
@@ -923,7 +920,7 @@ class _LoginStreakButton extends StatelessWidget {
               child: Row(children: [
                 Expanded(
                   child: Text(
-                    '🔥  DAILY LOGIN',
+                    'DAILY LOGIN',
                     style: AppTheme.pixelHeading(
                         fontSize: 12,
                         letterSpacing: 1,

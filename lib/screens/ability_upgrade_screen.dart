@@ -84,7 +84,9 @@ class AbilityUpgradeScreen extends StatelessWidget {
     final nextRank      = rank + 1;
     final nextRankInTier = game.abilityRankInTier(a.id) + 1;
     final nv  = game.scaledAbilityValueAtRank(a, nextRank);
-    final ncd = (a.cooldownRounds - nextRankInTier ~/ 3).clamp(2, 99);
+    // Cooldown is role-based (1st ability = 1r, others = 3r, ultimates = 5r)
+    // and no longer scales with rank — a rank-up never changes the cooldown.
+    final ncd = game.scaledAbilityCooldown(a);
     switch (a.effect) {
       case AbilityEffect.bonusDamage:      return '~$nv dmg  •  ${ncd}r cd';
       case AbilityEffect.heal:             return '+${nv}% HP  •  ${ncd}r cd';
@@ -156,7 +158,10 @@ class AbilityUpgradeScreen extends StatelessWidget {
     final game = GameStateProvider.of(context);
     final allAbilities = [
       ...AbilityData.forClass(game.hero.heroClass),
-      if (AbilityData.ultimateFor(game.hero.heroClass) != null)
+      // The ultimate only appears once the class questline is complete — it is
+      // NOT unlocked by level alone (see classUltimateUnlocked).
+      if (game.classUltimateUnlocked &&
+          AbilityData.ultimateFor(game.hero.heroClass) != null)
         AbilityData.ultimateFor(game.hero.heroClass)!,
     ];
 
@@ -535,7 +540,7 @@ class _AbilityCard extends StatelessWidget {
                     onPressed: canAfford
                         ? () {
                             game.upgradeAbility(ability.id);
-                            game.audioService.playUiConfirm();
+                            game.audioService.playClaim();
                           }
                         : () => game.audioService.playUiError(),
                     style: OutlinedButton.styleFrom(
@@ -691,7 +696,7 @@ class _MilestoneRow extends StatelessWidget {
                   effectColor: effectColor,
                   onChoose: () {
                     game.setMilestoneChoice(abilityId, milestone.rank, 'a');
-                    game.audioService.playUiConfirm();
+                    game.audioService.playClaim();
                   },
                 )),
                 const SizedBox(width: 8),
@@ -700,7 +705,7 @@ class _MilestoneRow extends StatelessWidget {
                   effectColor: effectColor,
                   onChoose: () {
                     game.setMilestoneChoice(abilityId, milestone.rank, 'b');
-                    game.audioService.playUiConfirm();
+                    game.audioService.playClaim();
                   },
                 )),
               ],

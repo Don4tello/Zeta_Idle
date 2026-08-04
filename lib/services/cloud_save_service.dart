@@ -31,6 +31,17 @@ class CloudSaveService {
     }
   }
 
+  // ── Delete ────────────────────────────────────────────────────────────────
+
+  /// Permanently delete this user's cloud save document.
+  Future<void> deleteSave(String uid) async {
+    try {
+      await _col.doc(uid).delete();
+    } catch (_) {
+      // best-effort; caller may still delete the auth account
+    }
+  }
+
   // Returns the server-side timestamp of the last cloud save, or null.
   Future<DateTime?> fetchLastSyncTime(String uid) async {
     try {

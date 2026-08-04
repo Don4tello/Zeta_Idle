@@ -89,6 +89,8 @@ class _EndlessScreenState extends State<EndlessScreen> {
 
     // Hero defeated?
     if (game.heroDefeated) {
+      await (_arenaKey.currentState?.playHeroDeath() ?? Future.value());
+      await Future.delayed(const Duration(seconds: 3));
       game.heroDefeated = false;
       game.stopEndlessMode();
       await _showDefeatDialog(game.hero.name);
@@ -289,6 +291,39 @@ class _EndlessScreenState extends State<EndlessScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          // ── Tower Ascension banner ─────────────────────────────────────
+          ClipRRect(
+            borderRadius: BorderRadius.circular(6),
+            child: Stack(
+              children: [
+                SizedBox(
+                  width: double.infinity,
+                  height: 170,
+                  child: Image.asset('assets/images/tower_ascension.png',
+                      fit: BoxFit.cover, alignment: Alignment.topCenter),
+                ),
+                Positioned.fill(
+                  child: DecoratedBox(
+                    decoration: const BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter, end: Alignment.bottomCenter,
+                        colors: [Color(0x00000000), Color(0xE6120a1e)],
+                        stops: [0.3, 1.0],
+                      ),
+                    ),
+                  ),
+                ),
+                Positioned(
+                  left: 14, right: 14, bottom: 10,
+                  child: Text('TOWER ASCENSION',
+                      style: AppTheme.pixelHeading(
+                          fontSize: 18, letterSpacing: 3,
+                          color: const Color(0xFFcc88ff))),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 12),
           TutorialTip(
             tutorialKey: 'endless',
             game: game,
@@ -629,46 +664,51 @@ class _EndlessScreenState extends State<EndlessScreen> {
           ],
 
           // ── REWARD PREVIEW ─────────────────────────────────────
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-            decoration: BoxDecoration(
-              color: const Color(0xFF1A1A0A),
-              border: Border.all(color: AppTheme.accentGold.withValues(alpha: 0.35)),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'VICTORY REWARDS',
-                  style: GoogleFonts.rajdhani(
-                    fontSize: 9, color: AppTheme.accentGold, letterSpacing: 2,
+          // Only the tower-climb preview; when a specific boss is selected the
+          // boss card shows its own rewards, so we hide this to avoid two
+          // stacked reward previews.
+          if (_selectedBossStage == null) ...[
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              decoration: BoxDecoration(
+                color: const Color(0xFF1A1A0A),
+                border: Border.all(color: AppTheme.accentGold.withValues(alpha: 0.35)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'VICTORY REWARDS',
+                    style: GoogleFonts.rajdhani(
+                      fontSize: 9, color: AppTheme.accentGold, letterSpacing: 2,
+                    ),
                   ),
-                ),
-                const SizedBox(height: 8),
-                Row(
-                  children: [
-                    _rewardChip('💰', '~${fmtNum(stage.goldReward)}', 'GOLD',
-                        const Color(0xFFffd700)),
-                    const SizedBox(width: 8),
-                    _rewardChip('⭐', '~${fmtNum(stage.experienceReward)}', 'XP',
-                        const Color(0xFF4ad46a)),
-                    const SizedBox(width: 8),
-                    _rewardChip('♾️', '∞', 'RESPAWNS', AppTheme.textMuted),
-                  ],
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  'Base values · gear, prestige & passive bonuses apply',
-                  style: TextStyle(
-                    fontSize: 10,
-                    color: AppTheme.textMuted.withValues(alpha: 0.6),
-                    fontStyle: FontStyle.italic,
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      _rewardChip('💰', '~${fmtNum(stage.goldReward)}', 'GOLD',
+                          const Color(0xFFffd700)),
+                      const SizedBox(width: 8),
+                      _rewardChip('⭐', '~${fmtNum(stage.experienceReward)}', 'XP',
+                          const Color(0xFF4ad46a)),
+                      const SizedBox(width: 8),
+                      _rewardChip('♾️', '∞', 'RESPAWNS', AppTheme.textMuted),
+                    ],
                   ),
-                ),
-              ],
+                  const SizedBox(height: 6),
+                  Text(
+                    'Base values · gear, prestige & passive bonuses apply',
+                    style: TextStyle(
+                      fontSize: 10,
+                      color: AppTheme.textMuted.withValues(alpha: 0.6),
+                      fontStyle: FontStyle.italic,
+                    ),
+                  ),
+                ],
+              ),
             ),
-          ),
-          const SizedBox(height: 10),
+            const SizedBox(height: 10),
+          ],
 
           // ── SHARD BALANCE ──────────────────────────────────────
           Container(
@@ -783,17 +823,18 @@ class _EndlessScreenState extends State<EndlessScreen> {
             children: [
               BattleArena(
                 key: _arenaKey,
+                stageIndex:        game.endlessStageIndex,
                 heroName:          game.hero.name,
                 heroLevel:         game.hero.level,
                 heroCurrentHp:     game.hero.currentHealth,
                 heroMaxHp:         game.hero.maxHealth,
                 heroAttack:        game.hero.attack,
-                heroSpriteId:      game.hero.spriteId,
+                heroSpriteId:      game.heroBattleSpriteId,
                 heroGender:        game.hero.gender,
                 heroRace:          game.heroRace,
                 heroAuraColor:     game.heroAuraColor,
                 heroAuraIntensity: game.heroAuraIntensity,
-                heroColorFilter:   game.heroSkinFilter,
+                heroColorFilter:   game.heroSpriteFilter,
                 heroPet: game.equippedPet != null
                     ? PetBattleSprite(pet: game.equippedPet!)
                     : null,

@@ -4,11 +4,13 @@ import 'package:google_fonts/google_fonts.dart';
 import '../models/gem.dart';
 import '../services/game_state.dart';
 import '../theme/app_theme.dart';
+import '../widgets/currency_info.dart';
 import '../widgets/glow_tab_indicator.dart';
 import 'inventory_screen.dart';
 import 'forge_screen.dart';
 import 'rune_screen.dart';
 import 'artifact_screen.dart';
+import 'armory_screen.dart';
 import 'main_shell.dart';
 
 class InventoryHubScreen extends StatefulWidget {
@@ -33,6 +35,7 @@ class _InventoryHubScreenState extends State<InventoryHubScreen>
       if (stage >= 5 || game.inventory.bag.length >= 2) 2, // FORGE
       if (game.ownedRunes.isNotEmpty || game.runeDust > 0) 3, // RUNES — only after finding one
       if (stage >= 22 || game.ownedArtifacts.isNotEmpty) 4, // ARTIFACTS
+      if (stage >= 28) 5, // ARMORY — legendary/set catalogue (reference)
     ];
   }
 
@@ -72,8 +75,8 @@ class _InventoryHubScreenState extends State<InventoryHubScreen>
     super.dispose();
   }
 
-  static const _labels  = ['GEAR', 'GEMS', 'FORGE', 'RUNES', 'ARTIFACTS'];
-  static const _emojis  = ['🎒',  '💠',  '🔨',   '✦',    '🏺'];
+  static const _labels  = ['GEAR', 'GEMS', 'FORGE', 'RUNES', 'ARTIFACTS', 'ARMORY'];
+  static const _emojis  = ['🎒',  '💠',  '🔨',   '✦',    '🏺',        '🛡'];
 
   Widget _buildScreen(int allIdx, GameState game) => switch (allIdx) {
     0 => Column(children: [
@@ -101,6 +104,7 @@ class _InventoryHubScreenState extends State<InventoryHubScreen>
               game: game),
           const Expanded(child: ArtifactScreen(embedded: true)),
         ]),
+    5 => const ArmoryScreen(embedded: true), // legendary/set catalogue (reference)
     _ => const SizedBox.shrink(),
   };
 
@@ -233,7 +237,7 @@ class _GemCraftingTabState extends State<_GemCraftingTab> {
 
           // Gem shards balance
           Tooltip(
-            message: AppTheme.resourceTooltips['gemShards']!,
+            message: CurrencyInfo.gemShards,
             child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
             decoration: BoxDecoration(
@@ -249,7 +253,7 @@ class _GemCraftingTabState extends State<_GemCraftingTab> {
                       fontSize: 17, fontWeight: FontWeight.bold,
                       color: const Color(0xFF44ccff))),
               const SizedBox(width: 6),
-              const Text('Gem Shards', style: TextStyle(fontSize: 12, color: AppTheme.textMuted)),
+              const Text('Arcane Dust', style: TextStyle(fontSize: 12, color: AppTheme.textMuted)),
               const Spacer(),
               Text('Bag: ${game.gemBag.length}/${GameState.gemBagMax}',
                   style: const TextStyle(fontSize: 11, color: AppTheme.textMuted)),

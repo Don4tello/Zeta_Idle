@@ -514,4 +514,12 @@ final _kEffects = <String, _EffectDef>{
   'auto_bard':      _EffectDef(_FxType.soundWave,  _voidCol,               const Color(0xFF9966CC),   durationMs: 380),
   'auto_cleric':    _EffectDef(_FxType.buffGlow,   _buffCol,               const Color(0xFFFFFFCC),   durationMs: 380),
   'auto_paladin':   _EffectDef(_FxType.fireball,   _buffCol,               const Color(0xFFFFFFCC),   durationMs: 380),
+  // ── COSMETIC ATTACK EFFECTS (equipped skin overrides the auto-attack visual;
+  //    e.g. a monk can throw fireballs). Keyed 'fx_<attackEffectId>'. ──────────
+  'fx_fire':      _EffectDef(_FxType.fireball,      _fireCol,  const Color(0xFFFFAA44), durationMs: 420),
+  'fx_frost':     _EffectDef(_FxType.iceShards,     _coldCol,  const Color(0xFFBBEEFF), durationMs: 420),
+  'fx_lightning': _EffectDef(_FxType.lightningBolt, _lightCol, const Color(0xFFFFF7AA), durationMs: 420),
+  'fx_holy':      _EffectDef(_FxType.fireball,      _buffCol,  _ultCol,                 durationMs: 420),
+  'fx_shadow':    _EffectDef(_FxType.voidOrb,       _voidCol,  const Color(0xFFCC88FF), durationMs: 420),
+  'fx_venom':     _EffectDef(_FxType.poisonCloud,   _poisCol,  const Color(0xFF88DD00), durationMs: 420),
 };

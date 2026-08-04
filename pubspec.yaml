@@ -1,7 +1,7 @@
 name: zeta_idle
 description: A dark medieval idle RPG prototype.
 publish_to: 'none'
-version: 0.1.0+12
+version: 0.1.0+14
 environment:
   sdk: '>=3.0.0 <4.0.0'
   flutter: '>=3.0.0'
@@ -21,6 +21,12 @@ dependencies:
   go_router: ^14.0.0
   google_mobile_ads: ^9.0.0
   path_provider: ^2.1.0
+  firebase_crashlytics: ^5.2.6
+  firebase_analytics: ^12.4.5
+  firebase_app_check: ^0.4.5+2
+  url_launcher: ^6.3.2
+  flutter_local_notifications: ^22.2.0
+  timezone: ^0.11.1
 dependency_overrides:
   path_provider_foundation: ">=2.3.2 <2.6.0"
 

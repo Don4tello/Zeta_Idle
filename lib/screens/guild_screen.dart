@@ -1,13 +1,21 @@
 ﻿import 'dart:math';
 import 'package:flutter/material.dart';
+import '../widgets/game_icons.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../models/damage_type.dart';
 import '../models/dnd_class.dart';
+import '../models/equipment.dart';
 import '../models/guild.dart';
+import '../models/hero_ability.dart';
+import '../models/passive_tree.dart';
 import '../models/pvp.dart';
 import '../services/auth_service.dart';
 import '../services/game_state.dart';
 import '../services/guild_service.dart';
 import '../theme/app_theme.dart';
+import '../widgets/arena_ability_effect.dart';
+import '../widgets/battle_arena.dart';
+import '../widgets/battle_split_panel.dart';
 import '../widgets/battle_sprites.dart';
 import '../widgets/pixel_health_bar.dart';
 import '../widgets/snake_loader.dart';
@@ -365,10 +373,10 @@ class _GuildScreenState extends State<GuildScreen> {
             unselectedLabelColor: AppTheme.textMuted,
             indicatorColor: AppTheme.accentGold,
             tabs: const [
-              Tab(child: Row(mainAxisSize: MainAxisSize.min, children: [Icon(Icons.info_outline, size: 14), SizedBox(width: 4), Text('INFO')])),
-              Tab(child: Row(mainAxisSize: MainAxisSize.min, children: [Icon(Icons.local_fire_department, size: 14), SizedBox(width: 4), Text('BOSS')])),
-              Tab(child: Row(mainAxisSize: MainAxisSize.min, children: [Icon(Icons.chat_bubble_outline, size: 14), SizedBox(width: 4), Text('CHAT')])),
-              Tab(child: Row(mainAxisSize: MainAxisSize.min, children: [Icon(Icons.shopping_bag_outlined, size: 14), SizedBox(width: 4), Text('SHOP')])),
+              Tab(child: Row(mainAxisSize: MainAxisSize.min, children: [GameIcon(GameIconType.scroll,      size: 14, color: Colors.white54), SizedBox(width: 4), Text('INFO')])),
+              Tab(child: Row(mainAxisSize: MainAxisSize.min, children: [GameIcon(GameIconType.dragonSkull, size: 14, color: Colors.white54), SizedBox(width: 4), Text('BOSS')])),
+              Tab(child: Row(mainAxisSize: MainAxisSize.min, children: [GameIcon(GameIconType.bubble,      size: 14, color: Colors.white54), SizedBox(width: 4), Text('CHAT')])),
+              Tab(child: Row(mainAxisSize: MainAxisSize.min, children: [GameIcon(GameIconType.shopBag,     size: 14, color: Colors.white54), SizedBox(width: 4), Text('SHOP')])),
             ],
           ),
           Expanded(
@@ -902,25 +910,36 @@ class _GuildScreenState extends State<GuildScreen> {
   }
 
   Future<void> _sendMessage(GameState game) async {
-    if (_chatCtrl.text.trim().isEmpty || game.guildId == null || _guild == null) return;
+    final text = _chatCtrl.text.trim();
+    // Only require a loaded guild + non-empty text. The old guard also required
+    // game.guildId != null, which silently blocked sending whenever guildId
+    // wasn't set even though the player was clearly viewing a guild.
+    if (text.isEmpty || _guild == null) return;
     final msg = GuildMessage(
       senderId: 'local_player',
       senderName: game.hero.name,
-      text: _chatCtrl.text.trim(),
+      text: text,
       timestamp: DateTime.now(),
     );
-    if (game.guildId!.startsWith('dev_guild_')) {
-      _guild!.messages.add(msg);
-      _chatCtrl.clear();
-      if (mounted) setState(() {});
-      return;
-    }
+    // Show the message immediately (optimistic display in _guild.messages),
+    // then try to sync to the backend if this is a real networked guild.
+    _guild!.messages.add(msg);
+    _chatCtrl.clear();
+    if (mounted) setState(() {});
+    final gid = game.guildId;
+    if (gid == null || gid.startsWith('dev_guild_')) return;
     try {
-      await _guildService.sendMessage(game.guildId!, msg);
-      _chatCtrl.clear();
-      _guild = await _guildService.fetchGuild(game.guildId!);
-      if (mounted) setState(() {});
-    } catch (_) {}
+      await _guildService.sendMessage(gid, msg);
+      final fresh = await _guildService.fetchGuild(gid);
+      // Only adopt the server copy if it already includes our message, so the
+      // optimistic one never disappears due to eventual consistency.
+      if (fresh != null && mounted &&
+          fresh.messages.any((m) => m.timestamp == msg.timestamp && m.text == msg.text)) {
+        setState(() => _guild = fresh);
+      }
+    } catch (_) {
+      // Keep the optimistic message even if the backend sync fails.
+    }
   }
 
   String _timeAgo(DateTime dt) {
@@ -1094,6 +1113,8 @@ class _GuildBossBattle extends StatefulWidget {
 }
 
 class _GuildBossBattleState extends State<_GuildBossBattle> {
+  final _arenaKey  = GlobalKey<BattleArenaState>();
+  final _effectKey = GlobalKey<ArenaAbilityEffectState>();
   late int _heroHp, _heroMaxHp, _bossHp, _bossMaxHp;
   int _totalDamage = 0;
   bool _fighting = true;
@@ -1101,61 +1122,202 @@ class _GuildBossBattleState extends State<_GuildBossBattle> {
   final _rng = Random();
   final List<String> _log = [];
 
+  // Cached hero combat stats — unified with the campaign / other arena modes.
+  late int _heroAtk, _heroDmgMod, _heroAc, _heroWeaponBase, _bossAtk;
+  late DamageType _heroDmgType;
+  double _heroDmgAllPct = 0, _heroPrestigeMult = 1.0;
+  int _heroCritChancePct = 0, _heroCritDmgMult = 2;
+
+  // Ability state (same as the other arena modes)
+  int _gAbilityRound = 0;
+  final Map<String, int> _gCooldownUntil = {};
+  int _tempAtkBonus = 0, _tempAtkRounds = 0;
+  int _tempAcBonus  = 0, _tempAcRounds  = 0;
+  bool _enemyStunned  = false;
+  int _enemyWeakenRem = 0, _enemyVulnRem = 0;
+
   @override
   void initState() {
     super.initState();
-    final hero = widget.game.hero;
+    final game = widget.game;
+    final hero = game.hero;
     _heroHp = hero.currentHealth;
     _heroMaxHp = hero.maxHealth;
     _bossHp = widget.boss.hp.clamp(1, widget.boss.maxHp);
     _bossMaxHp = widget.boss.maxHp;
+    _bossAtk = (widget.boss.maxHp ~/ 50).clamp(10, 500);
+
+    _heroAtk = hero.attackBonus
+        + game.passiveTree.totalOf(PassiveEffect.attackFlat)
+        + game.inventory.totalOf(ItemStat.attackBonus)
+        + game.inventory.totalOf(ItemStat.strength)
+        + game.petAttackBonus + game.skinAttackBonus
+        + game.questAttackBonus + game.bestiaryChapterBonus;
+    _heroDmgMod     = game.heroFlatDmgBonus;
+    _heroWeaponBase = game.inventory.equippedWeaponDamage;
+    _heroAc = hero.armorClass
+        + game.passiveTree.totalOf(PassiveEffect.armorFlat)
+        + game.inventory.totalOf(ItemStat.armorClass)
+        + game.petArmor + game.skinArmor + game.questACBonus;
+    _heroDmgType      = hero.activeDamageType;
+    _heroDmgAllPct    = game.heroAllDamagePctFor(_heroDmgType);
+    _heroPrestigeMult = game.prestigeLevel > 0 ? game.prestigeDamageMult : 1.0;
+    _heroCritChancePct = game.totalCritChancePct;
+    _heroCritDmgMult   = game.totalCritDamageMult.round();
+
     _log.add('⚔ ${hero.name} challenges ${widget.boss.name}!');
+    game.audioService.startBattleMusic();
     WidgetsBinding.instance.addPostFrameCallback((_) => _startFight());
+  }
+
+  @override
+  void dispose() {
+    widget.game.audioService.endBattleMusic();
+    super.dispose();
   }
 
   Future<void> _startFight() async {
     if (!mounted) return;
+    final game = widget.game;
     await Future.delayed(const Duration(milliseconds: 500));
 
     while (mounted && _fighting && _heroHp > 0 && _bossHp > 0) {
-      // Hero attacks
-      final heroDmg = (widget.game.hero.baseDmg +
-          widget.game.inventory.equippedWeaponDamage + _rng.nextInt(8) + 1)
-          .clamp(1, 9999);
-      _bossHp = (_bossHp - heroDmg).clamp(0, _bossMaxHp);
-      _totalDamage += heroDmg;
-      setState(() => _log.add('You deal $heroDmg damage! (Boss: $_bossHp/$_bossMaxHp)'));
-
-      if (_bossHp <= 0) {
-        // Rewards
-        final coins = (_totalDamage ~/ 50).clamp(5, 100);
-        final crystalReward = 10;
-        widget.game.guildCoins += coins;
-        widget.game.zcoins += crystalReward;
-        widget.game.rollRuneDrop();
-        widget.game.saveToLocal();
-        setState(() { _won = true; _fighting = false; });
-        _log.add('✦ BOSS DEFEATED! Total damage: $_totalDamage');
-        _log.add('🪙 +$coins Guild Coins  🪙 +$crystalReward ZCoins');
-        break;
+      // ── Fire ready abilities (banner + effect overlay + sound) ────────
+      _gAbilityRound++;
+      for (final ability in game.unlockedAbilities) {
+        final readyAt = _gCooldownUntil[ability.id] ?? 0;
+        if (_gAbilityRound >= readyAt) {
+          _applyAbilityEffect(game, ability);
+          _gCooldownUntil[ability.id] =
+              _gAbilityRound + game.scaledAbilityCooldown(ability);
+          if (_bossHp <= 0) break;
+        }
       }
+      if (_bossHp <= 0) { await _bossDefeated(game); break; }
 
-      await Future.delayed(Duration(milliseconds: widget.game.scaledInterval(500)));
+      // ── Hero attacks (temp ATK buff → crit; vulnerable → +25% damage) ─
+      final critPct = _heroCritChancePct + _tempAtkBonus * 2;
+      final crit = _rng.nextInt(100) < critPct;
+      final die = _heroWeaponBase > 0
+          ? _heroWeaponBase + _rng.nextInt((_heroWeaponBase ~/ 3).clamp(1, 50))
+          : _rng.nextInt(8) + 1;
+      var dmg = ((crit ? die * _heroCritDmgMult : die) + _heroDmgMod).clamp(1, 9999);
+      dmg = (dmg * (1 + _heroDmgAllPct / 100) * _heroPrestigeMult).round();
+      if (_enemyVulnRem > 0) dmg = (dmg * 1.25).round();
+      dmg = dmg.clamp(1, 9999);
+      _bossHp = (_bossHp - dmg).clamp(0, _bossMaxHp);
+      _totalDamage += dmg;
+      setState(() => _log.add('${crit ? 'CRIT! ' : 'Hit! '}$dmg dmg (Boss: $_bossHp/$_bossMaxHp)'));
+      game.audioService.playHitWithType(_heroDmgType);
+      _arenaKey.currentState?.playHeroAttack(dmg,
+          isCrit: crit, heroClass: game.hero.heroClass, damageType: _heroDmgType);
+
+      if (_bossHp <= 0) { await _bossDefeated(game); break; }
+
+      await Future.delayed(Duration(milliseconds: game.scaledInterval(1200)));
       if (!mounted || !_fighting) break;
 
-      // Boss attacks
-      final bossAtk = (widget.boss.maxHp ~/ 50).clamp(10, 500);
-      final bossDmg = (_rng.nextInt(bossAtk.clamp(1, 9999)) + 1).clamp(1, 9999);
-      _heroHp = (_heroHp - bossDmg).clamp(0, _heroMaxHp);
-      setState(() => _log.add('${widget.boss.name} hits you for $bossDmg! (You: $_heroHp/$_heroMaxHp)'));
+      // ── Boss attacks (stun skips; weaken -30% atk; armor flat DR) ─────
+      if (_enemyStunned) {
+        _enemyStunned = false;
+        setState(() => _log.add('${widget.boss.name} is stunned — skips attack!'));
+      } else {
+        final atk = _enemyWeakenRem > 0 ? max(1, (_bossAtk * 0.7).round()) : _bossAtk;
+        final raw = _rng.nextInt(atk > 0 ? atk : 1) + 1;
+        final bossDmg = (raw - (_heroAc + _tempAcBonus)).clamp(1, 9999);
+        _heroHp = (_heroHp - bossDmg).clamp(0, _heroMaxHp);
+        setState(() => _log.add('${widget.boss.name} hits $bossDmg dmg (You: $_heroHp/$_heroMaxHp)'));
+        game.audioService.playPlayerHit();
+        _arenaKey.currentState?.playEnemyAttack(bossDmg);
+      }
 
       if (_heroHp <= 0) {
-        setState(() { _fighting = false; });
         _log.add('💀 You have fallen! Total damage dealt: $_totalDamage');
+        await (_arenaKey.currentState?.playHeroDeath() ?? Future.value());
+        await Future.delayed(const Duration(seconds: 3));
+        if (mounted) setState(() { _fighting = false; });
         break;
       }
 
-      await Future.delayed(Duration(milliseconds: widget.game.scaledInterval(500)));
+      // ── Tick buff/debuff durations at end of round ────────────────────
+      if (_tempAtkRounds > 0) { _tempAtkRounds--; if (_tempAtkRounds == 0) _tempAtkBonus = 0; }
+      if (_tempAcRounds  > 0) { _tempAcRounds--;  if (_tempAcRounds  == 0) _tempAcBonus  = 0; }
+      if (_enemyWeakenRem > 0) _enemyWeakenRem--;
+      if (_enemyVulnRem   > 0) _enemyVulnRem--;
+
+      await Future.delayed(Duration(milliseconds: game.scaledInterval(1200)));
+    }
+  }
+
+  Future<void> _bossDefeated(GameState game) async {
+    final coins = (_totalDamage ~/ 50).clamp(5, 100);
+    const crystalReward = 10;
+    game.guildCoins += coins;
+    game.zcoins += crystalReward;
+    game.rollRuneDrop();
+    game.saveToLocal();
+    setState(() => _log.add('✦ BOSS DEFEATED! Total damage: $_totalDamage'));
+    _log.add('🪙 +$coins Guild Coins  🪙 +$crystalReward ZCoins');
+    _arenaKey.currentState?.playEnemyDeath();
+    await Future.delayed(const Duration(milliseconds: 900));
+    if (mounted) setState(() { _won = true; _fighting = false; });
+  }
+
+  void _applyAbilityEffect(GameState game, HeroAbility ability) {
+    _arenaKey.currentState?.playAbilityBanner(ability.name, ability.effect, id: ability.id);
+    _effectKey.currentState?.playEffect(ability.id);
+    game.audioService.playAbilityFull(ability.effect, _heroDmgType);
+    final sv = game.scaledAbilityValue(ability);
+    switch (ability.effect) {
+      case AbilityEffect.bonusDamage:
+        final d = (sv * 0.5).round().clamp(1, 9999);
+        _bossHp = (_bossHp - d).clamp(0, _bossMaxHp);
+        _totalDamage += d;
+        _log.add('✦ ${ability.name}: $d ability damage!');
+        _arenaKey.currentState?.addExtraFloat(d);
+      case AbilityEffect.dot:
+        final d = (sv * 0.6).round().clamp(1, 9999);
+        _bossHp = (_bossHp - d).clamp(0, _bossMaxHp);
+        _totalDamage += d;
+        _log.add('✸ ${ability.name}: $d DoT damage!');
+        _arenaKey.currentState?.addExtraFloat(d);
+      case AbilityEffect.heal:
+        final h = sv.clamp(1, 9999);
+        setState(() => _heroHp = (_heroHp + h).clamp(0, _heroMaxHp));
+        _log.add('⊕ ${ability.name}: healed $h HP.');
+        _arenaKey.currentState?.addExtraFloat(h, isHeal: true);
+      case AbilityEffect.aura:
+        final h = (sv * 0.5).round().clamp(1, 9999);
+        setState(() => _heroHp = (_heroHp + h).clamp(0, _heroMaxHp));
+        _log.add('⊕ ${ability.name}: aura healed $h HP.');
+        _arenaKey.currentState?.addExtraFloat(h, isHeal: true);
+      case AbilityEffect.absorbShield:
+        setState(() => _heroHp = (_heroHp + sv).clamp(0, _heroMaxHp));
+        _log.add('+ ${ability.name}: +$sv HP barrier!');
+        _arenaKey.currentState?.addExtraFloat(sv, isHeal: true);
+      case AbilityEffect.attackBonus:
+        _tempAtkBonus  = sv;
+        _tempAtkRounds = ability.duration > 0 ? ability.duration : 3;
+        _log.add('⚡ ${ability.name}: +$sv ATK for $_tempAtkRounds rounds.');
+      case AbilityEffect.acBonus:
+        _tempAcBonus  = sv;
+        _tempAcRounds = ability.duration > 0 ? ability.duration : 3;
+        _log.add('◆ ${ability.name}: +$sv AC for $_tempAcRounds rounds.');
+      case AbilityEffect.dodge:
+        _tempAcBonus  = 6;
+        _tempAcRounds = 1;
+        _log.add('◆ ${ability.name}: dodge — +6 AC this round.');
+      case AbilityEffect.stun:
+      case AbilityEffect.silence:
+        _enemyStunned = true;
+        _log.add('◉ ${ability.name}: boss stunned!');
+      case AbilityEffect.debuffWeaken:
+      case AbilityEffect.missChance:
+        _enemyWeakenRem = ability.duration > 0 ? ability.duration : 3;
+        _log.add('✸ ${ability.name}: boss weakened!');
+      case AbilityEffect.debuffVulnerable:
+        _enemyVulnRem = 3;
+        _log.add('⚡ ${ability.name}: boss vulnerable for 3 rounds!');
     }
   }
 
@@ -1173,61 +1335,62 @@ class _GuildBossBattleState extends State<_GuildBossBattle> {
       ),
       body: Column(
         children: [
-          // Boss info
-          Container(
-            padding: const EdgeInsets.all(14),
-            color: const Color(0xFF1a0a2a),
-            child: Column(children: [
-              Row(children: [
-                SizedBox(width: 50, height: 50,
-                    child: StaticEnemySprite(spriteId: widget.boss.spriteId, size: 48)),
-                const SizedBox(width: 12),
-                Expanded(child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('☠ ${widget.boss.name}',
-                        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFFcc44ff))),
-                    Text('ATK: ${(widget.boss.maxHp ~/ 50).clamp(10, 500)}',
-                        style: const TextStyle(fontSize: 10, color: AppTheme.textMuted)),
-                  ],
-                )),
-                Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
-                  Text('$_bossHp / $_bossMaxHp',
-                      style: const TextStyle(fontSize: 11, color: Color(0xFFcc44ff))),
-                  const Text('BOSS HP', style: TextStyle(fontSize: 8, color: AppTheme.textMuted)),
-                ]),
-              ]),
-              const SizedBox(height: 8),
-              PixelHealthBar(current: _bossHp, max: _bossMaxHp, height: 10),
-            ]),
-          ),
-
-          // Hero HP
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-            color: const Color(0xFF0a1a0a),
-            child: Row(children: [
-              Text('${widget.game.hero.name}  Lv${widget.game.hero.level}',
-                  style: const TextStyle(fontSize: 11, color: AppTheme.textLight)),
-              const Spacer(),
-              Text('$_heroHp / $_heroMaxHp HP',
-                  style: TextStyle(fontSize: 11, color: _heroHp < _heroMaxHp * 0.3
-                      ? const Color(0xFFcc4444) : const Color(0xFF44cc88))),
-            ]),
-          ),
-
-          // Battle log
+          // Full battle-arena animation (same as campaign / boss rush / dungeon)
           Expanded(
-            child: ListView.builder(
-              padding: const EdgeInsets.all(12),
-              reverse: true,
-              itemCount: _log.length,
-              itemBuilder: (_, i) => Text(
-                _log[_log.length - 1 - i],
-                style: const TextStyle(fontSize: 11, color: AppTheme.textMuted, height: 1.4),
-              ),
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                BattleArena(
+                  key: _arenaKey,
+                  heroName:       widget.game.hero.name,
+                  heroLevel:      widget.game.hero.level,
+                  heroCurrentHp:  _heroHp,
+                  heroMaxHp:      _heroMaxHp,
+                  heroAttack:     _heroAtk,
+                  heroSpriteId:   widget.game.heroBattleSpriteId,
+                  heroGender:     widget.game.hero.gender,
+                  heroRace:       widget.game.heroRace,
+                  heroAuraColor:    widget.game.heroAuraColor,
+                  heroAuraIntensity: widget.game.heroAuraIntensity,
+                  heroColorFilter:  widget.game.heroSpriteFilter,
+                  heroDamageType: _heroDmgType,
+                  heroCritPct:    _heroCritChancePct,
+                  heroArmor:      _heroAc,
+                  heroBuffGlows: [
+                    if (_tempAtkBonus > 0) const Color(0xFFffcc00),
+                    if (_tempAcBonus  > 0) const Color(0xFF66aaff),
+                  ],
+                  enemyDebuffGlows: [
+                    if (_enemyStunned)       const Color(0xFFcc44ff),
+                    if (_enemyWeakenRem > 0) const Color(0xFFff4488),
+                    if (_enemyVulnRem   > 0) const Color(0xFFff8800),
+                  ],
+                  enemyName:      widget.boss.name,
+                  enemyLevel:     (widget.boss.maxHp ~/ 500).clamp(1, 99),
+                  enemyCurrentHp: _bossHp,
+                  enemyMaxHp:     _bossMaxHp,
+                  enemyAttack:    _bossAtk,
+                  enemyId:        widget.boss.spriteId,
+                  isBoss:         true,
+                ),
+                ArenaAbilityEffect(key: _effectKey),
+              ],
             ),
           ),
+          if (_fighting)
+            SafeArea(
+              top: false,
+              child: BattleIconBar(
+                localCooldownResolver: (id) {
+                  final ability = widget.game.unlockedAbilities
+                      .firstWhere((a) => a.id == id);
+                  final totalCd = widget.game.scaledAbilityCooldown(ability);
+                  final readyAt = _gCooldownUntil[id] ?? 0;
+                  return (readyAt - _gAbilityRound).clamp(0, totalCd);
+                },
+              ),
+            ),
+          BattleLogBox(log: _log, height: 108),
 
           // Result + back button
           if (!_fighting)

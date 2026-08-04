@@ -402,13 +402,16 @@ List<PassiveNode> elementalistNodesFor(DamageType primary, DamageType secondary)
       branch: PassiveBranch.elementalist, tier: 1, essenceCost: 20,
       effect: p.$4, value: 5,
       description: '+5% ${p.$1.toLowerCase()} resistance per rank'),
-    // Tier 2-3: Secondary element damage + resistance
+    // Tier 2-3: Secondary element damage + resistance.
+    // Same cost as the primary Affinity/Ward — both damage types are an equal
+    // choice, not a discount ladder. (Single-type classes keep the higher cost
+    // because Mastery/Shield give larger per-rank values.)
     PassiveNode(id: 'elem_2', name: hasTwoTypes ? '${s.$1} Affinity' : '${p.$1} Mastery', emoji: hasTwoTypes ? s.$2 : p.$2,
-      branch: PassiveBranch.elementalist, tier: 2, essenceCost: 40,
+      branch: PassiveBranch.elementalist, tier: 2, essenceCost: hasTwoTypes ? 10 : 40,
       effect: hasTwoTypes ? s.$3 : p.$3, value: hasTwoTypes ? 8 : 12,
       description: hasTwoTypes ? '+8% ${s.$1.toLowerCase()} damage per rank' : '+12% ${p.$1.toLowerCase()} damage per rank'),
     PassiveNode(id: 'elem_3', name: hasTwoTypes ? '${s.$1} Ward' : '${p.$1} Shield', emoji: '🛡',
-      branch: PassiveBranch.elementalist, tier: 3, essenceCost: 80,
+      branch: PassiveBranch.elementalist, tier: 3, essenceCost: hasTwoTypes ? 20 : 80,
       effect: hasTwoTypes ? s.$4 : p.$4, value: hasTwoTypes ? 5 : 8,
       description: hasTwoTypes ? '+5% ${s.$1.toLowerCase()} resistance per rank' : '+8% ${p.$1.toLowerCase()} resistance per rank'),
     // Tier 4: All resistance

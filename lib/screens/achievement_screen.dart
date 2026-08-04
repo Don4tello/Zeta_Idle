@@ -65,7 +65,7 @@ class _AchievementScreenState extends State<AchievementScreen> {
             Padding(
               padding: const EdgeInsets.only(right: 8),
               child: TextButton(
-                onPressed: () { game.claimAllAchievements(); },
+                onPressed: () { game.claimAllAchievements(); game.audioService.playClaimAll(); },
                 style: TextButton.styleFrom(
                   foregroundColor: AppTheme.accentGold,
                   side: const BorderSide(color: AppTheme.accentGold),
@@ -88,7 +88,7 @@ class _AchievementScreenState extends State<AchievementScreen> {
               tutorialKey: 'achievements',
               game: game,
               text: 'You defeated your first boss! 🏆 Achievements track milestones '
-                  'and reward ZCoins, Shards and Essence — claim them here and check back often.',
+                  'and reward ZCoins and Shards — claim them here and check back often.',
             ),
             _SummaryBar(
               game: game,
@@ -324,7 +324,7 @@ class _AchievementTile extends StatelessWidget {
           const SizedBox(width: 8),
           if (isReady)
             TextButton(
-              onPressed: () => game.claimAchievement(a.id),
+              onPressed: () { game.claimAchievement(a.id); game.audioService.playClaim(); },
               style: TextButton.styleFrom(
                 foregroundColor: const Color(0xFFaacc44),
                 side: const BorderSide(color: Color(0xFFaacc44)),

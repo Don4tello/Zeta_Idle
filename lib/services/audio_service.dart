@@ -7,7 +7,7 @@ import '../models/damage_type.dart';
 
 enum SoundEffect {
   hit, playerHit, ability, abilityDamage, abilityBuff, abilityDebuff,
-  coin, victory, defeat, levelUp, uiClick, uiConfirm, uiError,
+  coin, claim, claimAll, victory, defeat, levelUp, uiClick, uiConfirm, uiError,
   // Element-specific ability SFX
   sfxPhysical, sfxLightning, sfxCold, sfxPoison, sfxFire, sfxVoid,
   // Healing SFX
@@ -83,12 +83,14 @@ class AudioService {
   Future<void> playPlayerHit() => play(SoundEffect.playerHit);
   Future<void> playAbility()   => play(SoundEffect.ability);
   Future<void> playCoin()      => play(SoundEffect.coin);
-  Future<void> playVictory()   => play(SoundEffect.victory);
-  Future<void> playDefeat()    => play(SoundEffect.defeat);
-  Future<void> playLevelUp()   => play(SoundEffect.levelUp);
-  Future<void> playUiClick()   => play(SoundEffect.uiClick);
-  Future<void> playUiConfirm() => play(SoundEffect.uiConfirm);
-  Future<void> playUiError()   => play(SoundEffect.uiError);
+  Future<void> playClaim()     => play(SoundEffect.claim);
+  Future<void> playClaimAll() => play(SoundEffect.claimAll);
+  Future<void> playVictory()   => _playMp3Sfx(SoundEffect.victory);
+  Future<void> playDefeat()    => _playMp3Sfx(SoundEffect.defeat);
+  Future<void> playLevelUp()   => _playMp3Sfx(SoundEffect.levelUp);
+  Future<void> playUiClick()   => _playMp3Sfx(SoundEffect.uiClick);
+  Future<void> playUiConfirm() => _playMp3Sfx(SoundEffect.uiConfirm);
+  Future<void> playUiError()   => _playMp3Sfx(SoundEffect.uiError);
 
   Future<void> playAbilityByCategory(AbilityCategory category) async {
     if (_sfxMuted || _isWindows) return;
@@ -116,12 +118,14 @@ class AudioService {
       SoundEffect.abilityBuff   => 'audio/ability.wav',
       SoundEffect.abilityDebuff => 'audio/ability.wav',
       SoundEffect.coin          => 'audio/coin.wav',
-      SoundEffect.victory       => 'audio/victory.wav',
-      SoundEffect.defeat        => 'audio/defeat.wav',
-      SoundEffect.levelUp       => 'audio/levelup.wav',
-      SoundEffect.uiClick       => 'audio/ui_click.wav',
-      SoundEffect.uiConfirm     => 'audio/ui_confirm.wav',
-      SoundEffect.uiError       => 'audio/ui_error.wav',
+      SoundEffect.claim         => 'audio/coinsplash.ogg',
+      SoundEffect.claimAll      => 'audio/multiple_coins.ogg',
+      SoundEffect.victory       => 'audio/victory_trumpet.mp3',
+      SoundEffect.defeat        => 'audio/defeat_drum.mp3',
+      SoundEffect.levelUp       => 'audio/level_up.mp3',
+      SoundEffect.uiClick       => 'audio/ui_click.mp3',
+      SoundEffect.uiConfirm     => 'audio/ui_confirm.mp3',
+      SoundEffect.uiError       => 'audio/ui_error.mp3',
       SoundEffect.sfxPhysical   => 'audio/sfx_sword.mp3',
       SoundEffect.sfxLightning  => 'audio/sfx_lightning.mp3',
       SoundEffect.sfxCold       => 'audio/sfx_cold.mp3',

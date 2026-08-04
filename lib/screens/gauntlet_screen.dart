@@ -1,9 +1,10 @@
-import 'dart:async';
+﻿import 'dart:async';
 import 'dart:math';
 import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
 import '../data/enemy_data.dart';
 import '../models/challenge_modifier.dart';
+import '../models/damage_type.dart';
 import '../models/enemy.dart';
 import '../models/equipment.dart';
 import '../models/gauntlet.dart';
@@ -57,11 +58,18 @@ class _GauntletScreenState extends State<GauntletScreen> {
   final List<String> _log = [];
   Enemy? _currentEnemy;
   Timer? _autoTimer;
+  bool _busyRound = false;
 
   // Cached hero stats (computed at run start)
   late int _heroAtk;
   late int _heroDmgMod;
   late int _heroAc;
+  late int _heroWeaponBase;
+  late DamageType _heroDmgType;
+  double _heroDmgAllPct    = 0;
+  double _heroPrestigeMult = 1.0;
+  int _heroCritChancePct = 0;
+  int _heroCritDmgMult   = 2;
 
   // Combined modifier values
   double _enemyHpMult   = 1.0;
@@ -89,22 +97,25 @@ class _GauntletScreenState extends State<GauntletScreen> {
   void dispose() {
     _autoTimer?.cancel();
     _autoRestartTimer?.cancel();
+    _game?.audioService.endBattleMusic();
     super.dispose();
   }
 
   void _startTimer() {
     _autoTimer?.cancel();
-    final ms = _game?.scaledInterval(500) ?? 500;
+    // 1200ms base matches the Dungeon so every arena mode paces the same.
+    final ms = _game?.scaledInterval(1200) ?? 1200;
     _autoTimer = Timer.periodic(Duration(milliseconds: ms), (_) {
-      if (_phase != _Phase.battle) return;
-      _doRound();
+      if (_phase != _Phase.battle || _busyRound) return;
+      _busyRound = true;
+      _doRound().then((_) => _busyRound = false);
     });
   }
 
   void _cycleSpeed() {
     final game = _game;
     if (game == null) return;
-    final maxTier = kDebugMode ? 4 : (game.speedBoostActive ? 3 : 2);
+    final maxTier = kDebugMode ? 4 : (game.hasSpeedSub ? 4 : (game.speedBoostActive ? 3 : 2));
     game.setSpeedTier((game.speedTier % maxTier) + 1);
     _startTimer();
   }
@@ -173,6 +184,13 @@ class _GauntletScreenState extends State<GauntletScreen> {
         + game.questACBonus
         + game.runeAcBonus;
 
+    _heroWeaponBase   = game.inventory.equippedWeaponDamage;
+    _heroDmgType      = game.hero.activeDamageType;
+    _heroDmgAllPct    = game.heroAllDamagePctFor(_heroDmgType);
+    _heroPrestigeMult = game.prestigeLevel > 0 ? game.prestigeDamageMult : 1.0;
+    _heroCritChancePct = game.totalCritChancePct;
+    _heroCritDmgMult   = game.totalCritDamageMult.round();
+
     final baseMaxHp = (game.hero.maxHealth * _heroHpMult).round().clamp(1, 999999);
 
     _gAbilityRound  = 0;
@@ -193,10 +211,11 @@ class _GauntletScreenState extends State<GauntletScreen> {
       _heroHp     = baseMaxHp;
       _log.clear();
     });
-    _log.add('? GAUNTLET STARTS � ${_kGauntletEnemies} enemies await!');
+    _log.add('⚔ GAUNTLET STARTS — ${_kGauntletEnemies} enemies await!');
     _spawnEnemy();
 
     _game = game;
+    game.audioService.startBattleMusic();
     _startTimer();
   }
 
@@ -224,7 +243,7 @@ class _GauntletScreenState extends State<GauntletScreen> {
     _log.add('Wave ${_waveIndex + 1}: ${base.name}  (${scaled.maxHealth} HP)');
   }
 
-  void _doRound() {
+  Future<void> _doRound() async {
     final enemy = _currentEnemy;
     if (enemy == null) return;
     final game = GameStateProvider.of(context);
@@ -243,6 +262,7 @@ class _GauntletScreenState extends State<GauntletScreen> {
           _log.add('${enemy.name.split('[').first.trim()} defeated!');
           GameStateProvider.of(context).recordExternalKill(enemyName: enemy.name);
           _arenaKey.currentState?.playEnemyDeath();
+          await Future.delayed(const Duration(milliseconds: 900));
           _waveIndex++;
           if (_waveIndex >= _kGauntletEnemies) {
             _endRun(heroWon: true);
@@ -251,7 +271,7 @@ class _GauntletScreenState extends State<GauntletScreen> {
           final heal = (_heroMaxHp * 0.10).round();
           _heroHp = (_heroHp + heal).clamp(0, _heroMaxHp);
           _log.add('⚕ Recovered $heal HP.');
-          setState(() {});
+          if (mounted) setState(() {});
           _spawnEnemy();
           return;
         }
@@ -268,24 +288,26 @@ class _GauntletScreenState extends State<GauntletScreen> {
       if (_tempAcRounds == 0) _tempAcBonus = 0;
     }
 
-    // -- Hero attacks ------------------------------------------------------
-    final effectiveAtk = _heroAtk + _tempAtkBonus;
-    final heroRoll     = _rng.nextInt(20) + 1;
-    final crit         = heroRoll == 20;
-    final heroHit      = crit || (heroRoll + effectiveAtk) >= enemy.armorClass;
-
-    if (heroHit) {
-      final die = _rng.nextInt(8) + 1;
-      var dmg = (crit ? die * 2 : die) + _heroDmgMod;
+    // -- Hero attacks (always lands, same formula as campaign; crit is
+    //    chance-based; ability ATK buff converts to crit chance) -----------
+    final critPct = _heroCritChancePct + _tempAtkBonus * 2;
+    final crit    = _rng.nextInt(100) < critPct;
+    {
+      final die = _heroWeaponBase > 0
+          ? _heroWeaponBase + _rng.nextInt((_heroWeaponBase ~/ 3).clamp(1, 50))
+          : _rng.nextInt(8) + 1;
+      var dmg = ((crit ? die * _heroCritDmgMult : die) + _heroDmgMod).clamp(1, 9999);
+      dmg = (dmg * (1 + _heroDmgAllPct / 100.0) * _heroPrestigeMult).round();
+      final res = (enemy.resistances[_heroDmgType] ?? 0).clamp(-200, 75);
+      if (res != 0) dmg = (dmg * (1 - res / 100.0)).round();
       if (_enemyVulnRem > 0) dmg = (dmg * 1.25).round();
       dmg = dmg.clamp(1, 9999);
       setState(() => _enemyHp -= dmg);
       _log.add('${crit ? 'CRIT! ' : 'Hit! '}$dmg dmg${_enemyVulnRem > 0 ? ' (vuln)' : ''}.');
+      game.audioService.playHitWithType(_heroDmgType);
       _arenaKey.currentState?.playHeroAttack(dmg,
           isCrit: crit, heroClass: game.hero.heroClass,
-          damageType: game.hero.activeDamageType);
-    } else {
-      _log.add('Miss!');
+          damageType: _heroDmgType);
     }
 
     if (_enemyHp <= 0) {
@@ -294,6 +316,7 @@ class _GauntletScreenState extends State<GauntletScreen> {
       _log.add('${enemy.name.split('[').first.trim()} defeated!');
       GameStateProvider.of(context).recordExternalKill(enemyName: enemy.name);
       _arenaKey.currentState?.playEnemyDeath();
+      await Future.delayed(const Duration(milliseconds: 900));
       _waveIndex++;
       if (_waveIndex >= _kGauntletEnemies) {
         _endRun(heroWon: true);
@@ -302,7 +325,7 @@ class _GauntletScreenState extends State<GauntletScreen> {
       final heal = (_heroMaxHp * 0.10).round();
       _heroHp = (_heroHp + heal).clamp(0, _heroMaxHp);
       _log.add('⚕ Recovered $heal HP.');
-      setState(() {});
+      if (mounted) setState(() {});
       _spawnEnemy();
       return;
     }
@@ -310,111 +333,112 @@ class _GauntletScreenState extends State<GauntletScreen> {
     // -- Enemy attacks back ------------------------------------------------
     if (_enemyStunned) {
       _enemyStunned = false;
-      _log.add('Enemy is stunned � skips attack!');
+      _log.add('Enemy is stunned — skips attack!');
       setState(() {});
       return;
     }
 
-    final effectiveAc = _heroAc + _tempAcBonus;
-    final eRoll       = _rng.nextInt(20) + 1;
-    final eBonus      = enemy.level ~/ 2;
-    final eHit        = eRoll == 20 || (eRoll + eBonus) >= effectiveAc;
-    if (eHit) {
+    // Enemy always lands (same as campaign); armor is flat damage reduction.
+    {
+      final armor  = _heroAc + _tempAcBonus;
       final atkMax = _enemyWeakenRem > 0 ? max(1, (enemy.attack * 0.7).round()) : enemy.attack;
       final rawDmg = atkMax > 0 ? _rng.nextInt(atkMax) + 1 : 1;
-      final dmg    = (eRoll == 20 ? rawDmg * 2 : rawDmg).clamp(1, 9999);
+      final dmg    = (rawDmg - armor).clamp(1, 9999);
       setState(() => _heroHp -= dmg);
       _log.add('Enemy hits! $dmg to you${_enemyWeakenRem > 0 ? ' (weakened)' : ''}.');
+      game.audioService.playPlayerHit();
       _arenaKey.currentState?.playEnemyAttack(dmg);
       if (_heroHp <= 0) {
         _heroHp = 0;
-        setState(() {});
+        if (mounted) setState(() {});
+        await (_arenaKey.currentState?.playHeroDeath() ?? Future.value());
+        await Future.delayed(const Duration(seconds: 3));
         _endRun(heroWon: false);
         return;
       }
-    } else {
-      _log.add('Enemy misses!');
     }
     if (_enemyWeakenRem > 0) _enemyWeakenRem--;
     if (_enemyVulnRem   > 0) _enemyVulnRem--;
-    setState(() {});
+    if (mounted) setState(() {});
   }
 
   void _applyAbilityEffect(GameState game, HeroAbility ability) {
     _arenaKey.currentState?.playAbilityBanner(ability.name, ability.effect, id: ability.id);
     _effectKey.currentState?.playEffect(ability.id);
+    game.audioService.playAbilityFull(ability.effect, _heroDmgType);
     final sv = game.scaledAbilityValue(ability);
     switch (ability.effect) {
       case AbilityEffect.bonusDamage:
         final dmg = (sv * 0.5).round().clamp(1, 9999);
         _enemyHp -= dmg;
-        _log.add('? ${ability.name}: $dmg ability damage!');
+        _log.add('✦ ${ability.name}: $dmg ability damage!');
         _arenaKey.currentState?.addExtraFloat(dmg);
 
       case AbilityEffect.heal:
         final h = sv.clamp(1, 9999);
         setState(() => _heroHp = (_heroHp + h).clamp(0, _heroMaxHp));
-        _log.add('? ${ability.name}: healed $h HP.');
+        _log.add('⊕ ${ability.name}: healed $h HP.');
         _arenaKey.currentState?.addExtraFloat(h, isHeal: true);
 
       case AbilityEffect.attackBonus:
         _tempAtkBonus  = sv;
         _tempAtkRounds = ability.duration > 0 ? ability.duration : 3;
-        _log.add('? ${ability.name}: +$sv DMG for $_tempAtkRounds rounds.');
+        _log.add('⚡ ${ability.name}: +$sv DMG for $_tempAtkRounds rounds.');
 
       case AbilityEffect.acBonus:
         _tempAcBonus  = sv;
         _tempAcRounds = ability.duration > 0 ? ability.duration : 3;
-        _log.add('? ${ability.name}: +$sv AC for $_tempAcRounds rounds.');
+        _log.add('◆ ${ability.name}: +$sv AC for $_tempAcRounds rounds.');
 
       case AbilityEffect.stun:
         _enemyStunned = true;
-        _log.add('? ${ability.name}: enemy stunned!');
+        _log.add('◉ ${ability.name}: enemy stunned!');
 
       case AbilityEffect.dot:
         final dmg = (sv * 0.6).round().clamp(1, 9999);
         _enemyHp -= dmg;
-        _log.add('? ${ability.name}: $dmg DoT damage!');
+        _log.add('✸ ${ability.name}: $dmg DoT damage!');
         _arenaKey.currentState?.addExtraFloat(dmg);
 
       case AbilityEffect.dodge:
         _tempAcBonus  = 6;
         _tempAcRounds = 1;
-        _log.add('? ${ability.name}: dodge � +6 AC this round.');
+        _log.add('◆ ${ability.name}: dodge — +6 AC this round.');
 
       case AbilityEffect.aura:
         final h = (sv * 0.5).round().clamp(1, 9999);
         setState(() => _heroHp = (_heroHp + h).clamp(0, _heroMaxHp));
-        _log.add('? ${ability.name}: aura healed $h HP.');
+        _log.add('⊕ ${ability.name}: aura healed $h HP.');
         _arenaKey.currentState?.addExtraFloat(h, isHeal: true);
 
       case AbilityEffect.debuffWeaken:
         _enemyWeakenRem = 3;
-        _log.add('? ${ability.name}: enemy weakened for 3 rounds!');
+        _log.add('✸ ${ability.name}: enemy weakened for 3 rounds!');
 
       case AbilityEffect.debuffVulnerable:
         _enemyVulnRem = 3;
-        _log.add('? ${ability.name}: enemy vulnerable for 3 rounds!');
+        _log.add('⚡ ${ability.name}: enemy vulnerable for 3 rounds!');
 
       case AbilityEffect.silence:
         _enemyStunned = true;
-        _log.add('? ${ability.name}: enemy silenced!');
+        _log.add('◉ ${ability.name}: enemy silenced!');
 
       case AbilityEffect.absorbShield:
         setState(() => _heroHp = (_heroHp + sv).clamp(0, _heroMaxHp));
-        _log.add('? ${ability.name}: +$sv HP barrier!');
+        _log.add('+ ${ability.name}: +$sv HP barrier!');
 
       case AbilityEffect.missChance:
         _enemyWeakenRem = ability.duration > 0 ? ability.duration : 2;
-        _log.add('? ${ability.name}: enemy miss chance applied!');
+        _log.add('✸ ${ability.name}: enemy miss chance applied!');
     }
   }
 
   void _endRun({required bool heroWon}) {
     _autoTimer?.cancel();
     final game = GameStateProvider.of(context);
+    game.audioService.endBattleMusic();
 
-    // Score: kills � (1 + modifier count) � 100 � tier, +2000 for a clear
+    // Score: kills × (1 + modifier count) × 100 × tier, +2000 for a clear
     final modCount = _selectedIds.length;
     final tierMult = 1.0 + (_selectedTier - 1) * 0.3;
     final baseScore = (_kills * (1 + modCount) * 100 * tierMult).round();
@@ -524,7 +548,7 @@ class _GauntletScreenState extends State<GauntletScreen> {
         TutorialTip(
           tutorialKey: 'gauntlet',
           game: game,
-          text: 'The Gauntlet is a combat challenge � pick modifiers to increase difficulty '
+          text: 'The Gauntlet is a combat challenge — pick modifiers to increase difficulty '
               'and earn more Echoes. Echoes are used to purchase permanent Upgrades.',
         ),
         const SizedBox(height: 12),
@@ -597,11 +621,11 @@ class _GauntletScreenState extends State<GauntletScreen> {
                   fontSize: 10, letterSpacing: 1, color: AppTheme.textMuted)),
           const SizedBox(height: 10),
           Row(children: [
-            _RewardChip('? $essence essence', const Color(0xFF44dd88)),
+            _RewardChip('✦ $essence essence', const Color(0xFF44dd88)),
             const SizedBox(width: 8),
             _RewardChip('$zcoins ZCoins', const Color(0xFF44ccaa), prefix: const ZCoinIcon(size: 11, animate: false)),
             const SizedBox(width: 8),
-            _RewardChip('Score �$scoreMult', AppTheme.accentGold),
+            _RewardChip('Score ×$scoreMult', AppTheme.accentGold),
           ]),
         ],
       ),
@@ -629,17 +653,18 @@ class _GauntletScreenState extends State<GauntletScreen> {
             children: [
               BattleArena(
                 key: _arenaKey,
+                stageIndex:       _waveIndex,
                 heroName:         game.hero.name,
                 heroLevel:        game.hero.level,
                 heroCurrentHp:    _heroHp,
                 heroMaxHp:        _heroMaxHp,
                 heroAttack:       _heroAtk,
-                heroSpriteId:     game.hero.spriteId,
+                heroSpriteId:     game.heroBattleSpriteId,
                 heroGender:       game.hero.gender,
                 heroRace:         game.heroRace,
                 heroAuraColor:    game.heroAuraColor,
                 heroAuraIntensity: game.heroAuraIntensity,
-                heroColorFilter:  game.heroSkinFilter,
+                heroColorFilter:  game.heroSpriteFilter,
                 heroPet: game.equippedPet != null
                     ? PetBattleSprite(pet: game.equippedPet!)
                     : null,
@@ -707,14 +732,14 @@ class _GauntletScreenState extends State<GauntletScreen> {
           _ResultRow('High Score',       '${game.gauntletHighScore}'),
           const Divider(color: AppTheme.cardBorder, height: 24),
           if (r.essenceEarned > 0)
-            _ResultRow('Essence Earned',  '? ${r.essenceEarned}',
-                color: const Color(0xFF44dd88)),
+            _ResultRow('Shards Earned',  '◆ ${r.essenceEarned}',
+                color: const Color(0xFF6699ff)),
           if (r.zcoinsEarned > 0)
             _ResultRow('ZCoins Earned', '${r.zcoinsEarned}',
                 color: const Color(0xFF44ccaa),
                 valuePrefix: const ZCoinIcon(size: 14, animate: false)),
           if (r.echoesEarned > 0)
-            _ResultRow('Echoes Earned', '?? ${r.echoesEarned}',
+            _ResultRow('Echoes Earned', '◈ ${r.echoesEarned}',
                 color: const Color(0xFFcc88ff)),
           const Spacer(),
           // AUTO toggle
@@ -729,7 +754,7 @@ class _GauntletScreenState extends State<GauntletScreen> {
                 borderRadius: BorderRadius.circular(4),
               ),
               child: Center(
-                child: Text('AUTO � restarting with random modifiers�',
+                child: Text('AUTO — restarting with random modifiers—',
                     style: AppTheme.pixelHeading(
                         fontSize: 10, color: const Color(0xFF44dd88), letterSpacing: 1)),
               ),
@@ -882,7 +907,7 @@ class _WaveProgressHeaderState extends State<_WaveProgressHeader>
                         ),
                         alignment: Alignment.center,
                         child: Text(
-                          defeated ? '?' : active ? '?' : '${i + 1}',
+                          defeated ? '✓' : '${i + 1}',
                           style: TextStyle(
                             fontSize: defeated ? 13 : active ? 14 : 10,
                             color: defeated
@@ -1149,7 +1174,7 @@ class _GauntletStartSection extends StatelessWidget {
               ZCoinIcon(size: 13, animate: false),
               const SizedBox(width: 5),
               Text(
-                '${GameState.kGauntletExtraCost} zcoins � Buy 1 extra attempt',
+                '${GameState.kGauntletExtraCost} zcoins — Buy 1 extra attempt',
                 style: TextStyle(fontSize: 12, color: canAfford ? const Color(0xFF88ccff) : Colors.white24),
               ),
             ]),
@@ -1171,12 +1196,12 @@ class _InlineSpeedButton extends StatelessWidget {
   final bool isDebug;
   final VoidCallback onCycle;
 
-  static const _debugLabels = ['1�', '1.5�', '5�', '10�'];
-  static const _prodLabels  = ['1�', '1.5�', '2�'];
+  static const _debugLabels = ['1×', '1.5×', '5×', '10×'];
+  static const _prodLabels  = ['1×', '1.5×', '2×', '3×'];
 
   String get _label => isDebug
       ? _debugLabels[(speedTier - 1).clamp(0, 3)]
-      : _prodLabels[(speedTier - 1).clamp(0, 2)];
+      : _prodLabels[(speedTier - 1).clamp(0, 3)];
 
   bool get _active => speedTier > 1;
 

@@ -638,11 +638,25 @@ class _ItemTile extends StatelessWidget {
   final EquipmentItem? item;
   final String slotLabel;
 
+  /// Compact summary shown on long-press/hover so the icon-only grid can be
+  /// scanned without opening each item's detail sheet.
+  String _summary(EquipmentItem it) {
+    final lines = <String>['${it.name}  (${it.rarityLabel})'];
+    if (it.baseDamage > 0) lines.add('${it.baseDamage} base damage');
+    for (final b in it.bonuses) {
+      lines.add('+${b.value} ${b.stat.fullLabel}');
+    }
+    if (it.keyword != null) {
+      lines.add('✦ ${it.keyword!.label}: ${it.keyword!.description}');
+    }
+    return lines.join('\n');
+  }
+
   @override
   Widget build(BuildContext context) {
     final hasItem = item != null;
     final borderColor = hasItem ? item!.rarityColor : AppTheme.cardBorder;
-    return Container(
+    final tile = Container(
       decoration: BoxDecoration(
         color: const Color(0xFF2a2520),
         border: Border.all(
@@ -676,6 +690,8 @@ class _ItemTile extends StatelessWidget {
             )
           : const SizedBox.shrink(),
     );
+    if (!hasItem) return tile;
+    return Tooltip(message: _summary(item!), child: tile);
   }
 
   String _statLabel(ItemStat stat) {
@@ -706,8 +722,6 @@ class _ItemTile extends StatelessWidget {
         return 'FOR';
       case ItemStat.elemPenetration:
         return 'PEN';
-      case ItemStat.hitChance:
-        return 'HIT%';
       case ItemStat.damagePercent:
         return 'DMG%';
     }
@@ -1015,21 +1029,29 @@ class _ItemDetailSheetState extends State<_ItemDetailSheet> {
                     : '=';
 
             if (compareWith == null) {
-              return Padding(
-                padding: const EdgeInsets.only(bottom: 4),
-                child: Row(
-                  children: [
-                    const Icon(Icons.add, size: 12, color: Color(0xFF88cc44)),
-                    const SizedBox(width: 4),
-                    Text('+$nv ${_statName(stat)}',
-                        style: const TextStyle(
-                            fontSize: 14, color: AppTheme.textLight)),
-                  ],
+              return Tooltip(
+                message: '${stat.fullLabel}\n${stat.description}',
+                child: Padding(
+                  padding: const EdgeInsets.only(bottom: 4),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.add, size: 12, color: Color(0xFF88cc44)),
+                      const SizedBox(width: 4),
+                      Text('+$nv ${_statName(stat)}',
+                          style: const TextStyle(
+                              fontSize: 14, color: AppTheme.textLight)),
+                      const SizedBox(width: 4),
+                      Icon(Icons.info_outline, size: 11,
+                          color: AppTheme.textMuted.withValues(alpha: 0.5)),
+                    ],
+                  ),
                 ),
               );
             }
 
-            return Padding(
+            return Tooltip(
+              message: '${stat.fullLabel}\n${stat.description}',
+              child: Padding(
               padding: const EdgeInsets.only(bottom: 3),
               child: Row(
                 children: [
@@ -1088,17 +1110,21 @@ class _ItemDetailSheetState extends State<_ItemDetailSheet> {
                   ),
                 ],
               ),
+            ),
             );
           }),
 
           // Equipped item keyword (shown below if different)
           if (compareWith?.keyword != null &&
               compareWith!.keyword != item.keyword)
-            Padding(
-              padding: const EdgeInsets.only(top: 4, bottom: 4),
-              child: Text(
-                '✦ Equipped has: ${compareWith!.keyword!.label}',
-                style: const TextStyle(fontSize: 11, color: AppTheme.textMuted),
+            Tooltip(
+              message: compareWith!.keyword!.description,
+              child: Padding(
+                padding: const EdgeInsets.only(top: 4, bottom: 4),
+                child: Text(
+                  '✦ Equipped has: ${compareWith!.keyword!.label}',
+                  style: const TextStyle(fontSize: 11, color: AppTheme.textMuted),
+                ),
               ),
             ),
 
@@ -1147,7 +1173,6 @@ class _ItemDetailSheetState extends State<_ItemDetailSheet> {
         ItemStat.goldPct => 'Gold%',
         ItemStat.xpPct => 'XP%',
         ItemStat.elemPenetration => 'PEN%',
-        ItemStat.hitChance => 'HIT%',
         ItemStat.damagePercent => 'DMG%',
       };
 }

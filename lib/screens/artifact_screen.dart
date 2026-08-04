@@ -1,7 +1,8 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import '../models/artifact.dart';
 import '../services/game_state.dart';
 import '../theme/app_theme.dart';
+import '../widgets/currency_info.dart';
 
 class ArtifactScreen extends StatefulWidget {
   const ArtifactScreen({super.key, this.embedded = false});
@@ -147,13 +148,13 @@ class _ArtifactScreenState extends State<ArtifactScreen> {
   }
 
   Widget _buildTableBonuses(GameState game) {
-    final bonuses = <(String, String, int)>[
-      ('⚔', 'PWR', game.artifactPowerBonus),
-      ('🛡', 'ARM', game.artifactAcBonus),
-      ('❤', 'HP%', game.artifactHpPct),
-      ('💰', 'Gold%', game.artifactGoldPct),
-      ('⚡', 'XP%', game.artifactXpPct),
-      ('◆', 'Shard%', game.artifactShardPct),
+    final bonuses = <(IconData, String, int)>[
+      (Icons.bolt,              'PWR',    game.artifactPowerBonus),
+      (Icons.shield_outlined,   'ARM',    game.artifactAcBonus),
+      (Icons.favorite_outline,  'HP%',    game.artifactHpPct),
+      (Icons.monetization_on,   'Gold%',  game.artifactGoldPct),
+      (Icons.star_outline,      'XP%',    game.artifactXpPct),
+      (Icons.diamond_outlined,  'Shard%', game.artifactShardPct),
     ];
     final active = bonuses.where((b) => b.$3 > 0).toList();
     if (active.isEmpty) {
@@ -180,16 +181,20 @@ class _ArtifactScreenState extends State<ArtifactScreen> {
           Wrap(
             spacing: 12,
             runSpacing: 4,
-            children: active.map((b) => Text(
-              '${b.$1} +${b.$3}${b.$2.contains('%') ? '' : ''} ${b.$2}',
-              style: const TextStyle(fontSize: 11, color: Color(0xFF9966ff), fontWeight: FontWeight.bold),
+            children: active.map((b) => Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(b.$1, size: 11, color: const Color(0xFF9966ff)),
+                const SizedBox(width: 3),
+                Text('+${b.$3} ${b.$2}',
+                    style: const TextStyle(fontSize: 11, color: Color(0xFF9966ff), fontWeight: FontWeight.bold)),
+              ],
             )).toList(),
           ),
         ],
       ),
     );
   }
-
   Widget _buildCollection(GameState game) {
     final owned = game.ownedArtifacts;
 
@@ -198,7 +203,8 @@ class _ArtifactScreenState extends State<ArtifactScreen> {
       physics: const NeverScrollableScrollPhysics(),
       padding: const EdgeInsets.fromLTRB(8, 6, 8, 8),
       children: [
-        // ── Collection ───────────────────────────────────────────────────────
+        _SetBonusPanel(counts: game.equippedSetPieceCounts),
+        // â”€â”€ Collection â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         Padding(
           padding: const EdgeInsets.only(bottom: 4),
           child: Row(children: [
@@ -230,7 +236,7 @@ class _ArtifactScreenState extends State<ArtifactScreen> {
             mythril: game.mythril,
             upgradeCost: game.artifactUpgradeCost(art),
             onTap: () => _onArtifactTap(game, art.uid),
-            onUpgrade: () { game.upgradeArtifact(art.uid); game.audioService.playUiConfirm(); setState(() {}); },
+            onUpgrade: () { game.upgradeArtifact(art.uid); game.audioService.playClaim(); setState(() {}); },
           )),
         ],
       ],
@@ -238,7 +244,7 @@ class _ArtifactScreenState extends State<ArtifactScreen> {
   }
 }
 
-// ── Grid cell ─────────────────────────────────────────────────────────────────
+// â”€â”€ Grid cell â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 class _GridCell extends StatelessWidget {
   const _GridCell({
@@ -275,7 +281,7 @@ class _GridCell extends StatelessWidget {
         );
       }
 
-      final rc = artifact?.rarity.color;
+      final rc = artifact?.displayColor;
       final hasArt = artifact != null;
       final active = isTargetable || isHighlighted;
       final accentColor = active ? const Color(0xFF9966ff) : (rc ?? const Color(0xFF4a3828));
@@ -305,15 +311,15 @@ class _GridCell extends StatelessWidget {
               ? _buildFilled(size)
               : active
                   ? Center(child: Icon(Icons.add_circle_outline, size: size * 0.35, color: const Color(0xFF9966ff)))
-                  : Center(child: Text('·', style: TextStyle(fontSize: size * 0.3, color: const Color(0xFF3a2818)))),
+                  : Center(child: Text('.', style: TextStyle(fontSize: size * 0.3, color: const Color(0xFF3a2818)))),
         ),
       );
     });
   }
 
   Widget _buildFilled(double size) {
-    final typeColor = artifact!.type.color;
-    final rarityColor = artifact!.rarity.color;
+    final typeColor = artifact!.isSetPiece ? kArtifactSetColor : artifact!.type.color;
+    final rarityColor = artifact!.displayColor;
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -341,7 +347,7 @@ class _GridCell extends StatelessWidget {
 
 }
 
-// ── Placement hint ────────────────────────────────────────────────────────────
+// â”€â”€ Placement hint â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 class _PlacementHint extends StatelessWidget {
   const _PlacementHint({required this.name});
@@ -366,7 +372,7 @@ class _PlacementHint extends StatelessWidget {
   }
 }
 
-// ── Artifact row ──────────────────────────────────────────────────────────────
+// â”€â”€ Artifact row â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 class _ArtifactRow extends StatelessWidget {
   const _ArtifactRow({
@@ -389,8 +395,8 @@ class _ArtifactRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final rc = artifact.rarity.color;
-    final tc = artifact.type.color;
+    final rc = artifact.displayColor;
+    final tc = artifact.isSetPiece ? kArtifactSetColor : artifact.type.color;
 
     final borderColor = selected
         ? const Color(0xFF9966ff)
@@ -437,14 +443,20 @@ class _ArtifactRow extends StatelessWidget {
                     style: TextStyle(
                         fontSize: 12, fontWeight: FontWeight.bold, color: rc)),
                 const SizedBox(height: 3),
-                // Rarity + type + drop level badges
+                // Rarity/set + type + drop level badges
                 Row(children: [
-                  _badge(artifact.rarity.label, rc),
+                  _badge(artifact.isSetPiece ? 'SET' : artifact.rarity.label, rc),
                   const SizedBox(width: 4),
                   _badge(artifact.type.label, tc),
                   const SizedBox(width: 4),
                   _badge('Lv ${artifact.dropLevel}', AppTheme.textMuted),
                 ]),
+                if (artifact.isSetPiece && artifact.set != null) ...[
+                  const SizedBox(height: 3),
+                  Text('◈ ${artifact.set!.name}',
+                      style: const TextStyle(
+                          fontSize: 10, color: kArtifactSetColor, fontWeight: FontWeight.w600)),
+                ],
                 const SizedBox(height: 3),
                 // Stat chips
                 Wrap(
@@ -466,40 +478,56 @@ class _ArtifactRow extends StatelessWidget {
                     size: 18,
                     color: selected ? const Color(0xFF9966ff) : AppTheme.textMuted),
               if (artifact.dropLevel < 50) ...[
-                const SizedBox(height: 4),
-                GestureDetector(
-                  onTap: mythril >= upgradeCost ? onUpgrade : null,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 3),
-                    decoration: BoxDecoration(
-                      color: mythril >= upgradeCost
-                          ? const Color(0xFF9966ff).withValues(alpha: 0.15)
-                          : Colors.transparent,
-                      border: Border.all(
-                        color: mythril >= upgradeCost
-                            ? const Color(0xFF9966ff).withValues(alpha: 0.6)
-                            : AppTheme.cardBorder,
+                const SizedBox(height: 6),
+                Builder(builder: (context) {
+                  final canAfford = mythril >= upgradeCost;
+                  return GestureDetector(
+                    onTap: canAfford ? onUpgrade : null,
+                    child: Container(
+                      constraints: const BoxConstraints(minHeight: 48, minWidth: 82),
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: canAfford
+                            ? const Color(0xFF9966ff)
+                            : const Color(0xFF9966ff).withValues(alpha: 0.10),
+                        border: Border.all(
+                          color: canAfford
+                              ? const Color(0xFFcc99ff)
+                              : AppTheme.cardBorder,
+                          width: canAfford ? 1.5 : 1,
+                        ),
+                        borderRadius: BorderRadius.circular(6),
+                        boxShadow: canAfford
+                            ? [BoxShadow(
+                                color: const Color(0xFF9966ff).withValues(alpha: 0.5),
+                                blurRadius: 8, spreadRadius: 1)]
+                            : null,
                       ),
-                      borderRadius: BorderRadius.circular(2),
+                      child: Column(mainAxisSize: MainAxisSize.min, children: [
+                        Row(mainAxisSize: MainAxisSize.min, children: [
+                          Icon(Icons.upgrade,
+                              size: 18,
+                              color: canAfford ? Colors.white : AppTheme.textMuted),
+                          const SizedBox(width: 4),
+                          Text('UPGRADE',
+                              style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                  letterSpacing: 0.5,
+                                  color: canAfford ? Colors.white : AppTheme.textMuted)),
+                        ]),
+                        const SizedBox(height: 3),
+                        Text('$upgradeCost Mythril',
+                            style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w600,
+                                color: canAfford
+                                    ? const Color(0xFFf0e6ff)
+                                    : AppTheme.textMuted)),
+                      ]),
                     ),
-                    child: Row(mainAxisSize: MainAxisSize.min, children: [
-                      Text('⬡',
-                          style: TextStyle(
-                              fontSize: 9,
-                              color: mythril >= upgradeCost
-                                  ? const Color(0xFFcc99ff)
-                                  : AppTheme.textMuted)),
-                      const SizedBox(width: 2),
-                      Text('$upgradeCost ▲',
-                          style: TextStyle(
-                              fontSize: 8,
-                              fontWeight: FontWeight.bold,
-                              color: mythril >= upgradeCost
-                                  ? const Color(0xFFcc99ff)
-                                  : AppTheme.textMuted)),
-                    ]),
-                  ),
-                ),
+                  );
+                }),
               ],
             ],
           ),
@@ -540,14 +568,115 @@ class _ArtifactRow extends StatelessWidget {
     add(a.powerBonus, 'PWR');
     add(a.acBonus,     'AC');
     add(a.hpPct,       'HP%');
-    add(a.shardPct,    '◆%');
+    add(a.shardPct,    'Shard%');
     add(a.goldPct,     'Gold%');
     add(a.xpPct,       'XP%');
     return chips;
   }
 }
 
-// ── Mythril badge ─────────────────────────────────────────────────────────────
+// â”€â”€ Set bonus panel â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+
+class _SetBonusPanel extends StatelessWidget {
+  const _SetBonusPanel({required this.counts});
+  final Map<String, int> counts;
+
+  @override
+  Widget build(BuildContext context) {
+    // Sets the player currently has at least one piece equipped for.
+    final active = ArtifactSet.all
+        .where((s) => (counts[s.id] ?? 0) > 0)
+        .toList();
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: kArtifactSetColor.withValues(alpha: 0.06),
+        border: Border.all(color: kArtifactSetColor.withValues(alpha: 0.4)),
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(children: [
+            const Icon(Icons.auto_awesome, size: 14, color: kArtifactSetColor),
+            const SizedBox(width: 6),
+            Text('SET BONUSES',
+                style: AppTheme.pixelHeading(
+                    fontSize: 11, letterSpacing: 2, color: kArtifactSetColor)),
+          ]),
+          const SizedBox(height: 4),
+          const Text(
+            'Collect matching green Set pieces. 2 equipped = partial bonus, all 3 = full bonus.',
+            style: TextStyle(fontSize: 10, color: AppTheme.textMuted, height: 1.3),
+          ),
+          if (active.isEmpty) ...[
+            const SizedBox(height: 8),
+            Text('No Set pieces equipped yet — ${ArtifactSet.all.length} sets to discover.',
+                style: const TextStyle(fontSize: 11, color: AppTheme.textMuted)),
+          ] else
+            ...active.map((s) => _setRow(s, counts[s.id] ?? 0)),
+        ],
+      ),
+    );
+  }
+
+  Widget _setRow(ArtifactSet s, int count) {
+    final has2 = count >= 2;
+    final has3 = count >= 3;
+    return Padding(
+      padding: const EdgeInsets.only(top: 10),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(children: [
+            Expanded(
+              child: Text('◈ ${s.name}',
+                  style: const TextStyle(
+                      fontSize: 12, color: kArtifactSetColor, fontWeight: FontWeight.bold)),
+            ),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              decoration: BoxDecoration(
+                color: kArtifactSetColor.withValues(alpha: has2 ? 0.20 : 0.08),
+                borderRadius: BorderRadius.circular(2),
+              ),
+              child: Text('$count / 3',
+                  style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.bold,
+                      color: has2 ? kArtifactSetColor : AppTheme.textMuted)),
+            ),
+          ]),
+          const SizedBox(height: 3),
+          _bonusLine('2-Set', s.twoPieceBonus.summary, has2),
+          const SizedBox(height: 1),
+          _bonusLine('3-Set', s.threePieceBonus.summary, has3),
+        ],
+      ),
+    );
+  }
+
+  Widget _bonusLine(String tier, String summary, bool active) {
+    final c = active ? kArtifactSetColor : AppTheme.textMuted;
+    return Row(children: [
+      Icon(active ? Icons.check_circle : Icons.circle_outlined, size: 11, color: c),
+      const SizedBox(width: 4),
+      Text('$tier: ',
+          style: TextStyle(fontSize: 10, color: c, fontWeight: FontWeight.bold)),
+      Expanded(
+        child: Text(summary,
+            style: TextStyle(
+                fontSize: 10,
+                color: active ? kArtifactSetColor : AppTheme.textMuted,
+                fontWeight: active ? FontWeight.w600 : FontWeight.normal)),
+      ),
+    ]);
+  }
+}
+
+// â”€â”€ Mythril badge â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 class _MythrilBadge extends StatelessWidget {
   const _MythrilBadge({required this.mythril});
@@ -555,25 +684,28 @@ class _MythrilBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: const Color(0xFF6644cc).withValues(alpha: 0.2),
-        border: Border.all(color: const Color(0xFF9966ff).withValues(alpha: 0.6)),
-        borderRadius: BorderRadius.circular(3),
+    return InfoTip(
+      message: CurrencyInfo.mythril,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        decoration: BoxDecoration(
+          color: const Color(0xFF6644cc).withValues(alpha: 0.2),
+          border: Border.all(color: const Color(0xFF9966ff).withValues(alpha: 0.6)),
+          borderRadius: BorderRadius.circular(3),
+        ),
+        child: Row(mainAxisSize: MainAxisSize.min, children: [
+          const Icon(Icons.diamond_outlined, size: 11, color: Color(0xFF9966ff)),
+          const SizedBox(width: 4),
+          Text('$mythril',
+              style: AppTheme.pixelHeading(
+                  fontSize: 13, color: const Color(0xFF9966ff))),
+        ]),
       ),
-      child: Row(mainAxisSize: MainAxisSize.min, children: [
-        const Text('⬡', style: TextStyle(fontSize: 11, color: Color(0xFF9966ff))),
-        const SizedBox(width: 4),
-        Text('$mythril',
-            style: AppTheme.pixelHeading(
-                fontSize: 13, color: const Color(0xFF9966ff))),
-      ]),
     );
   }
 }
 
-// ── Medieval table wood grain background ─────────────────────────────────────
+// â”€â”€ Medieval table wood grain background â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 class _TableGrainPainter extends CustomPainter {
   @override

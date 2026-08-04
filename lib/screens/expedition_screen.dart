@@ -96,7 +96,7 @@ class _ExpeditionScreenState extends State<ExpeditionScreen> {
             return elapsed >= e.duration.ms;
           }))
             TextButton(
-              onPressed: () { game.collectAllExpeditions(); setState(() {}); },
+              onPressed: () { game.collectAllExpeditions(); game.audioService.playClaimAll(); setState(() {}); },
               child: Text('COLLECT ALL',
                   style: AppTheme.pixelHeading(fontSize: 10, color: const Color(0xFF55cc88))),
             ),
@@ -109,6 +109,7 @@ class _ExpeditionScreenState extends State<ExpeditionScreen> {
                   final loc = _dailyLocations[idle.indexOf(merc) % _dailyLocations.length];
                   game.startExpedition(merc.id, loc, ExpeditionDuration.long);
                 }
+                game.audioService.playClaimAll();
                 setState(() {});
               },
               child: Text('DISPATCH ALL',

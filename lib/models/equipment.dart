@@ -9,7 +9,7 @@ enum ItemRarity { common, uncommon, rare, epic, legendary, mythic, set, unique }
 enum ItemStat {
   strength, dexterity, constitution, intelligence, wisdom, charisma,
   attackBonus, damageBonus, armorClass, maxHpPct, goldPct, xpPct,
-  elemPenetration, hitChance, damagePercent,
+  elemPenetration, damagePercent,
 }
 
 extension ItemStatInfo on ItemStat {
@@ -27,8 +27,44 @@ extension ItemStatInfo on ItemStat {
     ItemStat.goldPct         => '%G',
     ItemStat.xpPct           => '%XP',
     ItemStat.elemPenetration => 'PEN',
-    ItemStat.hitChance       => 'HIT',
     ItemStat.damagePercent   => '%DMG',
+  };
+
+  /// Full readable name, e.g. 'Focus (Wisdom)'. Used in tooltips so the cryptic
+  /// short codes (FOC, ARC, PEN…) are explained.
+  String get fullLabel => switch (this) {
+    ItemStat.attackBonus     => 'Crit Chance',
+    ItemStat.damageBonus     => 'Flat Damage',
+    ItemStat.armorClass      => 'Armor',
+    ItemStat.strength        => 'Power (Strength)',
+    ItemStat.dexterity       => 'Agility (Dexterity)',
+    ItemStat.constitution    => 'Vitality (Constitution)',
+    ItemStat.intelligence    => 'Arcane (Intelligence)',
+    ItemStat.wisdom          => 'Focus (Wisdom)',
+    ItemStat.charisma        => 'Fortune (Charisma)',
+    ItemStat.maxHpPct        => 'Max HP %',
+    ItemStat.goldPct         => 'Gold Find %',
+    ItemStat.xpPct           => 'XP Gain %',
+    ItemStat.elemPenetration => 'Elemental Penetration',
+    ItemStat.damagePercent   => 'All Damage %',
+  };
+
+  /// One-line explanation of what the stat does in combat. Used in tooltips.
+  String get description => switch (this) {
+    ItemStat.attackBonus  => '+2% critical hit chance per point.',
+    ItemStat.damageBonus  => 'Flat damage added to every hit.',
+    ItemStat.armorClass   => 'Reduces incoming physical damage.',
+    ItemStat.strength     => 'Adds flat hit damage and armor.',
+    ItemStat.dexterity    => 'Adds crit chance and dodge chance.',
+    ItemStat.constitution => 'Adds HP regen and poison damage.',
+    ItemStat.intelligence => 'Boosts damage-over-time and void damage.',
+    ItemStat.wisdom       => 'Strengthens healing and cold damage.',
+    ItemStat.charisma     => 'Adds gold, fire damage, and ability-reset chance.',
+    ItemStat.maxHpPct     => 'Increases your maximum health.',
+    ItemStat.goldPct      => 'Increases gold earned from kills.',
+    ItemStat.xpPct        => 'Increases experience earned.',
+    ItemStat.elemPenetration => 'Ignores a % of enemy elemental resistance.',
+    ItemStat.damagePercent   => 'Multiplies your final damage output.',
   };
 }
 
@@ -169,17 +205,15 @@ const kSetCatalog = <ItemSet>[
         StatBonus(ItemStat.dexterity, 5),
       ]),
       SetBonus(piecesRequired: 4, bonuses: [
-        StatBonus(ItemStat.attackBonus, 10),   // +20% crit chance (total +28%)
+        StatBonus(ItemStat.attackBonus, 18),   // +36% crit (was 10 CRIT + 8 HIT)
         StatBonus(ItemStat.dexterity, 10),
         StatBonus(ItemStat.damageBonus, 20),
-        StatBonus(ItemStat.hitChance, 8),      // +16% more crit
       ]),
       SetBonus(piecesRequired: 6, bonuses: [
-        StatBonus(ItemStat.attackBonus, 18),   // +36% crit (total +64% crit)
+        StatBonus(ItemStat.attackBonus, 33),   // +66% crit (was 18 CRIT + 15 HIT)
         StatBonus(ItemStat.dexterity, 18),
         StatBonus(ItemStat.damageBonus, 45),
         StatBonus(ItemStat.damagePercent, 40), // +40% all damage
-        StatBonus(ItemStat.hitChance, 15),     // +30% more crit
       ]),
     ],
   ),
@@ -369,6 +403,13 @@ class EquipmentItem {
     ItemRarity.unique    => 'Unique',
   };
 
+  /// Rough total stat budget for quick shop upgrade comparisons (not a precise
+  /// DPS model — just base damage + summed stat values + a keyword bonus).
+  int get statBudget =>
+      baseDamage +
+      bonuses.fold<int>(0, (s, b) => s + b.value) +
+      (keyword != null ? 8 : 0);
+
   // ── Upgrade system (tier 0-10) ──────────────────────────────────────────────
   static const maxUpgradeTier = 10;
 
@@ -458,8 +499,14 @@ class EquipmentItem {
       ),
       bonuses: (json['bonuses'] as List<dynamic>).map((b) {
         final m = b as Map<String, dynamic>;
+        // Legacy migration: 'hitChance' (HIT) was a redundant crit source,
+        // identical to attackBonus (CRIT). Fold old items into attackBonus so
+        // saved gear keeps the exact same crit value.
+        var statName = m['stat'] as String;
+        if (statName == 'hitChance') statName = 'attackBonus';
         return StatBonus(
-          ItemStat.values.firstWhere((s) => s.name == m['stat']),
+          ItemStat.values.firstWhere((s) => s.name == statName,
+              orElse: () => ItemStat.attackBonus),
           m['value'] as int,
         );
       }).toList(),
@@ -498,14 +545,14 @@ class ItemLootTable {
   static const _relicNames   = ['Eye of Fate', 'Bone Fragment', 'Shadow Shard', 'Cursed Rune', 'Ancient Token', 'Void Crystal', 'Hex Ember', 'Death Spark'];
 
   // ── Stat pools per slot ────────────────────────────────────────────────────
-  static const _weaponStats   = [ItemStat.attackBonus, ItemStat.damageBonus, ItemStat.strength, ItemStat.elemPenetration, ItemStat.hitChance, ItemStat.damagePercent];
+  static const _weaponStats   = [ItemStat.attackBonus, ItemStat.damageBonus, ItemStat.strength, ItemStat.elemPenetration, ItemStat.damagePercent];
   static const _offHandStats  = [ItemStat.armorClass, ItemStat.attackBonus, ItemStat.constitution];
   static const _helmetStats   = [ItemStat.armorClass, ItemStat.constitution, ItemStat.wisdom];
   static const _armorStats    = [ItemStat.armorClass, ItemStat.constitution, ItemStat.maxHpPct];
   static const _glovesStats   = [ItemStat.attackBonus, ItemStat.damageBonus, ItemStat.dexterity];
   static const _pantsStats    = [ItemStat.armorClass, ItemStat.constitution, ItemStat.dexterity];
   static const _bootsStats    = [ItemStat.dexterity, ItemStat.armorClass, ItemStat.wisdom];
-  static const _accessoryStats = [ItemStat.goldPct, ItemStat.xpPct, ItemStat.wisdom, ItemStat.intelligence, ItemStat.charisma, ItemStat.dexterity, ItemStat.attackBonus, ItemStat.elemPenetration, ItemStat.hitChance, ItemStat.damagePercent];
+  static const _accessoryStats = [ItemStat.goldPct, ItemStat.xpPct, ItemStat.wisdom, ItemStat.intelligence, ItemStat.charisma, ItemStat.dexterity, ItemStat.attackBonus, ItemStat.elemPenetration, ItemStat.damagePercent];
   static const _relicStats    = [ItemStat.goldPct, ItemStat.xpPct, ItemStat.wisdom, ItemStat.intelligence, ItemStat.charisma, ItemStat.elemPenetration];
 
   // ── Affix prefix/suffix tables (common, rare, epic) ───────────────────────
@@ -515,7 +562,6 @@ class ItemLootTable {
     ItemStat.intelligence:    'Arcane',    ItemStat.wisdom:       'Sage',        ItemStat.charisma:        'Bold',
     ItemStat.maxHpPct:        'Hearty',    ItemStat.goldPct:      'Lucky',       ItemStat.xpPct:           'Learned',
     ItemStat.elemPenetration: 'Seeping',
-    ItemStat.hitChance:       'Unerring',
     ItemStat.damagePercent:   'Vicious',
   };
   static const _prefixRare = {
@@ -524,7 +570,6 @@ class ItemLootTable {
     ItemStat.intelligence:    'Mystic',     ItemStat.wisdom:       'Ancient',    ItemStat.charisma:        'Commanding',
     ItemStat.maxHpPct:        'Vital',      ItemStat.goldPct:      'Prosperous', ItemStat.xpPct:           "Veteran's",
     ItemStat.elemPenetration: 'Piercing',
-    ItemStat.hitChance:       'Trueshot',
     ItemStat.damagePercent:   'Savage',
   };
   static const _prefixEpic = {
@@ -533,7 +578,6 @@ class ItemLootTable {
     ItemStat.intelligence:    'Elder',       ItemStat.wisdom:       'Eternal',   ItemStat.charisma:        'Glorious',
     ItemStat.maxHpPct:        'Ironhide',   ItemStat.goldPct:      "Fortune's",  ItemStat.xpPct:           'Enlightened',
     ItemStat.elemPenetration: 'Veilbreaker',
-    ItemStat.hitChance:       'Deadeye',
     ItemStat.damagePercent:   'Ruinous',
   };
   static const _suffixRare = {
@@ -542,7 +586,6 @@ class ItemLootTable {
     ItemStat.intelligence:    'Arcana',     ItemStat.wisdom:       'Foresight',  ItemStat.charisma:        'Command',
     ItemStat.maxHpPct:        'Vitality',   ItemStat.goldPct:      'Fortune',    ItemStat.xpPct:           'Wisdom',
     ItemStat.elemPenetration: 'Penetration',
-    ItemStat.hitChance:       'Accuracy',
     ItemStat.damagePercent:   'Carnage',
   };
   static const _suffixEpic = {
@@ -551,7 +594,6 @@ class ItemLootTable {
     ItemStat.intelligence:    'the Abyss',  ItemStat.wisdom:       'the Ages',   ItemStat.charisma:        'Legend',
     ItemStat.maxHpPct:        'the Colossus',ItemStat.goldPct:     'Avarice',    ItemStat.xpPct:           'Transcendence',
     ItemStat.elemPenetration: 'the Rift',
-    ItemStat.hitChance:       'the Sure Strike',
     ItemStat.damagePercent:   'Devastation',
   };
   static const _keywordTitle = {
@@ -798,12 +840,9 @@ class ItemLootTable {
     final lvScale = 1.0 + (level - 1) * 0.08;
     final isPct = stat == ItemStat.maxHpPct || stat == ItemStat.goldPct ||
         stat == ItemStat.xpPct || stat == ItemStat.elemPenetration ||
-        stat == ItemStat.hitChance || stat == ItemStat.damagePercent;
+        stat == ItemStat.damagePercent;
     if (isPct) {
-      final base = switch (stat) {
-        ItemStat.hitChance => 3 + m * 3,
-        _ => 5 + m * 5,
-      };
+      final base = 5 + m * 5;
       return (base * lvScale).round().clamp(1, 999);
     }
     final flat = switch (stat) {

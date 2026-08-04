@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../models/endless_upgrades.dart';
 import '../services/game_state.dart';
 import '../theme/app_theme.dart';
+import '../widgets/currency_info.dart';
 import '../widgets/hold_repeat_button.dart';
 import 'main_shell.dart' show TutorialTip;
 
@@ -80,7 +81,7 @@ class EndlessUpgradeScreen extends StatelessWidget {
           Padding(
             padding: const EdgeInsets.only(right: 16),
             child: Tooltip(
-              message: AppTheme.resourceTooltips['echoes']!,
+              message: CurrencyInfo.echoes,
               child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -307,7 +308,7 @@ class _NodeCardState extends State<_NodeCard> with SingleTickerProviderStateMixi
                     // Upgrade button — pulses when affordable
                     HoldRepeatButton(
                       onPressed: canAfford
-                          ? () { game.purchaseEndlessUpgrade(node); game.audioService.playUiConfirm(); }
+                          ? () { game.purchaseEndlessUpgrade(node); game.audioService.playClaim(); }
                           : null,
                       child: AnimatedBuilder(
                         animation: _pulse,

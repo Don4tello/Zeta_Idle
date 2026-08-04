@@ -40,14 +40,31 @@ class SaveService {
 
   Future<void> saveRaw(Map<String, dynamic> rawData, {int slot = 0}) async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('$_savePrefix$slot', jsonEncode(rawData));
+    final key = '$_savePrefix$slot';
+    // Roll the current good save into a backup key before overwriting, so a
+    // corrupt or interrupted write can never leave the player with no copy.
+    final existing = prefs.getString(key);
+    if (existing != null && existing.isNotEmpty) {
+      await prefs.setString('${key}_bak', existing);
+    }
+    await prefs.setString(key, jsonEncode(rawData));
   }
 
   Future<Map<String, dynamic>?> loadRaw({int slot = 0}) async {
     final prefs = await SharedPreferences.getInstance();
-    final raw = prefs.getString('$_savePrefix$slot');
-    if (raw == null) return null;
-    return jsonDecode(raw) as Map<String, dynamic>;
+    final key = '$_savePrefix$slot';
+    // Try the primary save, then the rolling backup if the primary is missing
+    // or fails to parse (corruption recovery).
+    for (final k in [key, '${key}_bak']) {
+      final raw = prefs.getString(k);
+      if (raw == null || raw.isEmpty) continue;
+      try {
+        return jsonDecode(raw) as Map<String, dynamic>;
+      } catch (_) {
+        // fall through to the next candidate
+      }
+    }
+    return null;
   }
 
   static Future<int> getExtraSlots() async {
@@ -87,7 +104,20 @@ class SaveService {
   Future<void> deleteSlot(int slot) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove('$_savePrefix$slot');
+    await prefs.remove('$_savePrefix${slot}_bak');
     await prefs.remove('$_prestigePrefix$slot');
+  }
+
+  /// Wipe every local save slot + backups + metadata. Used by account deletion.
+  Future<void> wipeAllLocal() async {
+    final prefs = await SharedPreferences.getInstance();
+    for (final key in prefs.getKeys().toList()) {
+      if (key.startsWith(_savePrefix) || key.startsWith(_prestigePrefix)) {
+        await prefs.remove(key);
+      }
+    }
+    await prefs.remove(_welcomeSeenKey);
+    await prefs.remove(_extraSlotsKey);
   }
 
   Future<void> savePrestigeLevel(int slot, int level) async {

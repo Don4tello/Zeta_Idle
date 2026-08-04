@@ -1,10 +1,11 @@
-import 'dart:async';
+﻿import 'dart:async';
 import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show HapticFeedback;
 import 'package:go_router/go_router.dart';
 import '../core/routing/app_router.dart';
 import '../screens/main_shell.dart';
+import '../widgets/game_icons.dart';
 import '../models/artifact.dart';
 import '../models/equipment.dart';
 import '../services/game_state.dart';
@@ -37,6 +38,7 @@ class _BattleScreenState extends State<BattleScreen>
   bool _isPaused = false;
   int? _countdown; // 3/2/1 shown before first attack; null = no countdown
   bool _showingReward = false;
+  dynamic _lastEnemy;
   int _rewardGold    = 0;
   int _rewardExp     = 0;
   int _rewardShards  = 0;
@@ -46,7 +48,7 @@ class _BattleScreenState extends State<BattleScreen>
   Completer<void>? _rewardCompleter;
   bool _exitRequested = false;
 
-  // Step 7 � victory stagger
+  // Step 7 — victory stagger
   late final AnimationController _victoryCtrl = AnimationController(
       vsync: this, duration: const Duration(milliseconds: 900));
 
@@ -86,18 +88,28 @@ class _BattleScreenState extends State<BattleScreen>
       if (!mounted) break;
 
       if (game.heroDefeated) {
-        game.heroDefeated = false;
+        // Keep heroDefeated true through the animation + dialog so the
+        // background auto-campaign can't start a new fight over the corpse
+        // (it fired ally abilities like Mira mid-death). startBattle()
+        // resets the flag when a real new fight begins.
+        await _arenaKey.currentState?.playHeroDeath();
+        await Future.delayed(const Duration(milliseconds: 300));
         await _showDefeatDialog(game);
+        game.heroDefeated = false;
         MainShell.switchToTab(0);
         if (mounted) context.go(Routes.shell);
         break;
       }
 
+      // Pause so the player can see the enemy at 0 HP before the victory screen.
+      if (mounted) await Future.delayed(const Duration(seconds: 1));
+      if (!mounted) break;
+
       if (mounted) {
         _rewardCompleter = Completer<void>();
         setState(() {
-          _showingReward   = true;
-          _rewardGold      = game.lastRewardGold;
+          _showingReward       = true;
+          _rewardGold          = game.lastRewardGold;
           _rewardExp       = game.lastRewardExp;
           _rewardShards    = game.lastShardDrop;
           _rewardItem      = game.lastItemDrop;
@@ -183,7 +195,7 @@ class _BattleScreenState extends State<BattleScreen>
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Text('??', style: TextStyle(fontSize: 38)),
+              GameIcon(GameIconType.swords, size: 36, color: const Color(0xFF55ee88)),
               const SizedBox(height: 10),
               const Text(
                 'FIRST VICTORY',
@@ -209,7 +221,7 @@ class _BattleScreenState extends State<BattleScreen>
                   border: Border.all(color: const Color(0xFF55ee88).withValues(alpha: 0.3)),
                 ),
                 child: const Text(
-                  'Beating bosses unlocks new modes � Daily Quests, Dungeons, Boss Rush, Tower Ascension, and more. Check the PLAY tab as you progress.',
+                  'Beating bosses unlocks new modes — Daily Quests, Dungeons, Boss Rush, Tower Ascension, and more. Check the PLAY tab as you progress.',
                   textAlign: TextAlign.center,
                   style: TextStyle(fontSize: 13, color: AppTheme.textMuted, height: 1.6),
                 ),
@@ -238,7 +250,7 @@ class _BattleScreenState extends State<BattleScreen>
                     padding: const EdgeInsets.symmetric(vertical: 14),
                   ),
                   child: const Text(
-                    'GOT IT � KEEP FIGHTING',
+                    'GOT IT — KEEP FIGHTING',
                     style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, letterSpacing: 1),
                   ),
                 ),
@@ -270,7 +282,7 @@ class _BattleScreenState extends State<BattleScreen>
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Text('?', style: TextStyle(fontSize: 32)),
+              GameIcon(GameIconType.skull, size: 32, color: const Color(0xFFee4040)),
               const SizedBox(height: 8),
               Text('${game.hero.name.toUpperCase()} FALLS',
                   style: const TextStyle(
@@ -283,16 +295,16 @@ class _BattleScreenState extends State<BattleScreen>
                   style: TextStyle(color: AppTheme.textLight, fontSize: 13)),
               const SizedBox(height: 16),
               if (stage >= 5)
-                _defeatOption(dialogCtx, '??', 'ENDLESS MODE', 'Farm XP & gold at your pace',
+                _defeatOption(dialogCtx, GameIconType.swords, 'ENDLESS MODE', 'Farm XP & gold at your pace',
                     const Color(0xFF55cc88), () { Navigator.of(dialogCtx).pop(); context.push(Routes.endless); }),
               if (stage >= 5)
-                _defeatOption(dialogCtx, '??', 'DUNGEON', 'Earn shards & items',
+                _defeatOption(dialogCtx, GameIconType.key, 'DUNGEON', 'Earn shards & items',
                     const Color(0xFF66aaff), () { Navigator.of(dialogCtx).pop(); context.push(Routes.dungeon); }),
               if (stage >= 10)
-                _defeatOption(dialogCtx, '?', 'GAUNTLET', 'Earn echoes for upgrades',
+                _defeatOption(dialogCtx, GameIconType.gauntlet, 'GAUNTLET', 'Earn echoes for upgrades',
                     const Color(0xFFcc88ff), () { Navigator.of(dialogCtx).pop(); context.push(Routes.gauntlet); }),
               if (stage >= 5)
-                _defeatOption(dialogCtx, '??', 'DAILY CHALLENGES', 'Claim rewards for progress',
+                _defeatOption(dialogCtx, GameIconType.star, 'DAILY CHALLENGES', 'Claim rewards for progress',
                     const Color(0xFFffaa44), () { Navigator.of(dialogCtx).pop(); context.push(Routes.daily); }),
               const SizedBox(height: 8),
               SizedBox(
@@ -376,7 +388,7 @@ class _BattleScreenState extends State<BattleScreen>
     );
   }
 
-  Widget _defeatOption(BuildContext dialogCtx, String emoji, String label,
+  Widget _defeatOption(BuildContext dialogCtx, GameIconType icon, String label,
       String desc, Color color, VoidCallback onTap) {
     return GestureDetector(
       onTap: onTap,
@@ -390,7 +402,7 @@ class _BattleScreenState extends State<BattleScreen>
         ),
         child: Row(
           children: [
-            Text(emoji, style: const TextStyle(fontSize: 18)),
+            GameIcon(icon, size: 18, color: color),
             const SizedBox(width: 10),
             Expanded(
               child: Column(
@@ -424,7 +436,7 @@ class _BattleScreenState extends State<BattleScreen>
       _arenaKey.currentState?.playAbilityBanner(firedAbility.name, firedAbility.effect, id: firedAbility.id);
       _effectKey.currentState?.playEffect(firedAbility.id);
     } else {
-      _effectKey.currentState?.playEffect('auto_${game.hero.heroClass.name}');
+      _effectKey.currentState?.playEffect(game.autoAttackEffectId);
     }
     await (_arenaKey.currentState?.playHeroAttack(
           game.lastHeroDamage,
@@ -472,6 +484,8 @@ class _BattleScreenState extends State<BattleScreen>
   Widget build(BuildContext context) {
     final game  = GameStateProvider.of(context);
     final enemy = game.currentEnemy;
+    if (enemy != null) _lastEnemy = enemy;
+    final displayEnemy = enemy ?? _lastEnemy;
 
     return Scaffold(
       backgroundColor: AppTheme.darkBg,
@@ -527,9 +541,9 @@ class _BattleScreenState extends State<BattleScreen>
             child: Stack(
               fit: StackFit.expand,
               children: [
-                enemy == null
+                displayEnemy == null
                     ? _buildNoBattle(context)
-                    : _buildArena(context, game, enemy),
+                    : _buildArena(context, game, displayEnemy),
                 if (_showingReward) _buildRewardOverlay(),
                 if (_countdown != null) _buildCountdownOverlay(_countdown!),
               ],
@@ -576,22 +590,22 @@ class _BattleScreenState extends State<BattleScreen>
   static List<Color> _heroBuffGlows(GameState game) {
     final glows = <Color>[];
     if (game.heroAbsorbShield > 0) glows.add(const Color(0xFF88ccff)); // sky   — absorb shield
-    if (game.buffAttackBonus > 0)  glows.add(const Color(0xFFffcc00)); // yellow� ATK
-    if (game.buffAcBonus > 0)      glows.add(const Color(0xFF66aaff)); // blue  � AC
-    if (game.dodgeNextHit)         glows.add(const Color(0xFF44ddcc)); // cyan  � dodge
-    if (game.auraRoundsLeft > 0)   glows.add(const Color(0xFF55ee88)); // green � aura heal
+    if (game.buffAttackBonus > 0)  glows.add(const Color(0xFFffcc00)); // yellow— ATK
+    if (game.buffAcBonus > 0)      glows.add(const Color(0xFF66aaff)); // blue  — AC
+    if (game.dodgeNextHit)         glows.add(const Color(0xFF44ddcc)); // cyan  — dodge
+    if (game.auraRoundsLeft > 0)   glows.add(const Color(0xFF55ee88)); // green — aura heal
     return glows;
   }
 
   static List<Color> _enemyDebuffGlows(GameState game) {
     final glows = <Color>[];
-    if (game.dotRoundsLeft > 0)          glows.add(const Color(0xFF88dd00)); // lime   � DOT
+    if (game.dotRoundsLeft > 0)          glows.add(const Color(0xFF88dd00)); // lime   — DOT
     if (game.enemyStunRounds > 0)          glows.add(const Color(0xFFcc44ff)); // purple — stun
-    if (game.stunApplicationCount >= 2)   glows.add(const Color(0xFF665577)); // dim purple — DR immune� stun
+    if (game.stunApplicationCount >= 2)   glows.add(const Color(0xFF665577)); // dim purple — DR immune— stun
     if (game.enemySilenceRounds > 0)       glows.add(const Color(0xFFffdd00)); // gold   — silence
     if (game.enemyMissChanceRounds > 0)   glows.add(const Color(0xFFaaaaff)); // lavender — miss
-    if (game.enemyWeakenRounds > 0)       glows.add(const Color(0xFFff4488)); // pink� weaken
-    if (game.enemyVulnerableRounds > 0)  glows.add(const Color(0xFFff8800)); // orange � vulnerable
+    if (game.enemyWeakenRounds > 0)       glows.add(const Color(0xFFff4488)); // pink— weaken
+    if (game.enemyVulnerableRounds > 0)  glows.add(const Color(0xFFff8800)); // orange — vulnerable
     return glows;
   }
 
@@ -717,15 +731,15 @@ class _BattleScreenState extends State<BattleScreen>
             key: _arenaKey,
             heroName:         game.hero.name,
             heroLevel:        game.hero.level,
-            heroCurrentHp:    game.hero.currentHealth,
+            heroCurrentHp:    game.heroDefeated ? 0 : game.hero.currentHealth,
             heroMaxHp:        game.hero.maxHealth,
             heroAttack:       game.hero.attack,
-            heroSpriteId:     game.hero.spriteId,
+            heroSpriteId:     game.heroBattleSpriteId,
             heroGender:       game.hero.gender,
             heroRace:         game.heroRace,
             heroAuraColor:    game.heroAuraColor,
             heroAuraIntensity: game.heroAuraIntensity,
-            heroColorFilter:  game.heroSkinFilter,
+            heroColorFilter:  game.heroSpriteFilter,
             heroPet: game.equippedPet != null
                 ? PetBattleSprite(pet: game.equippedPet!)
                 : null,
@@ -946,7 +960,7 @@ class _BattleScreenState extends State<BattleScreen>
                                         child: Row(
                                           crossAxisAlignment: CrossAxisAlignment.start,
                                           children: [
-                                            const Text('??', style: TextStyle(fontSize: 14)),
+                                            GameIcon(GameIconType.starburst, size: 14, color: const Color(0xFFffcc44)),
                                             const SizedBox(width: 8),
                                             Expanded(child: Column(
                                               crossAxisAlignment: CrossAxisAlignment.start,
@@ -987,10 +1001,17 @@ class _BattleScreenState extends State<BattleScreen>
                               _stagger(0.55, 0.80, child: ItemDropBadge(item: _rewardItem!)),
                               const SizedBox(height: 6),
                               _stagger(0.60, 0.82,
-                                child: const Text('? Added to Bag',
-                                    style: TextStyle(
-                                        fontSize: 11, color: Color(0xFF88cc88),
-                                        letterSpacing: 1))),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    GameIcon(GameIconType.coinBag, size: 11, color: const Color(0xFF88cc88)),
+                                    const SizedBox(width: 4),
+                                    const Text('Added to Bag',
+                                        style: TextStyle(
+                                            fontSize: 11, color: Color(0xFF88cc88),
+                                            letterSpacing: 1)),
+                                  ],
+                                )),
                             ],
                             if (_rewardArtifact != null) ...[
                               const SizedBox(height: 12),
@@ -1119,11 +1140,11 @@ class _PrestigeNudge extends StatelessWidget {
       ),
       child: Row(
         children: [
-          const Text('?', style: TextStyle(fontSize: 13)),
+          GameIcon(GameIconType.flame, size: 13, color: const Color(0xFFcc8844)),
           const SizedBox(width: 8),
           Expanded(
             child: Text(
-              'Struggling? Prestige is unlocked � reset for permanent power!',
+              'Struggling? Prestige is unlocked — reset for permanent power!',
               style: AppTheme.pixelHeading(
                 fontSize: 10,
                 letterSpacing: 0.5,
@@ -1144,19 +1165,20 @@ class _SpeedButton extends StatelessWidget {
   final GameState game;
 
   static const _debugLabels = ['1×', '1.5×', '5×', '10×'];
-  static const _prodLabels  = ['1×', '1.5×', '2×'];
+  static const _prodLabels  = ['1×', '1.5×', '2×', '3×'];
 
-  String get _label => kDebugMode
-      ? _debugLabels[game.speedTier - 1]
-      : _prodLabels[game.speedTier - 1];
+  String get _label => (kDebugMode ? _debugLabels : _prodLabels)[
+      (game.speedTier - 1).clamp(0, 3)];
 
   bool get _active => game.speedTier > 1;
 
   void _onTap(BuildContext context) {
-    final maxTier = kDebugMode ? 4 : 3;
+    // Speed Pass subscribers reach a permanent 3× (tier 4).
+    final maxTier = kDebugMode ? 4 : (game.hasSpeedSub ? 4 : 3);
     final next = (game.speedTier % maxTier) + 1;
 
-    if (!kDebugMode && next == 3 && !game.speedBoostActive) {
+    // Tier 3 (2×) is gated behind the ZCoin boost — but subscribers skip it.
+    if (!kDebugMode && next == 3 && !game.speedBoostActive && !game.hasSpeedSub) {
       _showPurchaseDialog(context);
       return;
     }
@@ -1168,10 +1190,10 @@ class _SpeedButton extends StatelessWidget {
       context: context,
       builder: (_) => AlertDialog(
         backgroundColor: const Color(0xFF1a1a2e),
-        title: const Text('2� Speed Boost',
+        title: const Text('2× Speed Boost',
             style: TextStyle(color: Color(0xFFddbb44), fontWeight: FontWeight.bold)),
         content: Text(
-          'Unlock 2� battle speed for 7 days?\n\nCost: ${GameState.kSpeedBoostCrystalCost} ZCoins\n'
+          'Unlock 2— battle speed for 7 days?\n\nCost: ${GameState.kSpeedBoostCrystalCost} ZCoins\n'
           'Your ZCoins: ${game.zcoins}',
           style: const TextStyle(color: Color(0xFFaabbcc)),
         ),
@@ -1236,8 +1258,8 @@ class _ArtifactDropBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final rc = artifact.rarity.color;
-    final tc = artifact.type.color;
+    final rc = artifact.displayColor;
+    final tc = artifact.isSetPiece ? kArtifactSetColor : artifact.type.color;
     return Container(
       padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(

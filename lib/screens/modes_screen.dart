@@ -12,11 +12,8 @@ import 'dungeon_screen.dart';
 import 'gauntlet_screen.dart';
 import 'boss_rush_screen.dart';
 import 'world_event_screen.dart';
-import 'bounty_board_screen.dart';
 import 'expedition_screen.dart';
 import 'quest_screen.dart';
-import 'armory_screen.dart';
-import 'bestiary_screen.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // ModesScreen
@@ -42,14 +39,11 @@ class _ModesScreenState extends State<ModesScreen>
     ('TOWER ASCENSION',   '🗼', 35),   // boss 7
     ('GAUNTLET',          '🛡️', 45),  // boss 9
     // ── Secondary ─────────────────────────────────────────────────────────────
-    ('DAILY',             '🎯',  5),   // boss 1
+    ('CHALLENGES',        '🎯',  5),   // boss 1 — daily / weekly / bounties
     ('QUESTS',            '📜', 10),   // boss 2
-    ('BOUNTIES',          '📋', 20),   // boss 4
-    ('ARMORY',            '🛡', 28),   // after boss 5 — legendary/set catalogue
     ('EVENTS',            '🌐', 30),   // boss 6
     ('EXPEDITION',        '🗺️', 40),  // boss 8
     ('PVP',               '⚔️', 50),  // boss 10
-    ('BESTIARY',          '🐉', 55),   // boss 11
   ];
 
   late TabController _tabs;
@@ -123,14 +117,11 @@ class _ModesScreenState extends State<ModesScreen>
     3  => const EndlessScreen(),         // TOWER ASCENSION
     4  => const GauntletScreen(),        // GAUNTLET
     // Secondary
-    5  => const DailyScreen(),           // DAILY
+    5  => const DailyScreen(),           // CHALLENGES (daily / weekly / bounties)
     6  => const QuestScreen(),           // QUESTS
-    7  => const BountyBoardScreen(),     // BOUNTIES
-    8  => const ArmoryScreen(embedded: true),
-    9  => const WorldEventScreen(),
-    10 => const ExpeditionScreen(),
-    11 => const PvpScreen(),
-    12 => const BestiaryScreen(),
+    7  => const WorldEventScreen(),      // EVENTS
+    8  => const ExpeditionScreen(),      // EXPEDITION
+    9  => const PvpScreen(),             // PVP
     _  => const SizedBox.shrink(),
   };
 
@@ -186,10 +177,12 @@ class _ModesScreenState extends State<ModesScreen>
                   'QUESTS'     => game.questsClaimable > 0 || game.adventureQuestsClaimable > 0,
                   _            => false,
                 };
-                // Show a separator before the first secondary tab (index ≥ 4)
+                // Show a separator before the first secondary tab (index ≥ 5)
                 // when there is at least one primary tab visible before it.
-                final isSecondary = i >= 4;
-                final prevIsPrimary = vi > 0 && indices[vi - 1] < 4;
+                // Primary = Campaign, Dungeon, Boss Rush, Tower Ascension,
+                // Gauntlet (indices 0–4); secondary = Daily onward (5+).
+                final isSecondary = i >= 5;
+                final prevIsPrimary = vi > 0 && indices[vi - 1] < 5;
                 final showGroupSeparator = isSecondary && prevIsPrimary;
                 return Tab(
                   height: 52,

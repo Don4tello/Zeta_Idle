@@ -1,8 +1,11 @@
-﻿import 'package:flutter/material.dart';
+﻿import 'dart:io' show Platform;
+import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../core/routing/app_router.dart';
 import '../models/equipment.dart';
 import '../services/game_state.dart';
+import '../services/notification_service.dart';
 import '../theme/app_theme.dart';
 
 Color _salvageColor(ItemRarity r) => switch (r) {
@@ -29,6 +32,32 @@ class SettingsScreen extends StatefulWidget {
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
+  Future<void> _sendFeedback(GameState game) async {
+    // Pre-fill an email with diagnostic context so bug reports are actionable.
+    final body = StringBuffer()
+      ..writeln('Please describe the bug or feedback here:')
+      ..writeln()
+      ..writeln()
+      ..writeln('--- Please keep the details below ---')
+      ..writeln('App: Zeta Idle')
+      ..writeln('Hero: ${game.hero.name} (Lv ${game.hero.level} ${game.hero.heroClass.displayName})')
+      ..writeln('Prestige: ${game.prestigeLevel}')
+      ..writeln('Platform: ${Platform.operatingSystem} ${Platform.operatingSystemVersion}');
+    final uri = Uri(
+      scheme: 'mailto',
+      path: 'razorintegrations@gmail.com',
+      query: 'subject=${Uri.encodeComponent('Zeta Idle — Bug Report / Feedback')}'
+          '&body=${Uri.encodeComponent(body.toString())}',
+    );
+    final ok = await launchUrl(uri, mode: LaunchMode.externalApplication);
+    if (!ok && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        content: Text('No email app found. Reach us at razorintegrations@gmail.com'),
+        duration: Duration(seconds: 4),
+      ));
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final game = GameStateProvider.of(context);
@@ -131,6 +160,31 @@ class _SettingsScreenState extends State<SettingsScreen> {
               trailing: Switch(
                 value: game.hapticsEnabled,
                 onChanged: (_) => setState(() => game.toggleHaptics()),
+                activeColor: AppTheme.accentGold,
+                inactiveTrackColor: AppTheme.cardBorder,
+              ),
+            ),
+
+            const SizedBox(height: 16),
+
+            // Notifications
+            _SectionHeader('NOTIFICATIONS'),
+            _SettingsTile(
+              title: 'Reminders',
+              subtitle: game.notificationsEnabled
+                  ? 'Get "come back" reminders while you\'re away'
+                  : 'Off',
+              trailing: Switch(
+                value: game.notificationsEnabled,
+                onChanged: (_) async {
+                  game.toggleNotifications();
+                  if (game.notificationsEnabled) {
+                    await NotificationService.instance.requestPermission();
+                  } else {
+                    await NotificationService.instance.cancelAll();
+                  }
+                  if (mounted) setState(() {});
+                },
                 activeColor: AppTheme.accentGold,
                 inactiveTrackColor: AppTheme.cardBorder,
               ),
@@ -406,6 +460,44 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ),
                 child: Text('VIEW', style: AppTheme.pixelHeading(
                     fontSize: 10, color: AppTheme.textMuted)),
+              ),
+            ),
+            const SizedBox(height: 10),
+            _SettingsTile(
+              title: 'Report a Bug / Feedback',
+              subtitle: 'Email us — device info is added automatically',
+              trailing: TextButton(
+                onPressed: () => _sendFeedback(game),
+                style: TextButton.styleFrom(
+                  foregroundColor: const Color(0xFF66aaff),
+                  side: const BorderSide(color: Color(0xFF335577)),
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  minimumSize: const Size(64, 44),
+                ),
+                child: Text('EMAIL', style: AppTheme.pixelHeading(
+                    fontSize: 10, color: const Color(0xFF66aaff))),
+              ),
+            ),
+            const SizedBox(height: 10),
+            _SettingsTile(
+              title: 'Replay Tips',
+              subtitle: 'Show the in-game tutorial tips again',
+              trailing: TextButton(
+                onPressed: () {
+                  game.resetTutorials();
+                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                    content: Text('Tutorial tips reset — they\'ll reappear as you explore.'),
+                    duration: Duration(seconds: 3),
+                  ));
+                },
+                style: TextButton.styleFrom(
+                  foregroundColor: const Color(0xFF44cc88),
+                  side: const BorderSide(color: Color(0xFF337755)),
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  minimumSize: const Size(64, 44),
+                ),
+                child: Text('RESET', style: AppTheme.pixelHeading(
+                    fontSize: 10, color: const Color(0xFF44cc88))),
               ),
             ),
             const SizedBox(height: 16),

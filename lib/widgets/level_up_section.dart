@@ -15,10 +15,10 @@ class LevelUpSection extends StatelessWidget {
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Text('â¬†', style: TextStyle(fontSize: 14)),
+            const Text('⬆', style: TextStyle(fontSize: 14)),
             const SizedBox(width: 6),
             Text(
-              'LEVEL UP!  Lv ${event.fromLevel} â†’ ${event.toLevel}',
+              'LEVEL UP!  Lv ${event.fromLevel} → ${event.toLevel}',
               style: GoogleFonts.rajdhani(
                 fontSize: 14,
                 fontWeight: FontWeight.bold,
@@ -30,7 +30,7 @@ class LevelUpSection extends StatelessWidget {
         ),
         const SizedBox(height: 8),
         Text(
-          'HP: ${event.hpBefore} â†’ ${event.hpAfter}',
+          'HP: ${event.hpBefore} → ${event.hpAfter}',
           style: GoogleFonts.rajdhani(
             fontSize: 12,
             color: const Color(0xFF66cc44),

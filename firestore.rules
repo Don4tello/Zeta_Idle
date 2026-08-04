@@ -1,0 +1,71 @@
+rules_version = '2';
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Zeta Idle — Firestore security rules
+//
+// Baseline model: EVERY request must be authenticated (the app uses anonymous
+// auth, so this still covers users who never link an account). Private data
+// (cloud saves) is owner-only. Competitive/social docs are publicly readable to
+// signed-in users but writable only by their owner, except guild docs which are
+// collaborative (see the note there).
+//
+// Deploy:  firebase deploy --only firestore:rules
+// ─────────────────────────────────────────────────────────────────────────────
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+    function isOwner(uid) {
+      return request.auth != null && request.auth.uid == uid;
+    }
+
+    // ── Private per-user cloud saves ────────────────────────────────────────
+    // Only the owner may read or write their save (doc id == uid).
+    match /zeta_idle_saves/{uid} {
+      allow read, write: if isOwner(uid);
+    }
+
+    // ── PvP snapshots ───────────────────────────────────────────────────────
+    // Signed-in users may read the pool (leaderboard + opponent search);
+    // a user may only create/update their OWN snapshot (doc id == uid).
+    match /pvp_players/{uid} {
+      allow read:  if signedIn();
+      allow write: if isOwner(uid);
+    }
+
+    // ── Endless / Tower leaderboard ─────────────────────────────────────────
+    // Public read to signed-in users; owner-only write (doc id == uid).
+    match /endless_leaderboard/{uid} {
+      allow read:  if signedIn();
+      allow write: if isOwner(uid);
+    }
+
+    // ── Guilds (collaborative) ──────────────────────────────────────────────
+    // Any signed-in user can read (browse/search) and write (join, chat,
+    // raids, territories). Guild ids are random, membership is enforced in the
+    // app. NOTE: rules do not verify guild membership here — a determined
+    // client could write to an arbitrary guild doc. For launch this is an
+    // acceptable baseline; harden later with membership checks or move guild
+    // mutations behind Cloud Functions.
+    match /guilds/{guildId} {
+      allow read, write: if signedIn();
+
+      match /raids/{raidId} {
+        allow read, write: if signedIn();
+      }
+    }
+
+    // ── Guild wars (collaborative) ──────────────────────────────────────────
+    match /guild_wars/{warId} {
+      allow read, write: if signedIn();
+    }
+
+    // ── Default deny ────────────────────────────────────────────────────────
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

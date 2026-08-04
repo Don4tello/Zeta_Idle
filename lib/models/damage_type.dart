@@ -17,13 +17,22 @@ enum DamageType {
     DamageType.void_     => 'Void',
   };
 
+  IconData get icon => switch (this) {
+    DamageType.physical  => Icons.sports_mma,
+    DamageType.fire      => Icons.local_fire_department,
+    DamageType.cold      => Icons.ac_unit,
+    DamageType.lightning => Icons.bolt,
+    DamageType.poison    => Icons.science,
+    DamageType.void_     => Icons.brightness_3,
+  };
+
   String get emoji => switch (this) {
-    DamageType.physical  => '⚔',
-    DamageType.fire      => '🔥',
-    DamageType.cold      => '❄',
-    DamageType.lightning => '⚡',
-    DamageType.poison    => '☠',
-    DamageType.void_     => '🌑',
+    DamageType.physical  => 'PHYS',
+    DamageType.fire      => 'FIRE',
+    DamageType.cold      => 'COLD',
+    DamageType.lightning => 'LTNG',
+    DamageType.poison    => 'POIS',
+    DamageType.void_     => 'VOID',
   };
 
   Color get color => switch (this) {
@@ -37,12 +46,12 @@ enum DamageType {
 
   /// Short tag appended to combat log hit entries.
   String get shortTag => switch (this) {
-    DamageType.physical  => ' 🗡',
-    DamageType.fire      => ' 🔥',
-    DamageType.cold      => ' ❄',
-    DamageType.lightning => ' ⚡',
-    DamageType.poison    => ' ☠',
-    DamageType.void_     => ' 🌑',
+    DamageType.physical  => ' [P]',
+    DamageType.fire      => ' [F]',
+    DamageType.cold      => ' [C]',
+    DamageType.lightning => ' [L]',
+    DamageType.poison    => ' [X]',
+    DamageType.void_     => ' [V]',
   };
 
   /// Stat label whose total drives hero resistance against this type.

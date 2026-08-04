@@ -1,3 +1,4 @@
+import 'dart:async' show Completer;
 import 'dart:io' show Platform;
 import 'package:flutter/foundation.dart' show kIsWeb, kDebugMode;
 import 'package:google_mobile_ads/google_mobile_ads.dart';
@@ -34,8 +35,36 @@ class AdService {
   static Future<void> initialize() async {
     if (kIsWeb) return;
     if (!Platform.isAndroid && !Platform.isIOS) return;
+    // Gather UMP (GDPR/EEA) consent BEFORE initialising ads. Required by
+    // AdMob policy; without it EEA/UK users get no consent prompt and ads may
+    // be withheld. Best-effort — any failure falls through to ad init so
+    // non-EEA users are never blocked from ads.
+    await _gatherConsent();
     await MobileAds.instance.initialize();
     instance.loadRewardedAd();
+  }
+
+  /// Request the latest consent info and show the consent form if the user's
+  /// region (EEA/UK) requires it. Safe to call on every launch — the SDK only
+  /// shows the form when needed.
+  static Future<void> _gatherConsent() async {
+    try {
+      final params = ConsentRequestParameters();
+      final completer = Completer<void>();
+      ConsentInformation.instance.requestConsentInfoUpdate(
+        params,
+        () async {
+          try {
+            await ConsentForm.loadAndShowConsentFormIfRequired((_) {});
+          } catch (_) {}
+          if (!completer.isCompleted) completer.complete();
+        },
+        (_) { if (!completer.isCompleted) completer.complete(); },
+      );
+      await completer.future;
+    } catch (_) {
+      // Never block ad init on a consent failure.
+    }
   }
 
   void loadRewardedAd() {

@@ -94,4 +94,20 @@ class AuthService {
     await _googleSignIn.signOut();
     await _auth.signOut();
   }
+
+  // ── Delete account ──────────────────────────────────────────────────────────
+
+  /// Permanently delete the Firebase auth user. Returns true on success.
+  /// Falls back to a plain sign-out if deletion fails (e.g. requires recent
+  /// login), so the caller can still complete a best-effort wipe.
+  Future<bool> deleteAccount() async {
+    try {
+      await _googleSignIn.signOut();
+      await _auth.currentUser?.delete();
+      return true;
+    } catch (_) {
+      try { await _auth.signOut(); } catch (_) {}
+      return false;
+    }
+  }
 }

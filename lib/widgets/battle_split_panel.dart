@@ -361,41 +361,54 @@ class BattleSplitPanel extends StatelessWidget {
                         style: TextStyle(color: Color(0xFF44cc88), fontSize: 11,
                             fontWeight: FontWeight.bold, letterSpacing: 2)),
                     const SizedBox(height: 4),
-                    ...allies.map((ally) => GestureDetector(
-                      onTap: () => _showInfoSheet(
-                        context,
-                        title: '${ally.name}: ${ally.activeAbility!.name}',
-                        body: ally.activeAbility!.description,
-                        color: const Color(0xFF44cc88),
-                        icon: Icons.people,
-                      ),
-                      child: Container(
-                        margin: const EdgeInsets.only(bottom: 3),
-                        padding: const EdgeInsets.fromLTRB(6, 4, 6, 4),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF44cc88).withValues(alpha: 0.07),
-                          border: const Border(
-                            left: BorderSide(color: Color(0xFF44cc88), width: 2),
+                    ...allies.map((ally) {
+                      // Once a merc's once-per-battle ability has fired, grey it
+                      // out so it's clear it's spent for this battle.
+                      final used = game.allyAbilitiesUsed.contains(ally.id);
+                      return GestureDetector(
+                        onTap: () => _showInfoSheet(
+                          context,
+                          title: '${ally.name}: ${ally.activeAbility!.name}',
+                          body: ally.activeAbility!.description,
+                          color: const Color(0xFF44cc88),
+                          icon: Icons.people,
+                        ),
+                        child: Opacity(
+                          opacity: used ? 0.35 : 1.0,
+                          child: Container(
+                            margin: const EdgeInsets.only(bottom: 3),
+                            padding: const EdgeInsets.fromLTRB(6, 4, 6, 4),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF44cc88).withValues(alpha: used ? 0.03 : 0.07),
+                              border: Border(
+                                left: BorderSide(
+                                    color: const Color(0xFF44cc88).withValues(alpha: used ? 0.3 : 1.0),
+                                    width: 2),
+                              ),
+                            ),
+                            child: Row(children: [
+                              Text(ally.icon, style: const TextStyle(fontSize: 12)),
+                              const SizedBox(width: 5),
+                              Expanded(
+                                child: Text(
+                                  '${ally.name}: ${ally.activeAbility!.name}',
+                                  style: const TextStyle(
+                                      color: Colors.white70, fontSize: 11),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                              Text(used ? 'USED' : '✓',
+                                  style: TextStyle(
+                                      color: used
+                                          ? const Color(0xFF7a8699)
+                                          : const Color(0xFF44cc88),
+                                      fontSize: used ? 9 : 11,
+                                      fontWeight: FontWeight.bold)),
+                            ]),
                           ),
                         ),
-                        child: Row(children: [
-                          Text(ally.icon, style: const TextStyle(fontSize: 12)),
-                          const SizedBox(width: 5),
-                          Expanded(
-                            child: Text(
-                              '${ally.name}: ${ally.activeAbility!.name}',
-                              style: const TextStyle(
-                                  color: Colors.white70, fontSize: 11),
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                          const Text('✓',
-                              style: TextStyle(
-                                  color: Color(0xFF44cc88), fontSize: 11,
-                                  fontWeight: FontWeight.bold)),
-                        ]),
-                      ),
-                    )),
+                      );
+                    }),
                   ],
                 ],
               ),
@@ -489,31 +502,47 @@ class BattleIconBar extends StatelessWidget {
     if (abilities.isEmpty && allMercs.isEmpty) return const SizedBox.shrink();
 
     // Active status effects
-    final statuses = <({IconData icon, Color color, String label, int rounds})>[];
+    final statuses = <({IconData icon, Color color, String label, String desc, int rounds})>[];
     if (game.buffAttackBonus > 0)
       statuses.add((icon: Icons.add_circle, color: const Color(0xFFffcc00),
-          label: '+${game.buffAttackBonus} ATK', rounds: game.buffAttackRounds));
+          label: '+${game.buffAttackBonus} ATK',
+          desc: 'Your hero deals +${game.buffAttackBonus} bonus damage per hit.',
+          rounds: game.buffAttackRounds));
     if (game.buffAcBonus > 0)
       statuses.add((icon: Icons.shield, color: const Color(0xFF66aaff),
-          label: '+${game.buffAcBonus} Armor', rounds: game.buffAcRounds));
+          label: '+${game.buffAcBonus} Armor',
+          desc: '+${game.buffAcBonus} armor — reduces incoming enemy damage.',
+          rounds: game.buffAcRounds));
     if (game.dodgeNextHit)
       statuses.add((icon: Icons.directions_run, color: const Color(0xFF44ddcc),
-          label: 'DODGE', rounds: 1));
+          label: 'DODGE',
+          desc: 'Your hero will completely dodge the next enemy attack.',
+          rounds: 1));
     if (game.auraRoundsLeft > 0)
       statuses.add((icon: Icons.healing, color: const Color(0xFF55ee88),
-          label: '+${game.auraHealPerRound} HP/r', rounds: game.auraRoundsLeft));
+          label: '+${game.auraHealPerRound} HP/r',
+          desc: 'Healing aura — restores ${game.auraHealPerRound} HP at the start of each round.',
+          rounds: game.auraRoundsLeft));
     if (game.dotRoundsLeft > 0)
       statuses.add((icon: Icons.bug_report, color: const Color(0xFF88dd00),
-          label: '${game.dotDmg}/rnd DoT', rounds: game.dotRoundsLeft));
+          label: '${game.dotDmg}/rnd DoT',
+          desc: 'Damage over time — the enemy takes ${game.dotDmg} damage each round.',
+          rounds: game.dotRoundsLeft));
     if (game.enemyStunRounds > 0)
       statuses.add((icon: Icons.flash_on, color: const Color(0xFFcc44ff),
-          label: 'Enemy STUN', rounds: game.enemyStunRounds));
+          label: 'Enemy STUN',
+          desc: 'The enemy is stunned and skips its attack.',
+          rounds: game.enemyStunRounds));
     if (game.enemyWeakenRounds > 0)
       statuses.add((icon: Icons.remove_circle, color: const Color(0xFFff4488),
-          label: '-${game.enemyWeakenPct}% ATK', rounds: game.enemyWeakenRounds));
+          label: '-${game.enemyWeakenPct}% ATK',
+          desc: 'Enemy weakened — its attack is reduced by ${game.enemyWeakenPct}%.',
+          rounds: game.enemyWeakenRounds));
     if (game.enemyVulnerableRounds > 0)
       statuses.add((icon: Icons.broken_image, color: const Color(0xFFff8800),
-          label: '+${game.enemyVulnerablePct}% DMG', rounds: game.enemyVulnerableRounds));
+          label: '+${game.enemyVulnerablePct}% DMG',
+          desc: 'Enemy vulnerable — it takes ${game.enemyVulnerablePct}% more damage from all sources.',
+          rounds: game.enemyVulnerableRounds));
 
     final usedAllies = game.allyAbilitiesUsed;
 
@@ -547,12 +576,14 @@ class BattleIconBar extends StatelessWidget {
                       if (a.effect == AbilityEffect.bonusDamage || a.effect == AbilityEffect.dot) {
                         final dtColor = game.abilityEffectiveDamageType(a).color;
                         return _AbilityIcon(
+                          key: ValueKey(a.id),
                           abilityId: a.id, color: dtColor, fill: fill, ready: ready,
                           name: a.name, cd: cd,
                           onTap: () => BattleSplitPanel.showAbilityInfo(context, game, a, cd, total, dtColor, icon),
                         );
                       }
                       return _AbilityIcon(
+                        key: ValueKey(a.id),
                         abilityId: a.id, color: color, fill: fill, ready: ready,
                         name: a.name, cd: cd,
                         onTap: () => BattleSplitPanel.showAbilityInfo(context, game, a, cd, total, color, icon),
@@ -563,7 +594,15 @@ class BattleIconBar extends StatelessWidget {
                           margin: const EdgeInsets.symmetric(horizontal: 6),
                           color: const Color(0xFF2a2a3a)),
                       ...statuses.map((s) => _StatusIcon(
-                        icon: s.icon, color: s.color, label: s.label, rounds: s.rounds)),
+                        icon: s.icon, color: s.color, label: s.label, desc: s.desc, rounds: s.rounds,
+                        onTap: () => BattleSplitPanel._showInfoSheet(
+                          context,
+                          title: '${s.label}  •  ${s.rounds} round${s.rounds == 1 ? '' : 's'} left',
+                          body: s.desc,
+                          color: s.color,
+                          icon: s.icon,
+                        ),
+                      )),
                     ],
                   ],
                 ),
@@ -649,8 +688,9 @@ class BattleIconBar extends StatelessWidget {
   }
 }
 
-class _AbilityIcon extends StatelessWidget {
+class _AbilityIcon extends StatefulWidget {
   const _AbilityIcon({
+    super.key,
     required this.abilityId, required this.color, required this.fill,
     required this.ready, required this.name, required this.cd,
     required this.onTap,
@@ -664,51 +704,99 @@ class _AbilityIcon extends StatelessWidget {
   final VoidCallback onTap;
 
   @override
+  State<_AbilityIcon> createState() => _AbilityIconState();
+}
+
+class _AbilityIconState extends State<_AbilityIcon>
+    with SingleTickerProviderStateMixin {
+  // "Just used" flash — guarantees a visible grey-out (~0.85s) even for short
+  // cooldowns, so the player can tell the ability actually fired.
+  late final AnimationController _used = AnimationController(
+      vsync: this, duration: const Duration(milliseconds: 850));
+  late final Animation<double> _fade =
+      CurvedAnimation(parent: _used, curve: Curves.easeInCubic);
+
+  @override
+  void initState() {
+    super.initState();
+    _used.value = 1.0; // start "spent" so no grey shows until a real fire
+  }
+
+  @override
+  void didUpdateWidget(covariant _AbilityIcon old) {
+    super.didUpdateWidget(old);
+    // Ability just fired: it transitioned from ready → on-cooldown.
+    if (old.ready && !widget.ready) _used.forward(from: 0);
+  }
+
+  @override
+  void dispose() {
+    _used.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final w = widget;
     return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: 48,
-        height: 48,
-        margin: const EdgeInsets.only(right: 5),
-        decoration: BoxDecoration(
-          border: Border.all(
-            color: ready ? color : color.withValues(alpha: 0.3),
-            width: ready ? 1.5 : 1,
-          ),
-          borderRadius: BorderRadius.circular(6),
-          boxShadow: ready ? [
-            BoxShadow(color: color.withValues(alpha: 0.3), blurRadius: 8),
-          ] : null,
-        ),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(5),
-          child: Stack(
-            children: [
-              // Custom-painted ability icon fills the box
-              AbilityIcon(abilityId: abilityId, size: 48),
-              // Dark dim overlay shrinks from top as ability charges
-              if (!ready)
-                Positioned(
-                  left: 0, right: 0, top: 0,
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 300),
-                    height: 48 * (1.0 - fill),
-                    color: Colors.black.withValues(alpha: 0.65),
-                  ),
-                ),
-              // Cooldown number
-              if (!ready)
-                Positioned(
-                  right: 3, bottom: 2,
-                  child: Text('$cd', style: TextStyle(
-                      fontSize: 10, color: color.withValues(alpha: 0.9),
-                      fontWeight: FontWeight.bold,
-                      shadows: const [Shadow(color: Colors.black, blurRadius: 4)])),
-                ),
-            ],
-          ),
-        ),
+      onTap: w.onTap,
+      child: AnimatedBuilder(
+        animation: _fade,
+        builder: (context, _) {
+          final greyAlpha = 0.62 * (1.0 - _fade.value); // 0.62 → 0 over the flash
+          return Container(
+            width: 48,
+            height: 48,
+            margin: const EdgeInsets.only(right: 5),
+            decoration: BoxDecoration(
+              border: Border.all(
+                color: w.ready ? w.color : w.color.withValues(alpha: 0.3),
+                width: w.ready ? 1.5 : 1,
+              ),
+              borderRadius: BorderRadius.circular(6),
+              boxShadow: w.ready ? [
+                BoxShadow(color: w.color.withValues(alpha: 0.3), blurRadius: 8),
+              ] : null,
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(5),
+              child: Stack(
+                children: [
+                  // Custom-painted ability icon fills the box
+                  AbilityIcon(abilityId: w.abilityId, size: 48),
+                  // Dark dim overlay shrinks from top as ability charges
+                  if (!w.ready)
+                    Positioned(
+                      left: 0, right: 0, top: 0,
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 300),
+                        height: 48 * (1.0 - w.fill),
+                        color: Colors.black.withValues(alpha: 0.65),
+                      ),
+                    ),
+                  // Cooldown number
+                  if (!w.ready)
+                    Positioned(
+                      right: 3, bottom: 2,
+                      child: Text('${w.cd}', style: TextStyle(
+                          fontSize: 10, color: w.color.withValues(alpha: 0.9),
+                          fontWeight: FontWeight.bold,
+                          shadows: const [Shadow(color: Colors.black, blurRadius: 4)])),
+                    ),
+                  // "Just used" grey flash overlay (fades out over ~0.85s)
+                  if (greyAlpha > 0.01)
+                    Positioned.fill(
+                      child: IgnorePointer(
+                        child: Container(
+                          color: const Color(0xFF20242e).withValues(alpha: greyAlpha),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          );
+        },
       ),
     );
   }
@@ -717,35 +805,41 @@ class _AbilityIcon extends StatelessWidget {
 class _StatusIcon extends StatelessWidget {
   const _StatusIcon({
     required this.icon, required this.color,
-    required this.label, required this.rounds,
+    required this.label, required this.desc, required this.rounds, this.onTap,
   });
   final IconData icon;
   final Color color;
   final String label;
+  final String desc;
   final int rounds;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
     return Tooltip(
-      message: '$label  (${rounds}r)',
-      child: Container(
-        width: 26,
-        height: 26,
-        margin: const EdgeInsets.only(right: 3),
-        decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.12),
-          border: Border.all(color: color.withValues(alpha: 0.5)),
-          borderRadius: BorderRadius.circular(3),
-        ),
-        child: Stack(
-          children: [
-            Center(child: Icon(icon, size: 13, color: color)),
-            Positioned(
-              right: 1, bottom: 0,
-              child: Text('$rounds', style: TextStyle(
-                  fontSize: 7, color: color, fontWeight: FontWeight.bold)),
-            ),
-          ],
+      message: '$label\n$desc\n$rounds round${rounds == 1 ? '' : 's'} left',
+      textStyle: const TextStyle(color: Colors.white, fontSize: 12, height: 1.3),
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          width: 26,
+          height: 26,
+          margin: const EdgeInsets.only(right: 3),
+          decoration: BoxDecoration(
+            color: color.withValues(alpha: 0.12),
+            border: Border.all(color: color.withValues(alpha: 0.5)),
+            borderRadius: BorderRadius.circular(3),
+          ),
+          child: Stack(
+            children: [
+              Center(child: Icon(icon, size: 13, color: color)),
+              Positioned(
+                right: 1, bottom: 0,
+                child: Text('$rounds', style: TextStyle(
+                    fontSize: 7, color: color, fontWeight: FontWeight.bold)),
+              ),
+            ],
+          ),
         ),
       ),
     );

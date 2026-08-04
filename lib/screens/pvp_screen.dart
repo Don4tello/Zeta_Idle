@@ -3,6 +3,7 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../models/pvp.dart';
+import '../models/subclass.dart';
 import '../services/auth_service.dart';
 import '../services/game_state.dart';
 import '../services/pvp_service.dart';
@@ -35,6 +36,8 @@ class _PvpScreenState extends State<PvpScreen> {
   final _authService = AuthService();
 
   List<PvpSnapshot>? _board;
+  // Generated opponents cached for a stable coalesced board across reloads.
+  List<PvpSnapshot>? _fillers;
   bool _boardLoading = true;
   bool _matchBusy    = false;
   Timer? _ticker;
@@ -62,23 +65,47 @@ class _PvpScreenState extends State<PvpScreen> {
 
   Future<void> _loadBoard() async {
     setState(() => _boardLoading = true);
+    final game = GameStateProvider.of(context);
+    List<PvpSnapshot> real = const [];
     try {
-      final data = await _pvpService.fetchLeaderboard();
-      if (mounted) setState(() { _board = data; _boardLoading = false; });
+      real = await _pvpService.fetchLeaderboard();
     } catch (_) {
-      // Firestore unavailable — build local board from dev opponents + player
-      if (mounted) {
-        final game = GameStateProvider.of(context);
-        _buildLocalBoard(game);
-      }
+      // Firestore unavailable — the coalesce step fills from generated players.
     }
+    if (!mounted) return;
+    setState(() {
+      _board = _coalesceBoard(game, real);
+      _boardLoading = false;
+    });
   }
 
-  void _buildLocalBoard(GameState game) {
-    final mySnap = game.buildPvpSnapshot(
-        _authService.currentUser?.uid ?? 'local_player');
-    final board = <PvpSnapshot>[mySnap];
-    setState(() { _board = board; _boardLoading = false; });
+  /// Always-populated leaderboard: real players first, topped up with generated
+  /// "coalesce" opponents so the arena is never empty. This matters at launch
+  /// (or in any low-population bracket) when there may be too few real users.
+  /// Real players take priority and displace fillers by user id.
+  List<PvpSnapshot> _coalesceBoard(GameState game, List<PvpSnapshot> real) {
+    final uid    = _authService.currentUser?.uid ?? 'local_player';
+    final mySnap = game.buildPvpSnapshot(uid);
+
+    final byId = <String, PvpSnapshot>{};
+    for (final p in real) {
+      if (p.userId == uid) continue; // a fresh copy of self is added below
+      byId[p.userId] = p;
+    }
+
+    // Fill remaining slots with generated opponents (cached so the board stays
+    // stable across reloads/fights instead of reshuffling every match).
+    const targetOpponents = 12;
+    if (byId.length < targetOpponents) {
+      _fillers ??= generateDevOpponents(max(1, game.hero.level), game.pvpRating);
+      for (final f in _fillers!) {
+        if (byId.length >= targetOpponents) break;
+        byId.putIfAbsent(f.userId, () => f);
+      }
+    }
+
+    return [mySnap, ...byId.values]
+      ..sort((a, b) => b.rating.compareTo(a.rating));
   }
 
   /// Returns up to 3 leaderboard players ranked just above the current player.
@@ -389,27 +416,41 @@ class _PvpScreenState extends State<PvpScreen> {
                           color: AppTheme.textMuted)),
                 ),
                 SizedBox(width: 30, height: 34,
-                    child: StaticEnemySprite(spriteId: 'hero_${p.heroClass}', size: 30)),
+                    child: StaticEnemySprite(
+                        spriteId: 'hero_${p.heroClass}',
+                        size: 30,
+                        colorFilter: subclassById(p.subclassId ?? '')?.spriteColorFilter)),
                 const SizedBox(width: 8),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(p.heroName,
-                          style: TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.bold,
-                              color: isMe ? AppTheme.accentGold : Colors.white)),
-                      Text(
-                        '${p.heroClass[0].toUpperCase()}${p.heroClass.substring(1)}  '
-                        'Lv${p.level}  '
-                        '${p.wins}W / ${p.losses}L',
-                        style: const TextStyle(
-                            fontSize: 11, color: AppTheme.textMuted),
-                      ),
-                    ],
-                  ),
-                ),
+                Builder(builder: (_) {
+                  final sub = subclassById(p.subclassId ?? '');
+                  return Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(p.heroName,
+                            style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.bold,
+                                color: isMe ? AppTheme.accentGold : Colors.white)),
+                        Text(
+                          '${p.heroClass[0].toUpperCase()}${p.heroClass.substring(1)}  '
+                          'Lv${p.level}  '
+                          '${p.wins}W / ${p.losses}L',
+                          style: const TextStyle(
+                              fontSize: 11, color: AppTheme.textMuted),
+                        ),
+                        if (sub != null)
+                          Text(sub.name,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w600,
+                                  color: sub.spriteSwatch)),
+                      ],
+                    ),
+                  );
+                }),
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
@@ -620,7 +661,10 @@ class _RivalCard extends StatelessWidget {
           Row(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              StaticEnemySprite(spriteId: 'hero_${snap.heroClass}', size: 32),
+              StaticEnemySprite(
+                  spriteId: 'hero_${snap.heroClass}',
+                  size: 32,
+                  colorFilter: subclassById(snap.subclassId ?? '')?.spriteColorFilter),
               const SizedBox(width: 6),
               Expanded(child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -634,6 +678,14 @@ class _RivalCard extends StatelessWidget {
                       maxLines: 1),
                   Text('$cls  Lv${snap.level}',
                       style: const TextStyle(fontSize: 9, color: AppTheme.textMuted)),
+                  if (subclassById(snap.subclassId ?? '') != null)
+                    Text(subclassById(snap.subclassId ?? '')!.name,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                            fontSize: 8.5,
+                            fontWeight: FontWeight.w600,
+                            color: subclassById(snap.subclassId!)!.spriteSwatch)),
                   Text('★${snap.rating}',
                       style: GoogleFonts.rajdhani(
                           fontSize: 11,
@@ -847,12 +899,12 @@ class _PvpBattleFullScreenState extends State<_PvpBattleFullScreen>
                   heroCurrentHp:    widget.game.hero.currentHealth,
                   heroMaxHp:        widget.game.hero.maxHealth,
                   heroAttack:       widget.game.hero.attack,
-                  heroSpriteId:     widget.game.hero.spriteId,
+                  heroSpriteId:     widget.game.heroBattleSpriteId,
                   heroGender:       widget.game.hero.gender,
                   heroRace:         widget.game.heroRace,
                   heroAuraColor:    widget.game.heroAuraColor,
                   heroAuraIntensity: widget.game.heroAuraIntensity,
-                  heroColorFilter:  widget.game.heroSkinFilter,
+                  heroColorFilter:  widget.game.heroSpriteFilter,
                   heroDamageType:   widget.game.hero.activeDamageType,
                   enemyName:     opp.heroName,
                   enemyLevel:    opp.level,
@@ -860,6 +912,7 @@ class _PvpBattleFullScreenState extends State<_PvpBattleFullScreen>
                   enemyMaxHp:    opp.maxHp,
                   enemyAttack:   opp.attackBonus,
                   enemyId:       oppSprite,
+                  enemyColorFilter: subclassById(opp.subclassId ?? '')?.spriteColorFilter,
                   headerLabel:   '⚔  PVP ARENA  ⚔',
                   heroBuffGlows: [
                     if (widget.game.heroAbsorbShield > 0) const Color(0xFF88ccff),
@@ -905,6 +958,14 @@ class _PvpBattleFullScreenState extends State<_PvpBattleFullScreen>
                     'vs ${opp.heroName} (${opp.heroClass[0].toUpperCase()}${opp.heroClass.substring(1)}  Lv${opp.level}  ★${opp.rating})',
                     style: const TextStyle(fontSize: 12, color: AppTheme.textMuted),
                   ),
+                  if (subclassById(opp.subclassId ?? '') != null)
+                    Text(
+                      subclassById(opp.subclassId!)!.name,
+                      style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                          color: subclassById(opp.subclassId!)!.spriteSwatch),
+                    ),
                   const SizedBox(height: 10),
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),

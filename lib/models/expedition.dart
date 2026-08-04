@@ -44,14 +44,14 @@ enum LocationBiome {
 
   String get rewardFocus => switch (this) {
     LocationBiome.graveyard  => '💰 Gold · ◆ Shards',
-    LocationBiome.cave       => '◆ Shards · ✦ Essence',
-    LocationBiome.temple     => '✦ Essence · 💰 Gold',
+    LocationBiome.cave       => '◆ Shards · 💰 Gold',
+    LocationBiome.temple     => '◆ Shards · 💰 Gold',
     LocationBiome.fortress   => '💰 Gold · ⬡ Mythril',
     LocationBiome.ruin       => 'All resources (balanced)',
     LocationBiome.dungeon    => '◆ Shards · 🪙 ZCoins',
-    LocationBiome.catacombs  => '✦ Essence · ◆ Shards',
-    LocationBiome.sanctum    => '✦ Essence · 🪙 ZCoins',
-    LocationBiome.barrows    => '💰 Gold · ✦ Essence',
+    LocationBiome.catacombs  => '◆ Shards · 💰 Gold',
+    LocationBiome.sanctum    => '◆ Shards · 🪙 ZCoins',
+    LocationBiome.barrows    => '💰 Gold · ◆ Shards',
     LocationBiome.highPass   => '⬡ Mythril · 🔊 Echoes',
   };
 }

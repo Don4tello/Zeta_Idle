@@ -1,7 +1,8 @@
 ﻿import 'package:flutter/material.dart';
 import '../services/game_state.dart';
 import '../utils/format_number.dart';
-import 'zcoin_icon.dart';
+import 'currency_info.dart';
+import 'currency_icon.dart';
 
 class ResourceBar extends StatelessWidget {
   const ResourceBar({super.key});
@@ -18,16 +19,14 @@ class ResourceBar extends StatelessWidget {
       ),
       child: Row(
         children: [
-          _Res(icon: '💰', value: game.gold, color: const Color(0xFFdaa520),
-              tooltip: 'Gold — Campaign, Idle, Expeditions, Dungeons, Events.\nUsed for: item upgrades, shop, forge.'),
-          _Res(icon: '◆', value: game.shards, color: const Color(0xFF6699ff),
-              tooltip: 'Shards — Campaign, Dungeons, Expeditions.\nUsed for: ability upgrades, item upgrades.'),
-          _Res(iconWidget: const ZCoinIcon(size: 13), value: game.zcoins, color: const Color(0xFFffcc44),
-              tooltip: 'ZCoins — Login, Events, Gauntlet, Omega Shop.\nUsed for: full respec, speed boost, premium items.'),
-          _Res(icon: '🔊', value: game.echoes, color: const Color(0xFF44ccaa),
-              tooltip: 'Echoes — Gauntlet runs (scales with modifiers + tier).\nUsed for: Endless upgrades.'),
-          _Res(icon: '✦', value: game.essence, color: const Color(0xFF88ccff),
-              tooltip: 'Essence — Dungeons, Expeditions, Gauntlet.\nUsed for: Passive Tree nodes.'),
+          _Res(iconWidget: const CurrencyIcon(id: 'gold', size: 15), value: game.gold, color: const Color(0xFFdaa520),
+              tooltip: CurrencyInfo.gold),
+          _Res(iconWidget: const CurrencyIcon(id: 'shards', size: 15), value: game.shards, color: const Color(0xFF6699ff),
+              tooltip: CurrencyInfo.shards),
+          _Res(iconWidget: const CurrencyIcon(id: 'zcoins', size: 14), value: game.zcoins, color: const Color(0xFFffcc44),
+              tooltip: CurrencyInfo.zcoins),
+          _Res(iconWidget: const CurrencyIcon(id: 'echoes', size: 15), value: game.echoes, color: const Color(0xFF44ccaa),
+              tooltip: CurrencyInfo.echoes),
         ],
       ),
     );

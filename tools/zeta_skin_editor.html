@@ -1,0 +1,881 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Zeta Skin Editor</title>
+<style>
+  :root {
+    --bg:#17140f; --panel:#231f1b; --border:#4a4238; --gold:#d4af37;
+    --text:#e8e0d0; --muted:#9a8f7d;
+  }
+  * { box-sizing:border-box; }
+  body {
+    margin:0; background:var(--bg); color:var(--text);
+    font-family:'Segoe UI',system-ui,sans-serif; padding:16px;
+  }
+  h1 { font-size:18px; letter-spacing:2px; color:var(--gold); margin:0 0 4px; }
+  .sub { color:var(--muted); font-size:12px; margin-bottom:16px; }
+  .wrap { display:flex; gap:20px; flex-wrap:wrap; align-items:flex-start; }
+  .panel {
+    background:var(--panel); border:1px solid var(--border);
+    border-radius:8px; padding:14px;
+  }
+  .col { display:flex; flex-direction:column; gap:14px; }
+  label { font-size:11px; letter-spacing:1px; color:var(--muted); text-transform:uppercase; }
+  #gridCanvas { image-rendering:pixelated; cursor:crosshair; background:
+    repeating-conic-gradient(#2a2620 0% 25%, #201c17 0% 50%) 50% / 24px 24px;
+    border:1px solid var(--border); border-radius:4px; }
+  .previewRow { display:flex; gap:16px; align-items:flex-end; }
+  .previewBox { text-align:center; }
+  canvas.preview { image-rendering:pixelated; background:
+    repeating-conic-gradient(#2a2620 0% 25%, #201c17 0% 50%) 50% / 10px 10px;
+    border:1px solid var(--border); border-radius:4px; }
+  .tools { display:flex; gap:6px; flex-wrap:wrap; }
+  button {
+    background:#2e2822; color:var(--text); border:1px solid var(--border);
+    border-radius:5px; padding:9px 12px; font-size:12px; cursor:pointer;
+    letter-spacing:0.5px;
+  }
+  button:hover { border-color:var(--gold); }
+  button.active { background:var(--gold); color:#17140f; border-color:var(--gold); font-weight:bold; }
+  .swatches { display:grid; grid-template-columns:repeat(8,1fr); gap:5px; max-width:280px; }
+  .swatch { width:28px; height:28px; border-radius:4px; border:2px solid #00000000; cursor:pointer; }
+  .swatch.sel { border-color:#fff; box-shadow:0 0 0 2px var(--gold); }
+  .swatch.transparent { background:
+    repeating-conic-gradient(#888 0% 25%, #555 0% 50%) 50% / 8px 8px; }
+  .cur { display:flex; align-items:center; gap:10px; }
+  .curColor { width:40px; height:40px; border-radius:5px; border:1px solid var(--border); }
+  input[type=color]{ width:44px; height:34px; background:none; border:1px solid var(--border); border-radius:5px; cursor:pointer; }
+  input[type=text], select, textarea {
+    background:#1b1712; color:var(--text); border:1px solid var(--border);
+    border-radius:5px; padding:8px; font-size:13px; font-family:inherit;
+  }
+  textarea { width:100%; min-height:120px; font-family:ui-monospace,Consolas,monospace; font-size:11px; }
+  .row { display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+  .hint { font-size:11px; color:var(--muted); line-height:1.5; }
+  #out { width:100%; min-height:90px; font-family:ui-monospace,Consolas,monospace; font-size:11px;
+    background:#120f0b; }
+  .divider { height:1px; background:var(--border); margin:4px 0; }
+  a.exlink { color:var(--gold); }
+</style>
+</head>
+<body>
+  <h1>⚔ ZETA SKIN EDITOR</h1>
+  <div class="sub">Paint a hero skin on the 16 × 24 grid, then export it straight into the game. No install, nothing sent anywhere — this runs entirely in your browser.</div>
+
+  <div class="wrap">
+    <!-- ── Canvas + preview ── -->
+    <div class="col">
+      <div class="panel">
+        <canvas id="gridCanvas" width="512" height="768"></canvas>
+      </div>
+      <div class="panel previewRow">
+        <div class="previewBox">
+          <label>In-game (1×)</label><br/>
+          <canvas class="preview" id="prev1" width="80" height="120"></canvas>
+        </div>
+        <div class="previewBox">
+          <label>2×</label><br/>
+          <canvas class="preview" id="prev2" width="160" height="240"></canvas>
+        </div>
+        <div class="row" style="flex-direction:column; align-items:flex-start;">
+          <label><input type="checkbox" id="gridToggle" checked /> Show grid lines</label>
+          <button id="clearBtn">Clear canvas</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Controls ── -->
+    <div class="col" style="max-width:320px;">
+      <div class="panel col">
+        <label>Tool</label>
+        <div class="tools">
+          <button class="tool active" data-tool="paint">✏ Paint</button>
+          <button class="tool" data-tool="fill">🪣 Fill</button>
+          <button class="tool" data-tool="pick">💉 Pick</button>
+          <button class="tool" data-tool="erase">⌫ Erase</button>
+        </div>
+        <div class="cur">
+          <div class="curColor" id="curColor"></div>
+          <div>
+            <label>Current color</label>
+            <div class="row">
+              <input type="color" id="colorPicker" value="#d4af37" />
+              <span class="hint" id="curHex">0xFFD4AF37</span>
+            </div>
+          </div>
+        </div>
+        <label>Palette</label>
+        <div class="swatches" id="swatches"></div>
+        <div class="hint">Right side is the alpha-aware swatch — first one is transparent (erase).</div>
+      </div>
+
+      <div class="panel col">
+        <label>Skin id</label>
+        <div class="row">
+          <select id="skinId" style="flex:1;">
+          <option value="premium_barbarian">premium_barbarian</option>
+          <option value="premium_bard">premium_bard</option>
+          <option value="premium_cleric">premium_cleric</option>
+          <option value="premium_druid" selected>premium_druid</option>
+          <option value="premium_fighter">premium_fighter</option>
+          <option value="premium_monk">premium_monk</option>
+          <option value="premium_ranger">premium_ranger</option>
+          <option value="premium_rogue">premium_rogue</option>
+          <option value="premium_sorcerer">premium_sorcerer</option>
+          <option value="premium_warlock">premium_warlock</option>
+          <option value="premium_wizard">premium_wizard</option>
+          <option value="premium_paladin">premium_paladin</option>
+          </select>
+          <button id="loadSkinBtn">⬇ Load this skin</button>
+        </div>
+        <div class="hint">Pick a class and hit “Load this skin” to open the built-in premium artwork, then edit it.</div>
+        <div class="row">
+          <button id="exportBtn">📋 Copy Dart entry</button>
+          <button id="saveBtn">💾 Save (JSON)</button>
+          <button id="loadBtn">📂 Load (JSON)</button>
+        </div>
+        <textarea id="out" readonly placeholder="Exported Dart entry appears here…"></textarea>
+        <div class="hint">Paste the copied line inside <b>kCustomSkinArt</b> in
+          <br/><code>lib/data/premium_skin_art.dart</code>, then rebuild the app.</div>
+      </div>
+
+      <div class="panel col">
+        <label>Start from an existing skin</label>
+        <div class="hint">Paste a painter's <code>draw()</code> body (including its
+          <code>const XX = 0x…;</code> lines) from <code>battle_sprites.dart</code>, then Import.
+          Female / non-binary variants are skipped so you get the base look.</div>
+        <textarea id="importSrc" placeholder="paste _DruidPremiumPainter.draw() body here…"></textarea>
+        <button id="importBtn">⬇ Import from code</button>
+        <div class="hint" id="importMsg"></div>
+      </div>
+    </div>
+  </div>
+
+<script>
+const COLS=16, ROWS=24, CELL=32;              // editor cell size
+const cvs=document.getElementById('gridCanvas'), ctx=cvs.getContext('2d');
+const p1=document.getElementById('prev1').getContext('2d');
+const p2=document.getElementById('prev2').getContext('2d');
+let grid=new Array(COLS*ROWS).fill(0);        // 0 = transparent, else 0xAARRGGBB
+let tool='paint';
+let curColor=0xFFD4AF37;
+let painting=false;
+
+// ── Palette (curated from the game's material colours) ──
+const PALETTE=[
+  0x00000000,                                  // transparent
+  0xFF0c0606,0xFF181818,0xFF3c2c22,0xFF6a7280,0xFF8a94a8,0xFFc4cee0,0xFFeef2fb,
+  0xFFc8784c,0xFFe09060,0xFFe0c890,0xFFf0dcae,0xFFc8a060,0xFFe8c890,0xFFf0ecdc,
+  0xFFd4af37,0xFFffe880,0xFFfff4b0,0xFF9a6a28,0xFF5c3a16,0xFF8a5a24,0xFF2a1c0e,
+  0xFF1e3a18,0xFF2e5424,0xFF3aa030,0xFF6ce050,0xFF3affa0,0xFF1f8a70,0xFF33c8a0,
+  0xFF14206e,0xFF243aa8,0xFF2a56c0,0xFF3a80e0,0xFF90c8ff,0xFF40b0ff,0xFF80d0ff,
+  0xFF8a1418,0xFFcc2028,0xFFff5028,0xFFff6060,
+  0xFF6a20c8,0xFF9a48f0,0xFF7a30d0,0xFFb060ff,0xFF40ff70,0xFF16b038,
+  0xFF0a0a16,0xFF171528,0xFF282442,0xFF9aa4c0,
+];
+
+// ── Built-in premium painter bodies (verbatim from battle_sprites.dart) ──
+// Loaded on demand via the import parser so "Load this skin" is one click.
+const PREMIUM_SRC = {
+'premium_barbarian': `
+    const SK = 0xFFc8784c, SL = 0xFFe09060;
+    const OB = 0xFF241a16, OL = 0xFF3c2c22;
+    const BZ = 0xFF9a6a28, BL = 0xFFd8a848;
+    const CR = 0xFF8a1418;
+    const HN = 0xFF201814, HT = 0xFFd8a848;
+    const RG = 0xFFff5028;
+    const K  = 0xFF0c0606;
+    b(c, 2, 0, 2, 5, HN); b(c, 12, 0, 2, 5, HN);
+    b(c, 1, 1, 1, 4, HN); b(c, 14, 1, 1, 4, HN);
+    b(c, 2, 0, 1, 1, HT); b(c, 13, 0, 1, 1, HT);
+    b(c, 1, 1, 1, 1, HT); b(c, 14, 1, 1, 1, HT);
+    b(c, 3, 1, 10, 3, OB); b(c, 3, 1, 10, 1, BZ);
+    b(c, 4, 2, 8, 1, BL); b(c, 7, 1, 2, 1, RG);
+    b(c, 4, 4, 8, 1, OL);
+    b(c, 4, 4, 8, 5, SK); b(c, 5, 4, 6, 1, SL);
+    b(c, 5, 5, 1, 1, RG); b(c, 10, 5, 1, 1, RG);
+    if (isFemale) {
+      b(c, 3, 4, 1, 5, 0xFF6a1010); b(c, 12, 4, 1, 5, 0xFF6a1010);
+    } else {
+      b(c, 5, 8, 6, 1, OB);
+    }
+    b(c, 6, 6, 4, 1, CR);
+    b(c, 6, 9, 4, 1, SK);
+    b(c, 0, 8, 5, 4, OB); b(c, 11, 8, 5, 4, OB);
+    b(c, 0, 8, 5, 1, BZ); b(c, 11, 8, 5, 1, BZ);
+    b(c, 0, 8, 1, 2, BL); b(c, 15, 8, 1, 2, BL);
+    b(c, 1, 9, 1, 1, RG); b(c, 14, 9, 1, 1, RG);
+    b(c, 3, 10, 10, 5, SK); b(c, 4, 10, 8, 1, SL);
+    b(c, 5, 10, 6, 5, OL); b(c, 6, 10, 4, 1, BZ);
+    b(c, 7, 11, 2, 3, RG);
+    b(c, 6, 12, 4, 1, CR);
+    b(c, 4, 15, 8, 3, OB); b(c, 5, 15, 6, 1, BZ);
+    b(c, 4, 16, 8, 1, CR);
+    b(c, 1, 13, 3, 7, SK); b(c, 12, 13, 3, 7, SK);
+    b(c, 1, 13, 3, 2, BZ); b(c, 12, 13, 3, 2, BZ);
+    b(c, 1, 14, 3, 1, BL); b(c, 12, 14, 3, 1, BL);
+    b(c, 0, 20, 4, 2, SK); b(c, 12, 20, 4, 2, SK);
+    b(c, 4, 18, 3, 5, OL); b(c, 9, 18, 3, 5, OL);
+    b(c, 4, 18, 3, 1, BZ); b(c, 9, 18, 3, 1, BZ);
+    b(c, 3, 21, 5, 3, OB); b(c, 8, 21, 5, 3, OB);
+    b(c, 3, 22, 5, 1, BL); b(c, 8, 22, 5, 1, BL);
+    if (isFemale) {
+      b(c, 4, 10, 8, 2, OL); b(c, 5, 10, 6, 1, BZ);
+      b(c, 3, 12, 10, 2, SK);
+      b(c, 4, 14, 8, 1, CR);
+    }
+    b(c, 5, 5, 1, 1, K);
+`,
+'premium_bard': `
+    const HT = 0xFF3a1466, HL = 0xFF6a2ea8;
+    const GD = 0xFFd4af37, GL = 0xFFffe880;
+    const PL = 0xFF2a6ad8;
+    const SK = 0xFFe0c090;
+    const TN = 0xFF3a1466, TL = 0xFF6a2ea8;
+    const CR = 0xFF9a2aa8;
+    const BR = 0xFF4a2810;
+    const BT = 0xFF241018;
+    b(c, 4, 0, 8, 5, HT); b(c, 5, 0, 6, 1, HL);
+    b(c, 2, 5, 12, 1, GD); b(c, 1, 5, 14, 1, GL);
+    b(c, 4, 3, 8, 1, GD);
+    b(c, 10, 0, 2, 6, PL); b(c, 11, 0, 1, 4, 0xFF40b0e0);
+    b(c, 11, 1, 1, 1, GL); b(c, 11, 3, 1, 1, GL);
+    if (isFemale) {
+      b(c, 3, 6, 2, 7, BR); b(c, 11, 6, 2, 7, BR);
+      b(c, 10, 7, 1, 1, GL);
+    } else {
+      b(c, 3, 6, 2, 5, BR); b(c, 11, 6, 2, 5, BR);
+    }
+    b(c, 5, 6, 6, 4, SK);
+    b(c, 6, 7, 1, 1, 0xFF301818); b(c, 9, 7, 1, 1, 0xFF301818);
+    b(c, 7, 9, 2, 1, 0xFFc05050);
+    b(c, 7, 10, 2, 1, SK);
+    b(c, 3, 10, 3, 2, TN); b(c, 10, 10, 3, 2, TN);
+    b(c, 3, 10, 3, 1, GD); b(c, 10, 10, 3, 1, GD);
+    b(c, 4, 10, 8, 8, TN); b(c, 5, 11, 6, 6, TL);
+    b(c, 4, 10, 8, 1, GL);
+    b(c, 7, 11, 2, 1, 0xFF40d0e0);
+    b(c, 6, 12, 4, 1, GD); b(c, 6, 14, 4, 1, GD);
+    b(c, 4, 17, 8, 1, GD);
+    b(c, 2, 12, 2, 8, TN); b(c, 12, 12, 2, 8, TN);
+    b(c, 2, 12, 2, 5, TL); b(c, 12, 12, 2, 5, TL);
+    b(c, 2, 18, 2, 1, GD); b(c, 12, 18, 2, 1, GD);
+    b(c, 2, 19, 2, 2, SK); b(c, 12, 19, 2, 2, SK);
+    b(c, 5, 18, 3, 5, TN); b(c, 8, 18, 3, 5, TN);
+    b(c, 5, 18, 2, 4, TL); b(c, 9, 18, 2, 4, TL);
+    b(c, 4, 21, 4, 3, BT); b(c, 8, 21, 4, 3, BT);
+    b(c, 4, 21, 4, 1, GD); b(c, 8, 21, 4, 1, GD);
+    if (isFemale) {
+      b(c, 4, 15, 8, 1, GD); b(c, 5, 15, 6, 1, CR);
+      b(c, 3, 18, 10, 5, TN); b(c, 4, 18, 8, 4, TL);
+      b(c, 3, 22, 10, 1, GD);
+      b(c, 4, 21, 4, 3, BT); b(c, 8, 21, 4, 3, BT);
+      b(c, 4, 21, 4, 1, GD); b(c, 8, 21, 4, 1, GD);
+    }
+`,
+'premium_cleric': `
+    const WH = 0xFFf0ecdc, WL = 0xFFfffbf0;
+    const GD = 0xFFd4af37, GL = 0xFFffe880;
+    const SB = 0xFF2a56c0;
+    const SK = 0xFFe0c890;
+    const HALO = 0xFFfff4b0;
+    b(c, 4, 0, 8, 1, HALO); b(c, 3, 1, 1, 1, GL); b(c, 12, 1, 1, 1, GL);
+    b(c, 5, 0, 6, 1, 0xFFfffce0);
+    b(c, 5, 1, 6, 4, GD); b(c, 5, 1, 6, 1, GL);
+    b(c, 4, 2, 1, 3, 0xFFb8912a); b(c, 11, 2, 1, 3, 0xFFb8912a);
+    b(c, 7, 1, 2, 2, SB);
+    b(c, 5, 4, 6, 3, SK); b(c, 5, 4, 6, 1, 0xFFf0dcae);
+    b(c, 6, 5, 1, 1, 0xFF303040); b(c, 9, 5, 1, 1, 0xFF303040);
+    b(c, 7, 6, 2, 1, SK);
+    b(c, 7, 7, 2, 1, SK);
+    b(c, 1, 5, 5, 3, GD); b(c, 10, 5, 5, 3, GD);
+    b(c, 1, 5, 5, 1, GL); b(c, 10, 5, 5, 1, GL);
+    b(c, 1, 6, 1, 2, WL); b(c, 14, 6, 1, 2, WL);
+    b(c, 4, 7, 8, 9, WH); b(c, 5, 8, 6, 7, WL);
+    b(c, 4, 7, 8, 1, SB);
+    b(c, 7, 8, 2, 6, GD); b(c, 5, 10, 6, 2, GD);
+    b(c, 6, 9, 4, 4, GL); b(c, 7, 8, 2, 6, GD); b(c, 5, 10, 6, 2, GD);
+    b(c, 7, 10, 2, 2, 0xFF40b0ff);
+    b(c, 4, 16, 8, 1, GD);
+    b(c, 2, 8, 2, 7, WH); b(c, 12, 8, 2, 7, WH);
+    b(c, 2, 8, 2, 4, WL); b(c, 12, 8, 2, 4, WL);
+    b(c, 2, 14, 2, 1, GD); b(c, 12, 14, 2, 1, GD);
+    b(c, 2, 15, 2, 2, SK); b(c, 12, 15, 2, 2, SK);
+    b(c, 3, 16, 10, 7, WH); b(c, 4, 17, 8, 5, WL);
+    b(c, 3, 22, 10, 1, SB); b(c, 4, 21, 8, 1, GD);
+    b(c, 5, 21, 2, 3, GD); b(c, 9, 21, 2, 3, GD);
+    if (isFemale) {
+      b(c, 4, 15, 8, 1, GD); b(c, 7, 15, 2, 1, SB);
+      b(c, 2, 19, 12, 4, WH); b(c, 3, 19, 10, 3, WL);
+      b(c, 2, 22, 12, 1, SB);
+      b(c, 5, 21, 2, 3, GD); b(c, 9, 21, 2, 3, GD);
+    }
+`,
+'premium_druid': `
+    const RB = 0xFF1e3a18, RL = 0xFF2e5424;
+    const LV = 0xFF3aa030, LB = 0xFF6ce050;
+    const WD = 0xFF5c3a16, WL = 0xFF8a5a24;
+    const GD = 0xFFd4af37;
+    const SK = 0xFFc8a060;
+    const AT = 0xFF7a5020, AL = 0xFFcaa050;
+    const HB = 0xFF3affa0;
+    b(c, 2, 0, 2, 6, AT); b(c, 12, 0, 2, 6, AT);
+    b(c, 1, 1, 1, 4, AT); b(c, 14, 1, 1, 4, AT);
+    b(c, 3, 0, 1, 3, AT); b(c, 12, 0, 1, 3, AT);
+    b(c, 2, 0, 1, 1, AL); b(c, 13, 0, 1, 1, AL);
+    b(c, 1, 1, 1, 1, AL); b(c, 14, 1, 1, 1, AL);
+    b(c, 4, 2, 8, 2, LV); b(c, 5, 2, 6, 1, LB);
+    b(c, 6, 2, 4, 1, GD);
+    b(c, 4, 4, 2, 6, 0xFFb8b090); b(c, 10, 4, 2, 6, 0xFFb8b090);
+    b(c, 5, 4, 6, 5, SK);
+    b(c, 6, 5, 1, 1, HB); b(c, 9, 5, 1, 1, HB);
+    if (!isFemale) { b(c, 5, 9, 6, 3, 0xFFd8d0b8); b(c, 6, 10, 4, 2, 0xFFf0ecd8); }
+    else { b(c, 6, 8, 4, 1, LV); }
+    b(c, 2, 9, 4, 3, WD); b(c, 10, 9, 4, 3, WD);
+    b(c, 2, 9, 4, 1, WL); b(c, 10, 9, 4, 1, WL);
+    b(c, 3, 9, 1, 1, LB); b(c, 12, 9, 1, 1, LB);
+    b(c, 4, 9, 8, 9, RB); b(c, 5, 10, 6, 7, RL);
+    b(c, 5, 10, 6, 4, WD); b(c, 6, 10, 4, 1, WL);
+    b(c, 7, 11, 2, 3, HB);
+    b(c, 6, 12, 4, 1, GD);
+    b(c, 4, 17, 8, 1, LV); b(c, 5, 17, 6, 1, LB);
+    b(c, 3, 18, 10, 5, RB); b(c, 4, 18, 8, 4, RL);
+    b(c, 3, 22, 10, 1, LV);
+    b(c, 2, 11, 2, 8, RB); b(c, 12, 11, 2, 8, RB);
+    b(c, 2, 11, 2, 5, RL); b(c, 12, 11, 2, 5, RL);
+    b(c, 14, 6, 1, 17, WD); b(c, 15, 6, 1, 17, WL);
+    b(c, 13, 3, 3, 3, LB); b(c, 14, 2, 1, 2, HB);
+    b(c, 13, 4, 1, 1, GD); b(c, 15, 4, 1, 1, GD);
+    b(c, 5, 21, 2, 3, WD); b(c, 9, 21, 2, 3, WD);
+    if (isFemale) {
+      b(c, 2, 19, 12, 5, RB); b(c, 3, 19, 10, 4, RL);
+      b(c, 2, 22, 12, 1, LV);
+      b(c, 5, 21, 2, 3, WD); b(c, 9, 21, 2, 3, WD);
+    }
+`,
+'premium_fighter': `
+    const ST = 0xFF8a94a8, SL = 0xFFc4cee0, SD = 0xFF4a5266;
+    const GD = 0xFFd4af37, GL = 0xFFffe880;
+    const RB = 0xFFcc2028;
+    const CR = 0xFF2a3a8a;
+    const SW = 0xFFd8e0ec;
+    const RN = 0xFF60c0ff;
+    b(c, 4, 0, 8, 6, ST); b(c, 4, 0, 8, 1, SL);
+    b(c, 3, 1, 1, 5, SD); b(c, 12, 1, 1, 5, SD);
+    b(c, 6, 0, 4, 1, GD); b(c, 7, 0, 2, 1, GL);
+    b(c, 2, 1, 2, 1, GD); b(c, 12, 1, 2, 1, GD);
+    b(c, 5, 2, 6, 1, 0xFF0c0c18);
+    b(c, 6, 2, 1, 1, RN); b(c, 9, 2, 1, 1, RN);
+    b(c, 4, 4, 8, 1, SD); b(c, 4, 5, 8, 1, GD);
+    b(c, 0, 5, 5, 4, ST); b(c, 11, 5, 5, 4, ST);
+    b(c, 0, 5, 5, 1, GD); b(c, 11, 5, 5, 1, GD);
+    b(c, 0, 6, 1, 2, SL); b(c, 15, 6, 1, 2, SL);
+    b(c, 0, 8, 5, 1, SD); b(c, 11, 8, 5, 1, SD);
+    b(c, 4, 5, 8, 9, SD); b(c, 5, 6, 6, 7, ST); b(c, 5, 6, 6, 1, SL);
+    b(c, 6, 8, 4, 1, GD);
+    b(c, 7, 9, 2, 2, RB); b(c, 7, 9, 2, 1, 0xFFff6060);
+    b(c, 4, 14, 8, 4, CR); b(c, 5, 14, 6, 4, 0xFF3850b0);
+    b(c, 4, 17, 8, 1, GD);
+    b(c, 1, 9, 3, 9, ST); b(c, 12, 9, 3, 9, ST);
+    b(c, 1, 9, 3, 1, SL); b(c, 12, 9, 3, 1, SL);
+    b(c, 1, 12, 3, 1, GD); b(c, 12, 12, 3, 1, GD);
+    b(c, 1, 17, 3, 3, SD); b(c, 12, 17, 3, 3, SD);
+    b(c, 1, 17, 3, 1, ST); b(c, 12, 17, 3, 1, ST);
+    b(c, 4, 18, 3, 5, ST); b(c, 9, 18, 3, 5, ST);
+    b(c, 4, 18, 3, 1, SL); b(c, 9, 18, 3, 1, SL);
+    b(c, 3, 22, 5, 2, SD); b(c, 8, 22, 5, 2, SD);
+    b(c, 3, 23, 6, 1, SD); b(c, 8, 23, 5, 1, SD);
+    b(c, 13, 2, 2, 21, SW); b(c, 14, 2, 1, 21, 0xFFf0f4fc);
+    b(c, 13, 5, 2, 1, RN); b(c, 13, 12, 2, 1, RN); b(c, 13, 19, 2, 1, RN);
+    b(c, 11, 2, 4, 1, GD); b(c, 11, 3, 4, 1, GD);
+    b(c, 12, 1, 2, 1, RB);
+    if (isFemale) {
+      b(c, 4, 15, 1, 2, 0xFF20286a); b(c, 11, 15, 1, 2, 0xFF20286a);
+      b(c, 4, 17, 8, 1, GD);
+    }
+`,
+'premium_monk': `
+    const JD = 0xFF1f8a70, JL = 0xFF33c8a0;
+    const JD2 = 0xFF166050;
+    const GD = 0xFFd4af37, GL = 0xFFffe880;
+    const SK = 0xFFc8785c, SS = 0xFFe09060;
+    const WR = 0xFFf0e8d8;
+    const CHI = 0xFF80ffe0;
+    const K  = 0xFF181010;
+    b(c, 4, 1, 8, 1, GD); b(c, 5, 1, 6, 1, GL);
+    b(c, 7, 0, 2, 2, CHI);
+    b(c, 5, 0, 6, 3, SK); b(c, 4, 2, 8, 4, SK);
+    if (isFemale) { b(c, 4, 0, 2, 3, 0xFF201008); b(c, 10, 0, 2, 3, 0xFF201008); }
+    b(c, 5, 4, 6, 4, SK); b(c, 5, 4, 6, 1, SS);
+    b(c, 6, 5, 1, 1, CHI); b(c, 9, 5, 1, 1, CHI);
+    b(c, 7, 7, 2, 1, 0xFF804030);
+    b(c, 4, 2, 2, 5, JD); b(c, 10, 2, 2, 5, JD);
+    b(c, 4, 2, 2, 1, GD); b(c, 10, 2, 2, 1, GD);
+    b(c, 7, 8, 2, 1, SK);
+    b(c, 5, 8, 6, 1, GL);
+    b(c, 4, 9, 8, 9, JD); b(c, 5, 9, 6, 8, JL);
+    b(c, 5, 9, 3, 6, JD2);
+    b(c, 6, 10, 4, 1, GL);
+    b(c, 7, 11, 2, 2, CHI);
+    b(c, 4, 17, 8, 2, GD); b(c, 5, 17, 6, 1, GL);
+    b(c, 7, 17, 2, 1, 0xFF20a0d0);
+    b(c, 3, 19, 10, 5, JD); b(c, 4, 19, 8, 4, JL);
+    b(c, 3, 22, 10, 1, GD);
+    b(c, 1, 9, 3, 8, SK); b(c, 12, 9, 3, 8, SK);
+    b(c, 1, 9, 3, 1, SS); b(c, 12, 9, 3, 1, SS);
+    b(c, 1, 15, 3, 4, WR); b(c, 12, 15, 3, 4, WR);
+    b(c, 1, 16, 3, 1, CHI); b(c, 12, 16, 3, 1, CHI);
+    b(c, 2, 19, 2, 1, SK); b(c, 12, 19, 2, 1, SK);
+    b(c, 4, 22, 4, 2, SK); b(c, 8, 22, 4, 2, SK);
+    b(c, 3, 23, 5, 1, SK); b(c, 8, 23, 5, 1, SK);
+    if (isFemale) {
+      b(c, 3, 16, 10, 3, GD); b(c, 4, 16, 8, 2, GL); b(c, 7, 17, 2, 1, 0xFF20a0d0);
+    }
+    b(c, 6, 5, 1, 1, K); b(c, 9, 5, 1, 1, K);
+    b(c, 6, 5, 1, 1, CHI); b(c, 9, 5, 1, 1, CHI);
+`,
+'premium_ranger': `
+    const HD = 0xFF123a26, HL = 0xFF1e5a3c;
+    const CL = 0xFF0e2e1e, CL2 = 0xFF1c4a30;
+    const LB = 0xFF4a3418, LL = 0xFF7a5628;
+    const SV = 0xFFb8c2cc, SD = 0xFF6a7280;
+    const GD = 0xFFd4af37;
+    const SK = 0xFFc8a060;
+    const QD = 0xFF2a1c0e;
+    const AG = 0xFF60ffb0;
+    b(c, 3, 0, 10, 5, HD); b(c, 4, 0, 8, 1, HL);
+    b(c, 5, 1, 6, 2, 0xFF081c12);
+    b(c, 4, 2, 8, 2, 0xFF0a2416);
+    b(c, 5, 3, 6, 3, SK);
+    b(c, 6, 4, 1, 1, AG); b(c, 9, 4, 1, 1, AG);
+    b(c, 4, 2, 1, 4, HD); b(c, 11, 2, 1, 4, HD);
+    b(c, 2, 5, 12, 4, CL); b(c, 3, 5, 10, 3, CL2);
+    b(c, 2, 5, 12, 1, HL);
+    b(c, 7, 5, 2, 1, GD); b(c, 7, 6, 2, 1, 0xFF20c060);
+    b(c, 13, 3, 2, 9, QD); b(c, 14, 4, 1, 8, LL);
+    b(c, 13, 1, 1, 4, LL); b(c, 14, 0, 1, 4, LL); b(c, 15, 1, 1, 3, LL);
+    b(c, 13, 1, 1, 1, AG); b(c, 14, 0, 1, 1, AG); b(c, 15, 1, 1, 1, AG);
+    b(c, 4, 9, 8, 7, LB); b(c, 5, 9, 6, 6, LL);
+    b(c, 5, 10, 1, 1, SV); b(c, 10, 10, 1, 1, SV);
+    b(c, 5, 13, 1, 1, SV); b(c, 10, 13, 1, 1, SV);
+    b(c, 6, 11, 4, 1, 0xFF20a050);
+    b(c, 4, 15, 8, 1, LL); b(c, 7, 15, 2, 1, GD);
+    b(c, 2, 9, 2, 9, CL); b(c, 12, 9, 2, 9, CL);
+    b(c, 2, 9, 2, 5, CL2); b(c, 12, 9, 2, 5, CL2);
+    b(c, 2, 17, 2, 3, LB); b(c, 12, 17, 2, 3, LB);
+    b(c, 2, 17, 2, 1, LL); b(c, 12, 17, 2, 1, LL);
+    b(c, 4, 16, 3, 6, LB); b(c, 9, 16, 3, 6, LB);
+    b(c, 5, 16, 2, 5, LL); b(c, 9, 16, 2, 5, LL);
+    b(c, 3, 21, 5, 3, QD); b(c, 8, 21, 5, 3, QD);
+    b(c, 3, 21, 5, 1, SD); b(c, 8, 21, 5, 1, SD);
+    if (isFemale) {
+      b(c, 4, 15, 8, 1, LL); b(c, 5, 15, 6, 1, 0xFF9a7030); b(c, 7, 15, 2, 1, GD);
+    }
+`,
+'premium_rogue': `
+    const DK = 0xFF0d0d16, DM = 0xFF1c1a2e, DL = 0xFF2e2a48;
+    const AM = 0xFF7a30d0, AL = 0xFFb060ff;
+    const SV = 0xFF9aa4c0;
+    const SK = 0xFFc8a060;
+    const BL = 0xFFc0b0ff;
+    const EY = 0xFFb060ff;
+    b(c, 4, 0, 8, 6, DK); b(c, 5, 0, 6, 1, DM);
+    b(c, 3, 1, 1, 5, DK); b(c, 12, 1, 1, 5, DK);
+    b(c, 4, 0, 8, 1, SV);
+    b(c, 5, 2, 6, 3, 0xFF07070d);
+    final eyeColor = isFemale ? 0xFFff40c0 : EY;
+    b(c, 6, 3, 1, 1, eyeColor); b(c, 9, 3, 1, 1, eyeColor);
+    b(c, 5, 5, 6, 2, DM); b(c, 7, 5, 2, 1, AM);
+    b(c, 7, 7, 2, 1, SK);
+    b(c, 3, 6, 3, 3, DK); b(c, 10, 6, 3, 3, DK);
+    b(c, 3, 6, 3, 1, SV); b(c, 10, 6, 3, 1, SV);
+    b(c, 4, 7, 8, 10, DK); b(c, 5, 8, 6, 8, DM);
+    b(c, 6, 9, 4, 3, DL);
+    b(c, 7, 10, 2, 2, AM); b(c, 7, 10, 2, 1, AL);
+    b(c, 4, 12, 8, 1, SV); b(c, 4, 16, 8, 1, AM);
+    b(c, 3, 13, 2, 4, DM); b(c, 4, 10, 1, 5, BL); b(c, 3, 13, 2, 1, AL);
+    b(c, 11, 13, 2, 4, DM); b(c, 11, 10, 1, 5, BL); b(c, 11, 13, 2, 1, AL);
+    b(c, 2, 8, 2, 10, DK); b(c, 12, 8, 2, 10, DK);
+    b(c, 2, 8, 2, 7, DM); b(c, 12, 8, 2, 7, DM);
+    b(c, 2, 17, 2, 2, DK); b(c, 12, 17, 2, 2, DK);
+    b(c, 5, 17, 3, 6, DM); b(c, 8, 17, 3, 6, DM);
+    b(c, 5, 17, 2, 5, DL); b(c, 9, 17, 2, 5, DL);
+    b(c, 4, 21, 4, 3, DK); b(c, 8, 21, 4, 3, DK);
+    b(c, 4, 21, 4, 1, SV); b(c, 8, 21, 4, 1, SV);
+    if (isFemale) {
+      b(c, 3, 16, 10, 1, AM); b(c, 4, 16, 8, 1, AL);
+    }
+`,
+'premium_sorcerer': `
+    const RB = 0xFF14206e, RL = 0xFF243aa8;
+    const GW = 0xFF90d8ff;
+    const GD = 0xFFd4af37, GL = 0xFFffe880;
+    const SK = 0xFFe8c890;
+    const HR = 0xFFe0dcf0;
+    const EY = 0xFF60c0ff;
+    const OM = 0xFFb070ff, OL = 0xFFe0c8ff;
+    b(c, 3, 0, 2, 6, HR); b(c, 11, 0, 2, 6, HR);
+    b(c, 4, 0, 8, 2, HR); b(c, 5, 0, 6, 1, 0xFFf4f0ff);
+    b(c, 4, 1, 2, 3, HR); b(c, 10, 1, 2, 3, HR);
+    b(c, 4, 3, 8, 1, GD); b(c, 7, 2, 2, 2, GW);
+    b(c, 5, 3, 6, 5, SK); b(c, 5, 3, 6, 1, 0xFFf8e8c0);
+    b(c, 6, 4, 1, 1, EY); b(c, 9, 4, 1, 1, EY);
+    b(c, 7, 8, 2, 1, SK); b(c, 5, 8, 6, 1, GD);
+    b(c, 3, 9, 10, 10, RB); b(c, 4, 9, 8, 9, RL);
+    b(c, 4, 9, 8, 1, GL);
+    b(c, 6, 11, 4, 1, GW); b(c, 6, 13, 4, 1, GW);
+    b(c, 7, 11, 2, 3, OM); b(c, 7, 11, 2, 1, OL);
+    b(c, 6, 12, 4, 1, GD);
+    b(c, 1, 10, 3, 9, RB); b(c, 12, 10, 3, 9, RB);
+    b(c, 2, 10, 2, 7, RL); b(c, 12, 10, 2, 7, RL);
+    b(c, 1, 17, 3, 1, GD); b(c, 12, 17, 3, 1, GD);
+    b(c, 1, 18, 3, 3, SK); b(c, 12, 18, 3, 3, SK);
+    b(c, 12, 16, 3, 2, GW);
+    b(c, 12, 15, 4, 4, OM); b(c, 13, 15, 3, 3, OL); b(c, 13, 14, 2, 1, 0xFFf0e8ff);
+    b(c, 2, 19, 12, 5, RB); b(c, 3, 19, 10, 4, RL); b(c, 4, 20, 8, 3, RL);
+    b(c, 3, 23, 10, 1, GW);
+    if (isFemale) {
+      b(c, 3, 0, 2, 9, HR); b(c, 11, 0, 2, 9, HR);
+      b(c, 4, 15, 8, 1, GD); b(c, 7, 15, 2, 1, OM);
+      b(c, 1, 19, 14, 5, RB); b(c, 2, 19, 12, 4, RL); b(c, 2, 23, 12, 1, GW);
+    }
+`,
+'premium_warlock': `
+    const VD = 0xFF0a0a16, DM = 0xFF171528, DL = 0xFF282442;
+    const EL = 0xFF40ff70, EG = 0xFF16b038;
+    const PU = 0xFF6a20c8, PL = 0xFF9a48f0;
+    const GD = 0xFFd4af37;
+    const SK = 0xFFc0b090;
+    b(c, 5, 0, 6, 5, PU); b(c, 5, 0, 6, 1, PL);
+    b(c, 2, 0, 3, 6, PU); b(c, 11, 0, 3, 6, PU);
+    b(c, 2, 0, 2, 4, DM); b(c, 12, 0, 2, 4, DM);
+    b(c, 3, 0, 1, 2, EL); b(c, 12, 0, 1, 2, EL);
+    b(c, 6, 0, 4, 1, GD);
+    b(c, 4, 2, 8, 3, VD);
+    final eyeGlow = isFemale ? 0xFFff40e0 : EL;
+    b(c, 5, 3, 2, 1, eyeGlow); b(c, 9, 3, 2, 1, eyeGlow);
+    b(c, 6, 5, 4, 2, DM); b(c, 6, 5, 4, 1, GD);
+    b(c, 3, 7, 10, 11, DM); b(c, 4, 7, 8, 10, DL);
+    b(c, 5, 7, 6, 2, VD); b(c, 4, 7, 8, 1, GD);
+    b(c, 6, 9, 4, 1, EG); b(c, 7, 10, 2, 2, EL); b(c, 5, 11, 1, 1, EG); b(c, 10, 11, 1, 1, EG);
+    b(c, 6, 14, 4, 1, EG);
+    b(c, 1, 8, 3, 10, DM); b(c, 12, 8, 3, 10, DM);
+    b(c, 1, 9, 2, 6, DL); b(c, 13, 9, 2, 6, DL);
+    b(c, 1, 8, 3, 1, GD); b(c, 12, 8, 3, 1, GD);
+    b(c, 1, 18, 3, 2, SK);
+    b(c, 0, 16, 4, 4, EG); b(c, 1, 16, 2, 3, EL); b(c, 1, 15, 1, 1, 0xFFa0ffb0);
+    b(c, 12, 18, 3, 2, SK);
+    b(c, 3, 18, 10, 4, DM); b(c, 4, 18, 8, 3, DL);
+    b(c, 3, 21, 2, 3, VD); b(c, 6, 21, 2, 3, VD); b(c, 9, 21, 2, 3, VD); b(c, 12, 21, 2, 3, VD);
+    b(c, 4, 20, 8, 1, GD);
+    b(c, 4, 23, 8, 1, EG); b(c, 6, 23, 4, 1, EL);
+    if (isFemale) {
+      b(c, 4, 13, 8, 2, PU); b(c, 5, 13, 6, 1, PL);
+      b(c, 2, 18, 12, 4, DM); b(c, 3, 18, 10, 3, DL);
+      b(c, 2, 21, 2, 3, VD); b(c, 5, 21, 2, 3, VD); b(c, 9, 21, 2, 3, VD); b(c, 12, 21, 2, 3, VD);
+      b(c, 3, 23, 10, 1, EG); b(c, 5, 23, 6, 1, EL);
+    }
+`,
+'premium_wizard': `
+    const HD = 0xFF1a1650, HL = 0xFF2a2496;
+    const HB = 0xFF100c34;
+    const RB = 0xFF181466, RL = 0xFF262098;
+    const ST = 0xFFd4af37, SL = 0xFFffe880;
+    const SK = 0xFFe8c890;
+    const WB = 0xFFf0ecdc;
+    const WD = 0xFF5a3c12, WL = 0xFF8a5c1e;
+    const GW = 0xFF80d0ff;
+    b(c, 6, 0, 4, 5, HD); b(c, 6, 0, 4, 1, HL);
+    b(c, 5, 3, 6, 3, HD); b(c, 5, 3, 6, 1, HL);
+    b(c, 4, 5, 8, 1, HD);
+    b(c, 1, 6, 14, 1, HB); b(c, 2, 6, 12, 1, ST);
+    b(c, 6, 1, 1, 1, SL); b(c, 8, 3, 1, 1, SL); b(c, 5, 4, 1, 1, SL); b(c, 9, 5, 1, 1, SL);
+    b(c, 6, 0, 3, 1, ST);
+    if (isFemale) {
+      b(c, 4, 7, 2, 9, WB); b(c, 10, 7, 2, 9, WB);
+      b(c, 3, 8, 2, 7, WB); b(c, 11, 8, 2, 7, WB);
+    } else {
+      b(c, 4, 7, 2, 7, WB); b(c, 10, 7, 2, 7, WB);
+      b(c, 3, 8, 2, 5, WB); b(c, 11, 8, 2, 5, WB);
+      b(c, 5, 11, 6, 5, WB); b(c, 6, 12, 4, 4, 0xFFfbf6e6); b(c, 7, 15, 2, 2, WB);
+    }
+    b(c, 5, 7, 6, 5, SK); b(c, 5, 7, 6, 1, 0xFFf8e8c0);
+    b(c, 6, 8, 1, 1, GW); b(c, 9, 8, 1, 1, GW);
+    b(c, 4, 12, 8, 11, RB); b(c, 5, 13, 6, 9, RL);
+    b(c, 4, 12, 8, 1, ST);
+    b(c, 6, 15, 1, 1, SL); b(c, 9, 16, 1, 1, SL); b(c, 7, 18, 1, 1, SL); b(c, 6, 20, 1, 1, SL);
+    b(c, 7, 14, 2, 2, 0xFF40b0ff);
+    b(c, 2, 12, 2, 9, RB); b(c, 12, 12, 2, 9, RB);
+    b(c, 2, 13, 2, 6, RL); b(c, 12, 13, 2, 6, RL);
+    b(c, 2, 19, 2, 1, ST); b(c, 12, 19, 2, 1, ST);
+    b(c, 2, 20, 2, 2, SK); b(c, 12, 20, 2, 2, SK);
+    b(c, 0, 8, 1, 16, WD); b(c, 1, 8, 1, 15, WL);
+    b(c, 0, 4, 3, 4, RB); b(c, 0, 5, 3, 2, GW); b(c, 1, 4, 1, 2, 0xFFd0eeff);
+    b(c, 0, 4, 3, 1, ST);
+    b(c, 3, 22, 10, 1, RB); b(c, 4, 22, 8, 1, RL); b(c, 5, 21, 6, 2, RL);
+    b(c, 3, 22, 10, 1, ST);
+    if (isFemale) {
+      b(c, 4, 17, 8, 1, ST); b(c, 7, 17, 2, 1, 0xFF40b0ff);
+      b(c, 3, 19, 10, 3, RB); b(c, 4, 19, 8, 2, RL);
+      b(c, 2, 22, 12, 1, ST);
+    }
+`,
+'premium_paladin': `
+    const PL = 0xFFeef2fb, PD = 0xFF8a98c0, PH = 0xFFffffff;
+    const GD = 0xFFd4af37, GL = 0xFFffe880;
+    const DV = 0xFF90c8ff, DB = 0xFF3a80e0;
+    const WH = 0xFFfffbf0;
+    const HALO = 0xFFfff4b0;
+    b(c, 4, 0, 8, 1, HALO); b(c, 3, 0, 1, 1, GL); b(c, 12, 0, 1, 1, GL);
+    b(c, 4, 1, 8, 5, PL); b(c, 5, 1, 6, 1, PH);
+    b(c, 3, 2, 1, 4, PD); b(c, 12, 2, 1, 4, PD);
+    b(c, 2, 2, 2, 1, GD); b(c, 12, 2, 2, 1, GD);
+    b(c, 5, 3, 6, 1, 0xFF101018);
+    b(c, 6, 3, 2, 1, DV); b(c, 9, 3, 1, 1, DV);
+    b(c, 7, 1, 2, 2, GD); b(c, 6, 2, 4, 1, GD);
+    b(c, 5, 4, 6, 2, PD);
+    b(c, 0, 5, 5, 4, PL); b(c, 11, 5, 5, 4, PL);
+    b(c, 0, 5, 5, 1, GD); b(c, 11, 5, 5, 1, GD);
+    b(c, 0, 6, 1, 2, PH); b(c, 15, 6, 1, 2, PH);
+    b(c, 0, 8, 5, 1, PD); b(c, 11, 8, 5, 1, PD);
+    b(c, 4, 5, 8, 10, PL); b(c, 5, 6, 6, 8, PH);
+    b(c, 4, 5, 8, 1, GD);
+    b(c, 6, 8, 4, 4, DV);
+    b(c, 7, 7, 2, 6, GD); b(c, 5, 10, 6, 2, GD);
+    b(c, 7, 7, 2, 1, GL); b(c, 7, 9, 2, 2, 0xFF40b0ff);
+    b(c, 6, 10, 1, 1, DB); b(c, 9, 10, 1, 1, DB);
+    b(c, 4, 15, 8, 4, WH); b(c, 5, 15, 6, 3, 0xFFf4eedc);
+    b(c, 4, 15, 8, 1, GD); b(c, 6, 15, 4, 1, GL);
+    b(c, 2, 9, 2, 9, PL); b(c, 12, 9, 2, 9, PL);
+    b(c, 2, 9, 2, 1, PH); b(c, 12, 9, 2, 1, PH);
+    b(c, 2, 12, 2, 1, GD); b(c, 12, 12, 2, 1, GD);
+    b(c, 2, 17, 2, 3, PD); b(c, 12, 17, 2, 3, PD);
+    b(c, 2, 17, 2, 1, PL); b(c, 12, 17, 2, 1, PL);
+    if (isFemale) {
+      b(c, 3, 19, 10, 5, PL); b(c, 4, 19, 8, 4, PH);
+      b(c, 4, 19, 8, 1, GD); b(c, 3, 22, 10, 1, PD); b(c, 3, 23, 10, 1, DV);
+      b(c, 5, 21, 2, 3, PD); b(c, 9, 21, 2, 3, PD);
+    } else {
+      b(c, 4, 19, 3, 4, PL); b(c, 9, 19, 3, 4, PL);
+      b(c, 4, 19, 3, 1, PH); b(c, 9, 19, 3, 1, PH);
+      b(c, 3, 22, 5, 2, PD); b(c, 8, 22, 5, 2, PD);
+      b(c, 3, 23, 6, 1, PD); b(c, 8, 23, 5, 1, PD);
+    }
+    b(c, 13, 1, 1, 21, PH); b(c, 14, 2, 1, 19, DV);
+    b(c, 12, 7, 3, 1, GD); b(c, 12, 8, 3, 1, GD);
+    b(c, 13, 6, 1, 1, GD); b(c, 12, 0, 2, 1, 0xFF40b0ff);
+    b(c, 5, 23, 6, 1, DV); b(c, 6, 23, 4, 1, HALO);
+`,
+};
+
+function argbToCss(v){
+  if(v===0) return 'transparent';
+  const a=((v>>>24)&0xff)/255, r=(v>>>16)&0xff, g=(v>>>8)&0xff, b=v&0xff;
+  return `rgba(${r},${g},${b},${a})`;
+}
+function toHex(v){ return '0x'+(v>>>0).toString(16).toUpperCase().padStart(8,'0'); }
+function cssToArgb(css){ // #rrggbb -> 0xFFrrggbb
+  const r=parseInt(css.substr(1,2),16),g=parseInt(css.substr(3,2),16),b=parseInt(css.substr(5,2),16);
+  return (0xFF000000 | (r<<16)|(g<<8)|b)>>>0;
+}
+function argbToCssHex(v){
+  const r=(v>>>16)&0xff,g=(v>>>8)&0xff,b=v&0xff;
+  return '#'+[r,g,b].map(x=>x.toString(16).padStart(2,'0')).join('');
+}
+
+// ── Build palette swatches ──
+const sw=document.getElementById('swatches');
+PALETTE.forEach((v,i)=>{
+  const d=document.createElement('div');
+  d.className='swatch'+(v===0?' transparent':'');
+  if(v!==0) d.style.background=argbToCss(v);
+  d.dataset.v=v>>>0;
+  d.onclick=()=>selectColor(v>>>0);
+  sw.appendChild(d);
+});
+
+function selectColor(v){
+  curColor=v>>>0;
+  document.querySelectorAll('.swatch').forEach(s=>s.classList.toggle('sel',(+s.dataset.v)===curColor));
+  document.getElementById('curColor').style.background=v===0?'transparent':argbToCss(v);
+  document.getElementById('curHex').textContent = v===0?'transparent':toHex(v);
+  if(v!==0) document.getElementById('colorPicker').value=argbToCssHex(v);
+}
+document.getElementById('colorPicker').oninput=e=>selectColor(cssToArgb(e.target.value));
+
+// ── Tools ──
+document.querySelectorAll('.tool').forEach(btn=>btn.onclick=()=>{
+  tool=btn.dataset.tool;
+  document.querySelectorAll('.tool').forEach(b=>b.classList.toggle('active',b===btn));
+});
+
+// ── Grid draw ──
+function idx(x,y){ return y*COLS+x; }
+function draw(){
+  ctx.clearRect(0,0,cvs.width,cvs.height);
+  for(let y=0;y<ROWS;y++)for(let x=0;x<COLS;x++){
+    const v=grid[idx(x,y)];
+    if(v!==0){ ctx.fillStyle=argbToCss(v); ctx.fillRect(x*CELL,y*CELL,CELL,CELL); }
+  }
+  if(document.getElementById('gridToggle').checked){
+    ctx.strokeStyle='rgba(255,255,255,0.08)'; ctx.lineWidth=1;
+    for(let x=0;x<=COLS;x++){ ctx.beginPath(); ctx.moveTo(x*CELL,0); ctx.lineTo(x*CELL,ROWS*CELL); ctx.stroke(); }
+    for(let y=0;y<=ROWS;y++){ ctx.beginPath(); ctx.moveTo(0,y*CELL); ctx.lineTo(COLS*CELL,y*CELL); ctx.stroke(); }
+  }
+  drawPreview();
+}
+function drawPreview(){
+  for(const [g,scale] of [[p1,5],[p2,10]]){
+    g.clearRect(0,0,COLS*scale,ROWS*scale);
+    for(let y=0;y<ROWS;y++)for(let x=0;x<COLS;x++){
+      const v=grid[idx(x,y)];
+      if(v!==0){ g.fillStyle=argbToCss(v); g.fillRect(x*scale,y*scale,scale,scale); }
+    }
+  }
+}
+
+function cellAt(ev){
+  const r=cvs.getBoundingClientRect();
+  const x=Math.floor((ev.clientX-r.left)/(r.width/COLS));
+  const y=Math.floor((ev.clientY-r.top)/(r.height/ROWS));
+  if(x<0||x>=COLS||y<0||y>=ROWS) return null;
+  return {x,y};
+}
+function apply(x,y){
+  if(tool==='paint') grid[idx(x,y)]=curColor;
+  else if(tool==='erase') grid[idx(x,y)]=0;
+  else if(tool==='pick') selectColor(grid[idx(x,y)]);
+  else if(tool==='fill') flood(x,y,grid[idx(x,y)],curColor);
+}
+function flood(x,y,target,repl){
+  if(target===repl) return;
+  const st=[[x,y]];
+  while(st.length){
+    const [cx,cy]=st.pop();
+    if(cx<0||cx>=COLS||cy<0||cy>=ROWS) continue;
+    if(grid[idx(cx,cy)]!==target) continue;
+    grid[idx(cx,cy)]=repl;
+    st.push([cx+1,cy],[cx-1,cy],[cx,cy+1],[cx,cy-1]);
+  }
+}
+cvs.addEventListener('mousedown',e=>{ painting=true; const c=cellAt(e); if(c){apply(c.x,c.y);draw();} });
+cvs.addEventListener('mousemove',e=>{ if(!painting||tool==='fill'||tool==='pick')return; const c=cellAt(e); if(c){apply(c.x,c.y);draw();} });
+window.addEventListener('mouseup',()=>painting=false);
+
+document.getElementById('gridToggle').onchange=draw;
+document.getElementById('clearBtn').onclick=()=>{ if(confirm('Clear the whole canvas?')){ grid.fill(0); draw(); } };
+
+// ── Export ──
+document.getElementById('exportBtn').onclick=()=>{
+  const id=document.getElementById('skinId').value;
+  let s="  '"+id+"': [\n";
+  for(let y=0;y<ROWS;y++){
+    s+='    ';
+    for(let x=0;x<COLS;x++){ s+=(grid[idx(x,y)]===0?'0':toHex(grid[idx(x,y)]))+', '; }
+    s+='\n';
+  }
+  s+='  ],';
+  const out=document.getElementById('out'); out.value=s;
+  out.select(); document.execCommand('copy');
+  navigator.clipboard && navigator.clipboard.writeText(s);
+};
+
+// ── Save / Load JSON ──
+document.getElementById('saveBtn').onclick=()=>{
+  const id=document.getElementById('skinId').value;
+  const blob=new Blob([JSON.stringify({id,cols:COLS,rows:ROWS,grid})],{type:'application/json'});
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob);
+  a.download=id+'.skin.json'; a.click();
+};
+document.getElementById('loadBtn').onclick=()=>{
+  const inp=document.createElement('input'); inp.type='file'; inp.accept='.json';
+  inp.onchange=()=>{ const f=inp.files[0]; if(!f)return; const rd=new FileReader();
+    rd.onload=()=>{ try{ const d=JSON.parse(rd.result);
+      if(d.grid&&d.grid.length===COLS*ROWS){ grid=d.grid.map(v=>v>>>0);
+        if(d.id) document.getElementById('skinId').value=d.id; draw(); } else alert('Bad file size.');
+    }catch(err){ alert('Could not read file: '+err); } };
+    rd.readAsText(f); };
+  inp.click();
+};
+
+// ── Import from Dart painter source (shared by paste + one-click load) ──
+function importFromSource(src){
+  // 1) Symbol table: NAME = 0xHEX  (covers comma lists too)
+  const syms={};
+  const symRe=/([A-Za-z_]\w*)\s*=\s*(0x[0-9a-fA-F]+)/g; let m;
+  while((m=symRe.exec(src))) syms[m[1]]=parseInt(m[2],16)>>>0;
+  // 1b) Resolve `final NAME = isFemale ? … : ELSE;` to its male/default value.
+  const finRe=/final\s+(\w+)\s*=\s*is(?:Female|NonBinary)\s*\?[^:]+:\s*([^;]+);/g;
+  while((m=finRe.exec(src))){
+    const tok=m[2].trim();
+    if(/^0x[0-9a-fA-F]+$/.test(tok)) syms[m[1]]=parseInt(tok,16)>>>0;
+    else if(syms[tok]!==undefined) syms[m[1]]=syms[tok];
+  }
+
+  // 2) Token walk over the WHOLE source (not line-based), tracking gender
+  //    conditional frames by brace so single-line `if (isFemale){…}` works too.
+  //    We keep default/male branches and skip isFemale / isNonBinary ones.
+  const g=new Array(COLS*ROWS).fill(0);
+  let painted=0, unresolved=0;
+  const frames=[];                        // {gender, skip, neg}
+  const skipping=()=>frames.some(f=>f.skip);
+  // Order matters: longer `} else …` patterns must precede the bare `}`.
+  const tok=/if\s*\([^)]*\)\s*\{|\}\s*else\s+if\s*\([^)]*\)\s*\{|\}\s*else\s*\{|\}|b\(c,[^)]*\)/g;
+  let mm;
+  while((mm=tok.exec(src))){
+    const s=mm[0];
+    if(/^if\s*\(/.test(s)){
+      const gender=/isFemale|isNonBinary/.test(s);
+      const neg=/\(\s*!/.test(s);
+      frames.push({gender, neg, skip: gender ? !neg : false});
+    } else if(/^\}\s*else\s+if\s*\(/.test(s)){
+      const f=frames[frames.length-1]; if(!f) continue;
+      const gender=/isFemale|isNonBinary/.test(s);
+      const neg=/\(\s*!/.test(s);
+      f.skip = gender ? !neg : false;
+    } else if(/^\}\s*else\s*\{/.test(s)){
+      const f=frames[frames.length-1]; if(!f) continue;
+      // default/else branch: keep for `if(isFemale)…else`, skip for `if(!isFemale)…else`
+      f.skip = f.gender ? (f.neg ? true : false) : false;
+    } else if(s==='}'){
+      frames.pop();
+    } else {                              // a b(c, …) call
+      if(skipping()) continue;
+      const bm=/b\(c,\s*([\d.]+),\s*([\d.]+),\s*([\d.]+),\s*([\d.]+),\s*([^)]+?)\)/.exec(s);
+      if(!bm) continue;
+      const x=Math.round(+bm[1]), y=Math.round(+bm[2]), w=Math.round(+bm[3]), h=Math.round(+bm[4]);
+      const tk=bm[5].trim(); let col;
+      if(/^0x[0-9a-fA-F]+$/.test(tk)) col=parseInt(tk,16)>>>0;
+      else if(syms[tk]!==undefined) col=syms[tk];
+      else { unresolved++; continue; }
+      for(let yy=y;yy<y+h;yy++)for(let xx=x;xx<x+w;xx++){
+        if(xx>=0&&xx<COLS&&yy>=0&&yy<ROWS){ g[idx(xx,yy)]=col; painted++; }
+      }
+    }
+  }
+  grid=g; draw();
+  return {painted,unresolved};
+}
+document.getElementById('importBtn').onclick=()=>{
+  const src=document.getElementById('importSrc').value;
+  const msg=document.getElementById('importMsg');
+  if(!src.trim()){ msg.textContent='Paste some painter code first.'; return; }
+  const r=importFromSource(src);
+  msg.textContent=`Imported ${r.painted} pixels`+(r.unresolved?` (${r.unresolved} skipped: computed colours)`:'')+'.';
+};
+document.getElementById('loadSkinBtn').onclick=()=>{
+  const id=document.getElementById('skinId').value;
+  const msg=document.getElementById('importMsg');
+  const src=PREMIUM_SRC[id];
+  if(!src){ msg.textContent='No embedded artwork for '+id+'.'; return; }
+  const r=importFromSource(src);
+  msg.textContent=`Loaded ${id} — ${r.painted} pixels.`+(r.unresolved?` (${r.unresolved} computed colours skipped)`:'');
+};
+
+selectColor(0xFFD4AF37);
+draw();
+</script>
+</body>
+</html>

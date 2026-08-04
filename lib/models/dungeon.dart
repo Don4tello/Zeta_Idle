@@ -21,7 +21,6 @@ enum DungeonRoomType {
   boss,        // Every 5th floor — boss encounter
 }
 
-enum DungeonConsumableType { healthPotion, damageBoost, ironShield }
 
 enum DungeonBlessingType { attackUp, defenseUp, goldSense, swiftness, toughSkin, bloodthirst }
 
@@ -34,44 +33,67 @@ enum ShrineVariant { normal, corrupted, benevolent, twin }
 // ── Dungeon merchant item pool ────────────────────────────────────────────────
 
 class DungeonMerchantItem {
-  const DungeonMerchantItem({
+  DungeonMerchantItem({
     required this.id,
     required this.name,
     required this.icon,
     required this.desc,
-    required this.cost,
+    required this.boneCost,
+    this.effect,
+    this.instantHealPct = 0.0,
   });
   final String id;
   final String name;
   final String icon;
   final String desc;
-  final int cost;
+  final int boneCost;         // paid in Bones, not gold
+  final ShrineEffect? effect; // run-long buff added to shrineEffects
+  final double instantHealPct; // instant heal on purchase
 
-  static const pool = <DungeonMerchantItem>[
-    DungeonMerchantItem(id: 'hp_tonic',     name: 'Healing Tonic',   icon: '🧪', desc: 'Restore 25% max HP.',          cost: 80),
-    DungeonMerchantItem(id: 'atk_elixir',   name: 'Strength Elixir', icon: '⚔',  desc: '+3 ATK for this run.',         cost: 100),
-    DungeonMerchantItem(id: 'iron_amulet',  name: 'Iron Amulet',     icon: '🛡',  desc: '+2 AC for this run.',          cost: 100),
-    DungeonMerchantItem(id: 'shard_pouch',  name: 'Shard Pouch',     icon: '◆',   desc: 'Gain 20 gem shards.',          cost: 80),
-    DungeonMerchantItem(id: 'war_drum',     name: 'War Drum',        icon: '🥁',  desc: '+20% damage dealt this run.',  cost: 150),
-    DungeonMerchantItem(id: 'lucky_coin',   name: 'Lucky Coin',      icon: '🪙',  desc: '2× gold from remaining rooms.',cost: 120),
-    DungeonMerchantItem(id: 'cooldown_gem', name: 'Focus Crystal',   icon: '✦',   desc: 'Reset all ability cooldowns.', cost: 90),
-    DungeonMerchantItem(id: 'remedy',       name: 'Remedy',          icon: '💊',  desc: 'Restore all consumable charges.',cost: 90),
-  ];
+  /// The merchant's tiered trades: better trinkets cost more Bones, and every
+  /// effect scales with the dungeon [tier]. Higher bone cost = strictly stronger.
+  /// [floor] seeds a little variety between visits.
+  static List<DungeonMerchantItem> stockForTier(int tier, int floor) {
+    final t = tier; // 1..10
 
-  /// Deterministic 3-item stock seeded by floor number.
-  static List<DungeonMerchantItem> stockForFloor(int floor) {
-    final indices = List<int>.generate(pool.length, (i) => i);
-    var seed = (floor * 1234567 + 98765).abs();
-    for (var i = indices.length - 1; i > 0; i--) {
-      seed = (seed * 6364136223846793005 + 1442695040888963407).abs();
-      final j = seed % (i + 1);
-      final tmp = indices[i]; indices[i] = indices[j]; indices[j] = tmp;
-    }
-    return indices.take(3).map((i) => pool[i]).toList();
-  }
+    final oneBone = <DungeonMerchantItem>[
+      DungeonMerchantItem(id: 'bone_charm', name: 'Bone Charm', icon: '🦴', boneCost: 1,
+        desc: '+${2 + t} ATK for this run.',
+        effect: ShrineEffect(id: 'm_atk1', name: 'Bone Charm', icon: '🦴',
+            description: '+${2 + t} ATK', isCurse: false, atkMod: 2 + t)),
+      DungeonMerchantItem(id: 'marrow', name: 'Marrow Draught', icon: '🧪', boneCost: 1,
+        desc: 'Restore 25% max HP now.', instantHealPct: 0.25),
+    ];
+    final twoBone = <DungeonMerchantItem>[
+      DungeonMerchantItem(id: 'ribcage', name: 'Ribcage Ward', icon: '🛡', boneCost: 2,
+        desc: '+${1 + t} AC and −10% damage taken.',
+        effect: ShrineEffect(id: 'm_def2', name: 'Ribcage Ward', icon: '🛡',
+            description: '+${1 + t} AC, −10% damage taken', isCurse: false,
+            acMod: 1 + t, damageTakenMult: 0.9)),
+      DungeonMerchantItem(id: 'warfemur', name: "Warrior's Femur", icon: '⚔', boneCost: 2,
+        desc: '+${4 + t * 2} ATK for this run.',
+        effect: ShrineEffect(id: 'm_atk2', name: "Warrior's Femur", icon: '⚔',
+            description: '+${4 + t * 2} ATK', isCurse: false, atkMod: 4 + t * 2)),
+    ];
+    final threeBone = <DungeonMerchantItem>[
+      DungeonMerchantItem(id: 'skull_fury', name: 'Skull of Fury', icon: '💀', boneCost: 3,
+        desc: '+${20 + t * 5}% damage dealt for this run.',
+        effect: ShrineEffect(id: 'm_dmg3', name: 'Skull of Fury', icon: '💀',
+            description: '+${20 + t * 5}% damage dealt', isCurse: false,
+            damageDealtMult: 1.0 + (20 + t * 5) / 100.0)),
+      DungeonMerchantItem(id: 'reaper_pact', name: "Reaper's Pact", icon: '☠', boneCost: 3,
+        desc: '+${6 + t * 2} ATK and heal 40% HP.',
+        effect: ShrineEffect(id: 'm_atk3', name: "Reaper's Pact", icon: '☠',
+            description: '+${6 + t * 2} ATK', isCurse: false, atkMod: 6 + t * 2),
+        instantHealPct: 0.40),
+    ];
 
-  static DungeonMerchantItem? byId(String id) {
-    try { return pool.firstWhere((m) => m.id == id); } catch (_) { return null; }
+    int pick(int len, int salt) => (floor * 31 + salt).abs() % len;
+    return [
+      oneBone[pick(oneBone.length, 1)],
+      twoBone[pick(twoBone.length, 2)],
+      threeBone[pick(threeBone.length, 3)],
+    ];
   }
 }
 
@@ -169,24 +191,52 @@ class ShrineEffect {
   ];
 }
 
-// ── Consumable ────────────────────────────────────────────────────────────────
+// ── Boss relics — pick 1 of 3 after every boss kill ──────────────────────────
 
-class DungeonConsumable {
-  DungeonConsumable(this.type);
-  final DungeonConsumableType type;
-  bool used = false;
+class DungeonRelic {
+  const DungeonRelic({
+    required this.id,
+    required this.name,
+    required this.icon,
+    required this.description,
+    this.effect,
+    this.instantGoldBase = 0,
+    this.instantHealPct = 0,
+    this.grantsItem = false,
+    this.bonesGranted = 0,
+  });
 
-  String get label => switch (type) {
-    DungeonConsumableType.healthPotion => '🧪 Heal Potion',
-    DungeonConsumableType.damageBoost  => '⚔ Power Brew',
-    DungeonConsumableType.ironShield   => '🛡 Iron Ward',
-  };
-  String get desc => switch (type) {
-    DungeonConsumableType.healthPotion => 'Restore 40% max HP',
-    DungeonConsumableType.damageBoost  => 'Triple your next hit',
-    DungeonConsumableType.ironShield   => 'Block one enemy attack',
-  };
+  final String id, name, icon, description;
+  final ShrineEffect? effect;    // run-long passive (applied via shrineEffects)
+  final int instantGoldBase;     // gold = base + floor × 40
+  final double instantHealPct;   // % of max HP restored
+  final bool grantsItem;         // extra floor-scaled item drop
+  final int bonesGranted;        // Bones added to the run's merchant purse
+
+  static const pool = <DungeonRelic>[
+    DungeonRelic(id: 'r_bloodfang', name: 'Bloodfang Idol', icon: '⚔',
+      description: '+15% damage dealt for the rest of the run.',
+      effect: ShrineEffect(id: 'relic_dmg', name: 'Bloodfang Idol', icon: '⚔',
+        description: '+15% damage dealt.', isCurse: false, damageDealtMult: 1.15)),
+    DungeonRelic(id: 'r_aegis', name: 'Aegis Fragment', icon: '◆',
+      description: 'Take 12% less damage for the rest of the run.',
+      effect: ShrineEffect(id: 'relic_def', name: 'Aegis Fragment', icon: '◆',
+        description: '-12% damage taken.', isCurse: false, damageTakenMult: 0.88)),
+    DungeonRelic(id: 'r_hoard', name: 'Hoard Compass', icon: '💰',
+      description: 'A pile of gold, bigger on deeper floors.',
+      instantGoldBase: 200),
+    DungeonRelic(id: 'r_heart', name: 'Phoenix Heart', icon: '❤',
+      description: 'Restore 35% of max HP now.',
+      instantHealPct: 0.35),
+    DungeonRelic(id: 'r_cache', name: 'War Cache', icon: '✦',
+      description: 'An extra item drop, scaled to this floor.',
+      grantsItem: true),
+    DungeonRelic(id: 'r_ossuary', name: 'Ossuary Cache', icon: '🦴',
+      description: 'Gain 5 Bones for the Traveling Merchant.',
+      bonesGranted: 5),
+  ];
 }
+
 
 // ── Blessing ──────────────────────────────────────────────────────────────────
 
@@ -234,6 +284,8 @@ class DungeonRoom {
     this.restDamage = 0,
     this.restBonusGold = 0,
     this.shrineVariant = ShrineVariant.normal,
+    this.eliteTrait,
+    this.isGoblin = false,
   });
 
   final int floor;
@@ -247,6 +299,24 @@ class DungeonRoom {
   int? enemyAtk;
   int? enemyAc;
   bool isAmbush; // enemy gets free strike before round 1
+
+  /// Elite rooms roll one random trait: frenzied | shielded | vampiric |
+  /// armored | swift. Shown before the fight and applied in combat.
+  final String? eliteTrait;
+
+  /// Treasure goblin: rare combat room. Kill within 5 rounds for 6× gold —
+  /// otherwise it flees with its hoard.
+  final bool isGoblin;
+  bool goblinEscaped = false;
+
+  String? get eliteTraitLabel => switch (eliteTrait) {
+    'frenzied' => 'Frenzied — +40% ATK below half HP',
+    'shielded' => 'Shielded — blocks first 3 hits',
+    'vampiric' => 'Vampiric — heals 30% of damage dealt',
+    'armored'  => 'Armored — +4 AC',
+    'swift'    => 'Swift — strikes twice each round',
+    _ => null,
+  };
 
   // Trap
   String? trapName;
@@ -317,19 +387,25 @@ class DungeonRoom {
 class DungeonRun {
   DungeonRun({required this.heroMaxHp, required this.heroHp, this.tier = 1});
 
+  /// Beating the boss on this floor clears the dungeon (every tier).
+  static const int clearFloor = 20;
+
   int tier;
   int floor = 1;
   final int heroMaxHp;
   int heroHp;
 
-  final List<DungeonConsumable> consumables = [
-    DungeonConsumable(DungeonConsumableType.healthPotion),
-    DungeonConsumable(DungeonConsumableType.damageBoost),
-    DungeonConsumable(DungeonConsumableType.ironShield),
-  ];
+  /// Bones — run-local currency dropped by slain enemies, spent only at the
+  /// Traveling Merchant on run-buff trinkets. Resets each run (a new DungeonRun
+  /// is created per attempt), so the dungeon is its own self-contained economy.
+  int bones = 0;
 
   final List<DungeonBlessingType> blessings = [];
   final List<ShrineEffect> shrineEffects = [];
+
+  // Boss relics: choices offered after a boss kill; taken relics for display
+  List<DungeonRelic> relicChoices = [];
+  final List<DungeonRelic> relicsTaken = [];
 
   int get blessingAtk {
     var total = blessings.where((b) => b == DungeonBlessingType.attackUp).length * 2;
@@ -378,15 +454,13 @@ class DungeonRun {
     return chance;
   }
 
-  bool damageBoostActive = false;
-  bool shieldActive      = false;
-
   DungeonRoom? currentRoom;
   List<DungeonRoom> roomChoices = [];
 
   bool isDead      = false;
   bool isAbandoned = false;
-  bool get isOver  => isDead || isAbandoned;
+  bool isCleared   = false;
+  bool get isOver  => isDead || isAbandoned || isCleared;
 
   int goldEarned   = 0;
   int shardsEarned = 0;
@@ -405,17 +479,52 @@ class DungeonRun {
 
   // ── Room generation ──────────────────────────────────────────────────────
 
-  double get _floorMult => 1.0 + (floor - 1) * 0.08;
+  // Gentle +5%/floor within a zone, with a ×1.25 step after each boss
+  // (floors 6, 11, 16) — bosses are checkpoints, not speed bumps.
+  double get _floorMult =>
+      (1.0 + (floor - 1) * 0.05) * pow(1.25, (floor - 1) ~/ 5);
   double get _tierMult  => 1.0 + (tier  - 1) * 0.30;
 
-  // Weighted room type selection — auto-picks one room and sets currentRoom.
+  // Two-door generation: non-boss floors offer two distinct rooms and the
+  // player picks one (chooseRoom). Boss floors are forced single rooms.
   void generateRoomChoices(Random rng) {
     roomChoices = [];
     currentRoom = null;
 
-    final room = floor % 5 == 0 ? _makeBossRoom(rng) : _pickWeightedRoom(rng);
-    roomChoices = [room];
-    currentRoom = room; // auto-select — no player path choice
+    if (floor % 5 == 0) {
+      final room = _makeBossRoom(rng);
+      roomChoices = [room];
+      currentRoom = room; // boss floors give no choice
+      return;
+    }
+
+    final first = _pickWeightedRoom(rng);
+    var second  = _pickWeightedRoom(rng);
+    for (var i = 0; i < 8 && second.type == first.type; i++) {
+      second = _pickWeightedRoom(rng);
+    }
+    // ~3% jackpot: a treasure goblin appears behind the second door
+    if (rng.nextInt(100) < 3) second = _makeGoblinRoom(rng);
+    roomChoices = [first, second];
+    // currentRoom stays null until the player picks a door.
+  }
+
+  DungeonRoom _makeGoblinRoom(Random rng) {
+    final stageIdx = (floor - 1).clamp(0, 50);
+    final e = EnemyData.enemyForStage(stageIdx);
+    return DungeonRoom(
+      floor: floor, type: DungeonRoomType.combat,
+      enemyId: 'treasure_goblin',
+      enemyName: 'Treasure Goblin',
+      enemyMaxHp: (e.maxHealth * 1.2 * _floorMult * _tierMult).round(),
+      enemyAtk: (e.attack * 0.5 * _floorMult * _tierMult).round().clamp(1, 9999),
+      enemyAc: e.armorClass + 3 + (floor ~/ 5).clamp(0, 6),
+      isGoblin: true,
+    );
+  }
+
+  void chooseRoom(DungeonRoom room) {
+    if (roomChoices.contains(room)) currentRoom = room;
   }
 
   DungeonRoom _pickWeightedRoom(Random rng) {
@@ -473,13 +582,16 @@ class DungeonRun {
   DungeonRoom _makeEliteRoom(Random rng) {
     final stageIdx = (floor - 1).clamp(0, 50);
     final e = EnemyData.enemyForStage(stageIdx);
+    const traits = ['frenzied', 'shielded', 'vampiric', 'armored', 'swift'];
+    final trait = traits[rng.nextInt(traits.length)];
     return DungeonRoom(
       floor: floor, type: DungeonRoomType.elite,
       enemyId: EnemyData.spriteIdForStage(stageIdx),
       enemyName: '★ ${e.name}',
       enemyMaxHp: (e.maxHealth * 1.5 * _floorMult * _tierMult).round(),
       enemyAtk: (e.attack * 1.4 * _floorMult * _tierMult).round(),
-      enemyAc: e.armorClass + 1 + (floor ~/ 5).clamp(0, 6),
+      enemyAc: e.armorClass + 1 + (floor ~/ 5).clamp(0, 6) + (trait == 'armored' ? 4 : 0),
+      eliteTrait: trait,
     );
   }
 
@@ -563,15 +675,18 @@ class DungeonRun {
   DungeonRoom _makeBossRoom(Random rng) {
     final stageIdx = ((floor - 1) * 2).clamp(0, 60);
     final e = EnemyData.enemyForStage(stageIdx);
+    // Floor 20 is the dungeon's final boss — beefier and clearly labelled.
+    final isFinal = floor >= clearFloor;
+    final finalMult = isFinal ? 1.5 : 1.0;
     return DungeonRoom(
       floor: floor, type: DungeonRoomType.boss,
       enemyId: EnemyData.spriteIdForStage(stageIdx),
-      enemyName: '☠ ${e.name}',
+      enemyName: isFinal ? '★☠ ${e.name}, Dungeon Lord' : '☠ ${e.name}',
       // Boss ATK ramps from 1.2× at floor 1 to 1.6× at floor 17+, giving a smoother
       // difficulty curve instead of the hard cliff at floors 7–9.
-      enemyMaxHp: (e.maxHealth * 2.5 * _floorMult * _tierMult).round(),
-      enemyAtk: (e.attack * (1.2 + (floor - 1) * 0.025).clamp(1.2, 1.6) * _floorMult * _tierMult).round(),
-      enemyAc: e.armorClass + 2 + (floor ~/ 5).clamp(0, 8),
+      enemyMaxHp: (e.maxHealth * 2.5 * finalMult * _floorMult * _tierMult).round(),
+      enemyAtk: (e.attack * (1.2 + (floor - 1) * 0.025).clamp(1.2, 1.6) * (isFinal ? 1.2 : 1.0) * _floorMult * _tierMult).round(),
+      enemyAc: e.armorClass + 2 + (floor ~/ 5).clamp(0, 8) + (isFinal ? 2 : 0),
     );
   }
 
@@ -614,24 +729,6 @@ class DungeonRun {
     );
   }
 
-  // ── Consumable use ────────────────────────────────────────────────────────
-
-  bool useConsumable(DungeonConsumableType type) {
-    final c = consumables.where((c) => c.type == type && !c.used).firstOrNull;
-    if (c == null) return false;
-    c.used = true;
-    switch (type) {
-      case DungeonConsumableType.healthPotion:
-        final heal = (heroMaxHp * 0.40).round();
-        heroHp = (heroHp + heal).clamp(0, heroMaxHp);
-      case DungeonConsumableType.damageBoost:
-        damageBoostActive = true;
-      case DungeonConsumableType.ironShield:
-        shieldActive = true;
-    }
-    return true;
-  }
-
   // ── Combat simulation ─────────────────────────────────────────────────────
 
   /// Resolves a combat, elite, ambush, or boss room.
@@ -645,13 +742,19 @@ class DungeonRun {
     List<HeroAbility> abilities = const [],
     int Function(HeroAbility)? getCooldown,
     int Function(HeroAbility)? getValue,
+    int weaponBase = 0,
+    double dmgMult = 1.0,
+    double enemyHpMult = 1.0,
+    double extHealMult = 1.0,
+    int burnPerRound = 0,
+    int enemyShield = 0,
   }) {
     int heroHpLocal  = heroHp;
-    int enemyHpLocal = room.enemyMaxHp ?? 10;
-    final baseAtk = heroAtkBonus + blessingAtk;
+    int enemyHpLocal = ((room.enemyMaxHp ?? 10) * enemyHpMult).round();
+    var shieldLeft   = enemyShield;
+    final totalHealMult = healMult * extHealMult;
     final baseAc  = heroAc + blessingAc;
     final eAtk    = room.enemyAtk ?? 5;
-    final eAc     = room.enemyAc  ?? 10;
 
     // Per-combat temp state
     int tempAtkBonus = 0, tempAtkRounds = 0;
@@ -669,14 +772,10 @@ class DungeonRun {
     // Ambush: enemy gets a free attack before the fight begins
     if (room.isAmbush) {
       final pre = (rng.nextInt(eAtk ~/ 3 + 1) + 1).clamp(1, 9999);
-      if (shieldActive) {
-        shieldActive = false;
-      } else {
-        heroHpLocal -= pre;
-        enemyDmg    += pre;
-        ambushPreHit = pre;
-        if (heroHpLocal <= 0) { heroHp = 0; isDead = true; lastDamageDealt = 0; lastDamageTaken = enemyDmg; lastCombatSummary = 'Slain in the ambush before the fight began.'; return 0; }
-      }
+      heroHpLocal -= pre;
+      enemyDmg    += pre;
+      ambushPreHit = pre;
+      if (heroHpLocal <= 0) { heroHp = 0; isDead = true; lastDamageDealt = 0; lastDamageTaken = enemyDmg; lastCombatSummary = 'Slain in the ambush before the fight began.'; return 0; }
     }
 
     while (heroHpLocal > 0 && enemyHpLocal > 0 && rounds < 60) {
@@ -701,7 +800,7 @@ class DungeonRun {
             lastAbilityLog.add('✦ ${ability.name}: $dmg bonus damage!');
 
           case AbilityEffect.heal:
-            final h = sv.clamp(1, 9999);
+            final h = (sv * totalHealMult).round().clamp(1, 9999);
             heroHpLocal = (heroHpLocal + h).clamp(0, heroMaxHp);
             lastAbilityLog.add('✦ ${ability.name}: healed $h HP.');
 
@@ -731,7 +830,7 @@ class DungeonRun {
             lastAbilityLog.add('✦ ${ability.name}: dodge — +6 AC this round.');
 
           case AbilityEffect.aura:
-            final h = (sv * 0.5).round().clamp(1, 9999);
+            final h = (sv * 0.5 * totalHealMult).round().clamp(1, 9999);
             heroHpLocal = (heroHpLocal + h).clamp(0, heroMaxHp);
             lastAbilityLog.add('✦ ${ability.name}: aura healed $h HP.');
 
@@ -757,36 +856,45 @@ class DungeonRun {
       if (enemyHpLocal <= 0) break;
 
       // ── Hero attacks ────────────────────────────────────────────────────────
-      final effAtk = baseAtk + tempAtkBonus;
+      // Hero always lands (same as the campaign); no to-hit roll.
       final strikes = (rounds == 1 && hasSwiftness) ? 2 : 1;
       for (var s = 0; s < strikes; s++) {
-        final roll = rng.nextInt(20) + 1;
-        if (roll + effAtk >= eAc || roll == 20) {
-          var dmg = rng.nextInt(8) + 1 + heroStrMod.clamp(0, 20) + blessingDmg;
-          if (damageBoostActive) { dmg *= 3; damageBoostActive = false; }
-          if (enemyVulnRounds > 0) dmg = (dmg * 1.25).round();
-          dmg = dmg.clamp(1, 9999);
-          enemyHpLocal -= dmg;
-          heroDmg      += dmg;
-          if (enemyHpLocal <= 0) break;
+        final die = weaponBase > 0
+            ? weaponBase + rng.nextInt((weaponBase ~/ 3).clamp(1, 50))
+            : rng.nextInt(8) + 1;
+        var dmg = die + heroStrMod + blessingDmg + tempAtkBonus;
+        if (enemyVulnRounds > 0) dmg = (dmg * 1.25).round();
+        dmg = (dmg * dmgMult * damageDealtMult).round().clamp(1, 9999);
+        if (shieldLeft > 0) {
+          final absorbed = dmg < shieldLeft ? dmg : shieldLeft;
+          shieldLeft -= absorbed;
+          dmg -= absorbed;
+          if (dmg <= 0) continue;
         }
+        enemyHpLocal -= dmg;
+        heroDmg      += dmg;
+        if (enemyHpLocal <= 0) break;
       }
       if (enemyHpLocal <= 0) break;
 
       // ── Enemy attacks ───────────────────────────────────────────────────────
+      // Always lands (same as the campaign); armor is flat damage reduction
+      // (min 1 so bosses always connect). Matches the animated combat formula.
       if (enemyStunned) {
         enemyStunned = false;
-      } else if (shieldActive) {
-        shieldActive = false;
       } else {
-        final effAc     = baseAc + tempAcBonus;
-        final effEAtk   = enemyWeakenRounds > 0 ? (eAtk * 0.7).round() : eAtk;
-        final eRoll     = rng.nextInt(20) + 1;
-        if (eRoll + (effEAtk ~/ 8).clamp(0, 12) >= effAc || eRoll == 20) {
-          final dmg = (rng.nextInt(effEAtk ~/ 3 + 1) + 1).clamp(1, 9999);
-          heroHpLocal -= dmg;
-          enemyDmg    += dmg;
-        }
+        final effAc   = baseAc + tempAcBonus;
+        final effEAtk = enemyWeakenRounds > 0 ? (eAtk * 0.7).round() : eAtk;
+        final raw = rng.nextInt(effEAtk > 0 ? effEAtk : 1) + 1;
+        final dmg = ((raw - effAc).clamp(1, 9999) * damageTakenMult).round().clamp(1, 9999);
+        heroHpLocal -= dmg;
+        enemyDmg    += dmg;
+      }
+
+      // Burning affix: hero DoT at the end of every round
+      if (burnPerRound > 0 && heroHpLocal > 0) {
+        heroHpLocal -= burnPerRound;
+        enemyDmg    += burnPerRound;
       }
 
       // ── Tick buffs/debuffs at end of round ──────────────────────────────────
@@ -808,7 +916,7 @@ class DungeonRun {
                    : isElite  ? (100 + floor * 40).round()  // elite pays ~1.3× normal
                    : isAmbushRoom ? (140 + floor * 50).round() // ambush pays ~1.7× normal
                    : 80 + floor * 30;
-    final gold = (baseGold * goldBonusMult).round();
+    final gold = (baseGold * (room.isGoblin ? 6 : 1) * goldBonusMult).round();
     final baseShards = isBoss ? 20 + floor * 4 : 8 + floor;
 
     lastCombatSummary = isDead
@@ -818,6 +926,7 @@ class DungeonRun {
     if (!isDead) {
       goldEarned   += gold;
       shardsEarned += baseShards;
+      bones        += isBoss ? 3 : isElite ? 2 : 1; // slain enemy drops Bones
       roomsCleared++;
       if (isBoss) bossesDefeated++;
       return gold;

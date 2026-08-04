@@ -1,5 +1,6 @@
 ﻿import 'package:flutter/material.dart';
 import 'package:flutter/gestures.dart';
+import '../widgets/game_icons.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:go_router/go_router.dart';
 import '../core/routing/app_router.dart';
@@ -10,6 +11,7 @@ import '../widgets/glow_tab_indicator.dart';
 import '../widgets/hero_tab_controller.dart';
 import 'dashboard_screen.dart';
 import 'ability_scores_screen.dart';
+import 'subclass_screen.dart';
 import 'ability_upgrade_screen.dart';
 import 'endless_upgrade_screen.dart';
 import 'hero_stats_screen.dart';
@@ -29,57 +31,64 @@ import 'elemental_mastery_screen.dart';
 class _TabResource {
   const _TabResource({required this.icon, required this.color,
       required this.name, required this.sources});
-  final String icon;
-  final Color  color;
-  final String name;
-  final String sources;
+  final GameIconType icon;
+  final Color        color;
+  final String       name;
+  final String       sources;
 }
 
 class _TabDef {
-  const _TabDef(this.label, this.emoji, this.unlock, {this.resource});
-  final String       label;
-  final String       emoji;
-  final int          unlock; // campaignStageIndex required to show this tab
+  const _TabDef(this.label, this.icon, this.unlock, {this.resource});
+  final String        label;
+  final GameIconType  icon;
+  final int           unlock; // campaignStageIndex required to show this tab
   final _TabResource? resource;
 }
 
 // Master list: order = display order, unlock = stage required.
 const _kAllTabs = <_TabDef>[
-  _TabDef('SHEET',        '🧙',  0),   // always — character identity
-  _TabDef('SCORES',       '⭐',  1),   // first progression unlock — gold upgrade
-  _TabDef('ABILITIES',    '⚔️',  2, resource: _TabResource(  // after 2nd kill — have shards
-    icon: '◆', color: Color(0xFF44ccff), name: 'Shards',
+  _TabDef('SHEET',        GameIconType.armor,      0),
+  _TabDef('SCORES',       GameIconType.star,        1),
+  _TabDef('ABILITIES',    GameIconType.swords,      2, resource: _TabResource(
+    icon: GameIconType.diamond, color: Color(0xFF44ccff), name: 'Shards',
     sources: 'Dungeon runs · Locked Chests · Treasure rooms',
   )),
-  _TabDef('ACHIEVEMENTS', '🏆',  5),   // first boss defeated
-  _TabDef('PASSIVES',     '🌿',  8, resource: _TabResource(  // essence flowing
-    icon: '✦', color: Color(0xFF44dd88), name: 'Essence',
-    sources: 'Campaign kills · Gauntlet runs · Daily rewards',
+  _TabDef('ACHIEVEMENTS', GameIconType.medal,       5),
+  _TabDef('PASSIVES',     GameIconType.leaf,        8, resource: _TabResource(
+    icon: GameIconType.diamond, color: Color(0xFF6699ff), name: 'Shards',
+    sources: 'Kills · Dungeons · Expeditions · Gauntlet',
   )),
-  _TabDef('BONUSES',      '📊', 10),   // boss 2 — stats diverging
-  _TabDef('BESTIARY',     '🐉', 12),   // enough entries to be useful
-  _TabDef('CODEX',        '📖', 15),   // dungeon unlocked — need the reference
-  _TabDef('PETS',         '🐾', 18, resource: _TabResource( // mid-game companion unlock
-    icon: '🪙', color: Color(0xFF66aaff), name: 'ZCoins',
+  _TabDef('BONUSES',      GameIconType.barChart,   10),
+  _TabDef('BESTIARY',     GameIconType.eyeMonster, 12),
+  _TabDef('CODEX',        GameIconType.book,       15),
+  _TabDef('PETS',         GameIconType.paw,        18, resource: _TabResource(
+    icon: GameIconType.coin, color: Color(0xFF66aaff), name: 'ZCoins',
     sources: 'Premium shop · Login rewards · Season pass',
   )),
-  _TabDef('MERCS',        '🤝', 20),   // boss 4 — NPC encounters begin
-  _TabDef('REBIRTH',      '✦',  25, resource: _TabResource(  // rebirth gate
-    icon: '✦', color: Color(0xFFcc8844), name: 'Paragon Points',
+  _TabDef('MERCS',        GameIconType.warriors,   22),
+  // Unlocks at stage 100 (when Prestige first becomes available) and stays
+  // unlocked forever after — effectiveUnlockStage latches to >=100 once you've
+  // prestiged, so a post-rebirth stage reset can't hide it.
+  _TabDef('REBIRTH',      GameIconType.flame,     100, resource: _TabResource(
+    icon: GameIconType.crown, color: Color(0xFFcc8844), name: 'Paragon Points',
     sources: 'Earned by Prestiging your hero',
   )),
-  _TabDef('UPGRADES',     '🔮', 45, resource: _TabResource(  // gauntlet echoes
-    icon: '🔊', color: Color(0xFFcc88ff), name: 'Echoes',
+  _TabDef('UPGRADES',     GameIconType.gear,       45, resource: _TabResource(
+    icon: GameIconType.bolt, color: Color(0xFFcc88ff), name: 'Echoes',
     sources: 'Challenge Gauntlet runs',
   )),
-  _TabDef('ASCEND',       '⬆️', 50, resource: _TabResource( // post first rebirth
-    icon: '✦', color: Color(0xFFaa88ff), name: 'Asc. Points',
+  _TabDef('ASCEND',       GameIconType.mountain,   50, resource: _TabResource(
+    icon: GameIconType.star, color: Color(0xFFaa88ff), name: 'Asc. Points',
     sources: 'Earned by Ascending your hero',
   )),
-  _TabDef('MASTERY', '🔥', 15, resource: _TabResource(  // unlocks with Codex — elemental system
-    icon: '🔷', color: Color(0xFFff8844), name: 'Elemental Cores',
-    sources: 'Campaign first-clears (+2 normal, +5 boss)',
+  _TabDef('MASTERY',      GameIconType.crown,      35, resource: _TabResource(
+    icon: GameIconType.flask, color: Color(0xFFff8844), name: 'Tower Shards',
+    sources: 'Tower Ascension runs',
   )),
+  // Level-50 specialization (gated by hero level, not campaign stage — see
+  // the special case in _unlockedIndices). Appended last so the index-based
+  // _buildScreen mapping below stays stable.
+  _TabDef('SPECIALIZE',   GameIconType.medal,     999),
 ];
 
 Widget _buildScreen(int allTabIndex) => switch (allTabIndex) {
@@ -97,6 +106,7 @@ Widget _buildScreen(int allTabIndex) => switch (allTabIndex) {
   11 => const EndlessUpgradeScreen(embedded: true),        // UPGRADES
   12 => const AscensionScreen(embedded: true),             // ASCEND
   13 => const ElementalMasteryScreen(embedded: true),      // MASTERY
+  14 => const SubclassScreen(embedded: true),              // SPECIALIZE
   _  => const SizedBox.shrink(),
 };
 
@@ -124,9 +134,13 @@ class _HeroHubScreenState extends State<HeroHubScreen>
       for (int i = 0; i < _kAllTabs.length; i++)
         if (i == 12                              // ASCEND: needs prestige
             ? pl > 0
-            : i == 11                            // UPGRADES: echoes OR stage 45
-                ? (game.echoes > 0 || game.effectiveUnlockStage >= _kAllTabs[i].unlock)
-                : game.effectiveUnlockStage >= _kAllTabs[i].unlock) i,
+            : i == 11                            // UPGRADES: latches once you can spend echoes
+                ? game.upgradesTabUnlocked
+                : i == 13                        // MASTERY: latches once you can afford an upgrade
+                    ? game.masteryTabUnlocked
+                    : i == 14                    // SPECIALIZE: hero level 50
+                        ? game.subclassUnlocked
+                        : game.effectiveUnlockStage >= _kAllTabs[i].unlock) i,
     ];
   }
 
@@ -169,12 +183,13 @@ class _HeroHubScreenState extends State<HeroHubScreen>
     super.dispose();
   }
 
-  static Widget _tabLabel(String label, String emoji,
+  static Widget _tabLabel(String label, GameIconType icon,
       {bool badge = false, bool active = false}) {
     Widget content = Column(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        Text(emoji, style: TextStyle(fontSize: active ? 16 : 13)),
+        GameIcon(icon, size: active ? 16 : 13,
+            color: active ? AppTheme.accentGold : AppTheme.textMuted),
         const SizedBox(height: 2),
         Text(label,
             style: GoogleFonts.rajdhani(
@@ -239,7 +254,7 @@ class _HeroHubScreenState extends State<HeroHubScreen>
       for (final i in indices)
         _tabLabel(
           _kAllTabs[i].label,
-          _kAllTabs[i].emoji,
+          _kAllTabs[i].icon,
           badge: _hasBadge(i, game),
           active: i == allIdx,
         ),
@@ -349,9 +364,7 @@ class _ResourceBanner extends StatelessWidget {
       ),
       child: Row(
         children: [
-          Text(resource.icon,
-              style: GoogleFonts.rajdhani(
-                  fontSize: 11, fontWeight: FontWeight.bold, color: resource.color)),
+          GameIcon(resource.icon, size: 13, color: resource.color),
           const SizedBox(width: 6),
           Text(resource.name.toUpperCase(),
               style: GoogleFonts.rajdhani(

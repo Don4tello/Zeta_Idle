@@ -1,7 +1,8 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import '../models/damage_type.dart';
 import '../services/game_state.dart';
 import '../theme/app_theme.dart';
+import '../widgets/currency_info.dart';
 import '../widgets/hold_repeat_button.dart';
 
 class ElementalMasteryScreen extends StatelessWidget {
@@ -22,11 +23,7 @@ class ElementalMasteryScreen extends StatelessWidget {
             Text('ELEMENTAL MASTERY',
                 style: AppTheme.pixelHeading(
                     fontSize: 11, letterSpacing: 2, color: _accent)),
-            Row(mainAxisSize: MainAxisSize.min, children: [
-              _ShardBadge(shards: game.towerShards),
-              const SizedBox(width: 6),
-              _CoreBadge(cores: game.elementalCores),
-            ]),
+            _ShardBadge(shards: game.towerShards),
           ]),
           const SizedBox(height: 8),
         ],
@@ -54,39 +51,12 @@ class ElementalMasteryScreen extends StatelessWidget {
             style: AppTheme.pixelHeading(fontSize: 13, letterSpacing: 2, color: _accent)),
         actions: [
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
-            child: _ShardBadge(shards: game.towerShards),
-          ),
-          Padding(
             padding: const EdgeInsets.only(right: 16, top: 10, bottom: 10),
-            child: _CoreBadge(cores: game.elementalCores),
+            child: _ShardBadge(shards: game.towerShards),
           ),
         ],
       ),
       body: _body(context, game),
-    );
-  }
-}
-
-class _CoreBadge extends StatelessWidget {
-  const _CoreBadge({required this.cores});
-  final int cores;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: const Color(0xFF331100).withValues(alpha: 0.5),
-        border: Border.all(color: const Color(0xFFff8844).withValues(alpha: 0.7)),
-        borderRadius: BorderRadius.circular(3),
-      ),
-      child: Row(mainAxisSize: MainAxisSize.min, children: [
-        const Text('🔷', style: TextStyle(fontSize: 12)),
-        const SizedBox(width: 4),
-        Text('$cores Cores',
-            style: AppTheme.pixelHeading(fontSize: 11, color: const Color(0xFFff8844))),
-      ]),
     );
   }
 }
@@ -97,19 +67,22 @@ class _ShardBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: const Color(0xFF001133).withValues(alpha: 0.5),
-        border: Border.all(color: const Color(0xFF66aaff).withValues(alpha: 0.7)),
-        borderRadius: BorderRadius.circular(3),
+    return InfoTip(
+      message: CurrencyInfo.towerShards,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        decoration: BoxDecoration(
+          color: const Color(0xFF001133).withValues(alpha: 0.5),
+          border: Border.all(color: const Color(0xFF66aaff).withValues(alpha: 0.7)),
+          borderRadius: BorderRadius.circular(3),
+        ),
+        child: Row(mainAxisSize: MainAxisSize.min, children: [
+          const Text('🔮', style: TextStyle(fontSize: 12)),
+          const SizedBox(width: 4),
+          Text('$shards Shards',
+              style: AppTheme.pixelHeading(fontSize: 11, color: const Color(0xFF88ccff))),
+        ]),
       ),
-      child: Row(mainAxisSize: MainAxisSize.min, children: [
-        const Text('🔮', style: TextStyle(fontSize: 12)),
-        const SizedBox(width: 4),
-        Text('$shards Shards',
-            style: AppTheme.pixelHeading(fontSize: 11, color: const Color(0xFF88ccff))),
-      ]),
     );
   }
 }
@@ -203,7 +176,7 @@ class _ElementCard extends StatelessWidget {
           child: HoldRepeatButton(
             onPressed: locked || !canAfford
                 ? null
-                : () { game.upgradeElementalMastery(type.name); game.audioService.playUiConfirm(); },
+                : () { game.upgradeElementalMastery(type.name); game.audioService.playClaim(); },
             child: Container(
               decoration: BoxDecoration(
                 color: canAfford ? type.color.withValues(alpha: 0.25) : const Color(0xFF2a2016),

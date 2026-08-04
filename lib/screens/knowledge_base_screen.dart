@@ -1,6 +1,8 @@
 ﻿import 'package:flutter/material.dart';
 import '../models/equipment.dart';
 import '../theme/app_theme.dart';
+import '../widgets/currency_info.dart';
+import '../widgets/currency_icon.dart';
 
 class KnowledgeBaseScreen extends StatelessWidget {
   const KnowledgeBaseScreen({super.key});
@@ -361,70 +363,13 @@ class _SystemCardState extends State<_SystemCard> {
 class _CurrenciesTab extends StatelessWidget {
   const _CurrenciesTab();
 
-  static const _currencies = [
-    _CurrencyEntry(
-      icon: '💰',
-      name: 'Gold',
-      color: Color(0xFFffcc44),
-      source: 'Earned from every enemy kill and idle generation.',
-      use: 'Upgrade ability scores, buy items in the Shop.',
-    ),
-    _CurrencyEntry(
-      icon: '🪙',
-      name: 'ZCoins',
-      color: Color(0xFFffcc44),
-      source: 'Purchased via IAP or earned from achievements and bounties.',
-      use: 'Buy cosmetics, pets, waystones, attack effects, pet evolutions, and extra character slots.',
-    ),
-    _CurrencyEntry(
-      icon: '◆',
-      name: 'Shards',
-      color: Color(0xFF88cc44),
-      source: 'Drop from every enemy kill; bosses drop more. Prestige shop can boost drop rate.',
-      use: 'Unlock Endless upgrades and passive tree nodes.',
-    ),
-    _CurrencyEntry(
-      icon: '🔮',
-      name: 'Essence',
-      color: Color(0xFFaa88ff),
-      source: '1 per kill, 5 per boss kill. Boosted by passive tree and ascension.',
-      use: 'Fuel passive tree nodes in the Passive Tree screen.',
-    ),
-    _CurrencyEntry(
-      icon: '⚙',
-      name: 'Gem Shards',
-      color: Color(0xFFcc8844),
-      source: '25% chance per kill (1–2), guaranteed 3–8 per boss.',
-      use: 'Craft and socket Gems into equipment for bonus stats.',
-    ),
-    _CurrencyEntry(
-      icon: '👻',
-      name: 'Prestige Souls',
-      color: Color(0xFFccaaff),
-      source: 'Earned each Prestige based on campaign stage reached.',
-      use: 'Spend in the Prestige Shop for permanent unlocks.',
-    ),
-    _CurrencyEntry(
-      icon: '⬡',
-      name: 'Mythril',
-      color: Color(0xFF9966ff),
-      source: '1 per 2 Dungeon floors (max 10), rank-based from Boss Rush (1–15), +10 per Prestige.',
-      use: 'Forge Artifacts in the Artifact Forge.',
-    ),
-    _CurrencyEntry(
-      icon: '✦',
-      name: 'Ascension Points',
-      color: Color(0xFFcc88ff),
-      source: 'Granted when you Ascend (requires Prestige Lv 5). 3 AP per ascension.',
-      use: 'Invest in Meta-Board nodes for permanent cross-prestige bonuses.',
-    ),
-  ];
-
   @override
   Widget build(BuildContext context) {
+    // Rendered from kCurrencies — the same source that drives the in-game
+    // resource tooltips, so this reference can never drift out of sync.
     return ListView(
       padding: const EdgeInsets.all(16),
-      children: _currencies
+      children: kCurrencies
           .map((c) => Padding(
                 padding: const EdgeInsets.only(bottom: 10),
                 child: _CurrencyCard(entry: c),
@@ -434,24 +379,9 @@ class _CurrenciesTab extends StatelessWidget {
   }
 }
 
-class _CurrencyEntry {
-  const _CurrencyEntry({
-    required this.icon,
-    required this.name,
-    required this.color,
-    required this.source,
-    required this.use,
-  });
-  final String icon;
-  final String name;
-  final Color color;
-  final String source;
-  final String use;
-}
-
 class _CurrencyCard extends StatelessWidget {
   const _CurrencyCard({required this.entry});
-  final _CurrencyEntry entry;
+  final CurrencyDef entry;
 
   @override
   Widget build(BuildContext context) {
@@ -465,7 +395,7 @@ class _CurrencyCard extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(entry.icon, style: const TextStyle(fontSize: 23)),
+          CurrencyIcon(id: entry.id, size: 26),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
