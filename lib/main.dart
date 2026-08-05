@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:ui' show PlatformDispatcher;
 import 'package:firebase_core/firebase_core.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:firebase_app_check/firebase_app_check.dart';
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:firebase_analytics/firebase_analytics.dart';
@@ -41,6 +42,10 @@ Future<void> main() async {
 
 Future<void> _appMain() async {
   WidgetsFlutterBinding.ensureInitialized();
+  // Use the fonts bundled in assets/google_fonts/ — never fetch over the
+  // network (offline/failed fetches previously threw and were reported as
+  // crashes). Falls back to the platform font only if a family isn't bundled.
+  GoogleFonts.config.allowRuntimeFetching = false;
   await DebugLogger.init();
 
   // Suppress known benign Flutter framework warnings.

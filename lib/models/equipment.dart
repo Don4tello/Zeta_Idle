@@ -606,9 +606,12 @@ class ItemLootTable {
   // ── Name builder ──────────────────────────────────────────────────────────
   static String _buildName(List<StatBonus> bonuses, ItemRarity rarity, String baseName, [ItemKeyword? keyword]) {
     if ((rarity == ItemRarity.legendary || rarity == ItemRarity.mythic) && keyword != null) {
+      // Fall back to a generic title if a keyword has no mapped title, so a
+      // legendary/mythic drop can never crash on a missing map entry.
+      final title = _keywordTitle[keyword] ?? 'Fabled';
       return rarity == ItemRarity.mythic
-          ? '${_keywordTitle[keyword]!} Mythic $baseName'
-          : '${_keywordTitle[keyword]!} $baseName';
+          ? '$title Mythic $baseName'
+          : '$title $baseName';
     }
     if (bonuses.isEmpty) return baseName;
     final primary = bonuses.first.stat;

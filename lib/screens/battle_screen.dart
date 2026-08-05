@@ -60,8 +60,11 @@ class _BattleScreenState extends State<BattleScreen>
   @override
   void dispose() {
     _victoryCtrl.dispose();
-    // Stop battle music when leaving the screen
-    GameStateProvider.of(context).audioService.endBattleMusic();
+    // Stop battle music when leaving the screen. Use getInheritedWidget (safe in
+    // dispose, no dependency) + null-safe access — the provider may already be
+    // gone during teardown, which previously crashed with a null-check error.
+    context.getInheritedWidgetOfExactType<GameStateProvider>()
+        ?.notifier?.audioService.endBattleMusic();
     super.dispose();
   }
 

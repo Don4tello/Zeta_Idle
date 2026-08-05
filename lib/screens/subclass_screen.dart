@@ -158,9 +158,13 @@ class _RespecButton extends StatelessWidget {
   }
 
   void _confirmRespec(BuildContext context) {
+    // Capture the messenger up front — the button context can go stale once the
+    // dialog closes / the screen rebuilds after respec (previously crashed on
+    // Navigator.pop with a stale context).
+    final messenger = ScaffoldMessenger.of(context);
     showDialog<void>(
       context: context,
-      builder: (_) => AlertDialog(
+      builder: (dialogContext) => AlertDialog(
         backgroundColor: const Color(0xFF2A2623),
         title: Text('Change specialization?',
             style: AppTheme.pixelHeading(fontSize: 14, color: const Color(0xFF66aaff))),
@@ -171,16 +175,16 @@ class _RespecButton extends StatelessWidget {
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => Navigator.pop(dialogContext),
             child: Text('CANCEL',
                 style: AppTheme.pixelHeading(fontSize: 11, color: AppTheme.textMuted)),
           ),
           TextButton(
             onPressed: () {
+              Navigator.pop(dialogContext);
               final ok = game.respecSubclass();
-              Navigator.pop(context);
               if (!ok) {
-                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                messenger.showSnackBar(const SnackBar(
                   content: Text('Not enough ZCoins to respec.'),
                   duration: Duration(seconds: 2),
                 ));
