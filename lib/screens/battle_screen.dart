@@ -125,7 +125,7 @@ class _BattleScreenState extends State<BattleScreen>
           game.haptic(HapticFeedback.mediumImpact);
         }
       }
-      await _rewardCompleter!.future;
+      await _rewardCompleter?.future;
       _rewardCompleter = null;
       if (!mounted || _exitRequested) break;
 
