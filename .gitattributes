@@ -1,2 +1,20 @@
 # Auto detect text files and perform LF normalization
 * text=auto
+
+# Treat binary assets as binary — never apply line-ending conversion, which
+# would corrupt fonts/images/audio on checkout.
+*.ttf  binary
+*.otf  binary
+*.png  binary
+*.jpg  binary
+*.jpeg binary
+*.gif  binary
+*.webp binary
+*.ico  binary
+*.mp3  binary
+*.wav  binary
+*.ogg  binary
+*.aab  binary
+*.apk  binary
+*.jks  binary
+*.keystore binary
