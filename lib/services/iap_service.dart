@@ -2,6 +2,7 @@
 import 'dart:io' show Platform;
 import 'package:flutter/foundation.dart' show kIsWeb, kDebugMode;
 import 'package:in_app_purchase/in_app_purchase.dart';
+import 'analytics_service.dart';
 
 class CrystalPackage {
   const CrystalPackage({
@@ -92,6 +93,7 @@ class IapService {
   }
 
   void _fulfillPurchase(String productId) {
+    AnalyticsService.instance.iapPurchase(productId);
     // Crystal consumables
     final pkg = packages.where((p) => p.productId == productId).firstOrNull;
     if (pkg != null) {

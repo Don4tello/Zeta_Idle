@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:ui' show PlatformDispatcher;
 import 'package:firebase_core/firebase_core.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'services/analytics_service.dart';
 import 'package:firebase_app_check/firebase_app_check.dart';
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:firebase_analytics/firebase_analytics.dart';
@@ -27,6 +28,11 @@ bool _firebaseReady = false;
 
 /// App-wide analytics handle (null until Firebase initialises).
 FirebaseAnalytics? analytics;
+
+/// Navigator observers for the router — includes automatic screen tracking
+/// once analytics is available (empty otherwise, e.g. on Windows).
+List<NavigatorObserver> get _routerObservers =>
+    analytics == null ? const [] : [FirebaseAnalyticsObserver(analytics: analytics!)];
 
 Future<void> main() async {
   runZonedGuarded(_appMain, (error, stack) {
@@ -105,6 +111,7 @@ Future<void> _appMain() async {
 
       // ── Analytics ──────────────────────────────────────────────────────
       analytics = FirebaseAnalytics.instance;
+      AnalyticsService.instance.init(analytics!);
       await analytics!.logAppOpen();
     } catch (e) {
       // ignore: avoid_print
@@ -209,6 +216,7 @@ class _ZetaIdleAppState extends State<ZetaIdleApp> with WidgetsBindingObserver {
           characterSelected: _characterSelected,
           onCharacterSelected: _onCharacterSelected,
           onBackToSelect: _onBackToSelect,
+          observers: _routerObservers,
         );
       });
     }
@@ -221,6 +229,7 @@ class _ZetaIdleAppState extends State<ZetaIdleApp> with WidgetsBindingObserver {
         characterSelected: _characterSelected,
         onCharacterSelected: _onCharacterSelected,
         onBackToSelect: _onBackToSelect,
+        observers: _routerObservers,
       );
     });
   }
@@ -229,6 +238,7 @@ class _ZetaIdleAppState extends State<ZetaIdleApp> with WidgetsBindingObserver {
     characterSelected: _characterSelected,
     onCharacterSelected: _onCharacterSelected,
     onBackToSelect: _onBackToSelect,
+    observers: _routerObservers,
   );
 
   @override

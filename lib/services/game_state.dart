@@ -61,6 +61,7 @@ import '../models/gauntlet.dart';
 import '../models/npc_ally.dart';
 import '../models/pvp.dart';
 import '../models/subclass.dart';
+import '../services/analytics_service.dart';
 import '../services/audio_service.dart';
 import '../services/auth_service.dart';
 import '../services/steam_service.dart';
@@ -394,6 +395,8 @@ class GameState extends ChangeNotifier {
     if (zcoins < item.zcoinCost) return false;
     zcoins -= item.zcoinCost;
     ownedCosmetics.add(cosmeticId);
+    AnalyticsService.instance.currencySpent('zcoins', item.zcoinCost, 'cosmetic');
+    AnalyticsService.instance.cosmeticUnlocked('cosmetic', cosmeticId);
     notifyListeners();
     saveToLocal();
     return true;
@@ -702,6 +705,8 @@ class GameState extends ChangeNotifier {
     if (zcoins < aura.zcoinCost) return false;
     zcoins -= aura.zcoinCost;
     ownedAuraIds.add(auraId);
+    AnalyticsService.instance.currencySpent('zcoins', aura.zcoinCost, 'aura');
+    AnalyticsService.instance.cosmeticUnlocked('aura', auraId);
     _setLastAction('Unlocked ${aura.name} aura!');
     notifyListeners();
     saveToLocal();
@@ -732,6 +737,8 @@ class GameState extends ChangeNotifier {
     if (zcoins < skin.zcoinCost) return false;
     zcoins -= skin.zcoinCost;
     ownedSkinIds.add(skinId);
+    AnalyticsService.instance.currencySpent('zcoins', skin.zcoinCost, 'skin');
+    AnalyticsService.instance.cosmeticUnlocked('skin', skinId);
     _setLastAction('Unlocked ${skin.name} skin!');
     notifyListeners();
     saveToLocal();
@@ -2562,6 +2569,8 @@ class GameState extends ChangeNotifier {
     if (zcoins < fx.zcoinCost) return false;
     zcoins -= fx.zcoinCost;
     ownedAttackEffects.add(effectId);
+    AnalyticsService.instance.currencySpent('zcoins', fx.zcoinCost, 'attack_effect');
+    AnalyticsService.instance.cosmeticUnlocked('attack_effect', effectId);
     equippedAttackEffectId ??= effectId;
     notifyListeners();
     saveToLocal();
@@ -3586,6 +3595,11 @@ class GameState extends ChangeNotifier {
                           .clamp(1, 9999);
 
     final savedPrestigeLvl = prestigeLevel + 1;
+    AnalyticsService.instance.prestige(savedPrestigeLvl, soulsEarned, campaignStageIndex);
+    // Snapshot balances at this natural checkpoint (pre-reset) for pacing curves.
+    AnalyticsService.instance.economySnapshot(
+      stage: campaignStageIndex, level: hero.level, prestige: prestigeLevel,
+      gold: gold, shards: shards, echoes: echoes, zcoins: zcoins, mythril: mythril);
     final savedSouls       = prestigeSouls + soulsEarned;
     final savedShopOwned   = Map<String, bool>.from(prestigeShop.ownedNodes);
 
@@ -3874,6 +3888,7 @@ class GameState extends ChangeNotifier {
 
   void ascend() {
     if (!canAscend) return;
+    AnalyticsService.instance.ascend(ascensionLevel + 1);
     final ap = ascensionPointsForNextAscension;
     // Save everything that survives ascension
     final savedName          = hero.name;
@@ -3977,6 +3992,7 @@ class GameState extends ChangeNotifier {
     final sub = subclassById(id);
     if (sub == null || subclassId != null || !subclassUnlocked) return false;
     subclassId = id;
+    AnalyticsService.instance.subclassChosen(id, hero.heroClass.name);
     _applySubclassStats(sub, 1);
     _setLastAction('Specialization chosen: ${sub.name}!');
     _checkAchievements();
@@ -7189,6 +7205,7 @@ class GameState extends ChangeNotifier {
         hpAfter:   hero.maxHealth,
         statGains: gains,
       );
+      AnalyticsService.instance.levelUp(hero.level, hero.heroClass.name);
       // First time reaching level 30 — class questline unlocks.
       if (hero.level >= 30 && !_classQuestlineNoticeSeen) {
         _classQuestlineNoticeSeen    = true;
@@ -7501,6 +7518,8 @@ class GameState extends ChangeNotifier {
     battleLog.add('First clear bonus: +$firstClearCrystals 🪙');
     campaignStageIndex += 1;
     if (campaignStageIndex > campaignAllTimeHigh) campaignAllTimeHigh = campaignStageIndex;
+    AnalyticsService.instance.stageReached(campaignStageIndex);
+    if (isBossStage) AnalyticsService.instance.bossDefeated(campaignStageIndex - 1);
     addSeasonXp(5);
     advanceWeekly('w_stages', 1);
     if (wasFirstKill) endlessTutorialPending = true;
@@ -7512,6 +7531,7 @@ class GameState extends ChangeNotifier {
       if (unlockName != null && !_seenUnlockStages.contains(campaignStageIndex) && campaignStageIndex == campaignAllTimeHigh) {
         _seenUnlockStages.add(campaignStageIndex);
         pendingUnlockNotice = unlockName;
+        AnalyticsService.instance.featureUnlocked(unlockName, campaignStageIndex);
         autoCampaign = false;
       }
     }

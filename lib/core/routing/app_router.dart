@@ -122,6 +122,7 @@ abstract final class Routes {
 CustomTransitionPage<void> _fadeSlidePage(Widget child, GoRouterState state) {
   return CustomTransitionPage(
     key: state.pageKey,
+    name: state.name ?? state.uri.path,
     child: child,
     transitionDuration: const Duration(milliseconds: 250),
     reverseTransitionDuration: const Duration(milliseconds: 200),
@@ -147,9 +148,11 @@ GoRouter buildRouter({
   required Future<void> Function(int, String?, DndClass?, HeroRace?, HeroTrait?, HeroGender?)
       onCharacterSelected,
   required VoidCallback onBackToSelect,
+  List<NavigatorObserver> observers = const [],
 }) {
   return GoRouter(
     initialLocation: characterSelected ? Routes.shell : Routes.select,
+    observers: observers,
     redirect: (context, state) {
       final atSelect  = state.matchedLocation == Routes.select;
       final atLoading = state.matchedLocation.startsWith(Routes.loading);
