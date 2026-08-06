@@ -5976,6 +5976,18 @@ class GameState extends ChangeNotifier {
     abilityBranches.clear();
     _milestoneChoices.clear();
     questsClaimed.clear();
+    // These collections are cleared by loadFromJson but were previously missed
+    // here, so a NEW character inherited them from the prior in-memory hero
+    // (e.g. ability-score "power" ranks, seen-unlock notices). Keep this list in
+    // sync with loadFromJson's clears.
+    _abilityScoreRanks.clear();
+    _abilityRanks.clear();
+    _seenUnlockStages.clear();
+    ownedRunes.clear();
+    purchasedPacks.clear();
+    ownedCosmetics.clear();
+    _claimedBestiaryChapters.clear();
+    _claimedBestiaryMilestones.clear();
     heroTitle = null;
     _totalAbilityUses = 0;
     heroRace  = null;
@@ -8560,6 +8572,26 @@ class GameState extends ChangeNotifier {
   Future<void> saveAndSyncNow() async {
     _lastCloudSyncAt = null;
     await saveToLocal();
+  }
+
+  /// Delete a character slot everywhere: local save + backup + prestige key,
+  /// AND the cloud save when signed in. The cloud save is a single document per
+  /// account, so without this a deleted character would resurrect from the
+  /// cloud on the next load.
+  Future<void> deleteCharacterSlot(int slot) async {
+    // If we're deleting the character still loaded in memory, stop the
+    // auto-save and idle timers from re-persisting it back into the slot we're
+    // about to wipe (otherwise the "deleted" character resurrects on disk).
+    if (slot == _currentSlot) _slotLoaded = false;
+    await saveService.deleteSlot(slot);
+    try {
+      if (authService.isGoogleSignedIn) {
+        final uid = authService.currentUser?.uid;
+        if (uid != null) await cloudSaveService.deleteSave(uid);
+      }
+    } catch (_) {
+      // best-effort — the local delete already succeeded.
+    }
   }
 
   Future<bool> loadFromLocal() async {

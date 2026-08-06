@@ -66,6 +66,7 @@ class _CharacterSelectScreenState extends State<CharacterSelectScreen> {
 
   Future<void> _confirmDelete(int slot, CharacterSummary? existing) async {
     if (existing == null) return;
+    final game = GameStateProvider.of(context); // capture before async gap
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -91,7 +92,9 @@ class _CharacterSelectScreenState extends State<CharacterSelectScreen> {
       ),
     );
     if (confirmed == true) {
-      await SaveService().deleteSlot(slot);
+      // Delete locally AND in the cloud (single doc per account) so the
+      // character can't resurrect from cloud on the next load.
+      await game.deleteCharacterSlot(slot);
       _refresh();
     }
   }
