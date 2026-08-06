@@ -1,0 +1,43 @@
+name: Deploy docs to GitHub Pages
+
+# Only rebuild Pages when the site content actually changes. Normal code /
+# release pushes to main no longer trigger (or fail) a Pages build — the app
+# and the /docs site (privacy policy, delete-account, app-ads.txt) are now
+# decoupled.
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'docs/**'
+      - '.github/workflows/pages.yml'
+  workflow_dispatch: {}
+
+# Least-privilege permissions required by the Pages deploy.
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Never run two Pages deploys at once; let the newest win.
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+      - name: Upload /docs as the Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: docs
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
