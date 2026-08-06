@@ -6,6 +6,8 @@ import 'services/analytics_service.dart';
 import 'package:firebase_app_check/firebase_app_check.dart';
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:firebase_analytics/firebase_analytics.dart';
+import 'package:firebase_remote_config/firebase_remote_config.dart';
+import 'services/remote_config_service.dart';
 import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
 import 'firebase_options.dart';
@@ -113,6 +115,11 @@ Future<void> _appMain() async {
       analytics = FirebaseAnalytics.instance;
       AnalyticsService.instance.init(analytics!);
       await analytics!.logAppOpen();
+
+      // ── Remote Config ──────────────────────────────────────────────────
+      // Live balance knobs (difficulty/economy) — tunable from the console
+      // without a new release. Best-effort; defaults keep current behavior.
+      await RemoteConfigService.instance.init(FirebaseRemoteConfig.instance);
     } catch (e) {
       // ignore: avoid_print
       print('Firebase initialization warning: $e');
@@ -131,8 +138,11 @@ Future<void> _appMain() async {
     DebugLogger.log('admob_init', 'error: $e');
   }
   try {
+    // Initialise here, but ask for the OS permission after the first frame
+    // (see _ZetaIdleAppState.initState). Requesting before runApp() can return
+    // without ever showing the system dialog because there's no resumed
+    // Activity/UI yet.
     await NotificationService.instance.initialize();
-    await NotificationService.instance.requestPermission();
   } catch (e) {
     DebugLogger.log('notif_init', 'error: $e');
   }
@@ -164,14 +174,25 @@ class _ZetaIdleAppState extends State<ZetaIdleApp> with WidgetsBindingObserver {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    // Start tavern music after the first frame so assets are ready
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+    // Start tavern music after the first frame so assets are ready, and ask for
+    // the notification permission now that there's a resumed Activity + UI (the
+    // Android 13+ dialog won't appear if requested before the first frame).
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
       _gameState.audioService.startMusic();
+      try {
+        await NotificationService.instance.requestPermission();
+      } catch (e) {
+        DebugLogger.log('notif_perm', 'error: $e');
+      }
     });
   }
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
+    // Suppress SFX unless the app is in the foreground — the idle-income timer
+    // keeps ticking while locked/backgrounded and would otherwise play its
+    // claim/coin sound over a locked phone.
+    _gameState.audioService.appActive = state == AppLifecycleState.resumed;
     if (state == AppLifecycleState.paused || state == AppLifecycleState.hidden) {
       _gameState.audioService.pauseMusic();
       // Fire-and-forget save after a short delay so audio pause completes first

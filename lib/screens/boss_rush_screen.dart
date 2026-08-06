@@ -3,6 +3,7 @@ import 'dart:math';
 import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../data/bestiary_data.dart';
 import '../data/enemy_data.dart';
 import '../models/boss_rush.dart';
 import '../models/damage_type.dart';
@@ -301,7 +302,7 @@ class _BossRushScreenState extends State<BossRushScreen> {
       _heroHp -= dmg;
       _log.add('${boss.name} hits! $dmg dmg'
           '${_bossEnraged ? ' ⚡' : ''}${_enemyWeakenRem > 0 ? ' (weakened)' : ''}.');
-      game.audioService.playPlayerHit();
+      game.audioService.playEnemyAttack(bestiaryFor(boss.id)?.weakness);
       _arenaKey.currentState?.playEnemyAttack(dmg);
     }
 

@@ -4,6 +4,7 @@ import 'package:audioplayers/audioplayers.dart';
 import 'package:path_provider/path_provider.dart';
 import '../models/hero_ability.dart';
 import '../models/damage_type.dart';
+import '../models/bestiary_entry.dart';
 
 enum SoundEffect {
   hit, playerHit, ability, abilityDamage, abilityBuff, abilityDebuff,
@@ -12,6 +13,8 @@ enum SoundEffect {
   sfxPhysical, sfxLightning, sfxCold, sfxPoison, sfxFire, sfxVoid,
   // Healing SFX
   sfxHealA, sfxHealB, sfxAura,
+  // Enemy-attack SFX, themed to the target's bestiary Type
+  enemyUndead, enemyBeast, enemyArcane, enemyDemonic, enemyConstruct,
 }
 
 final bool _isWindows = Platform.isWindows;
@@ -33,6 +36,12 @@ class AudioService {
   bool _sfxMuted = false;
   bool get muted => _sfxMuted;
   bool get sfxMuted => _sfxMuted;
+
+  // False while the app is backgrounded/locked. The idle-income timer keeps
+  // ticking in the background, so without this gate its claim/coin SFX would
+  // fire while the phone is locked. Set from the app lifecycle observer.
+  bool _appActive = true;
+  set appActive(bool v) => _appActive = v;
   void toggleMute()    { _sfxMuted = !_sfxMuted; if (!_sfxMuted) _resetSfxPool(); }
   void toggleSfxMute() { _sfxMuted = !_sfxMuted; if (!_sfxMuted) _resetSfxPool(); }
 
@@ -71,7 +80,7 @@ class AudioService {
   }
 
   Future<void> play(SoundEffect effect) async {
-    if (_sfxMuted || _isWindows) return;
+    if (_sfxMuted || _isWindows || !_appActive) return;
     try {
       final player = _nextSfxPlayer();
       await player.stop();
@@ -81,6 +90,23 @@ class AudioService {
 
   Future<void> playHit()       => play(SoundEffect.hit);
   Future<void> playPlayerHit() => play(SoundEffect.playerHit);
+
+  /// The sound of an enemy attacking, themed to its bestiary [weakness] Type.
+  /// Falls back to the generic player-hit clip for enemies with no bestiary
+  /// entry (custom/dungeon/PvP foes) — and, until the five themed clips are
+  /// added to assets/audio/, the missing-asset load simply no-ops silently.
+  Future<void> playEnemyAttack(BestiaryWeakness? weakness) async {
+    if (_sfxMuted || _isWindows || !_appActive) return;
+    if (weakness == null) { await play(SoundEffect.playerHit); return; }
+    final effect = switch (weakness) {
+      BestiaryWeakness.undead    => SoundEffect.enemyUndead,
+      BestiaryWeakness.beast     => SoundEffect.enemyBeast,
+      BestiaryWeakness.arcane    => SoundEffect.enemyArcane,
+      BestiaryWeakness.demonic   => SoundEffect.enemyDemonic,
+      BestiaryWeakness.construct => SoundEffect.enemyConstruct,
+    };
+    await _playMp3Sfx(effect);
+  }
   Future<void> playAbility()   => play(SoundEffect.ability);
   Future<void> playCoin()      => play(SoundEffect.coin);
   Future<void> playClaim()     => play(SoundEffect.claim);
@@ -93,7 +119,7 @@ class AudioService {
   Future<void> playUiError()   => _playMp3Sfx(SoundEffect.uiError);
 
   Future<void> playAbilityByCategory(AbilityCategory category) async {
-    if (_sfxMuted || _isWindows) return;
+    if (_sfxMuted || _isWindows || !_appActive) return;
     final effect = switch (category) {
       AbilityCategory.damage   => SoundEffect.abilityDamage,
       AbilityCategory.buff     => SoundEffect.abilityBuff,
@@ -135,6 +161,11 @@ class AudioService {
       SoundEffect.sfxHealA      => 'audio/sfx_heal_a.mp3',
       SoundEffect.sfxHealB      => 'audio/sfx_heal_b.mp3',
       SoundEffect.sfxAura       => 'audio/sfx_aura_heal.mp3',
+      SoundEffect.enemyUndead   => 'audio/enemy_undead.mp3',
+      SoundEffect.enemyBeast    => 'audio/enemy_beast.mp3',
+      SoundEffect.enemyArcane   => 'audio/enemy_arcane.mp3',
+      SoundEffect.enemyDemonic  => 'audio/enemy_demonic.mp3',
+      SoundEffect.enemyConstruct => 'audio/enemy_construct.mp3',
     };
   }
 
@@ -142,7 +173,7 @@ class AudioService {
   final Map<SoundEffect, String> _sfxCachePaths = {};
 
   Future<void> _playMp3Sfx(SoundEffect sfx) async {
-    if (_sfxMuted || _isWindows) return;
+    if (_sfxMuted || _isWindows || !_appActive) return;
     try {
       final player = _nextSfxPlayer();
       await player.stop();
@@ -157,7 +188,7 @@ class AudioService {
 
   // Play a hit sound matched to the hero's active damage type.
   Future<void> playHitWithType(DamageType type) async {
-    if (_sfxMuted || _isWindows) return;
+    if (_sfxMuted || _isWindows || !_appActive) return;
     if (type == DamageType.physical) {
       await play(SoundEffect.hit);
     } else {
@@ -175,7 +206,7 @@ class AudioService {
   // Plays the correct SFX for an ability based on its effect and the hero's active damage type.
   int _healToggle = 0;
   Future<void> playAbilityFull(AbilityEffect effect, DamageType damageType) async {
-    if (_sfxMuted || _isWindows) return;
+    if (_sfxMuted || _isWindows || !_appActive) return;
     final SoundEffect sfx;
     if (effect == AbilityEffect.aura) {
       sfx = SoundEffect.sfxAura;

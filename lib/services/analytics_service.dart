@@ -66,6 +66,26 @@ class AnalyticsService {
   void currencySpent(String currency, int amount, String sink) => _log(
       'currency_spent', {'currency': currency, 'amount': amount, 'sink': sink});
 
+  /// Currency gained from a source (kill/boss/idle/…), the faucet side of the
+  /// economy — pair with [currencySpent] to balance sources vs sinks.
+  void currencyEarned(String currency, int amount, String source) => _log(
+      'currency_earned', {'currency': currency, 'amount': amount, 'source': source});
+
+  /// A lost battle — the #1 difficulty signal. Pair with [stageReached] /
+  /// [bossDefeated] to compute per-stage clear rates and spot walls.
+  void battleDefeat({
+    required int stage,
+    required String enemyId,
+    required bool isBoss,
+    required int heroLevel,
+  }) =>
+      _log('battle_defeat', {
+        'stage': stage,
+        'enemy': enemyId,
+        'is_boss': isBoss,
+        'hero_level': heroLevel,
+      });
+
   /// Periodic snapshot of balances + progression, for balance/pacing curves.
   void economySnapshot({
     required int stage,

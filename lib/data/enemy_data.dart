@@ -2,6 +2,7 @@ import 'dart:math';
 import '../models/damage_type.dart';
 import '../models/enemy.dart';
 import '../models/zone_affix.dart';
+import '../services/remote_config_service.dart';
 import 'enemy_naming.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -667,7 +668,7 @@ class EnemyData {
 
     // -- Unique Campaign Bosses (namedBoss: true -- no auto-scaling applied) --
     Enemy(
-      id: 'goblin_warchief', name: 'Goblin Warchief', level: 4, maxHealth: 110, attack: 6, armorClass: 2,
+      id: 'goblin_warchief', name: 'Goblin Warchief', level: 4, maxHealth: 170, attack: 9, armorClass: 2,
       namedBoss: true, attackType: DamageType.physical, resistances: kR,
       description: 'The cunning general of the goblin horde, draped in stolen armour and drunk on victories over weaker things.',
       abilities: [
@@ -1031,14 +1032,38 @@ class EnemyData {
   }
 
   static Enemy enemyForStage(int stage, {List<ZoneAffix> affixes = const [], int prestigeLevel = 0}) {
+    // Live-tunable difficulty dials (default 1.0 / current curve when unset).
+    final rc = RemoteConfigService.instance;
     if (stage < kCampaignLength) {
       final bossId = _bossOrder[stage];
-      final base   = bossId != null ? _byId(bossId) : _byId(_campaignOrder[stage]);
-      final hpMult  = 2.0 * (1.0 + prestigeLevel * 0.20);
+      final isBoss = bossId != null;
+      final base   = isBoss ? _byId(bossId) : _byId(_campaignOrder[stage]);
+
+      // ── Within-cycle ramp ──────────────────────────────────────────────────
+      // Each 5-stage cycle ends in a boss (stage % 5 == 4). Previously the four
+      // regular enemies sat at a flat power level and only the boss spiked, so
+      // mid-campaign runs felt "too easy until the boss wall". Ramp the regular
+      // enemies up toward each boss (cycle position 1/2/3 get progressively
+      // stronger) so difficulty climbs gradually instead of flat-then-cliff.
+      //
+      // The per-position step PHASES IN with depth (≈0 in the tutorial zone,
+      // full by ~stage 20). This matters because the early bosses are
+      // deliberately soft and the hero is at its barest (L1 = 100 HP,
+      // +20 HP/level); a full ramp there would make a pre-boss regular harder
+      // than the boss itself and over-tune onboarding. By stage 20 the hero has
+      // levels/upgrades/prestige and bosses are meaty, so the full ramp lands
+      // where testers actually felt the flat-then-wall curve. Bosses excluded
+      // (they're the intended cycle peak). Rewards scale off enemy.level (not
+      // HP/ATK), so this adds difficulty without inflating gold/XP/loot.
+      final rampStep  = (stage / max(1.0, rc.campaignRampPhaseIn)).clamp(0.0, 1.0)
+          * rc.campaignRampStep; // 0 → step by the phase-in stage
+      final intraRamp = isBoss ? 1.0 : 1.0 + (stage % 5) * rampStep;
+
+      final hpMult  = 2.0 * intraRamp * (1.0 + prestigeLevel * 0.20) * rc.enemyHpMult;
       // Enemy attack ramps +2%/stage past stage 5 so mid/late campaign keeps
       // pressure on heal-sustain builds (stage 25 ≈ +40% ATK).
       final lateRamp = 1.0 + ((stage - 5).clamp(0, 40)) * 0.02;
-      final atkMult = 1.5 * lateRamp * (1.0 + prestigeLevel * 0.12);
+      final atkMult = 1.5 * intraRamp * lateRamp * (1.0 + prestigeLevel * 0.12) * rc.enemyAtkMult;
       return Enemy(
         id:          base.id,
         name:        base.name,
@@ -1072,8 +1097,8 @@ class EnemyData {
     final prestigeHpMult  = 1.0 + prestigeLevel * 0.20;
     final prestigeAtkMult = 1.0 + prestigeLevel * 0.12;
 
-    final hp      = (baseHP  * growth * prestigeHpMult ).round().clamp(baseHP,  999999999);
-    final atk     = (baseAtk * sqrt(growth) * prestigeAtkMult).round().clamp(baseAtk, 999999);
+    final hp      = (baseHP  * growth * prestigeHpMult  * rc.enemyHpMult ).round().clamp(baseHP,  999999999);
+    final atk     = (baseAtk * sqrt(growth) * prestigeAtkMult * rc.enemyAtkMult).round().clamp(baseAtk, 999999);
     final acBonus = min((log(a + 1) / log(2) * 1.5).floor(), 12);
     final level   = baseLvl + a ~/ 5;
 

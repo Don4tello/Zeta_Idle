@@ -2,6 +2,7 @@
 import 'dart:math';
 import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
+import '../data/bestiary_data.dart';
 import '../data/enemy_data.dart';
 import '../models/challenge_modifier.dart';
 import '../models/damage_type.dart';
@@ -346,7 +347,7 @@ class _GauntletScreenState extends State<GauntletScreen> {
       final dmg    = (rawDmg - armor).clamp(1, 9999);
       setState(() => _heroHp -= dmg);
       _log.add('Enemy hits! $dmg to you${_enemyWeakenRem > 0 ? ' (weakened)' : ''}.');
-      game.audioService.playPlayerHit();
+      game.audioService.playEnemyAttack(bestiaryFor(enemy.id)?.weakness);
       _arenaKey.currentState?.playEnemyAttack(dmg);
       if (_heroHp <= 0) {
         _heroHp = 0;

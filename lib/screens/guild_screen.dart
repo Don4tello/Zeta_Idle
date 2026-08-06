@@ -2,6 +2,7 @@
 import 'package:flutter/material.dart';
 import '../widgets/game_icons.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../data/bestiary_data.dart';
 import '../models/damage_type.dart';
 import '../models/dnd_class.dart';
 import '../models/equipment.dart';
@@ -1227,7 +1228,7 @@ class _GuildBossBattleState extends State<_GuildBossBattle> {
         final bossDmg = (raw - (_heroAc + _tempAcBonus)).clamp(1, 9999);
         _heroHp = (_heroHp - bossDmg).clamp(0, _heroMaxHp);
         setState(() => _log.add('${widget.boss.name} hits $bossDmg dmg (You: $_heroHp/$_heroMaxHp)'));
-        game.audioService.playPlayerHit();
+        game.audioService.playEnemyAttack(bestiaryFor(widget.boss.spriteId)?.weakness);
         _arenaKey.currentState?.playEnemyAttack(bossDmg);
       }
 

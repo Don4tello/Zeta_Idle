@@ -1,9 +1,7 @@
 ﻿import 'dart:async';
-import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:google_fonts/google_fonts.dart';
-import '../models/damage_type.dart';
 import '../models/passive_tree.dart';
 import '../services/game_state.dart';
 import '../theme/app_theme.dart';
@@ -11,8 +9,6 @@ import '../models/hero_race.dart';
 import '../models/hero_trait.dart';
 import '../widgets/battle_sprites.dart';
 import '../widgets/progress_ring.dart';
-import '../widgets/hero_tab_controller.dart';
-import '../screens/main_shell.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // DashboardHeader
@@ -425,11 +421,8 @@ class _DashboardHeaderState extends State<DashboardHeader>
           const SizedBox(height: 8),
           // ── Idle progress panel ───────────────────────────────────────────
           _IdleProgressPanel(game: game),
-          // ── Next action hint ──────────────────────────────────────────────
-          if (game.nextActionHint != null) ...[
-            const SizedBox(height: 6),
-            _NextActionHint(hint: game.nextActionHint!),
-          ],
+          // Next-action guidance is shown once, by _SmartNextActionPanel on the
+          // dashboard body (see dashboard_screen.dart).
         ],
       ),
     );
@@ -804,79 +797,6 @@ class _RewardChip extends StatelessWidget {
   }
 }
 
-class _NextActionHint extends StatelessWidget {
-  const _NextActionHint({required this.hint});
-  final String hint;
-
-  // Returns the all-tab index (Hero Hub) or shell tab index to navigate to.
-  // heroHubIdx: non-null → switch within Hero Hub using HeroTabController
-  // shellIdx:   non-null → switch main shell tab (e.g. PLAY=1 for Daily)
-  // Both null   → hint is informational only, not tappable
-  //
-  // Hero Hub all-tab indices:
-  //   0=SHEET 1=SCORES 2=ABILITIES 3=ACHIEVEMENTS 4=PASSIVES 5=BONUSES
-  //   6=BESTIARY 7=CODEX 8=PETS 9=MERCS 10=REBIRTH 11=UPGRADES
-  //   12=ASCEND 13=MASTERY
-  // Main shell tab indices: 0=HERO 1=PLAY 2=INVENTORY 3=SHOP
-  ({int? heroHubIdx, int? shellIdx}) _destination() {
-    if (hint.contains('Prestige') || hint.contains('prestige')) return (heroHubIdx: 10, shellIdx: null);
-    if (hint.contains('Ascension'))  return (heroHubIdx: 12, shellIdx: null);
-    if (hint.contains('Daily'))      return (heroHubIdx: null, shellIdx: 1);
-    if (hint.contains('Achievement')) return (heroHubIdx: 3, shellIdx: null);
-    if (hint.contains('Expedition')) return (heroHubIdx: 9, shellIdx: null);
-    if (hint.contains('Ability score')) return (heroHubIdx: 1, shellIdx: null);
-    if (hint.contains('Ability'))    return (heroHubIdx: 2, shellIdx: null);
-    if (hint.contains('Passive'))    return (heroHubIdx: 4, shellIdx: null);
-    if (hint.contains('Endless') || hint.contains('upgrade')) return (heroHubIdx: 11, shellIdx: null);
-    if (hint.contains('Elemental') || hint.contains('mastery')) return (heroHubIdx: 13, shellIdx: null);
-    if (hint.contains('Pet'))        return (heroHubIdx: 8, shellIdx: null);
-    return (heroHubIdx: null, shellIdx: null);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final dest    = _destination();
-    final switcher = HeroTabController.maybeOf(context);
-    final tappable = dest.shellIdx != null || (dest.heroHubIdx != null && switcher != null);
-
-    void onTap() {
-      if (dest.shellIdx != null) {
-        MainShell.switchToTab(dest.shellIdx!);
-      } else if (dest.heroHubIdx != null) {
-        switcher?.switchTo(dest.heroHubIdx!);
-      }
-    }
-
-    return GestureDetector(
-      onTap: tappable ? onTap : null,
-      child: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-        decoration: BoxDecoration(
-          color: const Color(0xFFFFCC44).withValues(alpha: 0.07),
-          border: Border.all(color: const Color(0xFFFFCC44).withValues(alpha: 0.25)),
-        ),
-        child: Row(
-          children: [
-            Expanded(
-              child: Text(
-                hint,
-                style: AppTheme.pixelHeading(
-                  fontSize: 10,
-                  letterSpacing: 0.5,
-                  color: const Color(0xFFFFCC44),
-                ),
-              ),
-            ),
-            if (tappable)
-              const Icon(Icons.arrow_forward_ios,
-                  size: 9, color: Color(0xFFFFCC44)),
-          ],
-        ),
-      ),
-    );
-  }
-}
 
 Widget _IdleRewardRow(String label, String value, Color color) {
   return Padding(

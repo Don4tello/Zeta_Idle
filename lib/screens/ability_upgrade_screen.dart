@@ -379,7 +379,7 @@ class _AbilityCard extends StatelessWidget {
                   return Container(
                     padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
                     color: dt.color.withValues(alpha: 0.15),
-                    child: Text('${dt.emoji} ${dt.label.toUpperCase()}',
+                    child: Text(dt.label.toUpperCase(),
                         style: TextStyle(color: dt.color, fontSize: 8, fontWeight: FontWeight.bold)),
                   );
                 }),

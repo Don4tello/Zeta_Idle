@@ -1,7 +1,7 @@
 name: zeta_idle
 description: A dark medieval idle RPG prototype.
 publish_to: 'none'
-version: 0.1.0+17
+version: 0.1.0+18
 environment:
   sdk: '>=3.0.0 <4.0.0'
   flutter: '>=3.0.0'
@@ -27,8 +27,12 @@ dependencies:
   url_launcher: ^6.3.2
   flutter_local_notifications: ^22.2.0
   timezone: ^0.11.1
+  firebase_remote_config: ">=6.0.0 <7.0.0"
 dependency_overrides:
   path_provider_foundation: ">=2.3.2 <2.6.0"
+  # Pin firebase_core to the +17 train — core 4.13.0 breaks app_check 0.4.5+2's
+  # native code (FlutterFirebaseAppRegistrar). Keeps the whole suite consistent.
+  firebase_core: 4.12.1
 
 dev_dependencies:
   flutter_test:

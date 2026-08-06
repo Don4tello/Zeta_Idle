@@ -1,9 +1,11 @@
 ﻿import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../models/shop_catalog.dart';
 import '../models/palette_skin.dart';
 import '../services/ad_service.dart';
+import '../services/analytics_service.dart';
 import '../services/game_state.dart';
 import '../services/iap_service.dart';
 import '../theme/app_theme.dart';
@@ -707,15 +709,57 @@ class _WatchAdCardState extends State<_WatchAdCard> {
   static const int _maxAdsPerDay = 5;
   static const int _rewardPerAd  = 20;
 
+  // Persist the daily count so the limit survives restarts and resets at
+  // local midnight. Keyed by date: a new day => the stored count is ignored.
+  static const _kCountKey = 'ads_watched_count';
+  static const _kDateKey  = 'ads_watched_date';
+
+  static String _todayStamp() {
+    final now = DateTime.now();
+    return '${now.year}-${now.month}-${now.day}';
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _loadAdsToday();
+  }
+
+  Future<void> _loadAdsToday() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final savedDate = prefs.getString(_kDateKey);
+      final count = savedDate == _todayStamp() ? (prefs.getInt(_kCountKey) ?? 0) : 0;
+      if (mounted) setState(() => _adsToday = count);
+    } catch (_) {/* fall back to in-memory 0 */}
+  }
+
+  Future<void> _persistAdsToday() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_kDateKey, _todayStamp());
+      await prefs.setInt(_kCountKey, _adsToday);
+    } catch (_) {/* best-effort */}
+  }
+
   void _watchAd() async {
     if (_watching || _cooldown || _adsToday >= _maxAdsPerDay) return;
     setState(() => _watching = true);
 
     await AdService.instance.showRewardedAd(
-      onRewarded: () {
-        if (!mounted) return;
-        _adsToday++;
+      onRewarded: () async {
+        // Grant + durably persist the reward FIRST — independent of this
+        // widget's lifecycle (the GameState outlives the screen). Only after
+        // the coins are safely on disk do we count the ad toward the daily
+        // limit. If the app is killed mid-way the worst case is the player
+        // keeps the reward but the ad isn't counted (favours the player) —
+        // never the reverse (counted but unrewarded).
         widget.game.grantCrystals(_rewardPerAd);
+        AnalyticsService.instance.adWatched('shop_rewarded');
+        await widget.game.saveToLocal();
+        _adsToday++;
+        await _persistAdsToday();
+        if (!mounted) return; // everything below only touches the UI
         setState(() { _watching = false; _cooldown = true; });
         _showRewardBox();
         Future.delayed(const Duration(seconds: 5), () {

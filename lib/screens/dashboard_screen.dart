@@ -13,7 +13,7 @@ import '../widgets/stats_grid_panel.dart';
 import '../models/login_streak.dart';
 import 'package:go_router/go_router.dart';
 import '../core/routing/app_router.dart';
-import 'main_shell.dart' show TutorialTip;
+import 'main_shell.dart' show TutorialTip, MainShell;
 
 class DashboardScreen extends StatelessWidget {
   const DashboardScreen({
@@ -112,17 +112,22 @@ class _SheetLayout extends StatelessWidget {
 class _SmartNextActionPanel extends StatelessWidget {
   const _SmartNextActionPanel();
 
-  // Returns (emoji, hint, color, targetTabIndex) — targetTabIndex is the
-  // all-tab index in HeroHubScreen to jump to, or null if no tab navigation.
-  static (String, String, Color, int?)? _getAction(GameState game) {
+  // Returns (emoji, text, color, heroHubIdx, shellIdx).
+  //   heroHubIdx — all-tab index in HeroHubScreen (_kAllTabs) to jump to, via
+  //     HeroTabController. Order: 0=SHEET 1=SCORES 2=ABILITIES 3=ACHIEVEMENTS
+  //     4=PASSIVES 5=BONUSES 6=BESTIARY 7=CODEX 8=PETS 9=MERCS 10=REBIRTH
+  //     11=UPGRADES 12=ASCEND 13=MASTERY.
+  //   shellIdx — main shell tab (0=HERO 1=PLAY 2=INVENTORY 3=SHOP).
+  // Both null → informational, not tappable.
+  static (String, String, Color, int?, int?)? _getAction(GameState game) {
     if (game.hasClaimableDaily && game.campaignStageIndex >= 5) {
       return ('🎯', 'Daily challenge ready to claim!',
-          const Color(0xFFffaa44), null);
+          const Color(0xFFffaa44), null, 1);
     }
     if (game.achievementsClaimable > 0 && game.campaignStageIndex >= 5) {
       return ('🏆',
           '${game.achievementsClaimable} achievement${game.achievementsClaimable > 1 ? 's' : ''} ready to claim!',
-          const Color(0xFFffcc44), 2);
+          const Color(0xFFffcc44), 3, null);
     }
     final ready = game.activeExpeditions.where((e) {
       final elapsed = DateTime.now().millisecondsSinceEpoch - e.startEpochMs;
@@ -131,23 +136,23 @@ class _SmartNextActionPanel extends StatelessWidget {
     if (ready.isNotEmpty) {
       return ('🗺️',
           '${ready.length} expedition${ready.length > 1 ? 's' : ''} ready to collect!',
-          const Color(0xFF55cc88), 8);
+          const Color(0xFF55cc88), 9, null);
     }
     if (game.canPrestige) {
       return ('✨', 'Prestige available — reset for power!',
-          const Color(0xFFcc88ff), 9);
+          const Color(0xFFcc88ff), 10, null);
     }
     if (game.hasAffordableAbilityUpgrade) {
       return ('⚔', 'Ability upgrade affordable — visit ABILITIES',
-          const Color(0xFF66aaff), 1);
+          const Color(0xFF66aaff), 2, null);
     }
     if (game.hasAffordablePassiveNode) {
       return ('🌿', 'Passive upgrade affordable — visit PASSIVES',
-          const Color(0xFF55ee88), 4);
+          const Color(0xFF55ee88), 4, null);
     }
     if (game.hasAffordableEndlessUpgrade) {
       return ('🔮', 'Endless upgrade affordable — visit UPGRADES',
-          const Color(0xFF8866ff), 3);
+          const Color(0xFF8866ff), 11, null);
     }
     final idleMercs = NpcAllyDef.all
         .where((d) => game.allyUnlocked(d.id) && game.expeditionForMerc(d.id) == null)
@@ -155,13 +160,13 @@ class _SmartNextActionPanel extends StatelessWidget {
     if (idleMercs.isNotEmpty) {
       return ('🧙',
           '${idleMercs.length} merc${idleMercs.length > 1 ? 's' : ''} idle — dispatch on an expedition',
-          const Color(0xFFffaa44), 8);
+          const Color(0xFFffaa44), 9, null);
     }
     if (game.campaignStageIndex >= 18 && game.campaignStageIndex % 25 >= 18) {
       final remaining = 25 - (game.campaignStageIndex % 25);
       return ('🏆',
           '$remaining campaign stage${remaining > 1 ? 's' : ''} until Prestige gate',
-          const Color(0xFFaaddff), null);
+          const Color(0xFFaaddff), null, null);
     }
     return null;
   }
@@ -171,8 +176,9 @@ class _SmartNextActionPanel extends StatelessWidget {
     final game = GameStateProvider.of(context);
     final action = _getAction(game);
     if (action == null) return const SizedBox.shrink();
-    final (emoji, text, color, targetTab) = action;
+    final (emoji, text, color, heroHubIdx, shellIdx) = action;
     final htc = HeroTabController.maybeOf(context);
+    final tappable = shellIdx != null || (heroHubIdx != null && htc != null);
 
     Widget card = Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
@@ -204,16 +210,22 @@ class _SmartNextActionPanel extends StatelessWidget {
             ),
           ),
           Icon(Icons.arrow_forward_ios_rounded,
-              size: 12, color: color.withValues(alpha: targetTab != null ? 0.9 : 0.35)),
+              size: 12, color: color.withValues(alpha: tappable ? 0.9 : 0.35)),
         ],
       ),
     )
         .animate(onPlay: (c) => c.repeat(reverse: true))
         .shimmer(duration: 3000.ms, color: color.withValues(alpha: 0.08));
 
-    if (targetTab != null && htc != null) {
+    if (tappable) {
       card = GestureDetector(
-        onTap: () => htc.switchTo(targetTab),
+        onTap: () {
+          if (shellIdx != null) {
+            MainShell.switchToTab(shellIdx);
+          } else if (heroHubIdx != null) {
+            htc?.switchTo(heroHubIdx);
+          }
+        },
         behavior: HitTestBehavior.opaque,
         child: card,
       );

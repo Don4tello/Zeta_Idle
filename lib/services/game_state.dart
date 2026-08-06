@@ -63,6 +63,7 @@ import '../models/pvp.dart';
 import '../models/subclass.dart';
 import '../services/analytics_service.dart';
 import '../services/audio_service.dart';
+import '../services/remote_config_service.dart';
 import '../services/auth_service.dart';
 import '../services/steam_service.dart';
 import '../services/iap_service.dart';
@@ -5314,7 +5315,7 @@ class GameState extends ChangeNotifier {
       simCount++;
 
       // Gold
-      final baseGold    = ((enemy.level * 50 + 100) * endlessUpgrades.goldMultiplier * arcaneBonus * merchantScholarBonus * prestigeGoldMult * paragonGoldIncomeMult * prestigeGoldBattleMult * passiveGoldMult * goldSenseMult * petGoldMult * allyGoldMult * (1.0 + _scoreLck / 100)).round();
+      final baseGold    = ((enemy.level * 50 + 100) * endlessUpgrades.goldMultiplier * arcaneBonus * merchantScholarBonus * prestigeGoldMult * paragonGoldIncomeMult * prestigeGoldBattleMult * passiveGoldMult * goldSenseMult * petGoldMult * allyGoldMult * RemoteConfigService.instance.goldMult * (1.0 + _scoreLck / 100)).round();
       final bossGold    = isBoss ? (baseGold * 2).round() : 0;
       final battleGold  = baseGold + bossGold;
       totalGold += battleGold;
@@ -5322,7 +5323,7 @@ class GameState extends ChangeNotifier {
       _totalGoldEarned += battleGold;
 
       // XP
-      final battleXp = (((enemy.level * 20 + 40) * hero.xpMultiplier * endlessUpgrades.xpMultiplier * rallyCryBonus * prestigeXpMult * passiveXpMult * itemChaMult * petXpMult * allyXpMult).round()).clamp(1, 999999);
+      final battleXp = (((enemy.level * 20 + 40) * hero.xpMultiplier * endlessUpgrades.xpMultiplier * rallyCryBonus * prestigeXpMult * passiveXpMult * itemChaMult * petXpMult * allyXpMult * RemoteConfigService.instance.xpMult).round()).clamp(1, 999999);
       totalXp += battleXp;
       hero.gainExperience(battleXp);
 
@@ -6927,7 +6928,7 @@ class GameState extends ChangeNotifier {
       lastEnemyDamage     = shieldedDmg;
       lastEnemyDamageType = enemy.attackType;
       _comboStacks = 0; // taking damage breaks combo
-      audioService.playPlayerHit();
+      audioService.playEnemyAttack(bestiaryFor(enemy.id)?.weakness);
       final typeTag  = enemy.attackType == DamageType.physical
           ? '' : ' (${enemy.attackType.label})';
       final armorTag = enemy.attackType == DamageType.physical && heroArmor > 0
@@ -7135,8 +7136,9 @@ class GameState extends ChangeNotifier {
     final goldSenseMult = _hasKeyword(ItemKeyword.goldSense) ? 1.15 : 1.0;
     final petGoldMult = 1.0 + (petGoldPct + skinGoldPct + auraGoldPct + artifactGoldPct + runeGoldPct + traitGoldPct) / 100.0;
     final bestiaryGoldMult = _isCampaignBattle ? bestiaryGoldBonus(enemy.id) : 1.0;
+    final rc = RemoteConfigService.instance;
     var rewardGold =
-        ((enemy.level * 50 + 100) * endlessUpgrades.goldMultiplier * arcaneBonus * merchantScholarBonus * prestigeGoldMult * paragonGoldIncomeMult * prestigeGoldBattleMult * passiveGoldMult * goldSenseMult * petGoldMult * allyGoldMult * bestiaryGoldMult * (1.0 + _scoreLck / 100))
+        ((enemy.level * 50 + 100) * endlessUpgrades.goldMultiplier * arcaneBonus * merchantScholarBonus * prestigeGoldMult * paragonGoldIncomeMult * prestigeGoldBattleMult * passiveGoldMult * goldSenseMult * petGoldMult * allyGoldMult * bestiaryGoldMult * rc.goldMult * (1.0 + _scoreLck / 100))
             .round();
     // Felix: Bribe — double gold on the first kill of the battle
     if (_felixBribeActive) {
@@ -7164,7 +7166,8 @@ class GameState extends ChangeNotifier {
                 passiveXpMult *
                 itemChaMult *
                 petXpMult *
-                allyXpMult)
+                allyXpMult *
+                rc.xpMult)
             .round())
         .clamp(1, 999999);
 
@@ -7175,6 +7178,8 @@ class GameState extends ChangeNotifier {
     }
     gold += rewardGold;
     _totalGoldEarned += rewardGold;
+    AnalyticsService.instance.currencyEarned(
+        'gold', rewardGold, enemy.namedBoss ? 'boss_kill' : 'kill');
 
     final prevLevel = hero.level;
     final prevHp    = hero.maxHealth;
@@ -7558,6 +7563,20 @@ class GameState extends ChangeNotifier {
   }
 
   void _battleDefeat() {
+    // Capture the loss before currentEnemy is cleared — the #1 difficulty
+    // signal for balance tuning (pair with stage_reached for clear rates).
+    final lostTo = currentEnemy;
+    if (lostTo != null) {
+      final stage = _endlessMode
+          ? endlessStageIndex
+          : (isCampaignReplay ? _replayStageIndex : campaignStageIndex);
+      AnalyticsService.instance.battleDefeat(
+        stage: stage,
+        enemyId: lostTo.id,
+        isBoss: lostTo.namedBoss,
+        heroLevel: hero.level,
+      );
+    }
     heroDefeated = true;
     _pvpMode = false;
     audioService.endBattleMusic();
@@ -7635,6 +7654,7 @@ class GameState extends ChangeNotifier {
     // Gold
     final earned = (idleProgress * hero.goldRate * prestigeIdleMult * paragonGoldIncomeMult * waystoneMult * allyIdleMult).round();
     gold += earned;
+    if (earned > 0) AnalyticsService.instance.currencyEarned('gold', earned, 'idle');
     lastIdleGold = earned;
     _totalGoldEarned += earned;
 
