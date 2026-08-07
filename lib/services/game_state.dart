@@ -264,8 +264,24 @@ class GameState extends ChangeNotifier {
     saveToLocal();
   }
 
-  int _itemScore(EquipmentItem item) =>
-      item.bonuses.fold(0, (sum, b) => sum + b.value);
+  // Weighted so auto-equip prefers power/survival over economy. Summing raw
+  // values made a +32% gold roll beat a +29% damage roll — which no player
+  // would pick. Gold/XP are weighted low; offense stats are boosted.
+  int _itemScore(EquipmentItem item) {
+    var score = 0.0;
+    for (final b in item.bonuses) {
+      final weight = switch (b.stat) {
+        ItemStat.goldPct || ItemStat.xpPct => 0.25,
+        ItemStat.damageBonus || ItemStat.damagePercent ||
+        ItemStat.attackBonus || ItemStat.strength ||
+        ItemStat.elemPenetration => 1.5,
+        _ => 1.0,
+      };
+      score += b.value * weight;
+    }
+    score += item.baseDamage * 2; // weapons contribute their base hit
+    return score.round();
+  }
 
   bool reforgeItem(EquipmentItem item) {
     if (!ItemLootTable.canReforge(item.rarity)) return false;
@@ -4166,6 +4182,9 @@ class GameState extends ChangeNotifier {
     var total = 0;
     var dustGained = 0;
     for (final item in items) {
+      // Never salvage a locked item — this is the central guard so "select all"
+      // / auto-salvage can't destroy something the player deliberately locked.
+      if (item.locked) continue;
       inventory.bag.remove(item);
       total += switch (item.rarity) {
         ItemRarity.common    => 3,
@@ -6704,7 +6723,7 @@ class GameState extends ChangeNotifier {
       if (!_bossEnraged && isBossStage &&
           enemy.currentHealth / enemy.maxHealth < 0.3) {
         _bossEnraged = true;
-        battleLog.add('⚠ ${enemy.name} ENRAGES! +200% damage!');
+        battleLog.add('⚠ ${enemy.name} ENRAGES! Strikes twice — brace yourself!');
       }
 
       // DEX Lv10 — Blade Flicker: 12% chance extra strike (20% with Berserker synergy)
@@ -6945,9 +6964,11 @@ class GameState extends ChangeNotifier {
     if (damage > 0) {
       // Apply hero's stat-based elemental resistance
       final heroRes  = heroResistancePct(enemy.attackType);
-      final finalDmg = heroRes != 0
-          ? (damage * (1.0 - heroRes / 100.0)).round().clamp(0, 9999)
-          : damage;
+      // Dampen each hit while enraged so the (now 2) enraged strikes total only
+      // ~+40% rather than a full-HP one-shot.
+      final enrageMult = _bossEnraged ? 0.7 : 1.0;
+      final resisted = heroRes != 0 ? damage * (1.0 - heroRes / 100.0) : damage.toDouble();
+      final finalDmg = (resisted * enrageMult).round().clamp(0, 9999);
 
       int absorbed = 0;
       if (_heroAbsorbShield > 0) {
@@ -7135,13 +7156,16 @@ class GameState extends ChangeNotifier {
   void enemyAttack() {
     final enemy = currentEnemy;
     if (enemy == null) return;
-    final attacks = _bossEnraged ? 3 : 1;
+    // Enrage used to be 3 full attacks (≈ +200% burst) which could 1-2-shot a
+    // full-HP hero from random spikes. Make it steadier: 2 attacks, each damped
+    // (see _enrageDamageMult) so total ≈ +40% — a real threat, not a coin-flip.
+    final attacks = _bossEnraged ? 2 : 1;
     for (int i = 0; i < attacks; i++) {
       _enemyTurn(enemy);
       if (hero.currentHealth <= 0) break;
     }
     if (_bossEnraged && attacks > 1) {
-      battleLog.add('☠ ENRAGED — ${enemy.name} attacks $attacks times!');
+      battleLog.add('☠ ENRAGED — ${enemy.name} strikes twice!');
     }
     notifyListeners();
   }

@@ -503,6 +503,22 @@ class DungeonRun {
     for (var i = 0; i < 8 && second.type == first.type; i++) {
       second = _pickWeightedRoom(rng);
     }
+    // Never present two "mystery" (hidden-icon) doors — that's a non-choice.
+    // If both are mystery types, reroll the second into a revealed type. (Must
+    // match _mysteryTypes in dungeon_screen.dart.)
+    const mysteryTypes = {
+      DungeonRoomType.trap, DungeonRoomType.treasure, DungeonRoomType.shrine,
+      DungeonRoomType.restSite, DungeonRoomType.lockedChest,
+    };
+    if (mysteryTypes.contains(first.type) && mysteryTypes.contains(second.type)) {
+      for (var i = 0; i < 12; i++) {
+        final r = _pickWeightedRoom(rng);
+        if (!mysteryTypes.contains(r.type) && r.type != first.type) {
+          second = r;
+          break;
+        }
+      }
+    }
     // ~3% jackpot: a treasure goblin appears behind the second door
     if (rng.nextInt(100) < 3) second = _makeGoblinRoom(rng);
     roomChoices = [first, second];

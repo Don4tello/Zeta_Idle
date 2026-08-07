@@ -10,6 +10,14 @@ import '../models/hero_trait.dart';
 import '../theme/app_theme.dart';
 import '../widgets/battle_sprites.dart';
 
+/// Classes ordered so the beginner-recommended (low complexity) ones lead —
+/// stable within each complexity tier. Computed once.
+final List<DndClass> _kOrderedClasses = [...DndClass.values]
+  ..sort((a, b) {
+    final c = a.info.complexity.index.compareTo(b.info.complexity.index);
+    return c != 0 ? c : a.index.compareTo(b.index);
+  });
+
 class CharacterCreationResult {
   const CharacterCreationResult({
     required this.name,
@@ -365,9 +373,9 @@ class _ClassStep extends StatelessWidget {
               crossAxisSpacing: 10,
               childAspectRatio: 0.95,
             ),
-            itemCount: DndClass.values.length,
+            itemCount: _kOrderedClasses.length,
             itemBuilder: (ctx, i) {
-              final cls = DndClass.values[i];
+              final cls = _kOrderedClasses[i];
               return _ClassCard(
                 dndClass: cls,
                 selected: selectedClass == cls,
