@@ -136,10 +136,11 @@ class _PvpScreenState extends State<PvpScreen> {
     }
     final mySnap = game.buildPvpSnapshot(
         _authService.currentUser?.uid ?? 'local_challenger');
-    final (won, log) = simulatePvpBattle(mySnap, opponent, Random());
-    game.recordPvpResult(won);
+    // Option A: the result is decided by the visible fight, recorded in
+    // _showResult's onResult. simulate only for the flavor log.
+    final (_, log) = simulatePvpBattle(mySnap, opponent, Random());
+    if (mounted) await _showResult(ctx, game, opponent, log);
     _loadBoard();
-    if (mounted) await _showResult(ctx, game, won, opponent, log);
   }
 
   Future<void> _startMatch(BuildContext context, GameState game) async {
@@ -172,25 +173,14 @@ class _PvpScreenState extends State<PvpScreen> {
     final mySnap = game.buildPvpSnapshot(
         _authService.currentUser?.uid ?? 'local');
     final rng = Random();
-    final (won, log) = simulatePvpBattle(mySnap, opponent, rng);
-
-    try {
-      final uid = _authService.currentUser?.uid;
-      if (uid != null) {
-        await _pvpService.recordResult(
-          userId:    uid,
-          won:       won,
-          newRating: PvpService.updatedRating(game.pvpRating, won),
-        );
-      }
-    } catch (_) {}
-
-    game.recordPvpResult(won);
+    // Option A: result decided by the visible fight (recorded in onResult).
+    // simulate only for the flavor log shown alongside the result.
+    final (_, log) = simulatePvpBattle(mySnap, opponent, rng);
 
     setState(() => _matchBusy = false);
 
     if (mounted) {
-      await _showResult(context, game, won, opponent, log);
+      await _showResult(context, game, opponent, log);
       _loadBoard();
     }
   }
@@ -198,7 +188,6 @@ class _PvpScreenState extends State<PvpScreen> {
   Future<void> _showResult(
     BuildContext context,
     GameState game,
-    bool won,
     PvpSnapshot opponent,
     List<String> log,
   ) async {
@@ -207,9 +196,21 @@ class _PvpScreenState extends State<PvpScreen> {
       MaterialPageRoute(
         builder: (_) => _PvpBattleFullScreen(
           game: game,
-          won: won,
           opponent: opponent,
           log: log,
+          // Record the outcome the player actually saw (option A). Compute the
+          // new rating from the CURRENT rating before recordPvpResult updates it.
+          onResult: (won) async {
+            final newRating = PvpService.updatedRating(game.pvpRating, won);
+            try {
+              final uid = _authService.currentUser?.uid;
+              if (uid != null) {
+                await _pvpService.recordResult(
+                    userId: uid, won: won, newRating: newRating);
+              }
+            } catch (_) {}
+            game.recordPvpResult(won);
+          },
         ),
       ),
     );
@@ -771,14 +772,17 @@ class _MatchButton extends StatelessWidget {
 class _PvpBattleFullScreen extends StatefulWidget {
   const _PvpBattleFullScreen({
     required this.game,
-    required this.won,
     required this.opponent,
     required this.log,
+    required this.onResult,
   });
   final GameState game;
-  final bool won;
   final PvpSnapshot opponent;
   final List<String> log;
+  // Option A: the fight you SEE decides the outcome. Called once when the
+  // animated battle concludes, with the real result; the caller records the
+  // rating/win-loss then (no separate precomputed simulation).
+  final Future<void> Function(bool won) onResult;
   @override
   State<_PvpBattleFullScreen> createState() => _PvpBattleFullScreenState();
 }
@@ -790,6 +794,7 @@ class _PvpBattleFullScreenState extends State<_PvpBattleFullScreen>
   bool _showResult = false;
   bool _fighting = true;
   bool _autoRunning = false;
+  bool _battleWon = false; // decided by the visible fight (option A)
 
   @override
   void initState() {
@@ -858,6 +863,11 @@ class _PvpBattleFullScreenState extends State<_PvpBattleFullScreen>
     _autoRunning = false;
     if (!mounted) return;
 
+    // Option A: whoever's HP hit 0 in the visible fight is the result. The loop
+    // only ends on enemy death (hero won) or hero death (hero lost).
+    _battleWon = game.currentEnemy == null && !game.heroDefeated;
+    await widget.onResult(_battleWon); // record rating/result now
+
     await Future.delayed(const Duration(milliseconds: 600));
     if (mounted) setState(() { _showResult = true; _fighting = false; });
   }
@@ -866,8 +876,8 @@ class _PvpBattleFullScreenState extends State<_PvpBattleFullScreen>
   Widget build(BuildContext context) {
     final opp = widget.opponent;
     final oppSprite = 'hero_${opp.heroClass}';
-    final color = widget.won ? const Color(0xFF44dd88) : const Color(0xFFcc4444);
-    final ratingDelta = widget.won ? '+${PvpService.winDelta}' : '-${PvpService.lossDelta}';
+    final color = _battleWon ? const Color(0xFF44dd88) : const Color(0xFFcc4444);
+    final ratingDelta = _battleWon ? '+${PvpService.winDelta}' : '-${PvpService.lossDelta}';
 
     return Scaffold(
       backgroundColor: AppTheme.darkBg,
@@ -950,7 +960,7 @@ class _PvpBattleFullScreenState extends State<_PvpBattleFullScreen>
               child: Column(
                 children: [
                   Text(
-                    widget.won ? '⚔ VICTORY!' : '💀 DEFEATED',
+                    _battleWon ? '⚔ VICTORY!' : '💀 DEFEATED',
                     style: AppTheme.pixelHeading(fontSize: 21, color: color, letterSpacing: 2),
                   ),
                   const SizedBox(height: 6),

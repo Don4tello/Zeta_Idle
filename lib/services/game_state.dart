@@ -5225,12 +5225,19 @@ class GameState extends ChangeNotifier {
     lastBattleWasFinalVictory = false;
     _resetBattlePerks();
     _activeAffixes = [];
+    // The opponent's flat stat sum (damageMod + attackBonus) is D&D-scale and
+    // can't pierce a built hero's game-scale armor — which made every PvP an
+    // automatic win once the visible fight became authoritative. Give the rival
+    // a game-scale hit derived from their HP budget (a proxy for build power) so
+    // fights are actually contested. First-pass factor; tune from playtest data.
+    final flatAtk   = opponent.damageMod + opponent.attackBonus;
+    final scaledAtk = (opponent.maxHp * 0.045).round();
     currentEnemy = Enemy(
       id: 'hero_${opponent.heroClass}',
       name: opponent.heroName,
       description: 'A rival hero.',
       maxHealth: opponent.maxHp,
-      attack: opponent.damageMod + opponent.attackBonus,
+      attack: max(flatAtk, scaledAtk),
       level: opponent.level,
       armorClass: opponent.armorClass,
     );
