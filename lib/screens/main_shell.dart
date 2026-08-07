@@ -352,7 +352,11 @@ class _MainShellState extends State<MainShell> {
     }
     return Scaffold(
       backgroundColor: AppTheme.darkBg,
-      body: Column(children: [
+      // Keep the top resource bar out from under the Android status bar
+      // (time/battery/wifi). Bottom inset is handled by the nav bar below.
+      body: SafeArea(
+        bottom: false,
+        child: Column(children: [
         Row(children: [
           const Expanded(child: ResourceBar()),
           GestureDetector(
@@ -395,6 +399,7 @@ class _MainShellState extends State<MainShell> {
           onBackToSelect: widget.onBackToSelect,
         )),
       ]),
+      ),
       bottomNavigationBar: SafeArea(
         top: false,
         child: _CustomBottomNav(

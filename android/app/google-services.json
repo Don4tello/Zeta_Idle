@@ -12,7 +12,28 @@
           "package_name": "com.zetaidle.app"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "876548377875-ettp5mo9qp0a2vd5kndq23hpgenu3kn7.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.zetaidle.app",
+            "certificate_hash": "ffbb715be6f85f39220877c34cb4f6cbd87b3e95"
+          }
+        },
+        {
+          "client_id": "876548377875-jmn33n2taj2593lc4tkc28f9dr4b1d40.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.zetaidle.app",
+            "certificate_hash": "82e4a3064382d85b1db99110dc4c79acd1a734cd"
+          }
+        },
+        {
+          "client_id": "876548377875-9j3d3qhnade2rnf3i2djfd2m8odjgi72.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyBGVQP8Iqyqp8Q9pQtdx5kZOZP3VYAaE38"
@@ -20,7 +41,12 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "876548377875-9j3d3qhnade2rnf3i2djfd2m8odjgi72.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
         }
       }
     }

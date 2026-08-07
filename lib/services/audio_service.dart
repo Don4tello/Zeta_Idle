@@ -2,6 +2,7 @@ import 'dart:io' show Platform, File;
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:audioplayers/audioplayers.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../models/hero_ability.dart';
 import '../models/damage_type.dart';
 import '../models/bestiary_entry.dart';
@@ -42,8 +43,30 @@ class AudioService {
   // fire while the phone is locked. Set from the app lifecycle observer.
   bool _appActive = true;
   set appActive(bool v) => _appActive = v;
-  void toggleMute()    { _sfxMuted = !_sfxMuted; if (!_sfxMuted) _resetSfxPool(); }
-  void toggleSfxMute() { _sfxMuted = !_sfxMuted; if (!_sfxMuted) _resetSfxPool(); }
+  void toggleMute()    { _sfxMuted = !_sfxMuted; if (!_sfxMuted) _resetSfxPool(); _persistSettings(); }
+  void toggleSfxMute() { _sfxMuted = !_sfxMuted; if (!_sfxMuted) _resetSfxPool(); _persistSettings(); }
+
+  // ── Persisted audio settings ────────────────────────────────────────────────
+  // Mute toggles used to be in-memory only, so they reset to "on" every launch.
+  static const _kSfxMuteKey   = 'audio_sfx_muted';
+  static const _kMusicMuteKey = 'audio_music_muted';
+
+  /// Load persisted mute settings. Call once at startup BEFORE startMusic().
+  Future<void> loadSettings() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      _sfxMuted   = prefs.getBool(_kSfxMuteKey)   ?? false;
+      _musicMuted = prefs.getBool(_kMusicMuteKey) ?? false;
+    } catch (_) {/* keep defaults */}
+  }
+
+  Future<void> _persistSettings() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool(_kSfxMuteKey, _sfxMuted);
+      await prefs.setBool(_kMusicMuteKey, _musicMuted);
+    } catch (_) {/* best-effort */}
+  }
 
   void _resetSfxPool() {
     for (final p in _sfxPool) { try { p.dispose(); } catch (_) {} }
@@ -226,13 +249,16 @@ class AudioService {
   }
 
   // ── Music context ─────────────────────────────────────────────────────────────
-  // AudioFocus.gain was causing MEDIA_ERROR_UNKNOWN {what:-38} on Samsung Galaxy
-  // devices. Using gainTransientMayDuck avoids the exclusive-focus conflict.
+  // AudioFocus.none — do NOT request audio focus, so the game never ducks or
+  // pauses other apps (e.g. Spotify on a BT speaker). Our music simply mixes;
+  // if the player has muted it, nothing plays anyway. (gain/gainTransientMayDuck
+  // both lowered other apps' volume and only restored it when the game closed —
+  // and gain caused MEDIA_ERROR_UNKNOWN {what:-38} on Samsung; none avoids both.)
   static final _kMusicContext = AudioContext(
     android: AudioContextAndroid(
       contentType: AndroidContentType.music,
       usageType: AndroidUsageType.media,
-      audioFocus: AndroidAudioFocus.gainTransientMayDuck,
+      audioFocus: AndroidAudioFocus.none,
     ),
   );
 
@@ -268,6 +294,7 @@ class AudioService {
       _musicPlayer.setVolume(_musicMuted ? 0.0 : _musicVolume);
       _battlePlayer.setVolume(_musicMuted ? 0.0 : _musicVolume);
     } catch (_) {}
+    _persistSettings();
   }
 
   void setMusicVolume(double v) {

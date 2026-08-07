@@ -178,6 +178,9 @@ class _ZetaIdleAppState extends State<ZetaIdleApp> with WidgetsBindingObserver {
     // the notification permission now that there's a resumed Activity + UI (the
     // Android 13+ dialog won't appear if requested before the first frame).
     WidgetsBinding.instance.addPostFrameCallback((_) async {
+      // Restore persisted mute settings BEFORE starting music, so a player who
+      // turned music/SFX off doesn't get blasted on every launch.
+      await _gameState.audioService.loadSettings();
       _gameState.audioService.startMusic();
       try {
         await NotificationService.instance.requestPermission();

@@ -168,6 +168,10 @@ class GameState extends ChangeNotifier {
 
   int _currentSlot = 0;
   bool _slotLoaded = false;
+  // Set true when an existing save fails to parse: we then REFUSE to auto-save,
+  // so a parse bug can never overwrite (and permanently destroy) the player's
+  // real save on disk — a future app version can still recover it.
+  bool _saveBlocked = false;
   bool _endlessMode = false;
   int _confirmedPrestigeLevel = 0;
 
@@ -3644,7 +3648,7 @@ class GameState extends ChangeNotifier {
     DebugLogger.log('prestige', 'pre-reset confirmedPL=$_confirmedPrestigeLevel pl=$prestigeLevel saved=$savedPrestigeLvl');
 
     try {
-      _resetToDefaults(savedName, savedClass);
+      _resetToDefaults(savedName, savedClass, keepTutorials: true);
     } catch (e, st) {
       DebugLogger.log('prestige', 'resetToDefaults error: $e\n$st');
       // Partial reset is acceptable — continue so restore lines always run.
@@ -3905,7 +3909,7 @@ class GameState extends ChangeNotifier {
     final savedTowerShards   = towerShards + shardsGained;
     final savedMasteryRanks  = Map<String, int>.from(_elementalMasteryRanks);
     // Full reset (includes zeroing prestige + ascension)
-    _resetToDefaults(savedName, savedClass);
+    _resetToDefaults(savedName, savedClass, keepTutorials: true);
     // Restore ascension-permanent data
     ascensionLevel  = savedAscLevel;
     ascensionPoints = savedAscPoints;
@@ -5787,6 +5791,7 @@ class GameState extends ChangeNotifier {
   Future<void> loadSlot(int slot,
       {String? newName, DndClass? heroClass, HeroRace? heroRace, HeroTrait? trait, HeroGender? gender}) async {
     _currentSlot = slot;
+    _saveBlocked = false; // cleared unless this load hits a parse failure
     extraCharacterSlots = await SaveService.getExtraSlots();
     final raw = await saveService.loadRaw(slot: slot);
     final isNewCharacter = newName != null;
@@ -5800,10 +5805,14 @@ class GameState extends ChangeNotifier {
       try {
         loadFromJson(raw);
       } catch (e) {
-        // Save exists but failed to parse — keep the raw data on disk and
-        // start with defaults rather than permanently wiping the save.
-        debugPrint('⚠ loadFromJson failed (slot $slot): $e — keeping save on disk');
+        // Save exists but failed to parse (e.g. a field format changed across
+        // versions). Show defaults for this session, but BLOCK auto-save so we
+        // never overwrite the real save on disk — otherwise a load bug becomes
+        // permanent character loss. A future/fixed version can still load it.
+        debugPrint('⚠ loadFromJson failed (slot $slot): $e — save preserved, auto-save blocked');
+        DebugLogger.log('save_parse_fail', 'slot=$slot err=$e');
         _resetToDefaults('The Warden', DndClass.fighter);
+        _saveBlocked = true;
       }
     } else {
       _resetToDefaults('The Warden', DndClass.fighter);
@@ -5871,7 +5880,7 @@ class GameState extends ChangeNotifier {
     hero.currentHealth = hero.currentHealth.clamp(1, hero.maxHealth);
   }
 
-  void _resetToDefaults(String name, DndClass heroClass) {
+  void _resetToDefaults(String name, DndClass heroClass, {bool keepTutorials = false}) {
     final info = heroClass.info;
     hero.loadFromJson({
       'name': name,
@@ -5920,17 +5929,20 @@ class GameState extends ChangeNotifier {
     pvpDailyRewardClaimed = false;
     endlessUpgrades.reset();
     subclassId = null;
-    // Reset tutorial so new character gets the welcome flow
-    tutorialWelcomeSeen   = false;
-    tutorialBattleSeen    = false;
-    tutorialIdleSeen      = false;
-    tutorialUpgradeSeen   = false;
-    tutorialCampaignSeen  = false;
-    tutorialDungeonSeen   = false;
-    tutorialGearSeen      = false;
-    tutorialForgeSeen     = false;
-    tutorialRunesSeen     = false;
-    tutorialArtifactsSeen = false;
+    // Reset tutorials only for a genuinely new character. On rebirth/ascension
+    // the player has already done the tutorial playthrough, so keep them off.
+    if (!keepTutorials) {
+      tutorialWelcomeSeen   = false;
+      tutorialBattleSeen    = false;
+      tutorialIdleSeen      = false;
+      tutorialUpgradeSeen   = false;
+      tutorialCampaignSeen  = false;
+      tutorialDungeonSeen   = false;
+      tutorialGearSeen      = false;
+      tutorialForgeSeen     = false;
+      tutorialRunesSeen     = false;
+      tutorialArtifactsSeen = false;
+    }
     _deepestDungeonFloor = 0;
     _dungeonHighestTier  = 0;
     activeDungeon        = null;
@@ -8087,7 +8099,9 @@ class GameState extends ChangeNotifier {
     currentEnemy = json['currentEnemy'] != null
         ? Enemy.fromJson(json['currentEnemy'] as Map<String, dynamic>)
         : null;
-    battleLog = List<String>.from(json['battleLog'] as List<dynamic>);
+    battleLog = json['battleLog'] != null
+        ? List<String>.from(json['battleLog'] as List<dynamic>)
+        : <String>[];
     if (json['endlessUpgrades'] != null) {
       endlessUpgrades.loadFromJson(
           json['endlessUpgrades'] as Map<String, dynamic>);
@@ -8548,6 +8562,9 @@ class GameState extends ChangeNotifier {
   }
 
   Future<void> saveToLocal() async {
+    // Never overwrite a save we failed to parse — that would turn a recoverable
+    // load bug into permanent character loss.
+    if (_saveBlocked) return;
     updatePlaytime();
     checkMilestones();
     final data = toJson();

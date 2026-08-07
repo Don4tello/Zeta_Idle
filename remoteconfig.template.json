@@ -1,0 +1,39 @@
+{
+  "conditions": [],
+  "parameters": {
+    "enemy_hp_mult": {
+      "defaultValue": { "value": "0.9" },
+      "valueType": "NUMBER",
+      "description": "Global enemy HP multiplier applied in all battle modes (1.0 = baseline)."
+    },
+    "enemy_atk_mult": {
+      "defaultValue": { "value": "0.9" },
+      "valueType": "NUMBER",
+      "description": "Global enemy attack multiplier applied in all battle modes (1.0 = baseline)."
+    },
+    "gold_mult": {
+      "defaultValue": { "value": "1.0" },
+      "valueType": "NUMBER",
+      "description": "Global gold reward multiplier (1.0 = baseline)."
+    },
+    "xp_mult": {
+      "defaultValue": { "value": "1.0" },
+      "valueType": "NUMBER",
+      "description": "Global XP reward multiplier (1.0 = baseline)."
+    },
+    "campaign_ramp_step": {
+      "defaultValue": { "value": "0.15" },
+      "valueType": "NUMBER",
+      "description": "Within-cycle difficulty ramp step per stage position (0.15 = baseline)."
+    },
+    "campaign_ramp_phasein": {
+      "defaultValue": { "value": "20" },
+      "valueType": "NUMBER",
+      "description": "Stage by which the within-cycle ramp reaches full strength (20 = baseline)."
+    }
+  },
+  "parameterGroups": {},
+  "version": {
+    "description": "Initial balance knobs; enemy HP/ATK reduced 10% (0.9) per playtest feedback."
+  }
+}
