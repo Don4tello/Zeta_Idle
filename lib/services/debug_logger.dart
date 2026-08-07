@@ -9,6 +9,12 @@ class DebugLogger {
   static File? _file;
   static bool _enabled = true;
 
+  /// Optional forwarder (wired in main.dart when Firebase is ready) so every
+  /// logged event becomes a Crashlytics breadcrumb and error-like entries are
+  /// recorded as non-fatals. Kept as a callback so this logger stays platform-
+  /// agnostic (no Firebase import — safe on Windows/desktop).
+  static void Function(String category, String message)? sink;
+
   static Future<void> init() async {
     if (!_enabled) return;
     try {
@@ -26,6 +32,9 @@ class DebugLogger {
   }
 
   static void log(String category, String message) {
+    // Forward to Crashlytics (breadcrumb + non-fatal) even if file logging is
+    // disabled/unavailable — this is the crash-visibility path.
+    try { sink?.call(category, message); } catch (_) {}
     if (!_enabled || _file == null) return;
     final ts = DateTime.now().toIso8601String();
     _file!.writeAsString('[$ts] [$category] $message\n',

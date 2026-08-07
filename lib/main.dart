@@ -7,6 +7,7 @@ import 'package:firebase_app_check/firebase_app_check.dart';
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:firebase_remote_config/firebase_remote_config.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'services/remote_config_service.dart';
 import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
@@ -31,10 +32,47 @@ bool _firebaseReady = false;
 /// App-wide analytics handle (null until Firebase initialises).
 FirebaseAnalytics? analytics;
 
-/// Navigator observers for the router — includes automatic screen tracking
-/// once analytics is available (empty otherwise, e.g. on Windows).
-List<NavigatorObserver> get _routerObservers =>
-    analytics == null ? const [] : [FirebaseAnalyticsObserver(analytics: analytics!)];
+/// Navigator observers for the router — automatic screen tracking (analytics)
+/// plus a Crashlytics breadcrumb of the current screen (for crash context).
+List<NavigatorObserver> get _routerObservers => [
+      if (analytics != null) FirebaseAnalyticsObserver(analytics: analytics!),
+      if (_firebaseReady) _CrashlyticsRouteObserver(),
+    ];
+
+/// Records the current route as a Crashlytics custom key + breadcrumb, so a
+/// crash report shows which screen the player was on.
+class _CrashlyticsRouteObserver extends NavigatorObserver {
+  void _set(Route<dynamic>? route) {
+    final name = route?.settings.name;
+    if (name == null) return;
+    try {
+      FirebaseCrashlytics.instance.setCustomKey('screen', name);
+      FirebaseCrashlytics.instance.log('screen: $name');
+    } catch (_) {}
+  }
+
+  @override
+  void didPush(Route<dynamic> route, Route<dynamic>? previousRoute) => _set(route);
+  @override
+  void didPop(Route<dynamic> route, Route<dynamic>? previousRoute) => _set(previousRoute);
+  @override
+  void didReplace({Route<dynamic>? newRoute, Route<dynamic>? oldRoute}) => _set(newRoute);
+}
+
+/// One-time crash-pipeline self-test: records a single labelled non-fatal on the
+/// first launch after this update so we can confirm reports reach the console.
+Future<void> _crashPipelineSelfTest() async {
+  try {
+    final prefs = await SharedPreferences.getInstance();
+    const key = 'crash_pipeline_verified_v21';
+    if (prefs.getBool(key) ?? false) return;
+    FirebaseCrashlytics.instance.log('crash-reporting self-test');
+    await FirebaseCrashlytics.instance.recordError(
+        'crash-reporting self-test (non-fatal, one-time)', StackTrace.current,
+        fatal: false);
+    await prefs.setBool(key, true);
+  } catch (_) {}
+}
 
 Future<void> main() async {
   runZonedGuarded(_appMain, (error, stack) {
@@ -110,6 +148,30 @@ Future<void> _appMain() async {
         DebugLogger.log('platform_error', '$error\n$stack');
         return true;
       };
+
+      // Forward every DebugLogger event to Crashlytics: always a breadcrumb,
+      // and error-like entries as non-fatals. This surfaces the many caught
+      // exceptions that used to be swallowed silently (init failures, save
+      // parse fails, sync errors, …).
+      DebugLogger.sink = (category, message) {
+        try {
+          FirebaseCrashlytics.instance.log('[$category] $message');
+          final lc = '$category $message'.toLowerCase();
+          final looksLikeError = lc.contains('error') ||
+              lc.contains('exception') ||
+              lc.contains('fail') ||
+              category == 'crash';
+          if (looksLikeError) {
+            FirebaseCrashlytics.instance.recordError(
+                '$category: $message', StackTrace.current,
+                fatal: false);
+          }
+        } catch (_) {}
+      };
+
+      // One-time self-test so we can confirm the pipeline reaches the console
+      // (records a single labelled non-fatal on the first launch after update).
+      unawaited(_crashPipelineSelfTest());
 
       // ── Analytics ──────────────────────────────────────────────────────
       analytics = FirebaseAnalytics.instance;
