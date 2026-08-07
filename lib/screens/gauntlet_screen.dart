@@ -347,7 +347,7 @@ class _GauntletScreenState extends State<GauntletScreen> {
       final dmg    = (rawDmg - armor).clamp(1, 9999);
       setState(() => _heroHp -= dmg);
       _log.add('Enemy hits! $dmg to you${_enemyWeakenRem > 0 ? ' (weakened)' : ''}.');
-      game.audioService.playEnemyAttack(bestiaryFor(enemy.id)?.weakness);
+      game.audioService.playEnemyAttack(weaknessForEnemyId(enemy.id));
       _arenaKey.currentState?.playEnemyAttack(dmg);
       if (_heroHp <= 0) {
         _heroHp = 0;

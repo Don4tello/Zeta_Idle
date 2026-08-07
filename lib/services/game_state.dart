@@ -4696,6 +4696,7 @@ class GameState extends ChangeNotifier {
     if (cost == 0 || shards < cost) return false;
     shards -= cost;
     _abilityRanks[id] = abilityRank(id) + 1;
+    trackUpgradeAbility(); // drives the "Power Up" quest (was never called)
     notifyListeners();
     saveToLocal();
     return true;
@@ -6959,7 +6960,7 @@ class GameState extends ChangeNotifier {
       lastEnemyDamage     = shieldedDmg;
       lastEnemyDamageType = enemy.attackType;
       _comboStacks = 0; // taking damage breaks combo
-      audioService.playEnemyAttack(bestiaryFor(enemy.id)?.weakness);
+      audioService.playEnemyAttack(weaknessForEnemyId(enemy.id));
       final typeTag  = enemy.attackType == DamageType.physical
           ? '' : ' (${enemy.attackType.label})';
       final armorTag = enemy.attackType == DamageType.physical && heroArmor > 0

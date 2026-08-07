@@ -356,6 +356,37 @@ BestiaryEntry? bestiaryFor(String enemyId) {
   }
 }
 
+// Bosses use their own ids (not in kBestiaryEntries), so they had no Type and
+// fell back to the generic hit sound. Map each to a thematic weakness Type so
+// enemy-attack SFX are themed for bosses too.
+const _bossWeakness = <String, BestiaryWeakness>{
+  'goblin_warchief':    BestiaryWeakness.beast,
+  'necromancer_vael':   BestiaryWeakness.undead,
+  'pharaoh_kethran':    BestiaryWeakness.undead,
+  'the_tyrant_eye':     BestiaryWeakness.arcane,
+  'lich_emperor':       BestiaryWeakness.undead,
+  'prism_lord':         BestiaryWeakness.arcane,
+  'shadow_king':        BestiaryWeakness.undead,
+  'glacier_wyrm':       BestiaryWeakness.beast,
+  'king_of_storms':     BestiaryWeakness.arcane,
+  'leviathan':          BestiaryWeakness.beast,
+  'the_dreaming_god':   BestiaryWeakness.arcane,
+  'prime_emperor':      BestiaryWeakness.construct,
+  'god_of_rot':         BestiaryWeakness.demonic,
+  'the_void_god':       BestiaryWeakness.demonic,
+  'null_sovereign':     BestiaryWeakness.demonic,
+  'the_first_prisoner': BestiaryWeakness.demonic,
+  'gate_titan':         BestiaryWeakness.construct,
+  'god_eater':          BestiaryWeakness.demonic,
+  'world_ender':        BestiaryWeakness.demonic,
+  'omega_absolute':     BestiaryWeakness.demonic,
+};
+
+/// Weakness Type for any enemy id — regular enemies via the bestiary, bosses via
+/// the boss map. Used to theme enemy-attack SFX so bosses aren't the generic hit.
+BestiaryWeakness? weaknessForEnemyId(String enemyId) =>
+    bestiaryFor(enemyId)?.weakness ?? _bossWeakness[enemyId];
+
 // Scales from 0% (0 kills) to +10% (100 kills), at +1% per 10 kills.
 double weaknessBonusMult(String enemyId, int kills) {
   final entry = bestiaryFor(enemyId);

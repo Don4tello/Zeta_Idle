@@ -302,7 +302,7 @@ class _BossRushScreenState extends State<BossRushScreen> {
       _heroHp -= dmg;
       _log.add('${boss.name} hits! $dmg dmg'
           '${_bossEnraged ? ' ⚡' : ''}${_enemyWeakenRem > 0 ? ' (weakened)' : ''}.');
-      game.audioService.playEnemyAttack(bestiaryFor(boss.id)?.weakness);
+      game.audioService.playEnemyAttack(weaknessForEnemyId(boss.id));
       _arenaKey.currentState?.playEnemyAttack(dmg);
     }
 

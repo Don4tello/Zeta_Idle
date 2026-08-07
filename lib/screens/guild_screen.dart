@@ -1228,7 +1228,7 @@ class _GuildBossBattleState extends State<_GuildBossBattle> {
         final bossDmg = (raw - (_heroAc + _tempAcBonus)).clamp(1, 9999);
         _heroHp = (_heroHp - bossDmg).clamp(0, _heroMaxHp);
         setState(() => _log.add('${widget.boss.name} hits $bossDmg dmg (You: $_heroHp/$_heroMaxHp)'));
-        game.audioService.playEnemyAttack(bestiaryFor(widget.boss.spriteId)?.weakness);
+        game.audioService.playEnemyAttack(weaknessForEnemyId(widget.boss.spriteId));
         _arenaKey.currentState?.playEnemyAttack(bossDmg);
       }
 
