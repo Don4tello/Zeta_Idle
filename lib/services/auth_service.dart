@@ -1,18 +1,24 @@
+import 'dart:io' show Platform;
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 
 class AuthService {
   FirebaseAuth get _auth => FirebaseAuth.instance;
 
-  // Desktop client ID from Firebase Console → Project Settings → Your apps → Web app
-  // Also needs to be set in Google Cloud Console as an OAuth 2.0 Desktop client.
-  // Replace with your actual client ID before shipping.
-  static const _desktopClientId =
-      'YOUR_DESKTOP_OAUTH_CLIENT_ID.apps.googleusercontent.com';
+  // The web (type 3) OAuth client from google-services.json. On Android this is
+  // used as serverClientId so Firebase gets a valid ID token.
+  static const _webClientId =
+      '876548377875-9j3d3qhnade2rnf3i2djfd2m8odjgi72.apps.googleusercontent.com';
 
+  // IMPORTANT: on Android, clientId MUST be null — Android resolves the client
+  // from google-services.json + the app's SHA fingerprint. Passing a clientId
+  // (as the old placeholder did) crashes SignInHubActivity with a NullPointer.
+  // We only supply serverClientId (the web client) so Firebase Auth works.
   final GoogleSignIn _googleSignIn = GoogleSignIn(
-    clientId: _desktopClientId,
-    scopes: ['email', 'profile'],
+    serverClientId:
+        (!kIsWeb && Platform.isAndroid) ? _webClientId : null,
+    scopes: const ['email', 'profile'],
   );
 
   // ── Current user ──────────────────────────────────────────────────────────
