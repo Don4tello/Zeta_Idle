@@ -1117,7 +1117,9 @@ class GameState extends ChangeNotifier {
   Set<int> stageStars = {}; // stores "stage_star" encoded as stage*10+star(1-3)
 
   void toggleHardMode() {
-    if (campaignStageIndex < 50) return;
+    // Only require stage 50 to turn hard mode ON. Always allow turning it OFF,
+    // so a player who can't beat a boss on hard isn't permanently stuck.
+    if (!campaignHardMode && campaignStageIndex < 50) return;
     campaignHardMode = !campaignHardMode;
     notifyListeners();
     saveToLocal();
@@ -3936,6 +3938,13 @@ class GameState extends ChangeNotifier {
     _unlockedArtifactCells = savedUnlocked;
     towerShards = savedTowerShards;
     _elementalMasteryRanks.addAll(savedMasteryRanks);
+    // Ascension zeroes prestige — keep the dedicated confirmed-prestige key in
+    // sync too, or loadSlot would restore prestigeLevel from it (leaving the
+    // player able to re-ascend / stuck). prestige() does the same.
+    _confirmedPrestigeLevel = 0;
+    unawaited(saveService.savePrestigeLevel(_currentSlot, 0));
+    DebugLogger.log('ascend',
+        'granted ap=$ap ascLevel=$ascensionLevel points=$ascensionPoints shards=$shardsGained');
     battleLog = [
       '✦ ASCENSION Lv$ascensionLevel ✦ $savedName transcends the mortal coil.',
       '+$ap Ascension Points granted.  +$shardsGained Tower Shards 🔮',
