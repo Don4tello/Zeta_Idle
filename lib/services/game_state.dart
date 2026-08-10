@@ -8637,10 +8637,16 @@ class GameState extends ChangeNotifier {
   /// account, so without this a deleted character would resurrect from the
   /// cloud on the next load.
   Future<void> deleteCharacterSlot(int slot) async {
-    // If we're deleting the character still loaded in memory, stop the
-    // auto-save and idle timers from re-persisting it back into the slot we're
-    // about to wipe (otherwise the "deleted" character resurrects on disk).
-    if (slot == _currentSlot) _slotLoaded = false;
+    if (slot == _currentSlot) {
+      // Stop the auto-save/idle timers from re-persisting the deleted hero, and
+      // WIPE the in-memory state now so nothing (ability scores, unlocks, …) can
+      // linger into the next character or get re-saved. Belt-and-suspenders on
+      // top of the new-character reset.
+      _slotLoaded = false;
+      _resetToDefaults('The Warden', DndClass.fighter);
+      _confirmedPrestigeLevel = 0;
+      unawaited(saveService.savePrestigeLevel(slot, 0));
+    }
     await saveService.deleteSlot(slot);
     try {
       if (authService.isGoogleSignedIn) {
