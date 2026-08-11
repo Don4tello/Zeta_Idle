@@ -589,8 +589,8 @@ class DungeonRun {
       floor: floor, type: DungeonRoomType.combat,
       enemyId: EnemyData.spriteIdForStage(stageIdx),
       enemyName: e.name,
-      enemyMaxHp: (e.maxHealth * _floorMult * _tierMult).round(),
-      enemyAtk: (e.attack * _floorMult * _tierMult).round(),
+      enemyMaxHp: (e.maxHealth * 1.3 * _floorMult * _tierMult).round(),
+      enemyAtk: (e.attack * 1.3 * _floorMult * _tierMult).round(),
       enemyAc: e.armorClass + (floor ~/ 5).clamp(0, 6),
     );
   }
@@ -618,8 +618,8 @@ class DungeonRun {
       floor: floor, type: DungeonRoomType.ambush,
       enemyId: EnemyData.spriteIdForStage(stageIdx),
       enemyName: e.name,
-      enemyMaxHp: (e.maxHealth * _floorMult * _tierMult).round(),
-      enemyAtk: (e.attack * _floorMult * _tierMult).round(),
+      enemyMaxHp: (e.maxHealth * 1.3 * _floorMult * _tierMult).round(),
+      enemyAtk: (e.attack * 1.3 * _floorMult * _tierMult).round(),
       enemyAc: e.armorClass + (floor ~/ 5).clamp(0, 6),
       isAmbush: true,
     );
@@ -700,8 +700,8 @@ class DungeonRun {
       enemyName: isFinal ? '★☠ ${e.name}, Dungeon Lord' : '☠ ${e.name}',
       // Boss ATK ramps from 1.2× at floor 1 to 1.6× at floor 17+, giving a smoother
       // difficulty curve instead of the hard cliff at floors 7–9.
-      enemyMaxHp: (e.maxHealth * 2.5 * finalMult * _floorMult * _tierMult).round(),
-      enemyAtk: (e.attack * (1.2 + (floor - 1) * 0.025).clamp(1.2, 1.6) * (isFinal ? 1.2 : 1.0) * _floorMult * _tierMult).round(),
+      enemyMaxHp: (e.maxHealth * 1.9 * finalMult * _floorMult * _tierMult).round(),
+      enemyAtk: (e.attack * (1.1 + (floor - 1) * 0.02).clamp(1.1, 1.4) * (isFinal ? 1.2 : 1.0) * _floorMult * _tierMult).round(),
       enemyAc: e.armorClass + 2 + (floor ~/ 5).clamp(0, 8) + (isFinal ? 2 : 0),
     );
   }
