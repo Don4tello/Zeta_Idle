@@ -90,17 +90,25 @@ class _GuildScreenState extends State<GuildScreen> {
           ));
           _guild!.weeklyBoss ??= GuildBoss.generate(_guild!.memberCount, _guild!.level);
         }
+        if (_guild == null) {
+          // Dev guild id is out of range (shouldn't happen) — safe to clear.
+          game.guildId = null;
+          game.saveToLocal();
+        }
       } else if (GuildService.isAvailable) {
         try {
           _guild = await _guildService.fetchGuild(game.guildId!)
               .timeout(const Duration(seconds: 3));
+          // Only a DEFINITIVE "guild no longer exists" (a successful fetch that
+          // returns null) removes membership. A timeout/network error must NOT
+          // kick the player out of their guild.
+          if (_guild == null) {
+            game.guildId = null;
+            game.saveToLocal();
+          }
         } catch (_) {
-          _guild = null;
+          _guild = null; // transient — keep membership, just can't show it now
         }
-      }
-      if (_guild == null) {
-        game.guildId = null;
-        game.saveToLocal();
       }
     }
     if (_guild == null) {
@@ -109,7 +117,9 @@ class _GuildScreenState extends State<GuildScreen> {
   }
 
   List<Guild> _generateDevGuilds(GameState game) {
-    final rng = Random();
+    // Fixed seed so the placeholder guilds (and the one you joined) are stable
+    // across reloads instead of regenerating differently each time.
+    final rng = Random(0xC0FFEE);
     final level = game.hero.level;
     final guildNames = [
       'Iron Wolves', 'Shadow Covenant', 'Golden Dawn',

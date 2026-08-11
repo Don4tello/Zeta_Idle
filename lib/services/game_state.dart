@@ -179,6 +179,16 @@ class GameState extends ChangeNotifier {
   bool get isSlotLoaded => _slotLoaded;
   int get confirmedPrestigeLevel => _confirmedPrestigeLevel;
 
+  // When true, notifyListeners() is a no-op. Used to batch the ~50 notifies a
+  // background auto-campaign tick would otherwise fire (each a UI rebuild → the
+  // lag introduced with background fights) into a single rebuild at the end.
+  bool _suppressNotify = false;
+  @override
+  void notifyListeners() {
+    if (_suppressNotify) return;
+    super.notifyListeners();
+  }
+
   // Per-battle perk state — reset at the start of every fight
   // ── Ally active ability state (reset each battle) ─────────────────────────
   final Set<String> _allyAbilitiesUsed = {};
@@ -7694,17 +7704,29 @@ class GameState extends ChangeNotifier {
   }
 
   void _runAutoCampaignTick() {
-    startBattle();
-    if (currentEnemy == null) return;
-    // Simulate combat rounds until someone dies
-    for (int round = 0; round < 50; round++) {
-      heroAttack();
-      if (currentEnemy == null) break; // victory handled inside heroAttack
-      if (heroDefeated) {
-        heroDefeated = false;
-        autoCampaign = false; // stop auto on defeat
-        break;
+    // Batch all the round-by-round notifies into ONE rebuild at the end, and
+    // trim the battle log so it can't grow unbounded — this is what made the
+    // background fights lag.
+    _suppressNotify = true;
+    try {
+      startBattle();
+      if (currentEnemy == null) return;
+      // Simulate combat rounds until someone dies
+      for (int round = 0; round < 50; round++) {
+        heroAttack();
+        if (currentEnemy == null) break; // victory handled inside heroAttack
+        if (heroDefeated) {
+          heroDefeated = false;
+          autoCampaign = false; // stop auto on defeat
+          break;
+        }
       }
+    } finally {
+      _suppressNotify = false;
+      if (battleLog.length > 40) {
+        battleLog = battleLog.sublist(battleLog.length - 40);
+      }
+      notifyListeners();
     }
   }
 
