@@ -160,7 +160,7 @@ class NpcAllyDef {
       talent5: AllyTalentDef(
         unlocksAtLevel: 5,
         optionA: AllyTalentOption(id: 'a', name: "Warlord's Edge", icon: '⚔', description: 'Mastery of raw attack power.', atkBonus: 12),
-        optionB: AllyTalentOption(id: 'b', name: 'Battle Master', icon: '🏆', description: 'Combined strikes and damage.', atkBonus: 6, dmgBonus: 6),
+        optionB: AllyTalentOption(id: 'b', name: 'Battle Master', icon: '🏆', description: 'Focused on raw damage.', dmgBonus: 10),
       ),
     ),
     NpcAllyDef(
@@ -344,7 +344,7 @@ class NpcAllyDef {
       talent3: AllyTalentDef(
         unlocksAtLevel: 3,
         optionA: AllyTalentOption(id: 'a', name: 'Brutal Strikes', icon: '💥', description: 'Raw damage above all else.', dmgBonus: 6),
-        optionB: AllyTalentOption(id: 'b', name: 'War Veteran', icon: '🎖', description: 'Combined damage and attack skill.', dmgBonus: 3, atkBonus: 4),
+        optionB: AllyTalentOption(id: 'b', name: 'War Veteran', icon: '🎖', description: 'Focused on raw damage.', dmgBonus: 7),
       ),
       talent5: AllyTalentDef(
         unlocksAtLevel: 5,

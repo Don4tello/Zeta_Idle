@@ -695,7 +695,14 @@ class GameState extends ChangeNotifier {
   // Highest battle-speed tier the player can reach in the campaign. Everyone
   // gets up to 2× (tier 3); the Speed Pass subscription unlocks a permanent
   // 3× (tier 4). Debug builds always allow the fastest tier for testing.
-  int get maxCampaignSpeedTier => kDebugMode ? 4 : (hasSpeedSub ? 4 : 3);
+  // Free players cap at 1.5× (tier 2). 2× (tier 3) requires the purchased 2×
+  // boost or the Speed Pass subscription; the subscription also unlocks 3×.
+  int get maxCampaignSpeedTier {
+    if (kDebugMode) return 4;
+    if (hasSpeedSub) return 4;      // Speed Pass → up to 3×
+    if (speedBoostActive) return 3; // purchased 2× boost → 2×
+    return 2;                       // free → up to 1.5×
+  }
 
   void cycleBattleSpeed() {
     final maxTier = maxCampaignSpeedTier;
@@ -718,7 +725,10 @@ class GameState extends ChangeNotifier {
   }
 
   double get _speedFactor {
-    switch (speedTier) {
+    // Clamp to the allowed tier so a saved 2×/3× reverts to free speed once the
+    // boost or subscription expires.
+    final tier = speedTier.clamp(1, maxCampaignSpeedTier);
+    switch (tier) {
       case 2: return 1.5;
       case 3: return kDebugMode ? 5.0 : 2.0;
       case 4: return kDebugMode ? 10.0 : 3.0;
@@ -5908,6 +5918,7 @@ class GameState extends ChangeNotifier {
       prestigeLevel = _confirmedPrestigeLevel;
     }
     _slotLoaded = true;
+    startPlaytimeTracking(); // begin the play-session clock (loadSlot never did)
     checkLoginStreak();
     notifyListeners();
   }
