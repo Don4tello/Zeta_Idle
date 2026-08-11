@@ -65,6 +65,7 @@ class _BossRushScreenState extends State<BossRushScreen> {
   late DamageType _heroDmgType;
   double _heroDmgAllPct   = 0;
   double _heroPrestigeMult = 1.0;
+  int _rebirthLvl = 0;
   int _heroCritChancePct = 0;
   int _heroCritDmgMult   = 2;
   Map<DamageType, int> _bossResistances = {};
@@ -130,6 +131,7 @@ class _BossRushScreenState extends State<BossRushScreen> {
     _heroDmgType      = game.hero.activeDamageType;
     _heroDmgAllPct    = game.heroAllDamagePctFor(_heroDmgType);
     _heroPrestigeMult = game.prestigeLevel > 0 ? game.prestigeDamageMult : 1.0;
+    _rebirthLvl        = game.prestigeLevel;
     _heroCritChancePct = game.totalCritChancePct;
     _heroCritDmgMult   = game.totalCritDamageMult.round();
     _heroAc      = game.hero.armorClass
@@ -174,7 +176,7 @@ class _BossRushScreenState extends State<BossRushScreen> {
 
   void _spawnBoss() {
     final stageIdx    = _bossStages[_bossIndex];
-    final base        = EnemyData.enemyForStage(stageIdx);
+    final base        = EnemyData.enemyForStage(stageIdx, prestigeLevel: _rebirthLvl);
     final t           = _selectedTier - 1;
     // Steep per-tier scaling — each tier is a meaningful difficulty jump.
     final tierHpMult  = 1.0 + t * 0.40;
@@ -406,9 +408,11 @@ class _BossRushScreenState extends State<BossRushScreen> {
     );
 
     final game = GameStateProvider.of(context);
-    // Rewards: shards proportional to bosses defeated, extra if cleared
-    final shardReward = result.bossesDefeated * 10 + (cleared ? 30 : 0);
-    final echoReward = result.bossesDefeated * 6 + (cleared ? 25 : 0);
+    // Rewards: shards proportional to bosses defeated, extra if cleared.
+    // Soft rewards scale with rebirth to match the +prestige boss difficulty.
+    final rebirthMult = 1.0 + game.prestigeLevel * 0.15;
+    final shardReward = ((result.bossesDefeated * 10 + (cleared ? 30 : 0)) * rebirthMult).round();
+    final echoReward = ((result.bossesDefeated * 6 + (cleared ? 25 : 0)) * rebirthMult).round();
     final crystalReward = cleared ? 15 : 0;
     final mythrilReward = switch (result.rank) {
       'S' => 15, 'A' => 10, 'B' => 6, 'C' => 3, _ => 1,

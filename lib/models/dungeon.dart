@@ -385,13 +385,16 @@ class DungeonRoom {
 // ── Run ───────────────────────────────────────────────────────────────────────
 
 class DungeonRun {
-  DungeonRun({required this.heroMaxHp, required this.heroHp, this.tier = 1});
+  DungeonRun({required this.heroMaxHp, required this.heroHp, this.tier = 1, this.prestigeLevel = 0});
 
   /// Beating the boss on this floor clears the dungeon (every tier).
   static const int clearFloor = 20;
 
   int tier;
   int floor = 1;
+  /// Hero's rebirth count when the run started — scales enemy power so the
+  /// dungeon tracks progression like the campaign (+20% HP / +12% ATK each).
+  final int prestigeLevel;
   final int heroMaxHp;
   int heroHp;
 
@@ -527,7 +530,7 @@ class DungeonRun {
 
   DungeonRoom _makeGoblinRoom(Random rng) {
     final stageIdx = (floor - 1).clamp(0, 50);
-    final e = EnemyData.enemyForStage(stageIdx);
+    final e = EnemyData.enemyForStage(stageIdx, prestigeLevel: prestigeLevel);
     return DungeonRoom(
       floor: floor, type: DungeonRoomType.combat,
       enemyId: 'treasure_goblin',
@@ -584,7 +587,7 @@ class DungeonRun {
 
   DungeonRoom _makeCombatRoom(Random rng) {
     final stageIdx = (floor - 1).clamp(0, 50);
-    final e = EnemyData.enemyForStage(stageIdx);
+    final e = EnemyData.enemyForStage(stageIdx, prestigeLevel: prestigeLevel);
     return DungeonRoom(
       floor: floor, type: DungeonRoomType.combat,
       enemyId: EnemyData.spriteIdForStage(stageIdx),
@@ -597,7 +600,7 @@ class DungeonRun {
 
   DungeonRoom _makeEliteRoom(Random rng) {
     final stageIdx = (floor - 1).clamp(0, 50);
-    final e = EnemyData.enemyForStage(stageIdx);
+    final e = EnemyData.enemyForStage(stageIdx, prestigeLevel: prestigeLevel);
     const traits = ['frenzied', 'shielded', 'vampiric', 'armored', 'swift'];
     final trait = traits[rng.nextInt(traits.length)];
     return DungeonRoom(
@@ -613,7 +616,7 @@ class DungeonRun {
 
   DungeonRoom _makeAmbushRoom(Random rng) {
     final stageIdx = (floor - 1).clamp(0, 50);
-    final e = EnemyData.enemyForStage(stageIdx);
+    final e = EnemyData.enemyForStage(stageIdx, prestigeLevel: prestigeLevel);
     return DungeonRoom(
       floor: floor, type: DungeonRoomType.ambush,
       enemyId: EnemyData.spriteIdForStage(stageIdx),
@@ -690,7 +693,7 @@ class DungeonRun {
 
   DungeonRoom _makeBossRoom(Random rng) {
     final stageIdx = ((floor - 1) * 2).clamp(0, 60);
-    final e = EnemyData.enemyForStage(stageIdx);
+    final e = EnemyData.enemyForStage(stageIdx, prestigeLevel: prestigeLevel);
     // Floor 20 is the dungeon's final boss — beefier and clearly labelled.
     final isFinal = floor >= clearFloor;
     final finalMult = isFinal ? 1.5 : 1.0;

@@ -69,6 +69,7 @@ class _GauntletScreenState extends State<GauntletScreen> {
   late DamageType _heroDmgType;
   double _heroDmgAllPct    = 0;
   double _heroPrestigeMult = 1.0;
+  int _rebirthLvl = 0;
   int _heroCritChancePct = 0;
   int _heroCritDmgMult   = 2;
 
@@ -189,6 +190,7 @@ class _GauntletScreenState extends State<GauntletScreen> {
     _heroDmgType      = game.hero.activeDamageType;
     _heroDmgAllPct    = game.heroAllDamagePctFor(_heroDmgType);
     _heroPrestigeMult = game.prestigeLevel > 0 ? game.prestigeDamageMult : 1.0;
+    _rebirthLvl        = game.prestigeLevel;
     _heroCritChancePct = game.totalCritChancePct;
     _heroCritDmgMult   = game.totalCritDamageMult.round();
 
@@ -223,7 +225,7 @@ class _GauntletScreenState extends State<GauntletScreen> {
   void _spawnEnemy() {
     final tierOffset = (_selectedTier - 1) * 10;
     final stage = _kGauntletStages[_waveIndex] + tierOffset;
-    final base  = EnemyData.enemyForStage(stage);
+    final base  = EnemyData.enemyForStage(stage, prestigeLevel: _rebirthLvl);
     final scaled = Enemy(
       id:          base.id,
       name:        '${base.name}  [${_waveIndex + 1}/$_kGauntletEnemies]',
@@ -446,8 +448,9 @@ class _GauntletScreenState extends State<GauntletScreen> {
     final clearBonus = heroWon ? (2000 * tierMult).round() : 0;
     final score = baseScore + clearBonus;
 
-    // Rewards: scale with tier
-    final essence = (_kills * (5 + _essenceBonusPerKill) * tierMult).round();
+    // Rewards: scale with tier and rebirth (essence tracks the +prestige difficulty)
+    final rebirthMult = 1.0 + game.prestigeLevel * 0.15;
+    final essence = (_kills * (5 + _essenceBonusPerKill) * tierMult * rebirthMult).round();
     final zcoins = heroWon ? (10 + modCount * 5) * _selectedTier : 0;
     final echoMult = (1.0 + modCount * 0.25) * tierMult;
     final echoReward = ((_kills * 8 + (heroWon ? 40 + modCount * 20 : 0)) * echoMult).round();

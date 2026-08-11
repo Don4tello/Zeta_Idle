@@ -5460,7 +5460,7 @@ class GameState extends ChangeNotifier {
   void startDungeon({int tier = 1}) {
     if (!consumeDungeonAttempt()) return;
     if (activeDungeonAffix == null) rollDungeonAffix();
-    activeDungeon = DungeonRun(heroMaxHp: hero.maxHealth, heroHp: hero.maxHealth, tier: tier);
+    activeDungeon = DungeonRun(heroMaxHp: hero.maxHealth, heroHp: hero.maxHealth, tier: tier, prestigeLevel: prestigeLevel);
     activeDungeon!.generateRoomChoices(_rng);
     notifyListeners();
     _setLastAction('Entered the dungeon — Tier $tier, Floor 1.');
@@ -5604,18 +5604,21 @@ class GameState extends ChangeNotifier {
                      : isElite  ? 100 + fl * 40
                      : isAmbushRoom ? 140 + fl * 50
                      : 80 + fl * 30;
+      // Rewards scale with rebirth to match the +prestige enemy difficulty, so
+      // the dungeon stays worth running at high rebirth (soft currency only).
+      final rebirthMult = 1.0 + run.prestigeLevel * 0.15;
       final goblinMult = room.isGoblin ? 6.0 : 1.0;
-      earnedGold = (baseGold * goblinMult * run.goldBonusMult * goldMult).round();
+      earnedGold = (baseGold * goblinMult * run.goldBonusMult * goldMult * rebirthMult).round();
       run.goldEarned += earnedGold;
       gold += earnedGold;
       _totalGoldEarned += earnedGold;
-      run.shardsEarned += isBoss ? 20 + fl * 4 : 8 + fl;
+      run.shardsEarned += ((isBoss ? 20 + fl * 4 : 8 + fl) * rebirthMult).round();
       run.bones += isBoss ? 3 : isElite ? 2 : 1; // slain enemy drops Bones
       run.roomsCleared++;
       if (isBoss) run.bossesDefeated++;
 
-      final shardDrop   = 2 + fl + run.tier * 2;
-      final essenceDrop = 1 + fl ~/ 2 + run.tier;
+      final shardDrop   = ((2 + fl + run.tier * 2) * rebirthMult).round();
+      final essenceDrop = ((1 + fl ~/ 2 + run.tier) * rebirthMult).round();
       shards  += shardDrop;
       essence += essenceDrop;
 
@@ -5711,7 +5714,7 @@ class GameState extends ChangeNotifier {
     final t = run.tier;
     mythril += 5;
     zcoins  += 2 * t;
-    final bonusGold = 500 * t;
+    final bonusGold = (500 * t * (1.0 + run.prestigeLevel * 0.15)).round();
     gold += bonusGold;
     _totalGoldEarned += bonusGold;
     run.goldEarned += bonusGold;
