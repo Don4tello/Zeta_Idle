@@ -4813,6 +4813,17 @@ class GameState extends ChangeNotifier {
   bool get dodgeNextHit        => _dodgeNextHit;
   int get auraHealPerRound     => _auraHealPerRound;
   int get auraRoundsLeft       => _auraRoundsLeft;
+
+  // Classes with no reliable base heal. Their aura ability doubles as lifesteal
+  // (heal a share of damage dealt) while active — the sustain window that lets
+  // pure-damage builds survive sustained-damage bosses like Necromancer Vael.
+  static const _noHealClasses = {
+    DndClass.barbarian, DndClass.fighter, DndClass.rogue, DndClass.ranger,
+    DndClass.monk, DndClass.sorcerer, DndClass.warlock, DndClass.wizard,
+  };
+  static const auraLifestealPct = 25;
+  bool get auraLifestealActive =>
+      _auraRoundsLeft > 0 && _noHealClasses.contains(hero.heroClass);
   int get enemyWeakenPct       => _enemyWeakenPct;
   int get enemyWeakenRounds    => _enemyWeakenRounds;
   int get enemyVulnerablePct    => _enemyVulnerablePct;
@@ -6710,6 +6721,16 @@ class GameState extends ChangeNotifier {
         final steal = (damage * masteryLifestealPct / 100).round()
             .clamp(0, hero.maxHealth - hero.currentHealth);
         if (steal > 0) hero.currentHealth += steal;
+      }
+      // Aura lifesteal — no-heal damage classes drain HP from the damage they
+      // deal while their aura is active (their sustain window).
+      if (auraLifestealActive) {
+        final steal = (damage * auraLifestealPct / 100).round()
+            .clamp(0, hero.maxHealth - hero.currentHealth);
+        if (steal > 0) {
+          hero.currentHealth += steal;
+          battleLog.add('🩸 Draining Aura — +$steal HP.');
+        }
       }
       final effect   = AttackEffect.byId(equippedAttackEffectId);
       final hitWord  = crit ? 'CRITICAL HIT' : (effect?.hitText ?? 'Hit');
