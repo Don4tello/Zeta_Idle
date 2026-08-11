@@ -119,15 +119,18 @@ class _SmartNextActionPanel extends StatelessWidget {
   //     11=UPGRADES 12=ASCEND 13=MASTERY.
   //   shellIdx — main shell tab (0=HERO 1=PLAY 2=INVENTORY 3=SHOP).
   // Both null → informational, not tappable.
-  static (String, String, Color, int?, int?)? _getAction(GameState game) {
+  //   route — a go_router path to push (for screens that aren't a shell/hub tab,
+  //     e.g. the Daily challenges screen). Takes priority when set.
+  static (String, String, Color, int?, int?, String?)? _getAction(GameState game) {
     if (game.hasClaimableDaily && game.campaignStageIndex >= 5) {
+      // Go straight to the Daily challenges screen, not the PLAY mode sheet.
       return ('🎯', 'Daily challenge ready to claim!',
-          const Color(0xFFffaa44), null, 1);
+          const Color(0xFFffaa44), null, null, Routes.daily);
     }
     if (game.achievementsClaimable > 0 && game.campaignStageIndex >= 5) {
       return ('🏆',
           '${game.achievementsClaimable} achievement${game.achievementsClaimable > 1 ? 's' : ''} ready to claim!',
-          const Color(0xFFffcc44), 3, null);
+          const Color(0xFFffcc44), 3, null, null);
     }
     final ready = game.activeExpeditions.where((e) {
       final elapsed = DateTime.now().millisecondsSinceEpoch - e.startEpochMs;
@@ -136,23 +139,23 @@ class _SmartNextActionPanel extends StatelessWidget {
     if (ready.isNotEmpty) {
       return ('🗺️',
           '${ready.length} expedition${ready.length > 1 ? 's' : ''} ready to collect!',
-          const Color(0xFF55cc88), 9, null);
+          const Color(0xFF55cc88), 9, null, null);
     }
     if (game.canPrestige) {
       return ('✨', 'Prestige available — reset for power!',
-          const Color(0xFFcc88ff), 10, null);
+          const Color(0xFFcc88ff), 10, null, null);
     }
     if (game.hasAffordableAbilityUpgrade) {
       return ('⚔', 'Ability upgrade affordable — visit ABILITIES',
-          const Color(0xFF66aaff), 2, null);
+          const Color(0xFF66aaff), 2, null, null);
     }
     if (game.hasAffordablePassiveNode) {
       return ('🌿', 'Passive upgrade affordable — visit PASSIVES',
-          const Color(0xFF55ee88), 4, null);
+          const Color(0xFF55ee88), 4, null, null);
     }
     if (game.hasAffordableEndlessUpgrade) {
       return ('🔮', 'Endless upgrade affordable — visit UPGRADES',
-          const Color(0xFF8866ff), 11, null);
+          const Color(0xFF8866ff), 11, null, null);
     }
     final idleMercs = NpcAllyDef.all
         .where((d) => game.allyUnlocked(d.id) && game.expeditionForMerc(d.id) == null)
@@ -160,13 +163,13 @@ class _SmartNextActionPanel extends StatelessWidget {
     if (idleMercs.isNotEmpty) {
       return ('🧙',
           '${idleMercs.length} merc${idleMercs.length > 1 ? 's' : ''} idle — dispatch on an expedition',
-          const Color(0xFFffaa44), 9, null);
+          const Color(0xFFffaa44), 9, null, null);
     }
     if (game.campaignStageIndex >= 18 && game.campaignStageIndex % 25 >= 18) {
       final remaining = 25 - (game.campaignStageIndex % 25);
       return ('🏆',
           '$remaining campaign stage${remaining > 1 ? 's' : ''} until Prestige gate',
-          const Color(0xFFaaddff), null, null);
+          const Color(0xFFaaddff), null, null, null);
     }
     return null;
   }
@@ -176,9 +179,9 @@ class _SmartNextActionPanel extends StatelessWidget {
     final game = GameStateProvider.of(context);
     final action = _getAction(game);
     if (action == null) return const SizedBox.shrink();
-    final (emoji, text, color, heroHubIdx, shellIdx) = action;
+    final (emoji, text, color, heroHubIdx, shellIdx, route) = action;
     final htc = HeroTabController.maybeOf(context);
-    final tappable = shellIdx != null || (heroHubIdx != null && htc != null);
+    final tappable = route != null || shellIdx != null || (heroHubIdx != null && htc != null);
 
     Widget card = Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
@@ -220,7 +223,9 @@ class _SmartNextActionPanel extends StatelessWidget {
     if (tappable) {
       card = GestureDetector(
         onTap: () {
-          if (shellIdx != null) {
+          if (route != null) {
+            context.push(route);
+          } else if (shellIdx != null) {
             MainShell.switchToTab(shellIdx);
           } else if (heroHubIdx != null) {
             htc?.switchTo(heroHubIdx);
