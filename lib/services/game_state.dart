@@ -3489,14 +3489,18 @@ class GameState extends ChangeNotifier {
     return _prestigeTitles[keys.last];
   }
 
-  double get prestigeGoldMult    => (1.0 + prestigeLevel * 0.15) * _challengeGoldMult * ascGoldMult * ascPrestigeMult;
+  double get prestigeGoldMult    => (1.0 + prestigeLevel * 0.15) * _challengeGoldMult * ascGoldMult * ascPrestigeMult
+      * (1.0 + prestigeShop.paragonTotal(ParagonEffect.gold) / 100);
   double get prestigeXpMult      => (1.0 + prestigeLevel * 0.10)
       * (prestigeShop.isUnlocked('swift_learner') ? 1.30 : 1.0)
+      * (1.0 + prestigeShop.paragonTotal(ParagonEffect.xp) / 100)
       * _boonXpMult * ascXpMult * ascPrestigeMult;
-  double get prestigeIdleMult    => (1.0 + prestigeLevel * 0.10) * ascIdleMult * ascPrestigeMult;
+  double get prestigeIdleMult    => (1.0 + prestigeLevel * 0.10) * ascIdleMult * ascPrestigeMult
+      * (1.0 + prestigeShop.paragonTotal(ParagonEffect.idle) / 100);
   /// Flat % damage bonus from Paragon level — +3.5% per rebirth, plus Destroyer node.
   double get prestigeDamageMult  => (1.0 + prestigeLevel * 0.035)
       * (prestigeShop.isUnlocked('destroyer') ? 1.20 : 1.0)
+      * (1.0 + prestigeShop.paragonTotal(ParagonEffect.damage) / 100)
       * (prestigeShop.isUnlocked('paragon_dominance') ? (1.0 + prestigeLevel * 0.01) : 1.0);
   double get prestigeShardMult   => (prestigeShop.isUnlocked('carrion_picker') ? 1.50 : 1.0) * ascShardMult;
   double get prestigeEssenceMult => (prestigeShop.isUnlocked('essence_bonus')  ? 1.50 : 1.0) * ascEssenceMult;
@@ -3525,7 +3529,7 @@ class GameState extends ChangeNotifier {
       prestigeShop.isUnlocked('forge_bonus') ? 2 : 3;
 
   // ── New prestige effect getters ────────────────────────────────────────────
-  int    get prestigeHpPct          => (prestigeShop.isUnlocked('iron_resolve') ? 30 : 0) + _challengeHpPenalty;
+  int    get prestigeHpPct          => (prestigeShop.isUnlocked('iron_resolve') ? 30 : 0) + prestigeShop.paragonTotal(ParagonEffect.hp).round() + _challengeHpPenalty;
 
   // ── Rebirth boon / challenge helpers ──────────────────────────────────────
   /// Preview soul total for the current run, given an optional boon/challenge.
@@ -3540,8 +3544,8 @@ class GameState extends ChangeNotifier {
   }
   bool   get prestigeHealOnKill     => prestigeShop.isUnlocked('blood_drinker');
   double get prestigeHealOnKillPct  => prestigeShop.isUnlocked('blood_drinker') ? 0.05 : 0.0;
-  int    get prestigeCritBonus      => prestigeShop.isUnlocked('killing_blow')  ? 8  : 0;
-  double get prestigeCritDamageMult => prestigeShop.isUnlocked('deaths_edge')   ? 1.8: 1.0;
+  int    get prestigeCritBonus      => (prestigeShop.isUnlocked('killing_blow')  ? 8  : 0) + prestigeShop.paragonTotal(ParagonEffect.crit).round();
+  double get prestigeCritDamageMult => (prestigeShop.isUnlocked('deaths_edge')   ? 1.8: 1.0) * (1.0 + prestigeShop.paragonTotal(ParagonEffect.critDmg) / 100);
 
   // ── Central crit chance aggregator ───────────────────────────────────────
   // All former "attack bonus" sources are repurposed as +1% crit per point.
@@ -3607,6 +3611,19 @@ class GameState extends ChangeNotifier {
     if (!prestigeShop.canUnlock(node, prestigeSouls)) return false;
     prestigeSouls -= node.soulCost;
     prestigeShop.forceUnlock(nodeId);
+    notifyListeners();
+    saveToLocal();
+    return true;
+  }
+
+  /// Invest a Paragon Point into a rankable board stat (infinite sink).
+  bool rankUpParagon(String id) {
+    final stat = paragonStatById(id);
+    if (stat == null) return false;
+    final cost = prestigeShop.paragonCost(stat);
+    if (prestigeSouls < cost) return false;
+    prestigeSouls -= cost;
+    prestigeShop.rankUpParagon(id);
     notifyListeners();
     saveToLocal();
     return true;

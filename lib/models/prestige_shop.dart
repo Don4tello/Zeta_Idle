@@ -204,10 +204,77 @@ const kPrestigeNodes = <PrestigeNode>[
   ),
 ];
 
+// ── Paragon board: rankable, infinitely-scaling stat nodes ───────────────────
+// The one-time nodes above dry up after a few rebirths. These are repeatable:
+// each rank adds a bonus and costs more, so points always have a direction to
+// pour into (Diablo-style paragon investment by category).
+enum ParagonEffect { damage, hp, gold, xp, crit, critDmg, idle }
+
+class ParagonStat {
+  const ParagonStat({
+    required this.id,
+    required this.name,
+    required this.icon,
+    required this.category,
+    required this.effect,
+    required this.perRank,
+    required this.costBase,
+    this.suffix = '%',
+  });
+  final String id, name, icon;
+  final PrestigeCategory category;
+  final ParagonEffect effect;
+  final double perRank;   // bonus added per rank
+  final int costBase;     // next-rank cost = costBase * (currentRank + 1)
+  final String suffix;
+}
+
+const kParagonStats = <ParagonStat>[
+  ParagonStat(id: 'p_might',    name: 'Might',        icon: '⚔',  category: PrestigeCategory.combat,      effect: ParagonEffect.damage,  perRank: 1.0, costBase: 2),
+  ParagonStat(id: 'p_vitality', name: 'Vitality',     icon: '❤', category: PrestigeCategory.combat,      effect: ParagonEffect.hp,      perRank: 1.0, costBase: 2),
+  ParagonStat(id: 'p_precision',name: 'Precision',    icon: '🎯', category: PrestigeCategory.combat,      effect: ParagonEffect.crit,    perRank: 0.3, costBase: 3),
+  ParagonStat(id: 'p_ferocity', name: 'Ferocity',     icon: '🔥', category: PrestigeCategory.combat,      effect: ParagonEffect.critDmg, perRank: 2.0, costBase: 3),
+  ParagonStat(id: 'p_fortune',  name: 'Fortune',      icon: '💰', category: PrestigeCategory.economy,     effect: ParagonEffect.gold,    perRank: 1.5, costBase: 2),
+  ParagonStat(id: 'p_wisdom',   name: 'Wisdom',       icon: '📖', category: PrestigeCategory.progression, effect: ParagonEffect.xp,      perRank: 1.5, costBase: 2),
+  ParagonStat(id: 'p_eternal',  name: 'Eternal Flame',icon: '✦',  category: PrestigeCategory.mastery,     effect: ParagonEffect.idle,    perRank: 3.0, costBase: 2),
+];
+
+ParagonStat? paragonStatById(String id) {
+  for (final s in kParagonStats) {
+    if (s.id == id) return s;
+  }
+  return null;
+}
+
 class PrestigeShop {
   PrestigeShop();
 
   final Set<String> _unlocked = {};
+  // Paragon board ranks (infinite investment).
+  final Map<String, int> _paragonRanks = {};
+
+  int paragonRank(String id) => _paragonRanks[id] ?? 0;
+  int paragonCost(ParagonStat s) => s.costBase * (paragonRank(s.id) + 1);
+  bool canRankUp(ParagonStat s, int souls) => souls >= paragonCost(s);
+  void rankUpParagon(String id) => _paragonRanks[id] = paragonRank(id) + 1;
+
+  /// Total bonus (summed across ranks) for an effect — e.g. damage % to apply.
+  double paragonTotal(ParagonEffect e) {
+    var sum = 0.0;
+    for (final s in kParagonStats) {
+      if (s.effect == e) sum += paragonRank(s.id) * s.perRank;
+    }
+    return sum;
+  }
+  int get paragonPointsSpent {
+    var total = 0;
+    for (final s in kParagonStats) {
+      final r = paragonRank(s.id);
+      // sum of costs 1..r = costBase * r(r+1)/2
+      total += s.costBase * r * (r + 1) ~/ 2;
+    }
+    return total;
+  }
 
   bool isUnlocked(String id) => _unlocked.contains(id);
 
@@ -229,14 +296,26 @@ class PrestigeShop {
     _unlocked.addAll(saved.keys);
   }
 
-  void reset() => _unlocked.clear();
+  void reset() {
+    _unlocked.clear();
+    _paragonRanks.clear();
+  }
 
-  Map<String, dynamic> toJson() => {'unlocked': _unlocked.toList()};
+  Map<String, dynamic> toJson() => {
+        'unlocked': _unlocked.toList(),
+        'paragonRanks': Map<String, int>.from(_paragonRanks),
+      };
 
   void loadFromJson(Map<String, dynamic> json) {
     _unlocked.clear();
     if (json['unlocked'] != null) {
       _unlocked.addAll((json['unlocked'] as List<dynamic>).cast<String>());
+    }
+    _paragonRanks.clear();
+    if (json['paragonRanks'] != null) {
+      (json['paragonRanks'] as Map<String, dynamic>).forEach((k, v) {
+        _paragonRanks[k] = v as int;
+      });
     }
   }
 }

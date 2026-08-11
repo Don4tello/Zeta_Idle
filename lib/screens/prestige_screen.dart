@@ -30,6 +30,8 @@ class PrestigeScreen extends StatelessWidget {
           const SizedBox(height: 20),
           _BonusPanel(game: game),
           const SizedBox(height: 20),
+          _ParagonBoard(game: game),
+          const SizedBox(height: 20),
           Row(children: [
             Text('PARAGON SHOP',
                 style: AppTheme.pixelHeading(fontSize: 14, letterSpacing: 2)),
@@ -691,6 +693,103 @@ class _SoulBadge extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+// ── Paragon board: rankable, infinitely-scaling stats ────────────────────────
+class _ParagonBoard extends StatelessWidget {
+  const _ParagonBoard({required this.game});
+  final GameState game;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: const Color(0xFF13110E),
+        border: Border.all(color: const Color(0xFF6a4fb0)),
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(children: [
+            Text('✦ PARAGON BOARD',
+                style: AppTheme.pixelHeading(
+                    fontSize: 13, letterSpacing: 2, color: const Color(0xFFb59bff))),
+            const Spacer(),
+            _SoulBadge(souls: game.prestigeSouls, large: false),
+          ]),
+          const SizedBox(height: 2),
+          const Text('Invest points into a direction — ranks scale forever.',
+              style: TextStyle(fontSize: 12, color: AppTheme.textMuted)),
+          const SizedBox(height: 10),
+          ...kParagonStats.map((s) => _ParagonRow(stat: s, game: game)),
+        ],
+      ),
+    );
+  }
+}
+
+class _ParagonRow extends StatelessWidget {
+  const _ParagonRow({required this.stat, required this.game});
+  final ParagonStat stat;
+  final GameState game;
+
+  String _effectLabel(ParagonEffect e) => switch (e) {
+        ParagonEffect.damage => 'damage',
+        ParagonEffect.hp => 'max HP',
+        ParagonEffect.gold => 'gold',
+        ParagonEffect.xp => 'XP',
+        ParagonEffect.crit => 'crit chance',
+        ParagonEffect.critDmg => 'crit damage',
+        ParagonEffect.idle => 'idle income',
+      };
+
+  @override
+  Widget build(BuildContext context) {
+    final rank = game.prestigeShop.paragonRank(stat.id);
+    final cost = game.prestigeShop.paragonCost(stat);
+    final canAfford = game.prestigeSouls >= cost;
+    final total = rank * stat.perRank;
+    final totalStr = total == total.truncateToDouble()
+        ? total.toStringAsFixed(0)
+        : total.toStringAsFixed(1);
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(children: [
+        Text(stat.icon, style: const TextStyle(fontSize: 18)),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Row(children: [
+              Text(stat.name,
+                  style: const TextStyle(
+                      fontSize: 13, fontWeight: FontWeight.bold, color: Colors.white)),
+              const SizedBox(width: 6),
+              Text('Rank $rank',
+                  style: const TextStyle(fontSize: 11, color: Color(0xFFb59bff))),
+            ]),
+            Text('+$totalStr${stat.suffix} ${_effectLabel(stat.effect)}',
+                style: const TextStyle(fontSize: 11, color: AppTheme.textMuted)),
+          ]),
+        ),
+        ElevatedButton(
+          onPressed: canAfford ? () => game.rankUpParagon(stat.id) : null,
+          style: ElevatedButton.styleFrom(
+            backgroundColor: const Color(0xFF2a1f45),
+            foregroundColor: const Color(0xFFb59bff),
+            side: BorderSide(
+                color: canAfford ? const Color(0xFF6a4fb0) : AppTheme.cardBorder),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            minimumSize: const Size(0, 34),
+            disabledForegroundColor: AppTheme.textMuted,
+          ),
+          child: Text('$cost ✦',
+              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+        ),
+      ]),
     );
   }
 }
