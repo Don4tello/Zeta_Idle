@@ -11,3 +11,11 @@ ios/Pods/
 
 # Local-only image backup (do not commit — ~291MB)
 /_image_backup_original/
+
+# Local media / accidental nested repo (not part of the app)
+/ZetaIdle/
+/trailer_footage/
+/screenshot.png
+/dungeon_shot.png
+/zeta_shot.png
+/phone_ads.png

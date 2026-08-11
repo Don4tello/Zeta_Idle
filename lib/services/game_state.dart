@@ -6224,6 +6224,41 @@ class GameState extends ChangeNotifier {
   bool lastHeroCrit   = false;
   int lastEnemyDamage = 0;
   DamageType lastHeroDamageType  = DamageType.physical;
+
+  // Rolling window of the hero's recent actual hits — powers the "avg hit"
+  // stat shown on the battle HUD. Faithful by construction (real damage rolls),
+  // and stays current as gear/build changes because we only keep the last 12.
+  final List<int> _recentHeroHits = [];
+  void _recordHeroHit(int dmg) {
+    _recentHeroHits.add(dmg);
+    if (_recentHeroHits.length > 12) _recentHeroHits.removeAt(0);
+  }
+
+  /// Average damage per swing. Uses recent real hits once the hero has fought;
+  /// before that, a gear-based estimate (avg weapon die + flat damage, scaled
+  /// by damage% and rebirth) so the HUD always shows a sensible number.
+  int get avgHeroHit {
+    if (_recentHeroHits.isNotEmpty) {
+      return (_recentHeroHits.reduce((a, b) => a + b) / _recentHeroHits.length)
+          .round();
+    }
+    final w = inventory.equippedWeaponDamage;
+    final avgDie = w > 0 ? w + (w ~/ 3).clamp(1, 50) / 2.0 : 4.5;
+    final flat = hero.baseDmg
+        + passiveTree.totalOf(PassiveEffect.damageFlat)
+        + inventory.totalOf(ItemStat.damageBonus)
+        + inventory.totalOf(ItemStat.strength)
+        + petDamage + skinDamage + auraDamage
+        + questDamageBonus + artifactPowerBonus + ascDmgBonus
+        + runeDmgBonus + allyDmgBonus;
+    final dmgPct = passiveTree.totalOf(PassiveEffect.allDamage)
+        + inventory.totalOf(ItemStat.damagePercent)
+        + hero.levelBonusDamagePct
+        + hero.damagePctFor(hero.activeDamageType);
+    var est = (avgDie + flat) * (1.0 + dmgPct / 100.0);
+    if (prestigeLevel > 0) est *= prestigeDamageMult;
+    return est.round().clamp(1, 9999999);
+  }
   DamageType lastEnemyDamageType = DamageType.physical;
 
   // Combo streak — consecutive hits without missing or taking damage
@@ -6735,6 +6770,7 @@ class GameState extends ChangeNotifier {
 
       enemy.takeDamage(damage);
       lastHeroDamage     = damage;
+      _recordHeroHit(damage);
       lastHeroDamageType = heroType;
       lastHeroCrit       = crit;
       _comboStacks = (_comboStacks + 1).clamp(0, maxComboStacks);

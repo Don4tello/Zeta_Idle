@@ -961,7 +961,7 @@ class _CombatantPanel extends StatelessWidget {
           Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text('LV.$level  ATK:$attack',
+              Text('LV.$level  HIT:$attack',
                   style: const TextStyle(fontSize: 12, color: AppTheme.textLight)),
               if (damageType != null) ...[
                 const SizedBox(width: 5),

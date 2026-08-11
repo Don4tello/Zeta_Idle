@@ -1134,7 +1134,7 @@ class _GuildBossBattleState extends State<_GuildBossBattle> {
   final List<String> _log = [];
 
   // Cached hero combat stats — unified with the campaign / other arena modes.
-  late int _heroAtk, _heroDmgMod, _heroAc, _heroWeaponBase, _bossAtk;
+  late int _heroDmgMod, _heroAc, _heroWeaponBase, _bossAtk;
   late DamageType _heroDmgType;
   double _heroDmgAllPct = 0, _heroPrestigeMult = 1.0;
   int _heroCritChancePct = 0, _heroCritDmgMult = 2;
@@ -1158,12 +1158,6 @@ class _GuildBossBattleState extends State<_GuildBossBattle> {
     _bossMaxHp = widget.boss.maxHp;
     _bossAtk = (widget.boss.maxHp ~/ 50).clamp(10, 500);
 
-    _heroAtk = hero.attackBonus
-        + game.passiveTree.totalOf(PassiveEffect.attackFlat)
-        + game.inventory.totalOf(ItemStat.attackBonus)
-        + game.inventory.totalOf(ItemStat.strength)
-        + game.petAttackBonus + game.skinAttackBonus
-        + game.questAttackBonus + game.bestiaryChapterBonus;
     _heroDmgMod     = game.heroFlatDmgBonus;
     _heroWeaponBase = game.inventory.equippedWeaponDamage;
     _heroAc = hero.armorClass
@@ -1357,7 +1351,7 @@ class _GuildBossBattleState extends State<_GuildBossBattle> {
                   heroLevel:      widget.game.hero.level,
                   heroCurrentHp:  _heroHp,
                   heroMaxHp:      _heroMaxHp,
-                  heroAttack:     _heroAtk,
+                  heroAttack:     widget.game.avgHeroHit,
                   heroSpriteId:   widget.game.heroBattleSpriteId,
                   heroGender:     widget.game.hero.gender,
                   heroRace:       widget.game.heroRace,

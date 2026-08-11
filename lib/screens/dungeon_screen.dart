@@ -1277,7 +1277,6 @@ class _AnimatedCombatRoomState extends State<_AnimatedCombatRoom> {
   late int _heroMaxHp;
   late int _enemyHp;
   late int _enemyMaxHp;
-  late int _heroAtk;
   late int _heroAc;
   late int _heroDmgMod;
   late int _heroWeaponBase;
@@ -1318,12 +1317,6 @@ class _AnimatedCombatRoomState extends State<_AnimatedCombatRoom> {
     _enemyMaxHp = _enemyHp;
     _enemyShield = g.dungeonAffixEnemyShield;
     _burnTick    = g.dungeonAffixBurnTick(_heroMaxHp);
-    _heroAtk = g.hero.attackBonus
-        + g.passiveTree.totalOf(PassiveEffect.attackFlat)
-        + g.inventory.totalOf(ItemStat.attackBonus)
-        + g.inventory.totalOf(ItemStat.strength)
-        + g.petAttackBonus + g.skinAttackBonus
-        + g.questAttackBonus + g.bestiaryChapterBonus;
     _heroAc = g.hero.armorClass
         + g.passiveTree.totalOf(PassiveEffect.armorFlat)
         + g.inventory.totalOf(ItemStat.armorClass)
@@ -1338,7 +1331,6 @@ class _AnimatedCombatRoomState extends State<_AnimatedCombatRoom> {
 
     // Run blessings + shrine effects apply to the watched fight
     final run = widget.run;
-    _heroAtk    += run.blessingAtk;
     _heroAc     += run.blessingAc;
     _heroDmgMod += run.blessingDmg;
     _dmgDealtMult = run.damageDealtMult;
@@ -1738,7 +1730,7 @@ class _AnimatedCombatRoomState extends State<_AnimatedCombatRoom> {
                 heroLevel:         g.hero.level,
                 heroCurrentHp:     _heroHp,
                 heroMaxHp:         _heroMaxHp,
-                heroAttack:        _heroAtk,
+                heroAttack:        g.avgHeroHit,
                 heroSpriteId:      g.heroBattleSpriteId,
                 heroGender:        g.hero.gender,
                 heroRace:          g.heroRace,

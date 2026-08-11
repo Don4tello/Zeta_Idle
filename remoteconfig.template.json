@@ -30,6 +30,36 @@
       "defaultValue": { "value": "20" },
       "valueType": "NUMBER",
       "description": "Stage by which the within-cycle ramp reaches full strength (20 = baseline)."
+    },
+    "dungeon_hp_mult": {
+      "defaultValue": { "value": "1.0" },
+      "valueType": "NUMBER",
+      "description": "Dungeon-only enemy HP multiplier layered on the floor/tier curve (1.0 = baseline)."
+    },
+    "dungeon_atk_mult": {
+      "defaultValue": { "value": "1.0" },
+      "valueType": "NUMBER",
+      "description": "Dungeon-only enemy attack multiplier layered on the floor/tier curve (1.0 = baseline)."
+    },
+    "boss_rush_hp_mult": {
+      "defaultValue": { "value": "1.0" },
+      "valueType": "NUMBER",
+      "description": "Boss Rush-only boss HP multiplier layered on the tier curve (1.0 = baseline)."
+    },
+    "boss_rush_atk_mult": {
+      "defaultValue": { "value": "1.0" },
+      "valueType": "NUMBER",
+      "description": "Boss Rush-only boss attack multiplier layered on the tier curve (1.0 = baseline)."
+    },
+    "gauntlet_hp_mult": {
+      "defaultValue": { "value": "1.0" },
+      "valueType": "NUMBER",
+      "description": "Gauntlet-only enemy HP multiplier layered on the wave/tier curve (1.0 = baseline)."
+    },
+    "gauntlet_atk_mult": {
+      "defaultValue": { "value": "1.0" },
+      "valueType": "NUMBER",
+      "description": "Gauntlet-only enemy attack multiplier layered on the wave/tier curve (1.0 = baseline)."
     }
   },
   "parameterGroups": {},

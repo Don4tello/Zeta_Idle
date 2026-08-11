@@ -453,8 +453,10 @@ class _BattleScreenState extends State<BattleScreen>
       _arenaKey.currentState?.addExtraFloat(f.value, isHeal: f.isHeal, type: f.type);
     }
 
-    // Check for death / boss enrage after hero hits
-    if (mounted && game.currentEnemy == null) {
+    // Check for death / boss enrage after hero hits. If the hero died in the
+    // same beat (e.g. Volatile Death explosion), don't also play the enemy's
+    // death — a defeated hero means the enemy stands.
+    if (mounted && game.currentEnemy == null && !game.heroDefeated) {
       _arenaKey.currentState?.playEnemyDeath();
     }
 
@@ -736,7 +738,7 @@ class _BattleScreenState extends State<BattleScreen>
             heroLevel:        game.hero.level,
             heroCurrentHp:    game.heroDefeated ? 0 : game.hero.currentHealth,
             heroMaxHp:        game.hero.maxHealth,
-            heroAttack:       game.hero.attack,
+            heroAttack:       game.avgHeroHit,
             heroSpriteId:     game.heroBattleSpriteId,
             heroGender:       game.hero.gender,
             heroRace:         game.heroRace,

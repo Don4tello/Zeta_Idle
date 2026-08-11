@@ -9,6 +9,7 @@ import '../models/damage_type.dart';
 import '../models/enemy.dart';
 import '../models/equipment.dart';
 import '../models/gauntlet.dart';
+import '../services/remote_config_service.dart';
 import '../models/hero_ability.dart';
 import 'main_shell.dart' show TutorialTip;
 import '../models/passive_tree.dart';
@@ -62,7 +63,6 @@ class _GauntletScreenState extends State<GauntletScreen> {
   bool _busyRound = false;
 
   // Cached hero stats (computed at run start)
-  late int _heroAtk;
   late int _heroDmgMod;
   late int _heroAc;
   late int _heroWeaponBase;
@@ -160,16 +160,6 @@ class _GauntletScreenState extends State<GauntletScreen> {
     }
 
     // Cache hero stats
-    _heroAtk = game.hero.attackBonus
-        + game.passiveTree.totalOf(PassiveEffect.attackFlat)
-        + game.inventory.totalOf(ItemStat.attackBonus)
-        + game.inventory.totalOf(ItemStat.strength)
-        + game.petAttackBonus
-        + game.skinAttackBonus
-        + game.questAttackBonus
-        + game.bestiaryChapterBonus
-        + game.runeAtkBonus
-        + game.ascAtkBonus;
 
     _heroDmgMod = game.hero.baseDmg
         + game.passiveTree.totalOf(PassiveEffect.damageFlat)
@@ -230,8 +220,8 @@ class _GauntletScreenState extends State<GauntletScreen> {
       id:          base.id,
       name:        '${base.name}  [${_waveIndex + 1}/$_kGauntletEnemies]',
       description: base.description,
-      maxHealth:   (base.maxHealth * _enemyHpMult).round().clamp(1, 999999),
-      attack:      (base.attack * _enemyAtkMult).round().clamp(1, 9999),
+      maxHealth:   (base.maxHealth * _enemyHpMult * RemoteConfigService.instance.gauntletHpMult).round().clamp(1, 999999),
+      attack:      (base.attack * _enemyAtkMult * RemoteConfigService.instance.gauntletAtkMult).round().clamp(1, 9999),
       level:       base.level,
       armorClass:  base.armorClass,
     );
@@ -662,7 +652,7 @@ class _GauntletScreenState extends State<GauntletScreen> {
                 heroLevel:        game.hero.level,
                 heroCurrentHp:    _heroHp,
                 heroMaxHp:        _heroMaxHp,
-                heroAttack:       _heroAtk,
+                heroAttack:       game.avgHeroHit,
                 heroSpriteId:     game.heroBattleSpriteId,
                 heroGender:       game.hero.gender,
                 heroRace:         game.heroRace,

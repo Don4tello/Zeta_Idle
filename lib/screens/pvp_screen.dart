@@ -908,7 +908,7 @@ class _PvpBattleFullScreenState extends State<_PvpBattleFullScreen>
                   heroLevel:        widget.game.hero.level,
                   heroCurrentHp:    widget.game.hero.currentHealth,
                   heroMaxHp:        widget.game.hero.maxHealth,
-                  heroAttack:       widget.game.hero.attack,
+                  heroAttack:       widget.game.avgHeroHit,
                   heroSpriteId:     widget.game.heroBattleSpriteId,
                   heroGender:       widget.game.hero.gender,
                   heroRace:         widget.game.heroRace,

@@ -153,7 +153,9 @@ class _EndlessScreenState extends State<EndlessScreen> {
     for (final f in game.pendingFloats) {
       _arenaKey.currentState?.addExtraFloat(f.value, isHeal: f.isHeal, type: f.type);
     }
-    if (mounted && game.currentEnemy == null) {
+    // If the hero died the same beat (e.g. Volatile Death explosion), don't
+    // also play the enemy's death — a defeated hero means the enemy stands.
+    if (mounted && game.currentEnemy == null && !game.heroDefeated) {
       _arenaKey.currentState?.playEnemyDeath();
     }
 
@@ -828,7 +830,7 @@ class _EndlessScreenState extends State<EndlessScreen> {
                 heroLevel:         game.hero.level,
                 heroCurrentHp:     game.hero.currentHealth,
                 heroMaxHp:         game.hero.maxHealth,
-                heroAttack:        game.hero.attack,
+                heroAttack:        game.avgHeroHit,
                 heroSpriteId:      game.heroBattleSpriteId,
                 heroGender:        game.hero.gender,
                 heroRace:          game.heroRace,

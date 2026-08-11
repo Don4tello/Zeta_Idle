@@ -1,6 +1,7 @@
 import 'dart:math';
 import '../data/enemy_data.dart';
 import '../models/hero_ability.dart';
+import '../services/remote_config_service.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Dungeon (roguelite run)
@@ -487,6 +488,10 @@ class DungeonRun {
   double get _floorMult =>
       (1.0 + (floor - 1) * 0.05) * pow(1.25, (floor - 1) ~/ 5);
   double get _tierMult  => 1.0 + (tier  - 1) * 0.30;
+  // Live-tunable Dungeon-only difficulty dials (default 1.0) layered on top of
+  // the floor/tier curve, so difficulty can be adjusted from the console.
+  double get _hpScale  => _floorMult * _tierMult * RemoteConfigService.instance.dungeonHpMult;
+  double get _atkScale => _floorMult * _tierMult * RemoteConfigService.instance.dungeonAtkMult;
 
   // Two-door generation: non-boss floors offer two distinct rooms and the
   // player picks one (chooseRoom). Boss floors are forced single rooms.
@@ -535,8 +540,8 @@ class DungeonRun {
       floor: floor, type: DungeonRoomType.combat,
       enemyId: 'treasure_goblin',
       enemyName: 'Treasure Goblin',
-      enemyMaxHp: (e.maxHealth * 1.2 * _floorMult * _tierMult).round(),
-      enemyAtk: (e.attack * 0.5 * _floorMult * _tierMult).round().clamp(1, 9999),
+      enemyMaxHp: (e.maxHealth * 1.2 * _hpScale).round(),
+      enemyAtk: (e.attack * 0.5 * _atkScale).round().clamp(1, 9999),
       enemyAc: e.armorClass + 3 + (floor ~/ 5).clamp(0, 6),
       isGoblin: true,
     );
@@ -592,8 +597,8 @@ class DungeonRun {
       floor: floor, type: DungeonRoomType.combat,
       enemyId: EnemyData.spriteIdForStage(stageIdx),
       enemyName: e.name,
-      enemyMaxHp: (e.maxHealth * 1.3 * _floorMult * _tierMult).round(),
-      enemyAtk: (e.attack * 1.3 * _floorMult * _tierMult).round(),
+      enemyMaxHp: (e.maxHealth * 1.3 * _hpScale).round(),
+      enemyAtk: (e.attack * 1.3 * _atkScale).round(),
       enemyAc: e.armorClass + (floor ~/ 5).clamp(0, 6),
     );
   }
@@ -607,8 +612,8 @@ class DungeonRun {
       floor: floor, type: DungeonRoomType.elite,
       enemyId: EnemyData.spriteIdForStage(stageIdx),
       enemyName: '★ ${e.name}',
-      enemyMaxHp: (e.maxHealth * 1.5 * _floorMult * _tierMult).round(),
-      enemyAtk: (e.attack * 1.4 * _floorMult * _tierMult).round(),
+      enemyMaxHp: (e.maxHealth * 1.5 * _hpScale).round(),
+      enemyAtk: (e.attack * 1.4 * _atkScale).round(),
       enemyAc: e.armorClass + 1 + (floor ~/ 5).clamp(0, 6) + (trait == 'armored' ? 4 : 0),
       eliteTrait: trait,
     );
@@ -621,8 +626,8 @@ class DungeonRun {
       floor: floor, type: DungeonRoomType.ambush,
       enemyId: EnemyData.spriteIdForStage(stageIdx),
       enemyName: e.name,
-      enemyMaxHp: (e.maxHealth * 1.3 * _floorMult * _tierMult).round(),
-      enemyAtk: (e.attack * 1.3 * _floorMult * _tierMult).round(),
+      enemyMaxHp: (e.maxHealth * 1.3 * _hpScale).round(),
+      enemyAtk: (e.attack * 1.3 * _atkScale).round(),
       enemyAc: e.armorClass + (floor ~/ 5).clamp(0, 6),
       isAmbush: true,
     );
@@ -703,8 +708,8 @@ class DungeonRun {
       enemyName: isFinal ? '★☠ ${e.name}, Dungeon Lord' : '☠ ${e.name}',
       // Boss ATK ramps from 1.2× at floor 1 to 1.6× at floor 17+, giving a smoother
       // difficulty curve instead of the hard cliff at floors 7–9.
-      enemyMaxHp: (e.maxHealth * 1.9 * finalMult * _floorMult * _tierMult).round(),
-      enemyAtk: (e.attack * (1.1 + (floor - 1) * 0.02).clamp(1.1, 1.4) * (isFinal ? 1.2 : 1.0) * _floorMult * _tierMult).round(),
+      enemyMaxHp: (e.maxHealth * 1.9 * finalMult * _hpScale).round(),
+      enemyAtk: (e.attack * (1.1 + (floor - 1) * 0.02).clamp(1.1, 1.4) * (isFinal ? 1.2 : 1.0) * _atkScale).round(),
       enemyAc: e.armorClass + 2 + (floor ~/ 5).clamp(0, 8) + (isFinal ? 2 : 0),
     );
   }

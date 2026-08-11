@@ -9,6 +9,7 @@ import '../models/boss_rush.dart';
 import '../models/damage_type.dart';
 import '../models/enemy.dart';
 import '../models/equipment.dart';
+import '../services/remote_config_service.dart';
 import '../models/hero_ability.dart';
 import '../models/passive_tree.dart';
 import '../services/game_state.dart';
@@ -58,7 +59,6 @@ class _BossRushScreenState extends State<BossRushScreen> {
   bool _autoRepeat = false;
 
   // Keep a copy of game-state bonuses cached for the run
-  late int _heroAtk;
   late int _heroDmgMod;
   late int _heroAc;
   late int _heroMaxHpBase;
@@ -116,14 +116,6 @@ class _BossRushScreenState extends State<BossRushScreen> {
   void _startRun() {
     final game = GameStateProvider.of(context);
     if (!game.consumeBossRushAttempt()) return;
-    _heroAtk     = game.hero.attackBonus
-        + game.passiveTree.totalOf(PassiveEffect.attackFlat)
-        + game.inventory.totalOf(ItemStat.attackBonus)
-        + game.inventory.totalOf(ItemStat.strength)
-        + game.petAttackBonus
-        + game.skinAttackBonus
-        + game.questAttackBonus
-        + game.bestiaryChapterBonus;
     _heroDmgMod  = game.hero.baseDmg
         + game.passiveTree.totalOf(PassiveEffect.damageFlat)
         + game.inventory.totalOf(ItemStat.damageBonus)
@@ -188,8 +180,8 @@ class _BossRushScreenState extends State<BossRushScreen> {
       id:          base.id,
       name:        '★ ${base.name} (Boss ${_bossIndex + 1})',
       description: base.description,
-      maxHealth:   (base.maxHealth * 2 * tierHpMult).round(),
-      attack:      (base.attack * 1.25 * tierAtkMult).round(),
+      maxHealth:   (base.maxHealth * 2 * tierHpMult * RemoteConfigService.instance.bossRushHpMult).round(),
+      attack:      (base.attack * 1.25 * tierAtkMult * RemoteConfigService.instance.bossRushAtkMult).round(),
       level:       bossLevel,
       armorClass:  base.armorClass + 2 + tierAcBonus,
     );
@@ -641,7 +633,7 @@ class _BossRushScreenState extends State<BossRushScreen> {
                   heroLevel:        game.hero.level,
                   heroCurrentHp:    _heroHp,
                   heroMaxHp:        _heroMaxHp,
-                  heroAttack:       _heroAtk,
+                  heroAttack:       game.avgHeroHit,
                   heroSpriteId:     game.heroBattleSpriteId,
                   heroGender:       game.hero.gender,
                   heroRace:         game.heroRace,

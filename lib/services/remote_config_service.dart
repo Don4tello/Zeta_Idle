@@ -16,6 +16,12 @@ import 'package:firebase_remote_config/firebase_remote_config.dart';
 ///   campaign_ramp_phasein    (default 20)   stage by which the ramp is full
 ///   gold_mult                (default 1.0)  global gold reward dial
 ///   xp_mult                  (default 1.0)  global XP reward dial
+///   dungeon_hp_mult          (default 1.0)  Dungeon-only enemy HP dial
+///   dungeon_atk_mult         (default 1.0)  Dungeon-only enemy attack dial
+///   boss_rush_hp_mult        (default 1.0)  Boss Rush-only boss HP dial
+///   boss_rush_atk_mult       (default 1.0)  Boss Rush-only boss attack dial
+///   gauntlet_hp_mult         (default 1.0)  Gauntlet-only enemy HP dial
+///   gauntlet_atk_mult        (default 1.0)  Gauntlet-only enemy attack dial
 class RemoteConfigService {
   RemoteConfigService._();
   static final RemoteConfigService instance = RemoteConfigService._();
@@ -30,6 +36,12 @@ class RemoteConfigService {
     'campaign_ramp_phasein': 20.0,
     'gold_mult': 1.0,
     'xp_mult': 1.0,
+    'dungeon_hp_mult': 1.0,
+    'dungeon_atk_mult': 1.0,
+    'boss_rush_hp_mult': 1.0,
+    'boss_rush_atk_mult': 1.0,
+    'gauntlet_hp_mult': 1.0,
+    'gauntlet_atk_mult': 1.0,
   };
 
   Future<void> init(FirebaseRemoteConfig rc) async {
@@ -68,4 +80,12 @@ class RemoteConfigService {
   // ── Economy (applied in the battle reward path) ─────────────────────────────
   double get goldMult => _d('gold_mult', 1.0);
   double get xpMult   => _d('xp_mult', 1.0);
+
+  // ── Per-mode difficulty dials (multiply on top of each mode's own curve) ────
+  double get dungeonHpMult    => _d('dungeon_hp_mult', 1.0);
+  double get dungeonAtkMult   => _d('dungeon_atk_mult', 1.0);
+  double get bossRushHpMult   => _d('boss_rush_hp_mult', 1.0);
+  double get bossRushAtkMult  => _d('boss_rush_atk_mult', 1.0);
+  double get gauntletHpMult   => _d('gauntlet_hp_mult', 1.0);
+  double get gauntletAtkMult  => _d('gauntlet_atk_mult', 1.0);
 }
