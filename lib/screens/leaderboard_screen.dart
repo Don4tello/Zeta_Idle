@@ -45,7 +45,8 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
       await LeaderboardService.submitScore(
         board:     widget.board,
         heroName:  game.hero.name,
-        heroClass: game.hero.heroClass.name,
+        heroClass: game.hero.heroClass.displayName,
+        subclass:  game.subclassName,
         rebirths:  rebirths,
         stage:     stage,
       );
@@ -264,7 +265,7 @@ class _EntryTile extends StatelessWidget {
                           fontSize: 8, letterSpacing: 1, color: AppTheme.accentGold)),
                 ],
               ]),
-              Text(entry.heroClass,
+              Text(entry.classLabel,
                   style: const TextStyle(fontSize: 10, color: AppTheme.textMuted)),
             ],
           ),

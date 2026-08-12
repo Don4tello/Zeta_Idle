@@ -34,6 +34,7 @@ class LeaderboardEntry {
     required this.uid,
     required this.name,
     required this.heroClass,
+    required this.subclass,
     required this.rebirths,
     required this.stage,
     required this.score,
@@ -43,10 +44,15 @@ class LeaderboardEntry {
   final String uid;
   final String name;
   final String heroClass;
+  final String? subclass; // level-50 subclass, e.g. "Oath of the Watchers"
   final int rebirths;
   final int stage;
   final int score;
   final DateTime updatedAt;
+
+  /// Class label with the subclass in brackets, e.g. "Paladin (Oath of the Watchers)".
+  String get classLabel =>
+      (subclass != null && subclass!.isNotEmpty) ? '$heroClass ($subclass)' : heroClass;
 
   factory LeaderboardEntry.fromDoc(Map<String, dynamic> data, String uid) {
     // Tolerate legacy Endless docs that only stored 'floor'.
@@ -56,6 +62,7 @@ class LeaderboardEntry {
       uid: uid,
       name: data['name'] as String? ?? 'Unknown',
       heroClass: data['heroClass'] as String? ?? '',
+      subclass: data['subclass'] as String?,
       rebirths: rebirths,
       stage: stage,
       score: (data['score'] as int?) ?? stage,
@@ -94,6 +101,7 @@ class LeaderboardService {
     required LeaderboardBoard board,
     required String heroName,
     required String heroClass,
+    String? subclass,
     required int rebirths,
     required int stage,
   }) async {
@@ -109,6 +117,7 @@ class LeaderboardService {
       await doc.set({
         'name':      heroName,
         'heroClass': heroClass,
+        'subclass':  subclass,
         'rebirths':  rebirths,
         'stage':     stage,
         'score':     score,

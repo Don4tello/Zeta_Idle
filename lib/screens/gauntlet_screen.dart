@@ -463,7 +463,8 @@ class _GauntletScreenState extends State<GauntletScreen> {
     LeaderboardService.submitScore(
       board:     LeaderboardBoard.gauntlet,
       heroName:  game.hero.name,
-      heroClass: game.hero.heroClass.name,
+      heroClass: game.hero.heroClass.displayName,
+      subclass:  game.subclassName,
       rebirths:  game.prestigeLevel,
       stage:     game.gauntletHighScore,
     );

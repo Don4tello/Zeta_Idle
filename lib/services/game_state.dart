@@ -3803,7 +3803,8 @@ class GameState extends ChangeNotifier {
     LeaderboardService.submitScore(
       board:     LeaderboardBoard.campaign,
       heroName:  hero.name,
-      heroClass: hero.heroClass.name,
+      heroClass: hero.heroClass.displayName,
+      subclass:  subclassName,
       rebirths:  prestigeLevel,
       stage:     campaignStageIndex,
     );
@@ -5869,7 +5870,8 @@ class GameState extends ChangeNotifier {
       LeaderboardService.submitScore(
         board:     LeaderboardBoard.dungeon,
         heroName:  hero.name,
-        heroClass: hero.heroClass.name,
+        heroClass: hero.heroClass.displayName,
+        subclass:  subclassName,
         rebirths:  prestigeLevel,
         stage:     _dungeonHighestTier,
       );

@@ -422,7 +422,8 @@ class _BossRushScreenState extends State<BossRushScreen> {
     LeaderboardService.submitScore(
       board:     LeaderboardBoard.bossRush,
       heroName:  game.hero.name,
-      heroClass: game.hero.heroClass.name,
+      heroClass: game.hero.heroClass.displayName,
+      subclass:  game.subclassName,
       rebirths:  game.prestigeLevel,
       stage:     game.bossRushBestScore,
     );
