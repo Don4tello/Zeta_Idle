@@ -424,6 +424,7 @@ class _BossRushScreenState extends State<BossRushScreen> {
       heroName:  game.hero.name,
       heroClass: game.hero.heroClass.displayName,
       subclass:  game.subclassName,
+      spriteId:  game.hero.spriteId,
       rebirths:  game.prestigeLevel,
       stage:     game.bossRushBestScore,
     );

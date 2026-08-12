@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../services/game_state.dart';
 import '../services/leaderboard_service.dart';
 import '../theme/app_theme.dart';
+import '../widgets/battle_sprites.dart';
 
 class LeaderboardScreen extends StatefulWidget {
   const LeaderboardScreen({super.key, this.board = LeaderboardBoard.campaign});
@@ -47,6 +48,7 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
         heroName:  game.hero.name,
         heroClass: game.hero.heroClass.displayName,
         subclass:  game.subclassName,
+        spriteId:  game.hero.spriteId,
         rebirths:  rebirths,
         stage:     stage,
       );
@@ -244,6 +246,21 @@ class _EntryTile extends StatelessWidget {
                       fontSize: 11,
                       color: rankColor,
                       fontWeight: FontWeight.bold)),
+        ),
+        // Class-sprite avatar (legacy rows without a stored sprite show a chip).
+        Container(
+          width: 34,
+          height: 34,
+          margin: const EdgeInsets.only(right: 10),
+          decoration: BoxDecoration(
+            color: const Color(0xFF1B1A17),
+            border: Border.all(color: AppTheme.cardBorder),
+            borderRadius: BorderRadius.circular(4),
+          ),
+          alignment: Alignment.center,
+          child: entry.spriteId.isNotEmpty
+              ? StaticEnemySprite(spriteId: entry.spriteId, size: 28)
+              : const Icon(Icons.person, size: 18, color: AppTheme.textMuted),
         ),
         Expanded(
           child: Column(

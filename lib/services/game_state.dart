@@ -3805,6 +3805,7 @@ class GameState extends ChangeNotifier {
       heroName:  hero.name,
       heroClass: hero.heroClass.displayName,
       subclass:  subclassName,
+      spriteId:  hero.spriteId,
       rebirths:  prestigeLevel,
       stage:     campaignStageIndex,
     );
@@ -5872,6 +5873,7 @@ class GameState extends ChangeNotifier {
         heroName:  hero.name,
         heroClass: hero.heroClass.displayName,
         subclass:  subclassName,
+        spriteId:  hero.spriteId,
         rebirths:  prestigeLevel,
         stage:     _dungeonHighestTier,
       );

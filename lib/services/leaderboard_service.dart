@@ -35,6 +35,7 @@ class LeaderboardEntry {
     required this.name,
     required this.heroClass,
     required this.subclass,
+    required this.spriteId,
     required this.rebirths,
     required this.stage,
     required this.score,
@@ -45,6 +46,7 @@ class LeaderboardEntry {
   final String name;
   final String heroClass;
   final String? subclass; // level-50 subclass, e.g. "Oath of the Watchers"
+  final String spriteId;  // hero class sprite for the row avatar ('' = legacy)
   final int rebirths;
   final int stage;
   final int score;
@@ -63,6 +65,7 @@ class LeaderboardEntry {
       name: data['name'] as String? ?? 'Unknown',
       heroClass: data['heroClass'] as String? ?? '',
       subclass: data['subclass'] as String?,
+      spriteId: data['spriteId'] as String? ?? '',
       rebirths: rebirths,
       stage: stage,
       score: (data['score'] as int?) ?? stage,
@@ -102,6 +105,7 @@ class LeaderboardService {
     required String heroName,
     required String heroClass,
     String? subclass,
+    String spriteId = '',
     required int rebirths,
     required int stage,
   }) async {
@@ -118,6 +122,7 @@ class LeaderboardService {
         'name':      heroName,
         'heroClass': heroClass,
         'subclass':  subclass,
+        'spriteId':  spriteId,
         'rebirths':  rebirths,
         'stage':     stage,
         'score':     score,
