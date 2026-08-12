@@ -6,8 +6,10 @@ import '../models/dungeon.dart';
 import '../models/equipment.dart';
 import '../models/hero_ability.dart';
 import '../models/passive_tree.dart';
+import '../screens/leaderboard_screen.dart';
 import '../screens/main_shell.dart';
 import '../services/game_state.dart';
+import '../services/leaderboard_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/arena_ability_effect.dart';
 import '../widgets/battle_arena.dart';
@@ -91,6 +93,16 @@ class _DungeonScreenState extends State<DungeonScreen> {
                 tooltip: 'Flee dungeon',
               )
             : null,
+        actions: [
+          if (run == null || run.isOver)
+            IconButton(
+              icon: const Icon(Icons.leaderboard, color: AppTheme.accentGold, size: 20),
+              tooltip: 'Dungeon Leaderboard',
+              onPressed: () => Navigator.of(context).push(MaterialPageRoute(
+                builder: (_) => const LeaderboardScreen(board: LeaderboardBoard.dungeon),
+              )),
+            ),
+        ],
       ),
       body: body,
     );

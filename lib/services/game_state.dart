@@ -3798,6 +3798,16 @@ class GameState extends ChangeNotifier {
     // Prestige milestone rewards (levels 5 / 10 / 15 / 20)
     _checkPrestigeMilestones(prestigeLevel);
 
+    // Update the Campaign leaderboard at the rebirth moment (fire-and-forget,
+    // personal-best only) so boards fill even for players who never open them.
+    LeaderboardService.submitScore(
+      board:     LeaderboardBoard.campaign,
+      heroName:  hero.name,
+      heroClass: hero.heroClass.name,
+      rebirths:  prestigeLevel,
+      stage:     campaignStageIndex,
+    );
+
     battleLog = [
       '✦ REBIRTH Lv$prestigeLevel ✦ $savedName returns, forged anew.',
       '+$soulsEarned Paragon Point${soulsEarned == 1 ? '' : 's'}  •  '
@@ -5855,6 +5865,14 @@ class GameState extends ChangeNotifier {
     // bosses, does NOT mark the tier cleared or unlock the next one.
     if (run.isCleared && run.tier > _dungeonHighestTier) {
       _dungeonHighestTier = run.tier;
+      // Update the Dungeon leaderboard (fire-and-forget, personal-best only).
+      LeaderboardService.submitScore(
+        board:     LeaderboardBoard.dungeon,
+        heroName:  hero.name,
+        heroClass: hero.heroClass.name,
+        rebirths:  prestigeLevel,
+        stage:     _dungeonHighestTier,
+      );
     }
     // Mythril: 1 per 2 floors completed
     final mythrilEarned = (run.floor / 2).floor().clamp(0, 10);

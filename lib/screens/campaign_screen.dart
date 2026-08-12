@@ -42,6 +42,11 @@ class CampaignScreen extends StatelessWidget {
               tooltip: game.campaignHardMode ? 'Disable Hard Mode' : 'Enable Hard Mode (+50% rewards)',
               onPressed: () => game.toggleHardMode(),
             ),
+          IconButton(
+            icon: const Icon(Icons.leaderboard, color: AppTheme.accentGold, size: 20),
+            tooltip: 'Campaign Leaderboard',
+            onPressed: () => context.push(Routes.leaderboard),
+          ),
         ],
       ),
       body: ListView(

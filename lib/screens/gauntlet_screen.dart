@@ -13,7 +13,9 @@ import '../services/remote_config_service.dart';
 import '../models/hero_ability.dart';
 import 'main_shell.dart' show TutorialTip;
 import '../models/passive_tree.dart';
+import '../screens/leaderboard_screen.dart';
 import '../services/game_state.dart';
+import '../services/leaderboard_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/arena_ability_effect.dart';
 import '../widgets/battle_arena.dart';
@@ -457,6 +459,14 @@ class _GauntletScreenState extends State<GauntletScreen> {
     );
 
     game.recordGauntletResult(result, tier: _selectedTier);
+    // Update the Gauntlet leaderboard (fire-and-forget, personal-best only).
+    LeaderboardService.submitScore(
+      board:     LeaderboardBoard.gauntlet,
+      heroName:  game.hero.name,
+      heroClass: game.hero.heroClass.name,
+      rebirths:  game.prestigeLevel,
+      stage:     game.gauntletHighScore,
+    );
 
     setState(() {
       _result = result;
@@ -483,6 +493,14 @@ class _GauntletScreenState extends State<GauntletScreen> {
         title: Text('CHALLENGE GAUNTLET',
             style: AppTheme.pixelHeading(fontSize: 13, letterSpacing: 2)),
         actions: [
+          if (_phase != _Phase.battle)
+            IconButton(
+              icon: const Icon(Icons.leaderboard, color: AppTheme.accentGold, size: 20),
+              tooltip: 'Gauntlet Leaderboard',
+              onPressed: () => Navigator.of(context).push(MaterialPageRoute(
+                builder: (_) => const LeaderboardScreen(board: LeaderboardBoard.gauntlet),
+              )),
+            ),
           if (_phase == _Phase.battle && _game != null)
             _InlineSpeedButton(
               speedTier: _game!.speedTier,

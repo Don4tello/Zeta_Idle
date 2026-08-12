@@ -42,6 +42,22 @@ service cloud.firestore {
       allow read:  if signedIn();
       allow write: if isOwner(uid);
     }
+    match /campaign_leaderboard/{uid} {
+      allow read:  if signedIn();
+      allow write: if isOwner(uid);
+    }
+    match /dungeon_leaderboard/{uid} {
+      allow read:  if signedIn();
+      allow write: if isOwner(uid);
+    }
+    match /boss_rush_leaderboard/{uid} {
+      allow read:  if signedIn();
+      allow write: if isOwner(uid);
+    }
+    match /gauntlet_leaderboard/{uid} {
+      allow read:  if signedIn();
+      allow write: if isOwner(uid);
+    }
 
     // ── Guilds (collaborative) ──────────────────────────────────────────────
     // Any signed-in user can read (browse/search) and write (join, chat,

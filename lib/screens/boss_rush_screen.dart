@@ -12,7 +12,9 @@ import '../models/equipment.dart';
 import '../services/remote_config_service.dart';
 import '../models/hero_ability.dart';
 import '../models/passive_tree.dart';
+import '../screens/leaderboard_screen.dart';
 import '../services/game_state.dart';
+import '../services/leaderboard_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/arena_ability_effect.dart';
 import '../widgets/battle_arena.dart';
@@ -416,6 +418,14 @@ class _BossRushScreenState extends State<BossRushScreen> {
     if (result.score > (game.bossRushBestScore)) {
       game.bossRushBestScore = result.score;
     }
+    // Update the Boss Rush leaderboard (fire-and-forget, personal-best only).
+    LeaderboardService.submitScore(
+      board:     LeaderboardBoard.bossRush,
+      heroName:  game.hero.name,
+      heroClass: game.hero.heroClass.name,
+      rebirths:  game.prestigeLevel,
+      stage:     game.bossRushBestScore,
+    );
     if (cleared) game.recordBossRushComplete(tier: _selectedTier);
     // Artifact drop: A or S rank clears reward 1 artifact
     if (cleared && (result.rank == 'S' || result.rank == 'A')) {
@@ -466,6 +476,14 @@ class _BossRushScreenState extends State<BossRushScreen> {
             : null,
         automaticallyImplyLeading: !_running || _done,
         actions: [
+          if (!_running && !_done)
+            IconButton(
+              icon: const Icon(Icons.leaderboard, color: AppTheme.accentGold, size: 20),
+              tooltip: 'Boss Rush Leaderboard',
+              onPressed: () => Navigator.of(context).push(MaterialPageRoute(
+                builder: (_) => const LeaderboardScreen(board: LeaderboardBoard.bossRush),
+              )),
+            ),
           if (_running && _game != null)
             _InlineSpeedButton(
               speedTier: _game!.speedTier,

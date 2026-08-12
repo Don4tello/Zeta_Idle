@@ -1,10 +1,12 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import '../services/game_state.dart';
 import '../services/leaderboard_service.dart';
 import '../theme/app_theme.dart';
 
 class LeaderboardScreen extends StatefulWidget {
-  const LeaderboardScreen({super.key});
+  const LeaderboardScreen({super.key, this.board = LeaderboardBoard.campaign});
+
+  final LeaderboardBoard board;
 
   @override
   State<LeaderboardScreen> createState() => _LeaderboardScreenState();
@@ -13,28 +15,60 @@ class LeaderboardScreen extends StatefulWidget {
 class _LeaderboardScreenState extends State<LeaderboardScreen> {
   List<LeaderboardEntry>? _top50;
   LeaderboardEntry? _personal;
+  int? _personalRank;
   bool _loading = true;
   String? _error;
 
   @override
   void initState() {
     super.initState();
-    _load();
+    // Defer to post-frame: _load reads the GameState InheritedWidget, which
+    // isn't safe to look up during initState.
+    WidgetsBinding.instance.addPostFrameCallback((_) => _load());
   }
 
+  /// Submit the player's current best (silent, personal-best only), then read
+  /// the board — so opening the leaderboard always reflects your latest run.
   Future<void> _load() async {
     setState(() { _loading = true; _error = null; });
     try {
+      final game = GameStateProvider.of(context);
+      // rebirths only ranks the campaign/dungeon boards; the score-based boards
+      // ignore it. stage carries each board's headline metric.
+      final (rebirths, stage) = switch (widget.board) {
+        LeaderboardBoard.campaign => (game.prestigeLevel, game.campaignStageIndex),
+        LeaderboardBoard.dungeon  => (game.prestigeLevel, game.dungeonHighestTier),
+        LeaderboardBoard.endless  => (0, game.endlessStageIndex),
+        LeaderboardBoard.bossRush => (0, game.bossRushBestScore),
+        LeaderboardBoard.gauntlet => (0, game.gauntletHighScore),
+      };
+      await LeaderboardService.submitScore(
+        board:     widget.board,
+        heroName:  game.hero.name,
+        heroClass: game.hero.heroClass.name,
+        rebirths:  rebirths,
+        stage:     stage,
+      );
+
       final results = await Future.wait([
-        LeaderboardService.fetchTop50(),
-        LeaderboardService.fetchPersonalBest(),
+        LeaderboardService.fetchTop50(widget.board),
+        LeaderboardService.fetchPersonalBest(widget.board),
       ]);
+      final top50 = results[0] as List<LeaderboardEntry>;
+      final personal = results[1] as LeaderboardEntry?;
+      final rank = personal != null
+          ? await LeaderboardService.fetchPersonalRank(widget.board, personal.score)
+          : null;
+
+      if (!mounted) return;
       setState(() {
-        _top50    = results[0] as List<LeaderboardEntry>;
-        _personal = results[1] as LeaderboardEntry?;
-        _loading  = false;
+        _top50        = top50;
+        _personal     = personal;
+        _personalRank = rank;
+        _loading      = false;
       });
     } catch (e) {
+      if (!mounted) return;
       setState(() {
         _error   = 'Could not load leaderboard.';
         _loading = false;
@@ -44,13 +78,11 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final game = GameStateProvider.of(context);
-
     return Scaffold(
       backgroundColor: const Color(0xFF1B1A17),
       appBar: AppBar(
         backgroundColor: const Color(0xFF2A2623),
-        title: Text('ENDLESS LEADERBOARD',
+        title: Text(widget.board.title,
             style: AppTheme.pixelHeading(fontSize: 13, letterSpacing: 2)),
         actions: [
           IconButton(
@@ -62,7 +94,7 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
       ),
       body: Column(
         children: [
-          _PersonalBestBar(game: game, entry: _personal),
+          _PersonalBar(board: widget.board, entry: _personal, rank: _personalRank),
           Expanded(
             child: _loading
                 ? const Center(child: CircularProgressIndicator())
@@ -78,8 +110,13 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
                             padding: const EdgeInsets.symmetric(
                                 vertical: 8, horizontal: 16),
                             itemCount: _top50!.length,
-                            itemBuilder: (ctx, i) =>
-                                _EntryTile(rank: i + 1, entry: _top50![i]),
+                            itemBuilder: (ctx, i) => _EntryTile(
+                              rank: i + 1,
+                              entry: _top50![i],
+                              board: widget.board,
+                              isMe: _personal != null &&
+                                  _top50![i].uid == _personal!.uid,
+                            ),
                           ),
           ),
         ],
@@ -88,14 +125,26 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
   }
 }
 
-class _PersonalBestBar extends StatelessWidget {
-  const _PersonalBestBar({required this.game, required this.entry});
-  final GameState game;
+/// Formats a board entry's score for display, e.g. "R7 · Stage 92" / "Floor 40".
+String _formatScore(LeaderboardBoard board, LeaderboardEntry e) {
+  final rb = e.rebirths > 0 ? 'R${e.rebirths} · ' : '';
+  return switch (board) {
+    LeaderboardBoard.campaign => '${rb}Stage ${e.stage}',
+    LeaderboardBoard.dungeon  => '${rb}Tier ${e.stage}',
+    LeaderboardBoard.endless  => 'Floor ${e.stage}',
+    LeaderboardBoard.bossRush => 'Score ${e.stage}',
+    LeaderboardBoard.gauntlet => 'Score ${e.stage}',
+  };
+}
+
+class _PersonalBar extends StatelessWidget {
+  const _PersonalBar({required this.board, required this.entry, required this.rank});
+  final LeaderboardBoard board;
   final LeaderboardEntry? entry;
+  final int? rank;
 
   @override
   Widget build(BuildContext context) {
-    final floor = entry?.floor ?? 0;
     return Container(
       color: const Color(0xFF231F1B),
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -105,10 +154,9 @@ class _PersonalBestBar extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('Your personal best',
-                  style: const TextStyle(
-                      color: AppTheme.textMuted, fontSize: 11)),
-              Text('Floor $floor',
+              const Text('Your personal best',
+                  style: TextStyle(color: AppTheme.textMuted, fontSize: 11)),
+              Text(entry != null ? _formatScore(board, entry!) : 'Not ranked yet',
                   style: const TextStyle(
                       color: Colors.white,
                       fontSize: 15,
@@ -116,56 +164,40 @@ class _PersonalBestBar extends StatelessWidget {
             ],
           ),
         ),
-        _SubmitButton(game: game),
+        if (rank != null)
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: BoxDecoration(
+              color: AppTheme.accentGold.withValues(alpha: 0.1),
+              border: Border.all(color: AppTheme.accentGold.withValues(alpha: 0.5)),
+              borderRadius: BorderRadius.circular(4),
+            ),
+            child: Column(children: [
+              const Text('RANK',
+                  style: TextStyle(color: AppTheme.textMuted, fontSize: 9, letterSpacing: 1)),
+              Text('#$rank',
+                  style: const TextStyle(
+                      color: AppTheme.accentGold,
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold)),
+            ]),
+          ),
       ]),
     );
   }
 }
 
-class _SubmitButton extends StatefulWidget {
-  const _SubmitButton({required this.game});
-  final GameState game;
-
-  @override
-  State<_SubmitButton> createState() => _SubmitButtonState();
-}
-
-class _SubmitButtonState extends State<_SubmitButton> {
-  bool _submitting = false;
-
-  @override
-  Widget build(BuildContext context) {
-    return TextButton(
-      onPressed: _submitting ? null : _submit,
-      style: TextButton.styleFrom(
-        foregroundColor: AppTheme.accentGold,
-        side: const BorderSide(color: AppTheme.accentGold),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-        minimumSize: Size.zero,
-        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-      ),
-      child: Text(
-        _submitting ? 'SUBMITTING...' : 'SUBMIT SCORE',
-        style: AppTheme.pixelHeading(fontSize: 10, letterSpacing: 1),
-      ),
-    );
-  }
-
-  Future<void> _submit() async {
-    setState(() => _submitting = true);
-    await LeaderboardService.submitScore(
-      heroName: widget.game.hero.name,
-      floor: widget.game.campaignStageIndex,
-      heroClass: widget.game.hero.heroClass.name,
-    );
-    if (mounted) setState(() => _submitting = false);
-  }
-}
-
 class _EntryTile extends StatelessWidget {
-  const _EntryTile({required this.rank, required this.entry});
+  const _EntryTile({
+    required this.rank,
+    required this.entry,
+    required this.board,
+    required this.isMe,
+  });
   final int rank;
   final LeaderboardEntry entry;
+  final LeaderboardBoard board;
+  final bool isMe;
 
   @override
   Widget build(BuildContext context) {
@@ -183,18 +215,22 @@ class _EntryTile extends StatelessWidget {
       _ => '#$rank',
     };
 
+    final borderColor = isMe
+        ? AppTheme.accentGold
+        : isTop3
+            ? rankColor.withValues(alpha: 0.4)
+            : AppTheme.cardBorder;
+
     return Container(
       margin: const EdgeInsets.only(bottom: 6),
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
-        color: isTop3
-            ? rankColor.withValues(alpha: 0.06)
-            : const Color(0xFF231F1B),
-        border: Border.all(
-          color: isTop3
-              ? rankColor.withValues(alpha: 0.4)
-              : AppTheme.cardBorder,
-        ),
+        color: isMe
+            ? AppTheme.accentGold.withValues(alpha: 0.08)
+            : isTop3
+                ? rankColor.withValues(alpha: 0.06)
+                : const Color(0xFF231F1B),
+        border: Border.all(color: borderColor, width: isMe ? 1.5 : 1),
         borderRadius: BorderRadius.circular(4),
       ),
       child: Row(children: [
@@ -212,20 +248,30 @@ class _EntryTile extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(entry.name,
-                  style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.bold,
-                      color: isTop3 ? rankColor : Colors.white70)),
+              Row(children: [
+                Flexible(
+                  child: Text(entry.name,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                          color: isTop3 ? rankColor : Colors.white70)),
+                ),
+                if (isMe) ...[
+                  const SizedBox(width: 6),
+                  Text('YOU',
+                      style: AppTheme.pixelHeading(
+                          fontSize: 8, letterSpacing: 1, color: AppTheme.accentGold)),
+                ],
+              ]),
               Text(entry.heroClass,
-                  style: const TextStyle(
-                      fontSize: 10, color: AppTheme.textMuted)),
+                  style: const TextStyle(fontSize: 10, color: AppTheme.textMuted)),
             ],
           ),
         ),
-        Text('Floor ${entry.floor}',
+        Text(_formatScore(board, entry),
             style: TextStyle(
-                fontSize: 14,
+                fontSize: 13,
                 fontWeight: FontWeight.bold,
                 color: isTop3 ? rankColor : Colors.white70)),
       ]),

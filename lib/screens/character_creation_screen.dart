@@ -8,6 +8,7 @@ import '../models/hero_model.dart' show HeroGender;
 import '../models/hero_race.dart';
 import '../models/hero_trait.dart';
 import '../theme/app_theme.dart';
+import '../utils/profanity_filter.dart';
 import '../widgets/battle_sprites.dart';
 
 /// Classes ordered so the beginner-recommended (low complexity) ones lead —
@@ -73,6 +74,14 @@ class _CharacterCreationScreenState extends State<CharacterCreationScreen> {
   void _create() {
     if (_selectedClass == null || _selectedRace == null || _selectedTrait == null) return;
     final name = _nameController.text.trim();
+    if (ProfanityFilter.isProfane(name)) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        content: Text('Please choose a different name — that one isn\'t allowed.'),
+        backgroundColor: Color(0xFF8a2a2a),
+        behavior: SnackBarBehavior.floating,
+      ));
+      return;
+    }
     Navigator.pop(
       context,
       CharacterCreationResult(
