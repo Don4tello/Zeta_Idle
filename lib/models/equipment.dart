@@ -497,8 +497,8 @@ class EquipmentItem {
         (r) => r.name == json['rarity'],
         orElse: () => ItemRarity.common,
       ),
-      bonuses: (json['bonuses'] as List<dynamic>).map((b) {
-        final m = b as Map<String, dynamic>;
+      bonuses: (json['bonuses'] as List).map((b) {
+        final m = Map<String, dynamic>.from(b as Map);
         // Legacy migration: 'hitChance' (HIT) was a redundant crit source,
         // identical to attackBonus (CRIT). Fold old items into attackBonus so
         // saved gear keeps the exact same crit value.
@@ -519,7 +519,7 @@ class EquipmentItem {
           : null,
       setId: setStr,
       gem: json['gem'] != null
-          ? Gem.fromJson(json['gem'] as Map<String, dynamic>)
+          ? Gem.fromJson(Map<String, dynamic>.from(json['gem'] as Map))
           : null,
     )..locked = (json['locked'] as bool?) ?? false
      ..upgradeTier = (json['upgradeTier'] as int?) ?? 0
@@ -940,16 +940,21 @@ class EquipmentInventory {
   void loadFromJson(Map<String, dynamic> json) {
     equipped.clear();
     bag.clear();
-    if (json['equipped'] != null) {
-      (json['equipped'] as Map<String, dynamic>).forEach((k, v) {
+    // Nested maps from JSON (and empty {} literals from reset) come back as
+    // _Map<dynamic, dynamic>, which a direct `as Map<String, dynamic>` cast
+    // rejects. Convert defensively so no storage/reset source can crash us.
+    final rawEquipped = json['equipped'];
+    if (rawEquipped is Map) {
+      Map<String, dynamic>.from(rawEquipped).forEach((k, v) {
         final slot = ItemSlot.values.firstWhere((s) => s.name == k,
             orElse: () => ItemSlot.weapon);
-        equipped[slot] = EquipmentItem.fromJson(v as Map<String, dynamic>);
+        equipped[slot] = EquipmentItem.fromJson(Map<String, dynamic>.from(v as Map));
       });
     }
-    if (json['bag'] != null) {
-      bag.addAll((json['bag'] as List<dynamic>)
-          .map((i) => EquipmentItem.fromJson(i as Map<String, dynamic>)));
+    final rawBag = json['bag'];
+    if (rawBag is List) {
+      bag.addAll(rawBag
+          .map((i) => EquipmentItem.fromJson(Map<String, dynamic>.from(i as Map))));
     }
   }
 

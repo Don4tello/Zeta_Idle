@@ -8291,8 +8291,8 @@ class GameState extends ChangeNotifier {
       passiveTree.loadFromJson(json['passiveTree'] as Map<String, dynamic>);
     }
     passiveTree.setElementalistNodes(hero.heroClass.info.classElement, hero.heroClass.info.secondaryElement);
-    if (json['inventory'] != null) {
-      inventory.loadFromJson(json['inventory'] as Map<String, dynamic>);
+    if (json['inventory'] is Map) {
+      inventory.loadFromJson(Map<String, dynamic>.from(json['inventory'] as Map));
     }
     zcoins             = (json['zcoins'] as int?) ?? (json['crystals'] as int?) ?? 0;
     speedTier            = (json['speedTier']           as int?) ?? 1;
