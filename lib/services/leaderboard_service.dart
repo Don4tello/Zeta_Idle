@@ -117,19 +117,31 @@ class LeaderboardService {
       final existing = await doc.get();
       final currentBest = (existing.data()?['score'] as int?)
           ?? (existing.data()?['floor'] as int?) ?? -1;
-      if (score <= currentBest) return; // only update on improvement
-      await doc.set({
-        'name':      heroName,
-        'heroClass': heroClass,
-        'subclass':  subclass,
-        'spriteId':  spriteId,
-        'rebirths':  rebirths,
-        'stage':     stage,
-        'score':     score,
-        // Keep 'floor' mirrored so any legacy reader still works.
-        'floor':     stage,
-        'updatedAt': FieldValue.serverTimestamp(),
-      });
+      if (score > currentBest) {
+        // New personal best — write the full record.
+        await doc.set({
+          'name':      heroName,
+          'heroClass': heroClass,
+          'subclass':  subclass,
+          'spriteId':  spriteId,
+          'rebirths':  rebirths,
+          'stage':     stage,
+          'score':     score,
+          // Keep 'floor' mirrored so any legacy reader still works.
+          'floor':     stage,
+          'updatedAt': FieldValue.serverTimestamp(),
+        });
+      } else if (existing.exists) {
+        // Score didn't improve, but refresh the identity fields so a rename,
+        // new subclass, or the added sprite/capitalization show up without
+        // waiting for a new record. Best score/stage are left untouched.
+        await doc.set({
+          'name':      heroName,
+          'heroClass': heroClass,
+          'subclass':  subclass,
+          'spriteId':  spriteId,
+        }, SetOptions(merge: true));
+      }
     } catch (_) {
       // leaderboard is non-critical — silently ignore errors
     }

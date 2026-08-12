@@ -7,6 +7,7 @@ import '../models/equipment.dart';
 import '../services/game_state.dart';
 import '../services/notification_service.dart';
 import '../theme/app_theme.dart';
+import '../utils/profanity_filter.dart';
 
 Color _salvageColor(ItemRarity r) => switch (r) {
   ItemRarity.common   => const Color(0xFFaaaaaa),
@@ -32,6 +33,52 @@ class SettingsScreen extends StatefulWidget {
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
+  Future<void> _showRenameDialog(GameState game) async {
+    final controller = TextEditingController(text: game.hero.name);
+    await showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF231F1B),
+        title: Text('RENAME HERO',
+            style: AppTheme.pixelHeading(fontSize: 14, letterSpacing: 1)),
+        content: TextField(
+          controller: controller,
+          maxLength: 20,
+          autofocus: true,
+          style: const TextStyle(color: AppTheme.textLight, fontSize: 18),
+          decoration: const InputDecoration(
+            hintText: 'Enter a hero name',
+            counterStyle: TextStyle(color: AppTheme.textMuted),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('CANCEL', style: TextStyle(color: AppTheme.textMuted)),
+          ),
+          TextButton(
+            onPressed: () {
+              final name = controller.text.trim();
+              if (ProfanityFilter.isProfane(name)) {
+                ScaffoldMessenger.of(ctx).showSnackBar(const SnackBar(
+                  content: Text('Please choose a different name — that one isn\'t allowed.'),
+                  backgroundColor: Color(0xFF8a2a2a),
+                  behavior: SnackBarBehavior.floating,
+                ));
+                return;
+              }
+              if (game.renameHero(name)) {
+                Navigator.pop(ctx);
+                setState(() {});
+              }
+            },
+            child: const Text('SAVE', style: TextStyle(color: Color(0xFF66aaff))),
+          ),
+        ],
+      ),
+    );
+  }
+
   Future<void> _sendFeedback(GameState game) async {
     // Pre-fill an email with diagnostic context so bug reports are actionable.
     final body = StringBuffer()
@@ -104,6 +151,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       minimumSize: const Size(0, 36),
                     ),
                   ),
+            ),
+            _SettingsTile(
+              title: 'Hero Name',
+              subtitle: game.hero.name,
+              trailing: TextButton(
+                onPressed: () => _showRenameDialog(game),
+                child: const Text('RENAME',
+                    style: TextStyle(color: Color(0xFF66aaff))),
+              ),
             ),
             const SizedBox(height: 16),
 

@@ -4031,6 +4031,17 @@ class GameState extends ChangeNotifier {
 
   String? get subclassName => activeSubclass?.name;
   ColorFilter? get subclassColorFilter => activeSubclass?.spriteColorFilter;
+
+  /// Rename the hero. Returns false if the trimmed name is empty. Leaderboard
+  /// rows refresh their identity the next time each board is opened.
+  bool renameHero(String newName) {
+    final trimmed = newName.trim();
+    if (trimmed.isEmpty) return false;
+    hero.name = trimmed;
+    notifyListeners();
+    saveToLocal();
+    return true;
+  }
   /// The sprite colour filter to render the hero with: an equipped shop skin
   /// takes priority; otherwise the chosen subclass's cosmetic tint applies.
   /// A premium skin is fully self-coloured, so no filter is applied over it.
