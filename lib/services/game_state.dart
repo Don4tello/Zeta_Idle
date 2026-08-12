@@ -4032,11 +4032,20 @@ class GameState extends ChangeNotifier {
   String? get subclassName => activeSubclass?.name;
   ColorFilter? get subclassColorFilter => activeSubclass?.spriteColorFilter;
 
-  /// Rename the hero. Returns false if the trimmed name is empty. Leaderboard
-  /// rows refresh their identity the next time each board is opened.
+  // Hero rename: costs Z-Coins, escalating +50 each time (50, 100, 150, …).
+  static const int kRenameHeroBaseCost = 50;
+  int heroRenameCount = 0;
+  int get renameHeroCost => kRenameHeroBaseCost * (heroRenameCount + 1);
+
+  /// Rename the hero for [renameHeroCost] Z-Coins. Returns false if the name is
+  /// empty or the player can't afford it. Each successful rename raises the next
+  /// cost by 50. Leaderboard rows refresh their identity when boards are opened.
   bool renameHero(String newName) {
     final trimmed = newName.trim();
     if (trimmed.isEmpty) return false;
+    if (zcoins < renameHeroCost) return false;
+    zcoins -= renameHeroCost;
+    heroRenameCount++;
     hero.name = trimmed;
     notifyListeners();
     saveToLocal();
@@ -8149,6 +8158,7 @@ class GameState extends ChangeNotifier {
       'claimedBestiaryMilestones': _claimedBestiaryMilestones.toList(),
       // Boss Rush
       'bossRushBestScore':   bossRushBestScore,
+      'heroRenameCount':     heroRenameCount,
       'bossRushHighestTier': bossRushHighestTier,
       // Waystones
       'basicWaystoneCount': basicWaystoneCount,
@@ -8476,6 +8486,7 @@ class GameState extends ChangeNotifier {
       }
     }
     bossRushBestScore   = (json['bossRushBestScore']   as int?) ?? 0;
+    heroRenameCount     = (json['heroRenameCount']     as int?) ?? 0;
     bossRushHighestTier = (json['bossRushHighestTier'] as int?) ?? 0;
     basicWaystoneCount  = (json['basicWaystoneCount'] as int?) ?? 0;
     grandWaystoneCount  = (json['grandWaystoneCount'] as int?) ?? 0;

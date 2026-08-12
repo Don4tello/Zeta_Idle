@@ -41,15 +41,23 @@ class _SettingsScreenState extends State<SettingsScreen> {
         backgroundColor: const Color(0xFF231F1B),
         title: Text('RENAME HERO',
             style: AppTheme.pixelHeading(fontSize: 14, letterSpacing: 1)),
-        content: TextField(
-          controller: controller,
-          maxLength: 20,
-          autofocus: true,
-          style: const TextStyle(color: AppTheme.textLight, fontSize: 18),
-          decoration: const InputDecoration(
-            hintText: 'Enter a hero name',
-            counterStyle: TextStyle(color: AppTheme.textMuted),
-          ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            TextField(
+              controller: controller,
+              maxLength: 20,
+              autofocus: true,
+              style: const TextStyle(color: AppTheme.textLight, fontSize: 18),
+              decoration: const InputDecoration(
+                hintText: 'Enter a hero name',
+                counterStyle: TextStyle(color: AppTheme.textMuted),
+              ),
+            ),
+            Text('Cost: ${game.renameHeroCost} 🪙   (you have ${game.zcoins})',
+                style: const TextStyle(color: AppTheme.textMuted, fontSize: 12)),
+          ],
         ),
         actions: [
           TextButton(
@@ -59,10 +67,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
           TextButton(
             onPressed: () {
               final name = controller.text.trim();
+              if (name.isEmpty) return;
               if (ProfanityFilter.isProfane(name)) {
                 ScaffoldMessenger.of(ctx).showSnackBar(const SnackBar(
                   content: Text('Please choose a different name — that one isn\'t allowed.'),
                   backgroundColor: Color(0xFF8a2a2a),
+                  behavior: SnackBarBehavior.floating,
+                ));
+                return;
+              }
+              if (game.zcoins < game.renameHeroCost) {
+                ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(
+                  content: Text('Not enough Z-Coins — rename costs ${game.renameHeroCost} 🪙.'),
+                  backgroundColor: const Color(0xFF8a2a2a),
                   behavior: SnackBarBehavior.floating,
                 ));
                 return;
@@ -157,8 +174,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
               subtitle: game.hero.name,
               trailing: TextButton(
                 onPressed: () => _showRenameDialog(game),
-                child: const Text('RENAME',
-                    style: TextStyle(color: Color(0xFF66aaff))),
+                child: Text('RENAME (${game.renameHeroCost} 🪙)',
+                    style: const TextStyle(color: Color(0xFF66aaff))),
               ),
             ),
             const SizedBox(height: 16),
