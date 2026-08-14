@@ -3707,6 +3707,13 @@ class GameState extends ChangeNotifier {
     // Elemental Mastery — always persists through rebirth
     final savedTowerShards    = towerShards;
     final savedMasteryRanks   = Map<String, int>.from(_elementalMasteryRanks);
+    // Ascension is a HIGHER tier than Rebirth — it must survive a rebirth.
+    // (_resetToDefaults zeroes these; without this save/restore a rebirth would
+    // wipe all ascension progress.)
+    final savedAscLevel       = ascensionLevel;
+    final savedAscPoints      = ascensionPoints;
+    final savedAscNodes       = Map<String, int>.from(_ascensionNodes);
+    final savedTotalAscAp     = totalAscensionAp;
 
     // Permanent progression — always persists through rebirth
     final savedOwnedPets      = Set<String>.from(ownedPetIds);
@@ -3750,6 +3757,14 @@ class GameState extends ChangeNotifier {
     _elementalMasteryRanks
       ..clear()
       ..addAll(savedMasteryRanks);
+
+    // Ascension — restore through rebirth (higher prestige tier persists).
+    ascensionLevel  = savedAscLevel;
+    ascensionPoints = savedAscPoints;
+    _ascensionNodes
+      ..clear()
+      ..addAll(savedAscNodes);
+    totalAscensionAp = savedTotalAscAp;
 
     // Permanent progression — always persist through rebirth
     ownedPetIds..clear()..addAll(savedOwnedPets);
@@ -3836,7 +3851,7 @@ class GameState extends ChangeNotifier {
       heroClass: hero.heroClass.displayName,
       subclass:  subclassName,
       spriteId:  hero.spriteId,
-      rebirths:  prestigeLevel,
+      rebirths:  leaderboardRebirths,
       stage:     campaignStageIndex,
     );
 
@@ -3886,6 +3901,13 @@ class GameState extends ChangeNotifier {
   int ascensionLevel  = 0;
   int ascensionPoints = 0;
   final Map<String, int> _ascensionNodes = {};
+  // Cumulative Ascension Points ever earned (= total Rebirths ever sacrificed to
+  // ascension). Used so leaderboards can rank by lifetime progress: ascending
+  // resets your Rebirth count but the AP gained is folded back in, so it never
+  // drops you. Survives every reset except a brand-new character.
+  int totalAscensionAp = 0;
+  // Effective Rebirths for leaderboard ranking: current + all sacrificed.
+  int get leaderboardRebirths => prestigeLevel + totalAscensionAp;
 
   bool get canAscend => prestigeLevel >= 5;
   // 1 Ascension Point per Rebirth sacrificed — so banking more Rebirths before
@@ -4013,6 +4035,7 @@ class GameState extends ChangeNotifier {
     final savedTowerShards   = towerShards + shardsGained;
     final savedMasteryRanks  = Map<String, int>.from(_elementalMasteryRanks);
     final savedAbilityAsc    = Map<String, int>.from(_abilityAscension);
+    final savedTotalAscAp    = totalAscensionAp + ap; // cumulative AP ever earned
     // Full reset (includes zeroing prestige + ascension)
     _resetToDefaults(savedName, savedClass, keepTutorials: true);
     // Restore ascension-permanent data
@@ -4026,6 +4049,7 @@ class GameState extends ChangeNotifier {
     towerShards = savedTowerShards;
     _elementalMasteryRanks.addAll(savedMasteryRanks);
     _abilityAscension.addAll(savedAbilityAsc);
+    totalAscensionAp = savedTotalAscAp;
     // Ascension zeroes prestige — keep the dedicated confirmed-prestige key in
     // sync too, or loadSlot would restore prestigeLevel from it (leaving the
     // player able to re-ascend / stuck). prestige() does the same.
@@ -5960,7 +5984,7 @@ class GameState extends ChangeNotifier {
         heroClass: hero.heroClass.displayName,
         subclass:  subclassName,
         spriteId:  hero.spriteId,
-        rebirths:  prestigeLevel,
+        rebirths:  leaderboardRebirths,
         stage:     _dungeonHighestTier,
       );
     }
@@ -6241,10 +6265,12 @@ class GameState extends ChangeNotifier {
     loginStreak = 0;
     loginTodayClaimed = false;
     _lastLoginDate = '';
-    // Ascension resets on full new-character wipe
+    // Ascension resets on full new-character wipe (prestige()/ascend() save +
+    // restore these so a rebirth/ascension keeps them).
     ascensionLevel  = 0;
     ascensionPoints = 0;
     _ascensionNodes.clear();
+    totalAscensionAp = 0;
     // Rebirth challenge/boon — reset each run
     activeRebirthChallenge = RebirthChallenge.none;
     _boonXpMult        = 1.0;
@@ -8312,6 +8338,7 @@ class GameState extends ChangeNotifier {
       // Ascension
       'ascensionLevel':  ascensionLevel,
       'ascensionPoints': ascensionPoints,
+      'totalAscensionAp': totalAscensionAp,
       'ascensionNodes':  Map<String, int>.from(_ascensionNodes),
       // Daily bounties
       'bountyDaySeed': _bountyDaySeed,
@@ -8705,6 +8732,7 @@ class GameState extends ChangeNotifier {
     // Ascension
     ascensionLevel  = (json['ascensionLevel']  as int?) ?? 0;
     ascensionPoints = (json['ascensionPoints'] as int?) ?? 0;
+    totalAscensionAp = (json['totalAscensionAp'] as int?) ?? 0;
     _ascensionNodes.clear();
     if (json['ascensionNodes'] != null) {
       final raw = json['ascensionNodes'] as Map<String, dynamic>;

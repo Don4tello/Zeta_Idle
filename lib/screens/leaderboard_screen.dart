@@ -37,8 +37,8 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
       // rebirths only ranks the campaign/dungeon boards; the score-based boards
       // ignore it. stage carries each board's headline metric.
       final (rebirths, stage) = switch (widget.board) {
-        LeaderboardBoard.campaign => (game.prestigeLevel, game.campaignStageIndex),
-        LeaderboardBoard.dungeon  => (game.prestigeLevel, game.dungeonHighestTier),
+        LeaderboardBoard.campaign => (game.leaderboardRebirths, game.campaignStageIndex),
+        LeaderboardBoard.dungeon  => (game.leaderboardRebirths, game.dungeonHighestTier),
         LeaderboardBoard.endless  => (0, game.endlessStageIndex),
         LeaderboardBoard.bossRush => (0, game.bossRushBestScore),
         LeaderboardBoard.gauntlet => (0, game.gauntletHighScore),
