@@ -549,7 +549,8 @@ class CombatStatsPanel extends StatelessWidget {
     final dmgPct    = pt.totalOf(PassiveEffect.allDamage)
         + inv.totalOf(ItemStat.damagePercent)
         + h.levelBonusDamagePct
-        + h.damagePctFor(h.activeDamageType);
+        + h.damagePctFor(h.activeDamageType)
+        + game.ascAllDamagePct.round();
 
     final acTotal   = h.armorClass
         + pt.totalOf(PassiveEffect.armorFlat)

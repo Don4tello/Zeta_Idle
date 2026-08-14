@@ -3584,7 +3584,7 @@ class GameState extends ChangeNotifier {
     final fromAura      = auraAttackBonus * 2;
     final fromAllies    = allyAtkBonus * 2;
     final fromQuest     = questAttackBonus * 2;
-    final fromAsc       = ascAtkBonus * 2;
+    final fromAsc       = ascAtkBonus * 5; // Veteran Arms: +5% crit chance / level
     final fromRune      = runeAtkBonus * 2;
     final fromBestiary  = bestiaryChapterBonus * 2;
     final fromPrestige  = prestigeCritBonus;
@@ -3858,7 +3858,10 @@ class GameState extends ChangeNotifier {
   final Map<String, int> _ascensionNodes = {};
 
   bool get canAscend => prestigeLevel >= 5;
-  int  get ascensionPointsForNextAscension => 3;
+  // 1 Ascension Point per Rebirth sacrificed — so banking more Rebirths before
+  // ascending pays out proportionally (5 rebirths → 5 AP, 8 → 8 AP, …), instead
+  // of the old flat 3 that ignored how much you gave up.
+  int  get ascensionPointsForNextAscension => prestigeLevel;
 
   // ── Game-loop connection signals ─────────────────────────────────────────
   int get consecutiveLosses => _consecutiveLosses;
@@ -3949,14 +3952,18 @@ class GameState extends ChangeNotifier {
 
   int ascensionNodeLevel(String id) => _ascensionNodes[id] ?? 0;
 
-  double get ascXpMult   => 1.0 + ascensionNodeLevel('xp_gain') * 0.10;
-  double get ascGoldMult => 1.0 + ascensionNodeLevel('gold_gain') * 0.10;
-  double get ascShardMult => 1.0 + ascensionNodeLevel('shard_gain') * 0.10;
+  double get ascXpMult   => 1.0 + ascensionNodeLevel('xp_gain') * 0.25;
+  double get ascGoldMult => 1.0 + ascensionNodeLevel('gold_gain') * 0.25;
+  double get ascShardMult => 1.0 + ascensionNodeLevel('shard_gain') * 0.25;
   int    get ascAtkBonus  => ascensionNodeLevel('atk_bonus');
-  int    get ascDmgBonus  => ascensionNodeLevel('dmg_bonus') * 2;
-  double get ascIdleMult  => 1.0 + ascensionNodeLevel('idle_bonus') * 0.15;
-  double get ascPrestigeMult => 1.0 + ascensionNodeLevel('prestige_bonus') * 0.10;
-  double get ascEssenceMult  => 1.0 + ascensionNodeLevel('essence_bonus') * 0.15;
+  // Titan Strength is now a % all-damage multiplier (scales forever) instead of
+  // the old flat +damage, which was negligible at high levels. The flat getter
+  // stays at 0 for backward-compatible call sites; the % feeds the damage pipeline.
+  int    get ascDmgBonus  => 0;
+  double get ascAllDamagePct => ascensionNodeLevel('dmg_bonus') * 12.0;
+  double get ascIdleMult  => 1.0 + ascensionNodeLevel('idle_bonus') * 0.30;
+  double get ascPrestigeMult => 1.0 + ascensionNodeLevel('prestige_bonus') * 0.30;
+  double get ascEssenceMult  => 1.0 + ascensionNodeLevel('essence_bonus') * 0.30;
 
   void ascend() {
     if (!canAscend) return;
@@ -4987,7 +4994,7 @@ class GameState extends ChangeNotifier {
         final ctx = buildAbilityAttackContext(
           baseDmg:              baseDmg,
           heroType:             hero.activeDamageType,
-          allDamagePct:         passiveTree.totalOf(PassiveEffect.allDamage).toDouble()
+          allDamagePct:         passiveTree.totalOf(PassiveEffect.allDamage).toDouble() + ascAllDamagePct
                                 + passiveElemDamagePct(hero.activeDamageType)
                                 + gemElemDamagePct(hero.activeDamageType)
                                 + inventory.totalOf(ItemStat.damagePercent)
@@ -5034,7 +5041,7 @@ class GameState extends ChangeNotifier {
         final dotCtx = buildAbilityAttackContext(
           baseDmg:              (sv * abilityPowerMult(ability)).round().clamp(1, 999999),
           heroType:             hero.activeDamageType,
-          allDamagePct:         passiveTree.totalOf(PassiveEffect.allDamage).toDouble()
+          allDamagePct:         passiveTree.totalOf(PassiveEffect.allDamage).toDouble() + ascAllDamagePct
                                 + passiveElemDamagePct(hero.activeDamageType)
                                 + gemElemDamagePct(hero.activeDamageType)
                                 + inventory.totalOf(ItemStat.damagePercent)
@@ -5094,7 +5101,7 @@ class GameState extends ChangeNotifier {
           final bonusDotCtx = buildAbilityAttackContext(
             baseDmg:              dotBase,
             heroType:             hero.activeDamageType,
-            allDamagePct:         passiveTree.totalOf(PassiveEffect.allDamage).toDouble()
+            allDamagePct:         passiveTree.totalOf(PassiveEffect.allDamage).toDouble() + ascAllDamagePct
                                   + passiveElemDamagePct(hero.activeDamageType)
                                 + gemElemDamagePct(hero.activeDamageType)
                                   + inventory.totalOf(ItemStat.damagePercent)
@@ -5212,7 +5219,7 @@ class GameState extends ChangeNotifier {
           final dotBase = (ref * xv / 100).round().clamp(1, 9999);
           final xDotCtx = buildAbilityAttackContext(
             baseDmg: dotBase, heroType: hero.activeDamageType,
-            allDamagePct: passiveTree.totalOf(PassiveEffect.allDamage).toDouble()
+            allDamagePct: passiveTree.totalOf(PassiveEffect.allDamage).toDouble() + ascAllDamagePct
                           + passiveElemDamagePct(hero.activeDamageType)
                                 + gemElemDamagePct(hero.activeDamageType)
                           + inventory.totalOf(ItemStat.damagePercent)
@@ -6754,7 +6761,7 @@ class GameState extends ChangeNotifier {
       final _dmgCtx = buildWeaponAttackContext(
         baseDmg:          baseDmg,
         heroType:         heroType,
-        allDamagePct:     passiveTree.totalOf(PassiveEffect.allDamage).toDouble()
+        allDamagePct:     passiveTree.totalOf(PassiveEffect.allDamage).toDouble() + ascAllDamagePct
                           + passiveElemDamagePct(heroType)
                           + gemElemDamagePct(heroType)
                           + inventory.totalOf(ItemStat.damagePercent)

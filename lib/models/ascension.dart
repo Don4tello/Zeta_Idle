@@ -18,7 +18,7 @@ class AscensionNode {
     AscensionNode(
       id: 'xp_gain',
       label: 'Eternal Wisdom',
-      description: '+10% XP per level',
+      description: '+25% XP per level  (max +125%)',
       maxLevel: 5,
       costPerLevel: 1,
       icon: '✦',
@@ -26,7 +26,7 @@ class AscensionNode {
     AscensionNode(
       id: 'gold_gain',
       label: 'Gilded Path',
-      description: '+10% gold per level',
+      description: '+25% gold per level  (max +125%)',
       maxLevel: 5,
       costPerLevel: 1,
       icon: '⚜',
@@ -34,7 +34,7 @@ class AscensionNode {
     AscensionNode(
       id: 'shard_gain',
       label: 'Crystal Veins',
-      description: '+10% shard drops per level',
+      description: '+25% shard drops per level  (max +125%)',
       maxLevel: 5,
       costPerLevel: 1,
       icon: '◆',
@@ -42,23 +42,23 @@ class AscensionNode {
     AscensionNode(
       id: 'atk_bonus',
       label: 'Veteran Arms',
-      description: '+1 critical damage per level',
-      maxLevel: 3,
+      description: '+5% critical hit chance per level  (max +25%)',
+      maxLevel: 5,
       costPerLevel: 2,
       icon: '⚔',
     ),
     AscensionNode(
       id: 'dmg_bonus',
       label: 'Titan Strength',
-      description: '+2 flat damage per level',
-      maxLevel: 3,
+      description: '+12% ALL damage per level — scales forever  (max +60%)',
+      maxLevel: 5,
       costPerLevel: 2,
       icon: '💪',
     ),
     AscensionNode(
       id: 'idle_bonus',
       label: 'Ancient Flow',
-      description: '+15% idle gold per level',
+      description: '+30% idle income per level  (max +150%)',
       maxLevel: 5,
       costPerLevel: 1,
       icon: '⏳',
@@ -66,7 +66,7 @@ class AscensionNode {
     AscensionNode(
       id: 'prestige_bonus',
       label: 'Legacy Power',
-      description: '+10% to all prestige bonuses per level',
+      description: '+30% to ALL Rebirth bonuses per level  (max +90%)',
       maxLevel: 3,
       costPerLevel: 3,
       icon: '👑',
@@ -74,7 +74,7 @@ class AscensionNode {
     AscensionNode(
       id: 'essence_bonus',
       label: 'Soul Harvest',
-      description: '+15% essence per level',
+      description: '+30% essence per level  (max +150%)',
       maxLevel: 5,
       costPerLevel: 1,
       icon: '🔮',
