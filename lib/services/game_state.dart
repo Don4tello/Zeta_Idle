@@ -101,6 +101,32 @@ class LevelUpEvent {
   final List<String> statGains; // e.g. ['STR', 'CON']
 }
 
+/// Snapshot of a single completed fight — powers the post-fight summary sheet.
+/// Built when a battle ends; reusable across every mode that runs a fight.
+class FightSummary {
+  const FightSummary({
+    required this.enemyName,
+    required this.victory,
+    required this.totalDamage,
+    required this.maxHit,
+    required this.hitCount,
+    required this.rounds,
+    required this.abilitiesUsed,
+    required this.log,
+  });
+
+  final String enemyName;
+  final bool victory;
+  final int totalDamage; // hero attack damage this fight
+  final int maxHit;
+  final int hitCount;
+  final int rounds;
+  final Map<String, int> abilitiesUsed; // ability name -> times cast
+  final List<String> log;
+
+  int get avgHit => hitCount == 0 ? 0 : (totalDamage / hitCount).round();
+}
+
 class GameState extends ChangeNotifier {
   GameState({
     SaveService? saveService,
@@ -4986,6 +5012,7 @@ class GameState extends ChangeNotifier {
     final effectiveDuration = ability.duration + durationDeltaSum + uniqueDurAdd;
     final primaryEffect     = effectOverride ?? ability.effect;
     lastAbilityFired = (id: ability.id, name: ability.name, effect: primaryEffect);
+    _fightAbilities[ability.name] = (_fightAbilities[ability.name] ?? 0) + 1;
 
     final subclassAbilityBonus = subclassAbilityPowerPct + switch (subclassEffect) {
       SubclassEffect.loreKeeper  => 0.20,
@@ -6314,6 +6341,37 @@ class GameState extends ChangeNotifier {
   void _recordHeroHit(int dmg) {
     _recentHeroHits.add(dmg);
     if (_recentHeroHits.length > 12) _recentHeroHits.removeAt(0);
+    // Per-fight accumulation for the post-fight summary.
+    _fightDamage += dmg;
+    _fightHits++;
+    if (dmg > _fightMaxHit) _fightMaxHit = dmg;
+  }
+
+  // ── Per-fight stats → FightSummary (post-fight breakdown) ────────────────────
+  int _fightDamage = 0;
+  int _fightMaxHit = 0;
+  int _fightHits   = 0;
+  final Map<String, int> _fightAbilities = {};
+  FightSummary? lastFightSummary;
+
+  void _resetFightStats() {
+    _fightDamage = 0;
+    _fightMaxHit = 0;
+    _fightHits   = 0;
+    _fightAbilities.clear();
+  }
+
+  void _snapshotFight({required String enemyName, required bool victory}) {
+    lastFightSummary = FightSummary(
+      enemyName: enemyName,
+      victory: victory,
+      totalDamage: _fightDamage,
+      maxHit: _fightMaxHit,
+      hitCount: _fightHits,
+      rounds: _battleTurnCount,
+      abilitiesUsed: Map<String, int>.from(_fightAbilities),
+      log: List<String>.from(battleLog),
+    );
   }
 
   /// Average damage per swing. Uses recent real hits once the hero has fought;
@@ -6500,6 +6558,7 @@ class GameState extends ChangeNotifier {
     heroDefeated = false;
     lastBattleWasFinalVictory = false;
     _battleTurnCount = 0;
+    _resetFightStats();
     _resetBattlePerks();
     _activeAffixes = AffixEngine.affixesFor(campaignStageIndex, _rng);
     var enemy = EnemyData.enemyForStage(campaignStageIndex, affixes: _activeAffixes, prestigeLevel: prestigeLevel);
@@ -7367,6 +7426,7 @@ class GameState extends ChangeNotifier {
   }
 
   void _battleVictory(Enemy enemy) {
+    _snapshotFight(enemyName: enemy.name, victory: true);
     // Clear ability cooldowns so the bar shows READY between battles
     _cooldownUntil.clear();
     _abilityRound = 0;
@@ -7811,6 +7871,7 @@ class GameState extends ChangeNotifier {
     // Capture the loss before currentEnemy is cleared — the #1 difficulty
     // signal for balance tuning (pair with stage_reached for clear rates).
     final lostTo = currentEnemy;
+    _snapshotFight(enemyName: lostTo?.name ?? 'Enemy', victory: false);
     if (lostTo != null) {
       final stage = _endlessMode
           ? endlessStageIndex

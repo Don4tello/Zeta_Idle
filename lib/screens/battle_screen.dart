@@ -19,6 +19,7 @@ import '../theme/app_theme.dart';
 import '../widgets/level_up_section.dart';
 import '../data/ability_data.dart';
 import '../widgets/arena_ability_effect.dart';
+import '../widgets/fight_summary_sheet.dart';
 import '../utils/format_number.dart';
 
 class BattleScreen extends StatefulWidget {
@@ -504,6 +505,26 @@ class _BattleScreenState extends State<BattleScreen>
           },
         ),
         actions: [
+          IconButton(
+            icon: Icon(
+              Icons.assessment_outlined,
+              color: game.lastFightSummary != null
+                  ? AppTheme.accentGold : AppTheme.textMuted,
+              size: 21,
+            ),
+            tooltip: 'Last fight summary',
+            onPressed: () {
+              final s = game.lastFightSummary;
+              if (s == null) {
+                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                  content: Text('No fight finished yet.'),
+                  behavior: SnackBarBehavior.floating,
+                ));
+                return;
+              }
+              showFightSummary(context, s);
+            },
+          ),
           IconButton(
             icon: Icon(
               _isPaused ? Icons.play_arrow : Icons.pause,
