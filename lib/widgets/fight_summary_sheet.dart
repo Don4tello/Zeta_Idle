@@ -112,11 +112,7 @@ class FightSummarySheet extends StatelessWidget {
           child: ListView.builder(
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
             itemCount: s.log.length,
-            itemBuilder: (_, i) => Padding(
-              padding: const EdgeInsets.symmetric(vertical: 2),
-              child: Text(s.log[i],
-                  style: const TextStyle(color: Colors.white60, fontSize: 12, height: 1.3)),
-            ),
+            itemBuilder: (_, i) => _LogLine(text: s.log[i]),
           ),
         ),
       ],
@@ -144,4 +140,71 @@ class FightSummarySheet extends StatelessWidget {
           ]),
         ),
       );
+}
+
+/// A single battle-log line, colour-coded + icon-tagged by category so the log
+/// is scannable at a glance (damage / crit / heal / buff / mitigated / …).
+class _LogLine extends StatelessWidget {
+  const _LogLine({required this.text});
+  final String text;
+
+  static ({Color color, String icon}) _classify(String line) {
+    final l = line.toLowerCase();
+    if (l.contains('crit')) return (color: const Color(0xFFffcc44), icon: '💥');
+    if (l.contains('resist') || l.contains('immune') || l.contains('misses') ||
+        l.contains('negat') || l.contains('block') || l.contains('dodge')) {
+      return (color: const Color(0xFF8a8a8a), icon: '🛡');
+    }
+    if (l.contains('heal') || l.contains('restored') || l.contains('regenerat') ||
+        l.contains('hp/round') || l.contains('lifesteal') || l.contains('lifedrain')) {
+      return (color: const Color(0xFF44cc88), icon: '➕');
+    }
+    if (l.contains('stun') || l.contains('weaken') || l.contains('vulnerab') ||
+        l.contains('reduced') || l.contains('primed') || l.contains('surge') ||
+        l.contains('buff') || l.contains('wall') || l.contains('shield') ||
+        l.contains('bless') || l.contains('aura')) {
+      return (color: const Color(0xFF66aaff), icon: '✦');
+    }
+    if (l.contains('gold') || l.contains('loot') || l.contains('drop') ||
+        l.contains('shard') || l.contains('mythril')) {
+      return (color: const Color(0xFFC9A35A), icon: '💰');
+    }
+    if (l.contains('fallen') || l.contains('defeated!') || l.contains('has died')) {
+      return (color: const Color(0xFFff5555), icon: '☠');
+    }
+    if (l.contains('advances') || l.contains('victory') || l.contains('falls') ||
+        l.contains('defeated') || l.contains('slain')) {
+      return (color: const Color(0xFF88dd88), icon: '🏆');
+    }
+    if (l.contains('damage') || l.contains(' dmg') || l.contains('takes') ||
+        l.contains('hit!')) {
+      return (color: const Color(0xFFff8866), icon: '⚔');
+    }
+    return (color: Colors.white60, icon: '');
+  }
+
+  bool get _startsWithEmoji =>
+      text.isNotEmpty && text.runes.first > 0x2000;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = _classify(text);
+    final showIcon = c.icon.isNotEmpty && !_startsWithEmoji;
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 2),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (showIcon) ...[
+            Text(c.icon, style: const TextStyle(fontSize: 12)),
+            const SizedBox(width: 6),
+          ],
+          Expanded(
+            child: Text(text,
+                style: TextStyle(color: c.color, fontSize: 12, height: 1.3)),
+          ),
+        ],
+      ),
+    );
+  }
 }
