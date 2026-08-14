@@ -129,8 +129,17 @@ class _InfoBanner extends StatelessWidget {
           ]),
           const SizedBox(height: 8),
           const Text(
-            'Ascension resets your prestige count to 0 but grants Ascension Points to invest '
-            'in the Meta-Board — permanent bonuses that survive all future resets.',
+            'Ascension is the deepest reset — it converts your Rebirths into Ascension '
+            'Points (AP). You earn 1 AP for every Rebirth you sacrifice, so the more you '
+            'bank before ascending, the bigger the payout.\n\n'
+            'Spend AP two ways — both permanent and both survive every future reset:\n'
+            '• The Meta-Board below (XP, gold, damage, idle & prestige bonuses)\n'
+            '• Ascend your class abilities on the Abilities screen (+10% power per tier, '
+            'up to 60 AP per character)\n\n'
+            'You KEEP:  Ascension bonuses & AP spent, Artifacts, Mythril, Tower Shards, '
+            'Elemental Mastery.\n'
+            'You LOSE:  all Rebirths, hero level, gold, gear, subclass, ability ranks, '
+            'and campaign progress.',
             style: TextStyle(fontSize: 11, color: AppTheme.textMuted, height: 1.5),
           ),
           if (prestige < 5) ...[
@@ -178,9 +187,11 @@ class _AscendButton extends StatelessWidget {
             style: AppTheme.pixelHeading(
                 fontSize: 14, color: const Color(0xFFcc88ff))),
         content: Text(
-          'This will reset your prestige level to 0 and grant '
+          'Sacrifice ${game.prestigeLevel} Rebirth(s) for '
           '${game.ascensionPointsForNextAscension} Ascension Point(s).\n\n'
-          'All prestige upgrades and shards will be lost. This cannot be undone.',
+          'KEEP: Ascension bonuses, Artifacts, Mythril, Tower Shards, Ability Ascensions.\n'
+          'LOSE: all Rebirths, hero level, gold, gear, subclass, ability ranks, campaign progress.\n\n'
+          'This cannot be undone.',
           style: const TextStyle(color: Colors.white70, fontSize: 13, height: 1.5),
         ),
         actions: [

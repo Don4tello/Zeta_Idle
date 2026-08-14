@@ -3636,6 +3636,7 @@ class GameState extends ChangeNotifier {
     final savedShards       = shards;
     final savedEchoes       = echoes;
     final savedRanks        = Map<String, int>.from(_abilityRanks);
+    final savedAbilityAsc   = Map<String, int>.from(_abilityAscension);
     final savedBranches     = Map<String, String>.from(abilityBranches);
     final savedMilestones   = Map<String, String>.from(_milestoneChoices);
     final savedEssence      = essence;
@@ -3744,6 +3745,9 @@ class GameState extends ChangeNotifier {
     _abilityRanks
       ..clear()
       ..addAll(savedRanks);
+    _abilityAscension
+      ..clear()
+      ..addAll(savedAbilityAsc);
     abilityBranches
       ..clear()
       ..addAll(savedBranches);
@@ -3982,6 +3986,7 @@ class GameState extends ChangeNotifier {
     final shardsGained       = 10 + ascensionLevel * 5; // scales: 10, 15, 20, …
     final savedTowerShards   = towerShards + shardsGained;
     final savedMasteryRanks  = Map<String, int>.from(_elementalMasteryRanks);
+    final savedAbilityAsc    = Map<String, int>.from(_abilityAscension);
     // Full reset (includes zeroing prestige + ascension)
     _resetToDefaults(savedName, savedClass, keepTutorials: true);
     // Restore ascension-permanent data
@@ -3994,6 +3999,7 @@ class GameState extends ChangeNotifier {
     _unlockedArtifactCells = savedUnlocked;
     towerShards = savedTowerShards;
     _elementalMasteryRanks.addAll(savedMasteryRanks);
+    _abilityAscension.addAll(savedAbilityAsc);
     // Ascension zeroes prestige — keep the dedicated confirmed-prestige key in
     // sync too, or loadSlot would restore prestigeLevel from it (leaving the
     // player able to re-ascend / stuck). prestige() does the same.
@@ -4520,6 +4526,30 @@ class GameState extends ChangeNotifier {
 
   int abilityRank(String id) => _abilityRanks[id] ?? 0;
 
+  // ── Ability Ascension (spent with Ascension Points) ──────────────────────────
+  // A second, permanent upgrade track on top of the shard-based ranks. Each of a
+  // class's 6 abilities can be ascended 0..10 tiers for 1 AP per tier (60 AP to
+  // fully ascend a character). Each tier adds +10% to that ability's power, and
+  // it survives every reset (rebirth and ascension) like the ascension tree.
+  final Map<String, int> _abilityAscension = {};
+  static const int kAbilityAscendMaxTier = 10;
+  static const double kAbilityAscendPerTier = 0.10; // +10% ability power per tier
+
+  int abilityAscensionTier(String id) => _abilityAscension[id] ?? 0;
+  double abilityAscensionMult(String id) =>
+      1.0 + abilityAscensionTier(id) * kAbilityAscendPerTier;
+
+  bool ascendAbility(String id) {
+    final tier = abilityAscensionTier(id);
+    if (tier >= kAbilityAscendMaxTier) return false;
+    if (ascensionPoints < 1) return false;
+    ascensionPoints -= 1;
+    _abilityAscension[id] = tier + 1;
+    notifyListeners();
+    saveToLocal();
+    return true;
+  }
+
   // Tier 0 = ranks 1-15, Tier 1 = ranks 16-30, ..., Tier 10 = ranks 151-165
   static const int kAbilityMaxRank = 165;
   static int _abilityTierFromRank(int r) => r == 0 ? 0 : (r - 1) ~/ 15;
@@ -4948,9 +4978,11 @@ class GameState extends ChangeNotifier {
         .firstOrNull;
     final uniqueMult      = uniqueModItem?.abilityValueMult ?? 1.0;
     final uniqueDurAdd    = uniqueModItem?.abilityDurationAdd ?? 0;
+    // Ability Ascension: each ascended tier adds +10% to this ability's power.
+    final ascMult   = abilityAscensionMult(ability.id);
     final int sv    = (rank == 0 || baseValue == 0)
-        ? (baseValue * uniqueMult).round()
-        : ((baseValue + rank * max<int>(1, baseValue ~/ 8)) * uniqueMult).round();
+        ? (baseValue * uniqueMult * ascMult).round()
+        : ((baseValue + rank * max<int>(1, baseValue ~/ 8)) * uniqueMult * ascMult).round();
     final effectiveDuration = ability.duration + durationDeltaSum + uniqueDurAdd;
     final primaryEffect     = effectOverride ?? ability.effect;
     lastAbilityFired = (id: ability.id, name: ability.name, effect: primaryEffect);
@@ -6131,6 +6163,7 @@ class GameState extends ChangeNotifier {
     // sync with loadFromJson's clears.
     _abilityScoreRanks.clear();
     _abilityRanks.clear();
+    _abilityAscension.clear(); // prestige()/ascend() save+restore this permanent track
     _seenUnlockStages.clear();
     ownedRunes.clear();
     purchasedPacks.clear();
@@ -8016,6 +8049,7 @@ class GameState extends ChangeNotifier {
       'endlessUpgrades': endlessUpgrades.toJson(),
       'abilityScoreRanks': Map<String, int>.from(_abilityScoreRanks),
       'abilityRanks': Map<String, int>.from(_abilityRanks),
+      'abilityAscension': Map<String, int>.from(_abilityAscension),
       'abilityBranches': Map<String, String>.from(abilityBranches),
       'abilityMilestoneChoices': Map<String, String>.from(_milestoneChoices),
       'prestigeLevel': prestigeLevel,
@@ -8317,6 +8351,12 @@ class GameState extends ChangeNotifier {
     if (json['abilityRanks'] != null) {
       (json['abilityRanks'] as Map<String, dynamic>).forEach((k, v) {
         _abilityRanks[k] = v as int;
+      });
+    }
+    _abilityAscension.clear();
+    if (json['abilityAscension'] != null) {
+      (json['abilityAscension'] as Map<String, dynamic>).forEach((k, v) {
+        _abilityAscension[k] = v as int;
       });
     }
     abilityBranches.clear();

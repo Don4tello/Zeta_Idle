@@ -586,6 +586,8 @@ class _AbilityCard extends StatelessWidget {
                   ),
                 ),
               ],
+              const SizedBox(height: 10),
+              _AbilityAscendRow(ability: ability, game: game),
             ],
           ],
         ),
@@ -607,6 +609,79 @@ class _AbilityCard extends StatelessWidget {
       ),
     ],
   );
+}
+
+// ── Ability Ascension row (spend Ascension Points, +10% power per tier) ───────
+class _AbilityAscendRow extends StatelessWidget {
+  const _AbilityAscendRow({required this.ability, required this.game});
+  final HeroAbility ability;
+  final GameState game;
+
+  @override
+  Widget build(BuildContext context) {
+    const gold = AppTheme.accentGold;
+    final tier   = game.abilityAscensionTier(ability.id);
+    final maxed  = tier >= GameState.kAbilityAscendMaxTier;
+    final ap     = game.ascensionPoints;
+    final canAscend = !maxed && ap >= 1;
+    final curPct  = (tier * GameState.kAbilityAscendPerTier * 100).round();
+    final nextPct = ((tier + 1) * GameState.kAbilityAscendPerTier * 100).round();
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      decoration: BoxDecoration(
+        color: const Color(0xFF1a160f),
+        border: Border.all(color: gold.withValues(alpha: 0.35)),
+        borderRadius: BorderRadius.circular(3),
+      ),
+      child: Row(children: [
+        const Text('✦', style: TextStyle(color: gold, fontSize: 16)),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(children: [
+                const Text('ASCENSION',
+                    style: TextStyle(color: gold, fontSize: 11,
+                        fontWeight: FontWeight.bold, letterSpacing: 1)),
+                const SizedBox(width: 6),
+                Text('$tier / ${GameState.kAbilityAscendMaxTier}',
+                    style: const TextStyle(color: Colors.white70, fontSize: 11)),
+                const Spacer(),
+                Text('$ap AP',
+                    style: const TextStyle(color: Colors.white38, fontSize: 11)),
+              ]),
+              Text(
+                maxed
+                    ? 'Fully ascended  ·  +$curPct% ability power'
+                    : '+$curPct% power  →  +$nextPct% (1 AP)',
+                style: const TextStyle(color: Colors.white38, fontSize: 11),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(width: 8),
+        if (maxed)
+          const Text('MAX',
+              style: TextStyle(color: gold, fontSize: 12, fontWeight: FontWeight.bold))
+        else
+          OutlinedButton(
+            onPressed: canAscend
+                ? () { game.ascendAbility(ability.id); game.audioService.playClaim(); }
+                : () => game.audioService.playUiError(),
+            style: OutlinedButton.styleFrom(
+              side: BorderSide(color: canAscend ? gold : Colors.white24),
+              foregroundColor: canAscend ? gold : Colors.white30,
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              minimumSize: const Size(0, 34),
+            ),
+            child: const Text('ASCEND',
+                style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, letterSpacing: 1)),
+          ),
+      ]),
+    );
+  }
 }
 
 // ── 15-pip rank bar with milestone markers ────────────────────────────────────
