@@ -28,7 +28,10 @@ class FightSummarySheet extends StatelessWidget {
   Widget build(BuildContext context) {
     final s = summary;
     final resultColor = s.victory ? const Color(0xFF44cc88) : const Color(0xFFff5555);
-    return Column(
+    // Bottom SafeArea keeps the battle log clear of the Android nav bar/gesture area.
+    return SafeArea(
+      top: false,
+      child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         // Grab handle + header
@@ -117,6 +120,7 @@ class FightSummarySheet extends StatelessWidget {
           ),
         ),
       ],
+      ),
     );
   }
 

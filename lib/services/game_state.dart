@@ -4483,6 +4483,7 @@ class GameState extends ChangeNotifier {
       _allyAbilitiesUsed.add('elder_voss');
       final burst = (enemy.maxHealth * 0.10).round().clamp(1, 9999);
       enemy.takeDamage(burst);
+      _recordFightDamage(burst);
       battleLog.add('🔮 Voss: Arcane Surge! ${enemy.name} takes $burst arcane damage!');
       if (enemy.isDefeated) { _battleVictory(enemy); return true; }
     }
@@ -5094,6 +5095,7 @@ class GameState extends ChangeNotifier {
         );
         final dmg = calculateDamage(ctx, rng: _rng).total.round().clamp(1, 9999);
         enemy.takeDamage(dmg);
+        _recordFightDamage(dmg);
         pendingFloats.add((value: dmg, isHeal: false, type: hero.activeDamageType));
         battleLog.add('${ability.name}! +$dmg bonus damage.');
         primaryHitDmg = dmg;
@@ -6367,7 +6369,13 @@ class GameState extends ChangeNotifier {
   void _recordHeroHit(int dmg) {
     _recentHeroHits.add(dmg);
     if (_recentHeroHits.length > 12) _recentHeroHits.removeAt(0);
-    // Per-fight accumulation for the post-fight summary.
+    _recordFightDamage(dmg);
+  }
+
+  /// Records any hero-dealt damage instance (auto-attack, ability, DoT, thorns,
+  /// ally burst) toward the post-fight summary total/max/avg.
+  void _recordFightDamage(int dmg) {
+    if (dmg <= 0) return;
     _fightDamage += dmg;
     _fightHits++;
     if (dmg > _fightMaxHit) _fightMaxHit = dmg;
@@ -6986,6 +6994,7 @@ class GameState extends ChangeNotifier {
         _allyAbilitiesUsed.add('warmaster_cael');
         final bonusDmg = (enemy.maxHealth * 0.15).round().clamp(1, 9999);
         enemy.takeDamage(bonusDmg);
+        _recordFightDamage(bonusDmg);
         battleLog.add('⚡ Cael: Warmaster\'s Strike! +$bonusDmg bonus damage!');
       }
       if (enemy.isDefeated) {
@@ -7014,6 +7023,7 @@ class GameState extends ChangeNotifier {
         final flickerArmor = max(0, enemy.armorClass - pierce);
         final dmg2 = max(1, (bd2 * endlessUpgrades.damageMultiplier).round() - flickerArmor);
         enemy.takeDamage(dmg2);
+        _recordFightDamage(dmg2);
         battleLog.add('Blade Flicker!${c2 ? " CRIT" : ""}${heroType.shortTag} $dmg2 dmg.');
         if (enemy.isDefeated) { _battleVictory(enemy); return; }
       }
@@ -7022,6 +7032,7 @@ class GameState extends ChangeNotifier {
         final ds = max(1, _rng.nextInt(8) + 1 + hero.baseDmg + inventory.totalOf(ItemStat.strength)
             - max(0, enemy.armorClass - pierce)).toInt();
         enemy.takeDamage(ds);
+        _recordFightDamage(ds);
         battleLog.add('Swift Strike! $ds dmg.');
         if (enemy.isDefeated) { _battleVictory(enemy); return; }
       }
@@ -7036,6 +7047,7 @@ class GameState extends ChangeNotifier {
         final dm2 = max(1, (dm * endlessUpgrades.damageMultiplier).round()
             - max(0, enemy.armorClass - pierce)).toInt();
         enemy.takeDamage(dm2);
+        _recordFightDamage(dm2);
         battleLog.add('${cm ? "CRITICAL " : ""}Mastery strike! $dm2 dmg.');
         if (enemy.isDefeated) { _battleVictory(enemy); return; }
       }
@@ -7114,6 +7126,7 @@ class GameState extends ChangeNotifier {
       final intDotMult = 1.0 + max(0.0, (intTotal - 10) * 0.01);
       final scaledDot = (_dotDmg * intDotMult).round().clamp(1, 9999);
       enemy.takeDamage(scaledDot);
+      _recordFightDamage(scaledDot);
       pendingFloats.add((value: scaledDot, isHeal: false, type: _dotDamageType));
       battleLog.add('Ongoing damage: ${enemy.name} takes $scaledDot dmg ($_dotRoundsLeft rounds left).');
       if (enemy.isDefeated) {
@@ -7269,6 +7282,7 @@ class GameState extends ChangeNotifier {
       if (_hasKeyword(ItemKeyword.thornWall)) {
         final thorn = (finalDmg * 0.30).round().clamp(1, 9999);
         enemy.takeDamage(thorn);
+        _recordFightDamage(thorn);
         battleLog.add('Thorn Wall reflects $thorn dmg!');
         if (enemy.isDefeated) { _battleVictory(enemy); return; }
       }
@@ -7307,6 +7321,7 @@ class GameState extends ChangeNotifier {
       // Riposte keyword: triggers when attack is completely blocked
       if (_hasKeyword(ItemKeyword.riposte)) {
         enemy.takeDamage(3);
+        _recordFightDamage(3);
         battleLog.add('Riposte! 3 damage returned.');
         if (enemy.isDefeated) { _battleVictory(enemy); return; }
       }
