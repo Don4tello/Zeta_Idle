@@ -6,6 +6,7 @@ import '../models/pvp.dart';
 import '../models/subclass.dart';
 import '../services/auth_service.dart';
 import '../services/game_state.dart';
+import '../widgets/fight_summary_sheet.dart';
 import '../services/pvp_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/arena_ability_effect.dart';
@@ -227,6 +228,22 @@ class _PvpScreenState extends State<PvpScreen> {
             style: AppTheme.pixelHeading(
                 fontSize: 14, letterSpacing: 2, color: AppTheme.accentGold)),
         actions: [
+          IconButton(
+            icon: Icon(Icons.assessment_outlined, size: 20,
+                color: game.lastFightSummary != null
+                    ? AppTheme.accentGold : AppTheme.textMuted),
+            tooltip: 'Last fight summary',
+            onPressed: () {
+              final s = game.lastFightSummary;
+              if (s == null) {
+                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                    content: Text('No fight finished yet.'),
+                    behavior: SnackBarBehavior.floating));
+                return;
+              }
+              showFightSummary(context, s);
+            },
+          ),
           IconButton(
             icon: const Icon(Icons.science, size: 18, color: AppTheme.textMuted),
             tooltip: 'Sim Lab',

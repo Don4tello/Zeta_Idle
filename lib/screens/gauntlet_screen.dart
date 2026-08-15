@@ -14,6 +14,7 @@ import '../models/hero_ability.dart';
 import 'main_shell.dart' show TutorialTip;
 import '../models/passive_tree.dart';
 import '../screens/leaderboard_screen.dart';
+import '../widgets/fight_summary_sheet.dart';
 import '../services/game_state.dart';
 import '../services/leaderboard_service.dart';
 import '../theme/app_theme.dart';
@@ -58,6 +59,11 @@ class _GauntletScreenState extends State<GauntletScreen> {
   int _enemyHp    = 0;
   int _enemyMaxHp = 0;
   int _kills      = 0;
+  // Per-run fight-summary tracking (across all gauntlet waves).
+  int _totalDealt = 0;
+  int _maxHit = 0;
+  int _hitCount = 0;
+  final Map<String, int> _fightAbilities = {};
 
   final List<String> _log = [];
   Enemy? _currentEnemy;
@@ -202,6 +208,10 @@ class _GauntletScreenState extends State<GauntletScreen> {
       _phase      = _Phase.battle;
       _waveIndex  = 0;
       _kills      = 0;
+      _totalDealt = 0;
+      _maxHit     = 0;
+      _hitCount   = 0;
+      _fightAbilities.clear();
       _heroMaxHp  = baseMaxHp;
       _heroHp     = baseMaxHp;
       _log.clear();
@@ -248,6 +258,7 @@ class _GauntletScreenState extends State<GauntletScreen> {
     for (final ability in game.unlockedAbilities) {
       final readyAt = _gCooldownUntil[ability.id] ?? 0;
       if (_gAbilityRound >= readyAt) {
+        _fightAbilities[ability.name] = (_fightAbilities[ability.name] ?? 0) + 1;
         _applyAbilityEffect(game, ability);
         _gCooldownUntil[ability.id] =
             _gAbilityRound + game.scaledAbilityCooldown(ability);
@@ -298,6 +309,7 @@ class _GauntletScreenState extends State<GauntletScreen> {
       if (_enemyVulnRem > 0) dmg = (dmg * 1.25).round();
       dmg = dmg.clamp(1, 9999);
       setState(() => _enemyHp -= dmg);
+      _totalDealt += dmg; _hitCount++; if (dmg > _maxHit) _maxHit = dmg;
       _log.add('${crit ? 'CRIT! ' : 'Hit! '}$dmg dmg${_enemyVulnRem > 0 ? ' (vuln)' : ''}.');
       game.audioService.playHitWithType(_heroDmgType);
       _arenaKey.currentState?.playHeroAttack(dmg,
@@ -366,6 +378,7 @@ class _GauntletScreenState extends State<GauntletScreen> {
       case AbilityEffect.bonusDamage:
         final dmg = (sv * 0.5).round().clamp(1, 9999);
         _enemyHp -= dmg;
+        _totalDealt += dmg; _hitCount++; if (dmg > _maxHit) _maxHit = dmg;
         _log.add('✦ ${ability.name}: $dmg ability damage!');
         _arenaKey.currentState?.addExtraFloat(dmg);
 
@@ -392,6 +405,7 @@ class _GauntletScreenState extends State<GauntletScreen> {
       case AbilityEffect.dot:
         final dmg = (sv * 0.6).round().clamp(1, 9999);
         _enemyHp -= dmg;
+        _totalDealt += dmg; _hitCount++; if (dmg > _maxHit) _maxHit = dmg;
         _log.add('✸ ${ability.name}: $dmg DoT damage!');
         _arenaKey.currentState?.addExtraFloat(dmg);
 
@@ -431,6 +445,16 @@ class _GauntletScreenState extends State<GauntletScreen> {
   void _endRun({required bool heroWon}) {
     _autoTimer?.cancel();
     final game = GameStateProvider.of(context);
+    game.lastFightSummary = FightSummary(
+      enemyName: 'Gauntlet · Tier $_selectedTier',
+      victory: heroWon,
+      totalDamage: _totalDealt,
+      maxHit: _maxHit,
+      hitCount: _hitCount,
+      rounds: _gAbilityRound,
+      abilitiesUsed: Map<String, int>.from(_fightAbilities),
+      log: List<String>.from(_log),
+    );
     game.audioService.endBattleMusic();
 
     // Score: kills × (1 + modifier count) × 100 × tier, +2000 for a clear
@@ -495,6 +519,22 @@ class _GauntletScreenState extends State<GauntletScreen> {
         title: Text('CHALLENGE GAUNTLET',
             style: AppTheme.pixelHeading(fontSize: 13, letterSpacing: 2)),
         actions: [
+          IconButton(
+            icon: Icon(Icons.assessment_outlined, size: 20,
+                color: GameStateProvider.of(context).lastFightSummary != null
+                    ? AppTheme.accentGold : AppTheme.textMuted),
+            tooltip: 'Last fight summary',
+            onPressed: () {
+              final s = GameStateProvider.of(context).lastFightSummary;
+              if (s == null) {
+                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                    content: Text('No fight finished yet.'),
+                    behavior: SnackBarBehavior.floating));
+                return;
+              }
+              showFightSummary(context, s);
+            },
+          ),
           if (_phase != _Phase.battle)
             IconButton(
               icon: const Icon(Icons.leaderboard, color: AppTheme.accentGold, size: 20),

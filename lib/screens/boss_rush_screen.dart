@@ -13,6 +13,7 @@ import '../services/remote_config_service.dart';
 import '../models/hero_ability.dart';
 import '../models/passive_tree.dart';
 import '../screens/leaderboard_screen.dart';
+import '../widgets/fight_summary_sheet.dart';
 import '../services/game_state.dart';
 import '../services/leaderboard_service.dart';
 import '../theme/app_theme.dart';
@@ -49,6 +50,11 @@ class _BossRushScreenState extends State<BossRushScreen> {
   int _enemyHp    = 0;
   int _enemyMaxHp = 0;
   int _elapsedSec = 0;
+  // Per-run fight-summary tracking (accumulates across all bosses in the run).
+  int _totalDealt = 0;
+  int _maxHit = 0;
+  int _hitCount = 0;
+  final Map<String, int> _fightAbilities = {};
 
   final List<String> _log = [];
   Enemy? _currentBoss;
@@ -153,6 +159,10 @@ class _BossRushScreenState extends State<BossRushScreen> {
       _heroMaxHp  = _heroMaxHpBase;
       _heroHp     = _heroMaxHp;
       _elapsedSec = 0;
+      _totalDealt = 0;
+      _maxHit     = 0;
+      _hitCount   = 0;
+      _fightAbilities.clear();
       _log.clear();
     });
     _log.add('⚔ BOSS RUSH BEGINS — ${_bossStages.length} bosses await!');
@@ -210,6 +220,7 @@ class _BossRushScreenState extends State<BossRushScreen> {
     for (final ability in game.unlockedAbilities) {
       final readyAt = _gCooldownUntil[ability.id] ?? 0;
       if (_gAbilityRound >= readyAt) {
+        _fightAbilities[ability.name] = (_fightAbilities[ability.name] ?? 0) + 1;
         _applyAbilityEffect(game, ability);
         _gCooldownUntil[ability.id] =
             _gAbilityRound + game.scaledAbilityCooldown(ability);
@@ -249,6 +260,7 @@ class _BossRushScreenState extends State<BossRushScreen> {
       if (_enemyVulnRem > 0) dmg = (dmg * 1.25).round();
       dmg = dmg.clamp(1, 9999);
       _enemyHp -= dmg;
+      _totalDealt += dmg; _hitCount++; if (dmg > _maxHit) _maxHit = dmg;
       _log.add('${crit ? 'CRIT! ' : 'Hit! '}$dmg dmg${_enemyVulnRem > 0 ? ' (vuln)' : ''}.');
       game.audioService.playHitWithType(_heroDmgType);
       _arenaKey.currentState?.playHeroAttack(dmg,
@@ -325,6 +337,7 @@ class _BossRushScreenState extends State<BossRushScreen> {
       case AbilityEffect.bonusDamage:
         final dmg = (sv * 0.5).round().clamp(1, 9999);
         _enemyHp -= dmg;
+        _totalDealt += dmg; _hitCount++; if (dmg > _maxHit) _maxHit = dmg;
         _log.add('✦ ${ability.name}: $dmg ability damage!');
         _arenaKey.currentState?.addExtraFloat(dmg);
 
@@ -351,6 +364,7 @@ class _BossRushScreenState extends State<BossRushScreen> {
       case AbilityEffect.dot:
         final dmg = (sv * 0.6).round().clamp(1, 9999);
         _enemyHp -= dmg;
+        _totalDealt += dmg; _hitCount++; if (dmg > _maxHit) _maxHit = dmg;
         _log.add('✸ ${ability.name}: $dmg DoT damage!');
         _arenaKey.currentState?.addExtraFloat(dmg);
 
@@ -402,6 +416,16 @@ class _BossRushScreenState extends State<BossRushScreen> {
     );
 
     final game = GameStateProvider.of(context);
+    game.lastFightSummary = FightSummary(
+      enemyName: 'Boss Rush · Tier $_selectedTier',
+      victory: cleared,
+      totalDamage: _totalDealt,
+      maxHit: _maxHit,
+      hitCount: _hitCount,
+      rounds: _gAbilityRound,
+      abilitiesUsed: Map<String, int>.from(_fightAbilities),
+      log: List<String>.from(_log),
+    );
     // Rewards: shards proportional to bosses defeated, extra if cleared.
     // Soft rewards scale with rebirth to match the +prestige boss difficulty.
     final rebirthMult = 1.0 + game.prestigeLevel * 0.15;
@@ -478,6 +502,22 @@ class _BossRushScreenState extends State<BossRushScreen> {
             : null,
         automaticallyImplyLeading: !_running || _done,
         actions: [
+          IconButton(
+            icon: Icon(Icons.assessment_outlined, size: 20,
+                color: GameStateProvider.of(context).lastFightSummary != null
+                    ? AppTheme.accentGold : AppTheme.textMuted),
+            tooltip: 'Last fight summary',
+            onPressed: () {
+              final s = GameStateProvider.of(context).lastFightSummary;
+              if (s == null) {
+                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                    content: Text('No fight finished yet.'),
+                    behavior: SnackBarBehavior.floating));
+                return;
+              }
+              showFightSummary(context, s);
+            },
+          ),
           if (!_running && !_done)
             IconButton(
               icon: const Icon(Icons.leaderboard, color: AppTheme.accentGold, size: 20),

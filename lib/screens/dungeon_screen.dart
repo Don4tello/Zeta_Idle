@@ -7,6 +7,7 @@ import '../models/equipment.dart';
 import '../models/hero_ability.dart';
 import '../models/passive_tree.dart';
 import '../screens/leaderboard_screen.dart';
+import '../widgets/fight_summary_sheet.dart';
 import '../screens/main_shell.dart';
 import '../services/game_state.dart';
 import '../services/leaderboard_service.dart';
@@ -94,6 +95,21 @@ class _DungeonScreenState extends State<DungeonScreen> {
               )
             : null,
         actions: [
+          IconButton(
+            icon: Icon(Icons.assessment_outlined, size: 20,
+                color: game.lastFightSummary != null ? AppTheme.accentGold : AppTheme.textMuted),
+            tooltip: 'Last fight summary',
+            onPressed: () {
+              final s = game.lastFightSummary;
+              if (s == null) {
+                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                    content: Text('No fight finished yet.'),
+                    behavior: SnackBarBehavior.floating));
+                return;
+              }
+              showFightSummary(context, s);
+            },
+          ),
           if (run == null || run.isOver)
             IconButton(
               icon: const Icon(Icons.leaderboard, color: AppTheme.accentGold, size: 20),
@@ -1303,6 +1319,9 @@ class _AnimatedCombatRoomState extends State<_AnimatedCombatRoom> {
   int _bonusAtk = 0;
   int _totalDealt = 0;
   int _totalTaken = 0;
+  int _maxHit = 0;
+  int _hitCount = 0;
+  final Map<String, int> _fightAbilities = {};
   int _bonusAc  = 0;
   bool _dodgeThisRound        = false;
   bool _enemyStunnedThisRound = false;
@@ -1458,6 +1477,7 @@ class _AnimatedCombatRoomState extends State<_AnimatedCombatRoom> {
       if (_abilityRound < readyAt) continue;
       _abilityCooldownUntil[ability.id] =
           _abilityRound + widget.game.scaledAbilityCooldown(ability);
+      _fightAbilities[ability.name] = (_fightAbilities[ability.name] ?? 0) + 1;
       _applyAbilityInAnimation(ability, widget.game.scaledAbilityValue(ability), enemyName);
       if (_enemyHp <= 0) break;
     }
@@ -1495,6 +1515,8 @@ class _AnimatedCombatRoomState extends State<_AnimatedCombatRoom> {
       setState(() {
         _enemyHp = (_enemyHp - dmg).clamp(0, _enemyMaxHp);
         _totalDealt += dmg;
+        _hitCount++;
+        if (dmg > _maxHit) _maxHit = dmg;
         _log.add(crit
             ? '⚡ CRIT $dmg dmg! ($enemyName: $_enemyHp/$_enemyMaxHp)'
             : 'Hit! $dmg dmg ($enemyName: $_enemyHp/$_enemyMaxHp)');
@@ -1559,6 +1581,7 @@ class _AnimatedCombatRoomState extends State<_AnimatedCombatRoom> {
 
     if (_heroHp <= 0) {
       _finished = true;
+      _snapshotDungeonFight(false);
       _timer?.cancel();
       setState(() => _log.add('☠ $heroName has fallen!'));
       await (_arenaKey.currentState?.playHeroDeath() ?? Future.value());
@@ -1580,8 +1603,22 @@ class _AnimatedCombatRoomState extends State<_AnimatedCombatRoom> {
     setState(() {});
   }
 
+  void _snapshotDungeonFight(bool victory) {
+    widget.game.lastFightSummary = FightSummary(
+      enemyName: widget.room.enemyName ?? 'Enemy',
+      victory: victory,
+      totalDamage: _totalDealt,
+      maxHit: _maxHit,
+      hitCount: _hitCount,
+      rounds: _abilityRound,
+      abilitiesUsed: Map<String, int>.from(_fightAbilities),
+      log: List<String>.from(_log),
+    );
+  }
+
   void _finishVictory(String enemyName) {
     _finished = true;
+    _snapshotDungeonFight(true);
     _timer?.cancel();
     final boneDrop = widget.isBoss ? 3 : widget.isElite ? 2 : 1;
     setState(() => _log.add('✓ $enemyName is defeated!   🦴 +$boneDrop Bones'));
