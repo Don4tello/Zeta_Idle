@@ -778,7 +778,7 @@ class _BattleScreenState extends State<BattleScreen>
             stageIndex:   game.isCampaignReplay ? game.replayStageIndex : game.campaignStageIndex,
             headerLabel:  game.isCampaignReplay
                 ? 'STAGE ${game.replayStageIndex + 1}  (REPLAY)'
-                : 'STAGE ${game.campaignStageIndex + 1}',
+                : game.campaignStageLabel,
             isBoss:       game.isBossStage,
             isBossEnraged: game.isBossEnraged,
             affixWidget: game.activeAffixes.isNotEmpty

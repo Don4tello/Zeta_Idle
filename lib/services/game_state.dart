@@ -6571,6 +6571,15 @@ class GameState extends ChangeNotifier {
     );
   }
 
+  /// True once the player has cleared the final campaign stage (Omega). The
+  /// campaign caps here — Rebirth is the way forward.
+  bool get campaignComplete => campaignStageIndex >= CampaignData.stages.length;
+
+  /// Header label for the current campaign position — "STAGE 42" within the
+  /// campaign, "CAMPAIGN COMPLETE" once the 100-stage run is finished.
+  String get campaignStageLabel =>
+      campaignComplete ? 'CAMPAIGN COMPLETE' : 'STAGE ${campaignStageIndex + 1}';
+
   @override
   void dispose() {
     _autoSaveTimer?.cancel();
@@ -6587,6 +6596,12 @@ class GameState extends ChangeNotifier {
 
   void startBattle() {
     if (currentEnemy != null) return;
+    // Campaign caps at the final stage — no endless Abyss past stage 100. Beat
+    // the Omega, then Rebirth (canPrestige unlocks at stage 100).
+    if (campaignStageIndex >= CampaignData.stages.length) {
+      autoCampaign = false;
+      return;
+    }
     if (!spendEnergy()) return;
     _isCampaignBattle = true;
     heroDefeated = false;

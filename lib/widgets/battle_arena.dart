@@ -8,6 +8,7 @@ import '../models/dnd_class.dart';
 import '../models/hero_model.dart' show HeroGender;
 import '../models/hero_race.dart';
 import '../theme/app_theme.dart';
+import '../utils/format_number.dart';
 import 'ability_icon.dart';
 import 'battle_backgrounds.dart';
 import 'battle_sprites.dart';
@@ -228,7 +229,7 @@ class BattleArenaState extends State<BattleArena> with TickerProviderStateMixin 
           vsync: this, duration: const Duration(milliseconds: 900));
       final entry = _FloatEntry(
           ctrl: ctrl,
-          text: '+$value',
+          text: '+${fmtNum(value)}',
           color: const Color(0xFF44ee88),
           isCrit: false,
           onEnemy: false);
@@ -299,7 +300,7 @@ class BattleArenaState extends State<BattleArena> with TickerProviderStateMixin 
     final ctrl = AnimationController(
         vsync: this, duration: const Duration(milliseconds: 1000));
     final weakTag = isWeak && !isCrit ? ' WEAK!' : '';
-    final label = isCrit ? '$damage!' : '$damage$weakTag';
+    final label = isCrit ? '${fmtNum(damage)}!' : '${fmtNum(damage)}$weakTag';
     // Crits arc outward; normal hits drift gently
     final driftX = isCrit
         ? (28.0 + _rng.nextDouble() * 24.0) * (onEnemy ? 1 : -1)
@@ -961,7 +962,7 @@ class _CombatantPanel extends StatelessWidget {
           Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text('LV.$level  HIT:$attack',
+              Text('LV.$level  HIT:${fmtNum(attack)}',
                   style: const TextStyle(fontSize: 12, color: AppTheme.textLight)),
               if (damageType != null) ...[
                 const SizedBox(width: 5),
@@ -1000,7 +1001,7 @@ class _CombatantPanel extends StatelessWidget {
           const SizedBox(height: 4),
           PixelHealthBar(current: currentHp, max: maxHp, height: 10),
           const SizedBox(height: 2),
-          Text('$currentHp / $maxHp',
+          Text('${fmtNum(currentHp)} / ${fmtNum(maxHp)}',
               style: const TextStyle(fontSize: 11, color: AppTheme.textLight)),
           if (damageType != null && !alignRight) ...[
             const SizedBox(height: 4),

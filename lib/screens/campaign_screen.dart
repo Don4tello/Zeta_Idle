@@ -966,7 +966,7 @@ class _StageCard extends StatelessWidget {
                   border: Border.all(color: zone.color.withValues(alpha: 0.5)),
                   borderRadius: BorderRadius.circular(3),
                 ),
-                child: Text('STAGE $stageNum',
+                child: Text(game.campaignStageLabel,
                     style: AppTheme.pixelHeading(
                         fontSize: 10, color: zone.color, letterSpacing: 1)),
               ),
