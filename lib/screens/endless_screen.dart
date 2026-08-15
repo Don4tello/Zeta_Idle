@@ -8,6 +8,7 @@ import '../models/equipment.dart';
 import '../widgets/item_drop_badge.dart';
 import '../services/game_state.dart';
 import '../theme/app_theme.dart';
+import '../widgets/fight_summary_sheet.dart';
 import '../widgets/affix_chip_row.dart';
 import '../widgets/arena_ability_effect.dart';
 import '../widgets/battle_arena.dart';
@@ -234,6 +235,24 @@ class _EndlessScreenState extends State<EndlessScreen> {
             }
           },
         ),
+        actions: [
+          IconButton(
+            icon: Icon(Icons.assessment_outlined, size: 21,
+                color: game.lastFightSummary != null
+                    ? AppTheme.accentGold : AppTheme.textMuted),
+            tooltip: 'Last fight summary',
+            onPressed: () {
+              final s = game.lastFightSummary;
+              if (s == null) {
+                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                    content: Text('No fight finished yet.'),
+                    behavior: SnackBarBehavior.floating));
+                return;
+              }
+              showFightSummary(context, s);
+            },
+          ),
+        ],
       ),
       body: Stack(
         fit: StackFit.expand,

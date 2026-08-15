@@ -4426,6 +4426,7 @@ class GameState extends ChangeNotifier {
   List<ZoneAffix> get activeAffixes => List.unmodifiable(_activeAffixes);
 
   void _resetBattlePerks() {
+    _resetFightStats(); // every game_state-driven fight-start resets the summary
     _comboStacks         = 0;
     _unbrokenUsed        = false;
     _unbreakableUsed     = false;
