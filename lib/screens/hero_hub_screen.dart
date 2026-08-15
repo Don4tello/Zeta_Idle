@@ -1,5 +1,6 @@
 ﻿import 'package:flutter/material.dart';
 import 'package:flutter/gestures.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../widgets/game_icons.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:go_router/go_router.dart';
@@ -263,8 +264,26 @@ class _HeroHubScreenState extends State<HeroHubScreen>
     return Scaffold(
       backgroundColor: AppTheme.darkBg,
       appBar: AppBar(
-        title: Text('HERO',
-            style: AppTheme.pixelHeading(fontSize: 15, letterSpacing: 3)),
+        titleSpacing: 12,
+        title: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text('HERO',
+                style: AppTheme.pixelHeading(fontSize: 15, letterSpacing: 3)),
+            const SizedBox(width: 14),
+            _SocialButton(
+              icon: Icons.discord,
+              tooltip: 'Join our Discord',
+              url: 'https://discord.gg/F5WcvsZV9W',
+            ),
+            const SizedBox(width: 4),
+            _SocialButton(
+              icon: Icons.reddit,
+              tooltip: 'Visit r/zeta_idle',
+              url: 'https://www.reddit.com/r/zeta_idle/',
+            ),
+          ],
+        ),
         actions: [
           IconButton(
             icon: const Icon(Icons.shield_outlined, size: 20),
@@ -378,6 +397,35 @@ class _ResourceBanner extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+/// Small brand-gold social link button for the Hero header (Discord / Reddit).
+class _SocialButton extends StatelessWidget {
+  const _SocialButton({required this.icon, required this.tooltip, required this.url});
+  final IconData icon;
+  final String tooltip;
+  final String url;
+
+  @override
+  Widget build(BuildContext context) {
+    return IconButton(
+      icon: Icon(icon, size: 20, color: AppTheme.accentGold),
+      tooltip: tooltip,
+      visualDensity: VisualDensity.compact,
+      constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+      padding: EdgeInsets.zero,
+      onPressed: () async {
+        final uri = Uri.parse(url);
+        if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
+          if (context.mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('Could not open $url')),
+            );
+          }
+        }
+      },
     );
   }
 }

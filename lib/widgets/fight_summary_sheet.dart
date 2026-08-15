@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../services/game_state.dart';
 import '../theme/app_theme.dart';
+import '../utils/format_number.dart';
 
 /// Post-fight summary — the stat breakdown (abilities used, max/avg/total
 /// damage, rounds) with the full battle log below. Reusable across every mode
@@ -109,11 +110,23 @@ class FightSummarySheet extends StatelessWidget {
         ),
         const SizedBox(height: 6),
         Expanded(
-          child: ListView.builder(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-            itemCount: s.log.length,
-            itemBuilder: (_, i) => _LogLine(text: s.log[i]),
-          ),
+          child: Builder(builder: (_) {
+            // Collapse consecutive identical lines into "line  ×N".
+            final folded = <({String text, int count})>[];
+            for (final line in s.log) {
+              if (folded.isNotEmpty && folded.last.text == line) {
+                folded[folded.length - 1] = (text: line, count: folded.last.count + 1);
+              } else {
+                folded.add((text: line, count: 1));
+              }
+            }
+            return ListView.builder(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+              itemCount: folded.length,
+              itemBuilder: (_, i) =>
+                  _LogLine(text: folded[i].text, count: folded[i].count),
+            );
+          }),
         ),
       ],
       ),
@@ -145,8 +158,12 @@ class FightSummarySheet extends StatelessWidget {
 /// A single battle-log line, colour-coded + icon-tagged by category so the log
 /// is scannable at a glance (damage / crit / heal / buff / mitigated / …).
 class _LogLine extends StatelessWidget {
-  const _LogLine({required this.text});
+  const _LogLine({required this.text, this.count = 1});
   final String text;
+  final int count;
+
+  // Matches integers (optionally comma-grouped) so we can trim + highlight them.
+  static final _numRe = RegExp(r'\d[\d,]*');
 
   static ({Color color, String icon}) _classify(String line) {
     final l = line.toLowerCase();
@@ -190,6 +207,29 @@ class _LogLine extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = _classify(text);
     final showIcon = c.icon.isNotEmpty && !_startsWithEmoji;
+
+    // Split the line into text + number spans. Numbers >= 1000 are trimmed
+    // (2.0K / 1.9M) and every number is brightened + bold so values pop.
+    final numStyle = TextStyle(
+        color: _brighten(c.color), fontSize: 12, height: 1.3,
+        fontWeight: FontWeight.bold);
+    final baseStyle = TextStyle(color: c.color, fontSize: 12, height: 1.3);
+    final spans = <TextSpan>[];
+    var last = 0;
+    for (final m in _numRe.allMatches(text)) {
+      if (m.start > last) spans.add(TextSpan(text: text.substring(last, m.start)));
+      final n = int.tryParse(m.group(0)!.replaceAll(',', '')) ?? 0;
+      spans.add(TextSpan(text: n >= 1000 ? fmtNum(n) : m.group(0)!, style: numStyle));
+      last = m.end;
+    }
+    if (last < text.length) spans.add(TextSpan(text: text.substring(last)));
+    if (count > 1) {
+      spans.add(TextSpan(
+          text: '  ×$count',
+          style: TextStyle(
+              color: AppTheme.textMuted, fontSize: 11, fontWeight: FontWeight.bold)));
+    }
+
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 2),
       child: Row(
@@ -200,11 +240,14 @@ class _LogLine extends StatelessWidget {
             const SizedBox(width: 6),
           ],
           Expanded(
-            child: Text(text,
-                style: TextStyle(color: c.color, fontSize: 12, height: 1.3)),
+            child: Text.rich(TextSpan(style: baseStyle, children: spans)),
           ),
         ],
       ),
     );
   }
+
+  /// Lighten a category colour a touch so highlighted numbers stand out.
+  static Color _brighten(Color c) =>
+      Color.lerp(c, Colors.white, 0.35) ?? c;
 }
