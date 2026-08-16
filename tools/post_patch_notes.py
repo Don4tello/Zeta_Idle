@@ -5,8 +5,12 @@ Reads the newest "## +N — Title" section from CHANGELOG.md and publishes it.
 
 Secrets come from tools/post_config.json (git-ignored) or environment variables:
   DISCORD_WEBHOOK_URL
-  REDDIT_CLIENT_ID, REDDIT_CLIENT_SECRET, REDDIT_USERNAME, REDDIT_PASSWORD,
+  REDDIT_CLIENT_ID, REDDIT_CLIENT_SECRET, REDDIT_REFRESH_TOKEN,
   REDDIT_SUBREDDIT   (default: zeta_idle)
+
+Reddit uses a refresh token (no password — works with Google Sign-In). Run
+  python tools/get_reddit_token.py
+once to authorize in the browser and save REDDIT_REFRESH_TOKEN.
 
 Usage:
   python tools/post_patch_notes.py                # post to both
@@ -36,7 +40,7 @@ def load_config():
         cfg = json.loads(CONFIG.read_text(encoding="utf-8"))
     # Environment variables override the file.
     for key in ("DISCORD_WEBHOOK_URL", "REDDIT_CLIENT_ID", "REDDIT_CLIENT_SECRET",
-                "REDDIT_USERNAME", "REDDIT_PASSWORD", "REDDIT_SUBREDDIT"):
+                "REDDIT_REFRESH_TOKEN", "REDDIT_SUBREDDIT"):
         if os.environ.get(key):
             cfg[key] = os.environ[key]
     cfg.setdefault("REDDIT_SUBREDDIT", "zeta_idle")
@@ -91,9 +95,9 @@ def post_discord(cfg, build, title, bullets, dry):
 
 
 def post_reddit(cfg, build, title, bullets, dry):
-    need = ("REDDIT_CLIENT_ID", "REDDIT_CLIENT_SECRET", "REDDIT_USERNAME", "REDDIT_PASSWORD")
+    need = ("REDDIT_CLIENT_ID", "REDDIT_CLIENT_SECRET", "REDDIT_REFRESH_TOKEN")
     if not all(cfg.get(k) for k in need):
-        print("… skipping Reddit (missing REDDIT_* credentials)")
+        print("… skipping Reddit (missing REDDIT_* / refresh token — run get_reddit_token.py)")
         return
     post_title = f"Update — Build {build}: {title}"
     post_text = format_body(build, title, bullets)
@@ -101,13 +105,13 @@ def post_reddit(cfg, build, title, bullets, dry):
     if dry:
         print(f"[dry-run] Reddit r/{sub} post:\n{post_title}\n\n{post_text}")
         return
-    # OAuth (password grant) → submit self post.
+    # OAuth (refresh-token grant) → submit self post. No password needed.
     auth = requests.auth.HTTPBasicAuth(cfg["REDDIT_CLIENT_ID"], cfg["REDDIT_CLIENT_SECRET"])
     tok = requests.post(
         "https://www.reddit.com/api/v1/access_token",
         auth=auth,
-        data={"grant_type": "password",
-              "username": cfg["REDDIT_USERNAME"], "password": cfg["REDDIT_PASSWORD"]},
+        data={"grant_type": "refresh_token",
+              "refresh_token": cfg["REDDIT_REFRESH_TOKEN"]},
         headers={"User-Agent": USER_AGENT}, timeout=20)
     tok.raise_for_status()
     token = tok.json().get("access_token")
