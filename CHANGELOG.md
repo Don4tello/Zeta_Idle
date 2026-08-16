@@ -3,6 +3,62 @@
 Version numbers are the pubspec build number (`0.1.0+N`), which is the Play
 Store `versionCode`. Newest first.
 
+## +52 — What's New panel + battle-log round dividers
+- **What's New** in-app patch-notes viewer (data-driven `kPatchNotes`, newest
+  first, scrollable history). Megaphone button in the Hero header; a red dot
+  badges unread updates (tracked via `lastSeenPatchBuild`, cleared on open).
+- Battle log now emits **"— Round N —"** markers each round across all modes,
+  rendered as labelled dividers in the summary sheet.
+
+## +51 — Post-fight summary standardized to all screen modes
+- Instrumented **Dungeon / Boss Rush / Gauntlet / PvP** to snapshot a
+  `FightSummary` (total/max/hit-count/abilities) and added the summary icon.
+  The colour-coded, number-trimmed summary sheet now works in every arena mode.
+
+## +50 — Post-fight summary to Endless + Tower Ascension
+- `_resetBattlePerks` now resets the per-fight summary stats, so every
+  game_state-driven fight snapshots a clean summary; added the icon to the
+  Endless / Tower screen.
+
+## +49 — Battle-log polish + community buttons
+- Log numbers **trim to K/M/B** and are bold + brightened; consecutive identical
+  lines **collapse to "line ×N"**.
+- **Discord + Reddit** buttons in the Hero header, brand-gold.
+
+## +48 — Number trimming (game-wide) + campaign cap
+- Damage floats, HP bars, and the HIT stat trim to **K/M/B** across every arena
+  mode (shared `BattleArena`).
+- Campaign **caps at stage 100** — beat the Omega, then Rebirth; no more endless
+  Abyss drift. Header reads "CAMPAIGN COMPLETE" past 100.
+
+## +47 — Post-fight summary + colour-coded battle log
+- Tap the stats icon after a fight for a breakdown: total / max / avg damage,
+  hit count, rounds, abilities used, and a colour-coded, icon-tagged log.
+
+## +46 — Fight summary counts all damage + nav-bar fix
+- Total/Max/Avg/Hits now include ability, DoT, thorns and ally damage (not just
+  auto-attacks). Summary sheet wrapped in a bottom SafeArea.
+
+## +45 — Ascension-wipe fix + leaderboards count ascension
+- Fixed: `prestige()` never saved ascension, so **rebirthing wiped all ascension
+  progress** — now preserved through a rebirth.
+- Campaign & Dungeon boards rank by **effective rebirths = current + total AP
+  earned**, so ascending no longer drops you.
+
+## +44 — Post-fight summary (campaign)
+- New `FightSummary` snapshot + summary sheet (stat breakdown + battle log),
+  opened from a stats icon on the battle screen.
+
+## +43 — Ability Ascension + clearer AP explanation
+- Spend Ascension Points to ascend each class ability 0–10 tiers (1 AP/tier,
+  60 AP/character), +10% ability power per tier. Survives rebirth & ascension.
+- Rewrote the Ascension screen's AP explanation with a KEEP / LOSE breakdown.
+
+## +42 — Ascension rework
+- Ascension Point payout **scales with rebirths sacrificed** (was a flat 3).
+- Bonuses ~2× bigger; flat "+2 damage" node became **+12% all-damage per level**;
+  Legacy Power buffed to +30%/level.
+
 ## +41 — Paid hero rename
 - **Rename Hero now costs Z-Coins**, escalating +50 each rename (50 → 100 → 150 …),
   tracked by a persisted counter. Settings shows the current price; the dialog
@@ -61,12 +117,12 @@ Store `versionCode`. Newest first.
 
 ---
 
-## Play Store "What's new" (for the +41 listing)
+## Play Store "What's new" (for the +52 listing)
 
 ```
-• NEW: Leaderboards for Campaign, Dungeon, Boss Rush & Gauntlet — see the top 50 and your global rank
-• Leaderboard rows now show your class sprite, class, and level-50 subclass (e.g. Paladin — Oath of the Watchers)
-• NEW: Rename your hero from Settings (Z-Coin cost, rises each time)
-• Fixed a crash when resetting or deleting a character
-• Various polish and stability fixes
+• Post-fight summaries + a cleaner, colour-coded battle log — now in every mode
+• Damage & HP numbers trim to K/M/B
+• Campaign now ends cleanly at stage 100
+• NEW: What's New panel + Discord/Reddit links in the Hero screen
+• Various fixes & polish
 ```
