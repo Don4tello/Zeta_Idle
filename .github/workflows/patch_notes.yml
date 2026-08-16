@@ -1,0 +1,36 @@
+name: Post patch notes to Discord
+
+# Runs when you push a version tag (git tag v52 && git push --tags), or manually
+# from the Actions tab (Run workflow). Posts the newest CHANGELOG.md entry to
+# Discord via the DISCORD_WEBHOOK_URL repo secret. The manual run also offers a
+# one-time "backfill" of the entire history (oldest first).
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: 'latest = newest build only; backfill = whole history'
+        type: choice
+        default: latest
+        options: [latest, backfill]
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  discord:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: pip install requests
+      - name: Post to Discord
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+        run: |
+          if [ "${{ github.event.inputs.mode }}" = "backfill" ]; then
+            python tools/post_patch_notes.py --discord-only --all
+          else
+            python tools/post_patch_notes.py --discord-only
+          fi

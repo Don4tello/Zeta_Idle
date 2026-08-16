@@ -23,6 +23,7 @@ import json
 import os
 import re
 import sys
+import time
 from pathlib import Path
 
 import requests
@@ -47,27 +48,31 @@ def load_config():
     return cfg
 
 
-def latest_patch():
-    """Return (build:int, title:str, bullets:[str]) for the newest changelog entry."""
+def parse_all():
+    """Return every '## +N — Title' entry as (build, title, bullets), newest first."""
     text = CHANGELOG.read_text(encoding="utf-8")
-    # Find the first "## +N — Title" heading and capture until the next "## " or "---".
-    m = re.search(r"^## \+(\d+)\s+—\s+(.+?)\n(.*?)(?=^## |\n---)", text, re.M | re.S)
-    if not m:
-        sys.exit("Could not find a '## +N — Title' entry in CHANGELOG.md")
-    build = int(m.group(1))
-    title = m.group(2).strip()
-    body = m.group(3)
-    # Collapse the markdown bullet lines (which may wrap) into single strings.
-    bullets = []
-    for raw in re.split(r"\n(?=- )", body.strip()):
-        line = raw.strip()
-        if not line.startswith("- "):
-            continue
-        line = re.sub(r"\s*\n\s*", " ", line[2:]).strip()   # unwrap
-        line = re.sub(r"\*\*(.+?)\*\*", r"\1", line)          # drop bold markers
-        line = re.sub(r"`(.+?)`", r"\1", line)                # drop code ticks
-        bullets.append(line)
-    return build, title, bullets
+    entries = []
+    for m in re.finditer(r"^## \+(\d+)\s+—\s+(.+?)\n(.*?)(?=^## |\n---)", text, re.M | re.S):
+        build = int(m.group(1))
+        title = m.group(2).strip()
+        bullets = []
+        for raw in re.split(r"\n(?=- )", m.group(3).strip()):
+            line = raw.strip()
+            if not line.startswith("- "):
+                continue
+            line = re.sub(r"\s*\n\s*", " ", line[2:]).strip()   # unwrap
+            line = re.sub(r"\*\*(.+?)\*\*", r"\1", line)          # drop bold markers
+            line = re.sub(r"`(.+?)`", r"\1", line)                # drop code ticks
+            bullets.append(line)
+        entries.append((build, title, bullets))
+    if not entries:
+        sys.exit("Could not find any '## +N — Title' entries in CHANGELOG.md")
+    return entries
+
+
+def latest_patch():
+    """(build, title, bullets) for the newest changelog entry."""
+    return parse_all()[0]
 
 
 def format_body(build, title, bullets):
@@ -134,9 +139,26 @@ def main():
     ap.add_argument("--discord-only", action="store_true")
     ap.add_argument("--reddit-only", action="store_true")
     ap.add_argument("--dry-run", action="store_true")
+    ap.add_argument("--all", action="store_true",
+                    help="backfill the whole history (oldest first) — Discord only")
+    ap.add_argument("--since", type=int, default=0,
+                    help="with --all, only builds >= this number")
     args = ap.parse_args()
 
     cfg = load_config()
+
+    if args.all:
+        # Historical backfill: post every entry oldest→newest so the channel
+        # reads in chronological order. Reddit is skipped (would spam the sub).
+        entries = [e for e in parse_all() if e[0] >= args.since]
+        entries.sort(key=lambda e: e[0])  # oldest first
+        print(f"Backfilling {len(entries)} builds to Discord…")
+        for i, (build, title, bullets) in enumerate(entries):
+            post_discord(cfg, build, title, bullets, args.dry_run)
+            if not args.dry_run and i < len(entries) - 1:
+                time.sleep(1.5)  # stay under Discord webhook rate limits
+        return
+
     build, title, bullets = latest_patch()
     print(f"Latest: Build {build} — {title}  ({len(bullets)} changes)")
 
