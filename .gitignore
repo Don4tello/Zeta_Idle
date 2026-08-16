@@ -19,3 +19,6 @@ ios/Pods/
 /dungeon_shot.png
 /zeta_shot.png
 /phone_ads.png
+
+# Patch-notes poster secrets (never commit)
+/tools/post_config.json
