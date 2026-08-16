@@ -6,6 +6,7 @@ import 'package:flutter/services.dart' show HapticFeedback;
 import 'package:flutter/widgets.dart';
 import '../data/ability_data.dart';
 import '../data/campaign_data.dart';
+import '../data/patch_notes.dart';
 import '../data/campaign_lore.dart';
 import '../data/world_zone_data.dart';
 import '../models/world_zone.dart';
@@ -4100,6 +4101,18 @@ class GameState extends ChangeNotifier {
   int heroRenameCount = 0;
   int get renameHeroCost => kRenameHeroBaseCost * (heroRenameCount + 1);
 
+  // What's New / patch notes — track the newest build the player has opened so
+  // we can badge the button when there's an unread update.
+  int lastSeenPatchBuild = 0;
+  bool get hasUnseenPatchNotes => kLatestPatchBuild > lastSeenPatchBuild;
+  void markPatchNotesSeen() {
+    if (lastSeenPatchBuild < kLatestPatchBuild) {
+      lastSeenPatchBuild = kLatestPatchBuild;
+      notifyListeners();
+      saveToLocal();
+    }
+  }
+
   /// Rename the hero for [renameHeroCost] Z-Coins. Returns false if the name is
   /// empty or the player can't afford it. Each successful rename raises the next
   /// cost by 50. Leaderboard rows refresh their identity when boards are opened.
@@ -6744,6 +6757,7 @@ class GameState extends ChangeNotifier {
     final enemy = currentEnemy;
     if (enemy == null) return;
     _battleTurnCount++;
+    if (_battleTurnCount > 1) battleLog.add('— Round $_battleTurnCount —');
 
     // Boss ability stun: hero skips this turn
     if (_heroStunRounds > 0) {
@@ -8318,6 +8332,7 @@ class GameState extends ChangeNotifier {
       // Boss Rush
       'bossRushBestScore':   bossRushBestScore,
       'heroRenameCount':     heroRenameCount,
+      'lastSeenPatchBuild':  lastSeenPatchBuild,
       'bossRushHighestTier': bossRushHighestTier,
       // Waystones
       'basicWaystoneCount': basicWaystoneCount,
@@ -8653,6 +8668,7 @@ class GameState extends ChangeNotifier {
     }
     bossRushBestScore   = (json['bossRushBestScore']   as int?) ?? 0;
     heroRenameCount     = (json['heroRenameCount']     as int?) ?? 0;
+    lastSeenPatchBuild  = (json['lastSeenPatchBuild']  as int?) ?? 0;
     bossRushHighestTier = (json['bossRushHighestTier'] as int?) ?? 0;
     basicWaystoneCount  = (json['basicWaystoneCount'] as int?) ?? 0;
     grandWaystoneCount  = (json['grandWaystoneCount'] as int?) ?? 0;

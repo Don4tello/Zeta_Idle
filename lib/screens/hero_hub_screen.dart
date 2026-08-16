@@ -2,6 +2,7 @@
 import 'package:flutter/gestures.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../widgets/game_icons.dart';
+import '../widgets/whats_new_sheet.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:go_router/go_router.dart';
 import '../core/routing/app_router.dart';
@@ -271,6 +272,33 @@ class _HeroHubScreenState extends State<HeroHubScreen>
             Text('HERO',
                 style: AppTheme.pixelHeading(fontSize: 15, letterSpacing: 3)),
             const SizedBox(width: 14),
+            Stack(
+              clipBehavior: Clip.none,
+              children: [
+                IconButton(
+                  icon: const Icon(Icons.campaign_outlined, size: 20,
+                      color: AppTheme.accentGold),
+                  tooltip: "What's New",
+                  visualDensity: VisualDensity.compact,
+                  constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+                  padding: EdgeInsets.zero,
+                  onPressed: () {
+                    game.markPatchNotesSeen();
+                    showWhatsNew(context);
+                  },
+                ),
+                if (game.hasUnseenPatchNotes)
+                  Positioned(
+                    right: 4, top: 6,
+                    child: Container(
+                      width: 8, height: 8,
+                      decoration: const BoxDecoration(
+                        color: Color(0xFFff5544), shape: BoxShape.circle),
+                    ),
+                  ),
+              ],
+            ),
+            const SizedBox(width: 2),
             _SocialButton(
               icon: Icons.discord,
               tooltip: 'Join our Discord',

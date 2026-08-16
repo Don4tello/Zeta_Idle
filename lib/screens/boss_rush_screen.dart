@@ -217,6 +217,7 @@ class _BossRushScreenState extends State<BossRushScreen> {
 
     // -- Tick abilities ----------------------------------------------------
     _gAbilityRound++;
+    if (_gAbilityRound > 1) _log.add('— Round $_gAbilityRound —');
     for (final ability in game.unlockedAbilities) {
       final readyAt = _gCooldownUntil[ability.id] ?? 0;
       if (_gAbilityRound >= readyAt) {

@@ -1455,6 +1455,7 @@ class _AnimatedCombatRoomState extends State<_AnimatedCombatRoom> {
     final heroName  = widget.game.hero.name;
 
     _abilityRound++;
+    if (_abilityRound > 1) _log.add('— Round $_abilityRound —');
     _dodgeThisRound        = false;
     _enemyStunnedThisRound = false;
 

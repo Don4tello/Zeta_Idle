@@ -205,6 +205,23 @@ class _LogLine extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Round markers ("— Round N —") render as a labelled divider.
+    if (text.startsWith('— Round ')) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 6),
+        child: Row(children: [
+          const Expanded(child: Divider(color: AppTheme.cardBorder)),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8),
+            child: Text(text.replaceAll('—', '').trim().toUpperCase(),
+                style: const TextStyle(
+                    color: AppTheme.textMuted, fontSize: 9, letterSpacing: 1.5,
+                    fontWeight: FontWeight.bold)),
+          ),
+          const Expanded(child: Divider(color: AppTheme.cardBorder)),
+        ]),
+      );
+    }
     final c = _classify(text);
     final showIcon = c.icon.isNotEmpty && !_startsWithEmoji;
 
