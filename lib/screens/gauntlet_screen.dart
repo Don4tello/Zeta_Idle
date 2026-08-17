@@ -256,6 +256,12 @@ class _GauntletScreenState extends State<GauntletScreen> {
     // -- Tick abilities ----------------------------------------------------
     _gAbilityRound++;
     if (_gAbilityRound > 1) _log.add('— Round $_gAbilityRound —');
+    // Aura HP regen — heal a % of max HP each turn (sustain).
+    if (game.auraHpRegen > 0 && _heroHp > 0 && _heroHp < _heroMaxHp) {
+      final r = (_heroMaxHp * game.auraHpRegen / 100).round().clamp(1, 999999);
+      _heroHp = (_heroHp + r).clamp(0, _heroMaxHp);
+      _log.add('✚ Aura regen: +$r HP.');
+    }
     for (final ability in game.unlockedAbilities) {
       final readyAt = _gCooldownUntil[ability.id] ?? 0;
       if (_gAbilityRound >= readyAt) {

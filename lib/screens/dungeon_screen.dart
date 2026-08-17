@@ -1456,6 +1456,12 @@ class _AnimatedCombatRoomState extends State<_AnimatedCombatRoom> {
 
     _abilityRound++;
     if (_abilityRound > 1) _log.add('— Round $_abilityRound —');
+    // Aura HP regen — heal a % of max HP each turn (sustain).
+    if (widget.game.auraHpRegen > 0 && _heroHp > 0 && _heroHp < _heroMaxHp) {
+      final r = (_heroMaxHp * widget.game.auraHpRegen / 100).round().clamp(1, 999999);
+      _heroHp = (_heroHp + r).clamp(0, _heroMaxHp);
+      _log.add('✚ Aura regen: +$r HP.');
+    }
     _dodgeThisRound        = false;
     _enemyStunnedThisRound = false;
 
