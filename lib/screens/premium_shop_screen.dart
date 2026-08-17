@@ -711,6 +711,9 @@ class _CosmeticCard extends StatelessWidget {
           Builder(builder: (_) {
             final price = game.iapService.priceFor(item.productId!);
             final ready = game.iapService.storeAvailable && price.isNotEmpty;
+            final label = ready
+                ? price
+                : (item.fallbackPrice.isNotEmpty ? item.fallbackPrice : 'REAL MONEY');
             return GestureDetector(
               onTap: ready ? () => game.iapService.buyNonConsumable(item.productId!) : null,
               child: Container(
@@ -720,7 +723,7 @@ class _CosmeticCard extends StatelessWidget {
                   border: Border.all(color: item.color),
                   borderRadius: BorderRadius.circular(3),
                 ),
-                child: Text(ready ? price : 'REAL MONEY',
+                child: Text(label,
                     style: TextStyle(fontSize: 10, color: item.color, fontWeight: FontWeight.bold)),
               ),
             );

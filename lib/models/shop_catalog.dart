@@ -91,6 +91,7 @@ class CosmeticItem {
     this.description = '',
     this.glow = false,
     this.productId,
+    this.fallbackPrice = '',
   });
 
   final String id, name, icon, description;
@@ -99,6 +100,7 @@ class CosmeticItem {
   final Color color;
   final bool glow;          // frames/name colours with an extra glow effect
   final String? productId;  // non-null → real-money only (IAP), not zcoin-buyable
+  final String fallbackPrice; // display price shown before the store loads (IAP items)
 
   /// Real-money exclusive (bought via IAP, never with zcoins).
   bool get isRealMoney => productId != null;
@@ -135,7 +137,7 @@ class CosmeticItem {
     // Real-money exclusive title
     CosmeticItem(id: 'title_eternal', name: 'The Eternal', type: CosmeticType.title,
       icon: '♾', color: Color(0xFFffe066), glow: true,
-      productId: 'cosmetic_title_eternal',
+      productId: 'cosmetic_title_eternal', fallbackPrice: '\$4.99',
       description: 'Exclusive real-money title with a radiant glow.'),
 
     // ── Name Colours (zcoins 250–1000) ───────────────────────────────────────
@@ -172,7 +174,7 @@ class CosmeticItem {
     // Real-money exclusive name colour
     CosmeticItem(id: 'color_prismatic', name: 'Prismatic Name', type: CosmeticType.nameColor,
       icon: '🌈', color: Color(0xFFff66cc), glow: true,
-      productId: 'cosmetic_name_prismatic',
+      productId: 'cosmetic_name_prismatic', fallbackPrice: '\$4.99',
       description: 'Exclusive real-money name colour with a prismatic glow.'),
 
     // ── Frames (zcoins 500–1500) ─────────────────────────────────────────────
@@ -203,7 +205,7 @@ class CosmeticItem {
     // Real-money exclusive frame
     CosmeticItem(id: 'frame_eclipse', name: 'Eclipse Frame', type: CosmeticType.frame,
       icon: '🌘', color: Color(0xFFb066ff), glow: true,
-      productId: 'cosmetic_frame_eclipse',
+      productId: 'cosmetic_frame_eclipse', fallbackPrice: '\$4.99',
       description: 'Exclusive real-money frame wreathed in eclipse light.'),
   ];
 
