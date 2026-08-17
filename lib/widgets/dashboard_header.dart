@@ -7,6 +7,7 @@ import '../services/game_state.dart';
 import '../theme/app_theme.dart';
 import '../models/hero_race.dart';
 import '../models/hero_trait.dart';
+import '../models/shop_catalog.dart';
 import '../widgets/battle_sprites.dart';
 import '../widgets/progress_ring.dart';
 
@@ -193,24 +194,50 @@ class _DashboardHeaderState extends State<DashboardHeader>
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              SizedBox(
-                width: 80,
-                height: 120,
-                child: BattleSprite(
-                  spriteId: game.heroBattleSpriteId,
-                  gender: hero.gender,
-                  race: game.heroRace,
-                  colorFilter: game.heroSpriteFilter,
-                  auraColor: game.heroAuraColor,
-                  auraIntensity: game.heroAuraIntensity,
-                ),
-              ),
+              Builder(builder: (_) {
+                final frameColor = CosmeticItem.frameColorFor(game.activeFrame);
+                final sprite = SizedBox(
+                  width: 80,
+                  height: 120,
+                  child: BattleSprite(
+                    spriteId: game.heroBattleSpriteId,
+                    gender: hero.gender,
+                    race: game.heroRace,
+                    colorFilter: game.heroSpriteFilter,
+                    auraColor: game.heroAuraColor,
+                    auraIntensity: game.heroAuraIntensity,
+                  ),
+                );
+                if (frameColor == null) return sprite;
+                // Equipped portrait frame — coloured border + glow around the hero.
+                return Container(
+                  padding: const EdgeInsets.all(3),
+                  decoration: BoxDecoration(
+                    border: Border.all(color: frameColor, width: 2),
+                    borderRadius: BorderRadius.circular(4),
+                    boxShadow: [BoxShadow(color: frameColor.withValues(alpha: 0.5), blurRadius: 8)],
+                  ),
+                  child: sprite,
+                );
+              }),
               const SizedBox(width: 10),
 
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    // Equipped cosmetic title
+                    if (game.activeTitle != null && game.activeTitle!.isNotEmpty)
+                      Text(
+                        game.activeTitle!.toUpperCase(),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: AppTheme.pixelHeading(
+                          fontSize: 9,
+                          letterSpacing: 1.2,
+                          color: CosmeticItem.titleColorForName(game.activeTitle),
+                        ),
+                      ),
                     // Name + gender icon + level badge
                     Row(
                       children: [
@@ -220,7 +247,18 @@ class _DashboardHeaderState extends State<DashboardHeader>
                               Flexible(
                                 child: Text(
                                   hero.name.toUpperCase(),
-                                  style: AppTheme.pixelHeading(fontSize: isPhone ? 12 : 15, letterSpacing: 1.5),
+                                  style: AppTheme.pixelHeading(
+                                    fontSize: isPhone ? 12 : 15,
+                                    letterSpacing: 1.5,
+                                    color: CosmeticItem.nameColorFor(game.activeNameColor)
+                                        ?? AppTheme.accentGold,
+                                  ).copyWith(
+                                    shadows: CosmeticItem.hasGlow(game.activeNameColor)
+                                        ? [Shadow(
+                                            color: CosmeticItem.nameColorFor(game.activeNameColor)!,
+                                            blurRadius: 10)]
+                                        : null,
+                                  ),
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
                                 ),
