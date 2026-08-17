@@ -25,6 +25,10 @@ class PvpSnapshot {
     this.rating = 1000,
     this.wins   = 0,
     this.losses = 0,
+    this.title,
+    this.nameColorId,
+    this.frameId,
+    this.spriteId,
   });
 
   final String userId;
@@ -40,6 +44,11 @@ class PvpSnapshot {
   final int rating;
   final int wins;
   final int losses;
+  // Cosmetics (optional): equipped title, name colour, frame, battle sprite.
+  final String? title;
+  final String? nameColorId;
+  final String? frameId;
+  final String? spriteId; // premium-skin sprite id or '' (falls back to class sprite)
 
   Map<String, dynamic> toMap() => {
     'displayName': displayName,
@@ -54,6 +63,10 @@ class PvpSnapshot {
     'rating':      rating,
     'wins':        wins,
     'losses':      losses,
+    if (title != null)       'title':       title,
+    if (nameColorId != null) 'nameColorId': nameColorId,
+    if (frameId != null)     'frameId':     frameId,
+    if (spriteId != null)    'spriteId':    spriteId,
   };
 
   factory PvpSnapshot.fromMap(String userId, Map<String, dynamic> d) =>
@@ -71,6 +84,10 @@ class PvpSnapshot {
         rating:      d['rating']      as int?    ?? 1000,
         wins:        d['wins']        as int?    ?? 0,
         losses:      d['losses']      as int?    ?? 0,
+        title:       d['title']       as String?,
+        nameColorId: d['nameColorId'] as String?,
+        frameId:     d['frameId']     as String?,
+        spriteId:    d['spriteId']    as String?,
       );
 }
 

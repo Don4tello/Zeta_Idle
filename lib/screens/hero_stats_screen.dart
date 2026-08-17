@@ -6,9 +6,11 @@ import '../models/equipment.dart';
 import '../models/npc_ally.dart';
 import '../models/passive_tree.dart';
 import '../models/pet.dart';
+import '../models/shop_catalog.dart';
 import '../models/subclass.dart';
 import '../services/game_state.dart';
 import '../theme/app_theme.dart';
+import '../widgets/battle_sprites.dart';
 import 'main_shell.dart' show TutorialTip;
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -48,6 +50,7 @@ class _StatsBody extends StatelessWidget {
     return ListView(
       padding: const EdgeInsets.fromLTRB(10, 8, 10, 24),
       children: [
+        _identityHeader(),
         TutorialTip(
           tutorialKey: 'bonus',
           game: game,
@@ -72,6 +75,66 @@ class _StatsBody extends StatelessWidget {
     );
   }
 
+
+  // ── Identity header (equipped cosmetics: skin, frame, title, name colour) ────
+  Widget _identityHeader() {
+    final frameColor = CosmeticItem.frameColorFor(game.activeFrame);
+    final nameColor = CosmeticItem.nameColorFor(game.activeNameColor) ?? AppTheme.textLight;
+    final hasTitle = game.activeTitle != null && game.activeTitle!.isNotEmpty;
+    final sub = game.subclassName;
+    final classLabel = (sub != null && sub.isNotEmpty)
+        ? '${game.hero.heroClass.displayName} · $sub'
+        : game.hero.heroClass.displayName;
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+      decoration: BoxDecoration(
+        color: AppTheme.panelBg,
+        border: Border.all(color: frameColor?.withValues(alpha: 0.5) ?? AppTheme.cardBorder),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        children: [
+          // Avatar with cosmetic frame ring
+          Container(
+            width: 56, height: 56,
+            decoration: BoxDecoration(
+              color: const Color(0xFF1B1A17),
+              shape: BoxShape.circle,
+              border: Border.all(
+                  color: frameColor ?? AppTheme.cardBorder,
+                  width: frameColor != null ? 2.5 : 1),
+              boxShadow: frameColor != null
+                  ? [BoxShadow(color: frameColor.withValues(alpha: 0.6), blurRadius: 10)]
+                  : null,
+            ),
+            alignment: Alignment.center,
+            child: StaticEnemySprite(spriteId: game.heroBattleSpriteId, size: 44),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (hasTitle)
+                  Text(game.activeTitle!.toUpperCase(),
+                      style: TextStyle(
+                          fontSize: 11, fontWeight: FontWeight.bold, letterSpacing: 1.2,
+                          color: CosmeticItem.titleColorForName(game.activeTitle))),
+                Text(game.hero.name,
+                    overflow: TextOverflow.ellipsis,
+                    style: GoogleFonts.rajdhani(
+                        fontSize: 22, fontWeight: FontWeight.bold, color: nameColor)),
+                Text(classLabel,
+                    style: const TextStyle(fontSize: 12, color: AppTheme.textMuted)),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 
   int _evoBonus(PetDefinition p) {
     final evo = game.petEvolutionLevel(p.id);

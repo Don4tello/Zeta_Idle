@@ -145,6 +145,44 @@ class CosmeticItem {
       icon: '⭐', zcoinCost: 500, color: Color(0xFFffcc44),
       description: 'Stars orbit your portrait.'),
   ];
+
+  /// Colour for an equipped title (matched by display name), gold as fallback.
+  static Color titleColorForName(String? name) {
+    if (name != null && name.isNotEmpty) {
+      for (final c in all) {
+        if (c.type == CosmeticType.title && c.name == name) return c.color;
+      }
+    }
+    return const Color(0xFFC9A35A); // accent gold
+  }
+
+  /// Colour for an equipped name-colour cosmetic id, or null if none/unknown.
+  static Color? nameColorFor(String? id) {
+    if (id == null || id.isEmpty) return null;
+    for (final c in all) {
+      if (c.id == id && c.type == CosmeticType.nameColor) return c.color;
+    }
+    return null;
+  }
+
+  /// Accent colour for a portrait frame id (shop frames + rebirth-reward frames).
+  /// Used to draw a coloured ring around the hero avatar. Null = no frame.
+  static Color? frameColorFor(String? id) {
+    if (id == null || id.isEmpty) return null;
+    const rebirthFrames = {
+      'frame_bronze':   Color(0xFFcd7f32),
+      'frame_silver':   Color(0xFFc0c0c0),
+      'frame_gold':     Color(0xFFFFD700),
+      'frame_platinum': Color(0xFFe5e4e2),
+      'frame_mythic':   Color(0xFFff6644),
+      'frame_celestial':Color(0xFFffcc44),
+    };
+    if (rebirthFrames.containsKey(id)) return rebirthFrames[id];
+    for (final c in all) {
+      if (c.id == id && c.type == CosmeticType.frame) return c.color;
+    }
+    return null;
+  }
 }
 
 // ── Subscription tiers ───────────────────────────────────────────────────────

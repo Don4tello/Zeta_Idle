@@ -40,17 +40,28 @@ class LeaderboardEntry {
     required this.stage,
     required this.score,
     required this.updatedAt,
+    this.title,
+    this.nameColorId,
+    this.frameId,
+    this.level = 0,
+    this.ascensionAp = 0,
   });
 
   final String uid;
   final String name;
   final String heroClass;
   final String? subclass; // level-50 subclass, e.g. "Oath of the Watchers"
-  final String spriteId;  // hero class sprite for the row avatar ('' = legacy)
+  final String spriteId;  // hero battle sprite (premium skin id or class sprite; '' = legacy)
   final int rebirths;
   final int stage;
   final int score;
   final DateTime updatedAt;
+  // Cosmetics / profile (all optional — tolerate legacy docs).
+  final String? title;        // equipped cosmetic title, e.g. "Godslayer"
+  final String? nameColorId;  // equipped name-colour cosmetic id
+  final String? frameId;      // equipped portrait-frame id
+  final int level;            // hero level (profile display)
+  final int ascensionAp;      // cumulative Ascension Points (profile display)
 
   /// Class label with the subclass in brackets, e.g. "Paladin (Oath of the Watchers)".
   String get classLabel =>
@@ -72,6 +83,11 @@ class LeaderboardEntry {
       updatedAt: data['updatedAt'] is Timestamp
           ? (data['updatedAt'] as Timestamp).toDate()
           : DateTime.now(),
+      title:       (data['title'] as String?),
+      nameColorId: (data['nameColorId'] as String?),
+      frameId:     (data['frameId'] as String?),
+      level:       (data['level'] as int?) ?? 0,
+      ascensionAp: (data['ascensionAp'] as int?) ?? 0,
     );
   }
 }
@@ -108,6 +124,11 @@ class LeaderboardService {
     String spriteId = '',
     required int rebirths,
     required int stage,
+    String? title,
+    String? nameColorId,
+    String? frameId,
+    int level = 0,
+    int ascensionAp = 0,
   }) async {
     try {
       final uid = _auth.currentUser?.uid;
@@ -117,13 +138,22 @@ class LeaderboardService {
       final existing = await doc.get();
       final currentBest = (existing.data()?['score'] as int?)
           ?? (existing.data()?['floor'] as int?) ?? -1;
+      // Identity + cosmetics, refreshed on every submit so equips show promptly.
+      final identity = {
+        'name':        heroName,
+        'heroClass':   heroClass,
+        'subclass':    subclass,
+        'spriteId':    spriteId,
+        'title':       title,
+        'nameColorId': nameColorId,
+        'frameId':     frameId,
+        'level':       level,
+        'ascensionAp': ascensionAp,
+      };
       if (score > currentBest) {
         // New personal best — write the full record.
         await doc.set({
-          'name':      heroName,
-          'heroClass': heroClass,
-          'subclass':  subclass,
-          'spriteId':  spriteId,
+          ...identity,
           'rebirths':  rebirths,
           'stage':     stage,
           'score':     score,
@@ -132,15 +162,9 @@ class LeaderboardService {
           'updatedAt': FieldValue.serverTimestamp(),
         });
       } else if (existing.exists) {
-        // Score didn't improve, but refresh the identity fields so a rename,
-        // new subclass, or the added sprite/capitalization show up without
-        // waiting for a new record. Best score/stage are left untouched.
-        await doc.set({
-          'name':      heroName,
-          'heroClass': heroClass,
-          'subclass':  subclass,
-          'spriteId':  spriteId,
-        }, SetOptions(merge: true));
+        // Score didn't improve, but refresh identity/cosmetics so a rename, new
+        // subclass, skin, title, or name colour show up without a new record.
+        await doc.set(identity, SetOptions(merge: true));
       }
     } catch (_) {
       // leaderboard is non-critical — silently ignore errors

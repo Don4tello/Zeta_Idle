@@ -35,7 +35,13 @@ service cloud.firestore {
           && (!('score' in d)     || (d.score is int && d.score >= 0 && d.score < 100000000000))
           && (!('stage' in d)     || (d.stage is int && d.stage >= 0))
           && (!('rebirths' in d)  || (d.rebirths is int && d.rebirths >= 0 && d.rebirths < 1000000))
-          && (!('floor' in d)     || (d.floor is int && d.floor >= 0));
+          && (!('floor' in d)     || (d.floor is int && d.floor >= 0))
+          && (!('spriteId' in d)    || d.spriteId == null || (d.spriteId is string && d.spriteId.size() <= 40))
+          && (!('title' in d)       || d.title == null || (d.title is string && d.title.size() <= 32))
+          && (!('nameColorId' in d) || d.nameColorId == null || (d.nameColorId is string && d.nameColorId.size() <= 40))
+          && (!('frameId' in d)     || d.frameId == null || (d.frameId is string && d.frameId.size() <= 40))
+          && (!('level' in d)       || (d.level is int && d.level >= 0 && d.level < 1000000))
+          && (!('ascensionAp' in d) || (d.ascensionAp is int && d.ascensionAp >= 0 && d.ascensionAp < 100000000));
     }
 
     // ── Private per-user cloud saves ────────────────────────────────────────

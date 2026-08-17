@@ -186,7 +186,9 @@ class GameState extends ChangeNotifier {
           collectIdleRewards();
         }
         // Auto-campaign: resolve a battle in the background (subscriber-only).
-        if (autoCampaign && canAutoCampaign && currentEnemy == null && !heroDefeated) {
+        // Skip while the Battle screen is open — it runs the fight visibly there.
+        if (autoCampaign && canAutoCampaign && !battleScreenActive &&
+            currentEnemy == null && !heroDefeated) {
           _runAutoCampaignTick();
         } else if (autoCampaign && !canAutoCampaign) {
           autoCampaign = false; // subscription lapsed — turn it off
@@ -585,6 +587,10 @@ class GameState extends ChangeNotifier {
   // ── Battle speed ───────────────────────────────────────────────────────────
   int speedTier = 1;           // 1=1x, 2=1.5x, 3=prod:2x / debug:5x, 4=10x (debug)
   bool autoCampaign = false;
+  // True while the Battle screen is mounted. It drives auto-campaign VISIBLY
+  // (animated fights + auto-advance), so the silent background sim must stand
+  // down to avoid both loops fighting the same stage.
+  bool battleScreenActive = false;
 
   // Unlock notification — set when auto-campaign crosses a content-unlock threshold.
   // Auto-campaign pauses so the player sees what unlocked. Cleared on Continue.
@@ -1921,6 +1927,10 @@ class GameState extends ChangeNotifier {
     rating:  pvpRating,
     wins:    pvpWins,
     losses:  pvpLosses,
+    title:       activeTitle,
+    nameColorId: activeNameColor,
+    frameId:     activeFrame,
+    spriteId:    heroBattleSpriteId,
   );
 
   // ── Medieval Power Score ────────────────────────────────────────────────────
@@ -3929,9 +3939,14 @@ class GameState extends ChangeNotifier {
       heroName:  hero.name,
       heroClass: hero.heroClass.displayName,
       subclass:  subclassName,
-      spriteId:  hero.spriteId,
+      spriteId:  heroBattleSpriteId,
       rebirths:  leaderboardRebirths,
       stage:     campaignStageIndex,
+      title:       activeTitle,
+      nameColorId: activeNameColor,
+      frameId:     activeFrame,
+      level:       hero.level,
+      ascensionAp: totalAscensionAp,
     );
 
     battleLog = [
@@ -6083,9 +6098,14 @@ class GameState extends ChangeNotifier {
         heroName:  hero.name,
         heroClass: hero.heroClass.displayName,
         subclass:  subclassName,
-        spriteId:  hero.spriteId,
+        spriteId:  heroBattleSpriteId,
         rebirths:  leaderboardRebirths,
         stage:     _dungeonHighestTier,
+        title:       activeTitle,
+        nameColorId: activeNameColor,
+        frameId:     activeFrame,
+        level:       hero.level,
+        ascensionAp: totalAscensionAp,
       );
     }
     // Mythril: 1 per 2 floors completed

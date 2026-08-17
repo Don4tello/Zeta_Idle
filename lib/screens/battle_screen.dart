@@ -64,8 +64,10 @@ class _BattleScreenState extends State<BattleScreen>
     // Stop battle music when leaving the screen. Use getInheritedWidget (safe in
     // dispose, no dependency) + null-safe access — the provider may already be
     // gone during teardown, which previously crashed with a null-check error.
-    context.getInheritedWidgetOfExactType<GameStateProvider>()
-        ?.notifier?.audioService.endBattleMusic();
+    final game = context.getInheritedWidgetOfExactType<GameStateProvider>()?.notifier;
+    game?.audioService.endBattleMusic();
+    // Hand auto-campaign back to the background sim now that the screen is gone.
+    game?.battleScreenActive = false;
     super.dispose();
   }
 
@@ -129,7 +131,16 @@ class _BattleScreenState extends State<BattleScreen>
           game.haptic(HapticFeedback.mediumImpact);
         }
       }
-      await _rewardCompleter?.future;
+      // Hands-free auto-campaign: show the reward briefly, then auto-continue to
+      // the next stage. The player can still tap CONTINUE to skip the pause.
+      if (game.autoCampaign && game.canAutoCampaign) {
+        await Future.any([
+          _rewardCompleter!.future,
+          Future.delayed(Duration(milliseconds: game.scaledInterval(1300))),
+        ]);
+      } else {
+        await _rewardCompleter?.future;
+      }
       _rewardCompleter = null;
       if (!mounted || _exitRequested) break;
 
@@ -496,9 +507,10 @@ class _BattleScreenState extends State<BattleScreen>
     return Scaffold(
       backgroundColor: AppTheme.darkBg,
       appBar: AppBar(
-        title: const Text('BATTLE'),
+        titleSpacing: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
+          tooltip: 'Retreat',
           onPressed: () {
             game.retreatBattle();
             Navigator.pop(context);
@@ -754,6 +766,9 @@ class _BattleScreenState extends State<BattleScreen>
   }
 
   Widget _buildArena(BuildContext context, GameState game, enemy) {
+    // Tell the background auto-campaign sim to stand down — this screen runs the
+    // fight visibly. Cleared in dispose().
+    game.battleScreenActive = true;
     if (!_autoRunning) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted && !_autoRunning) _startAutoAttack(game);

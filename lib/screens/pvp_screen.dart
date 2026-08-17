@@ -3,6 +3,7 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../models/pvp.dart';
+import '../models/shop_catalog.dart';
 import '../models/subclass.dart';
 import '../services/auth_service.dart';
 import '../services/game_state.dart';
@@ -433,23 +434,49 @@ class _PvpScreenState extends State<PvpScreen> {
                           fontSize: rank <= 3 ? 16 : 12,
                           color: AppTheme.textMuted)),
                 ),
-                SizedBox(width: 30, height: 34,
+                Builder(builder: (_) {
+                  final frameColor = CosmeticItem.frameColorFor(p.frameId);
+                  final hasSkin = p.spriteId != null && p.spriteId!.isNotEmpty;
+                  return Container(
+                    width: 34, height: 34,
+                    alignment: Alignment.center,
+                    decoration: frameColor != null
+                        ? BoxDecoration(
+                            shape: BoxShape.circle,
+                            border: Border.all(color: frameColor, width: 2),
+                            boxShadow: [BoxShadow(color: frameColor.withValues(alpha: 0.5), blurRadius: 5)],
+                          )
+                        : null,
                     child: StaticEnemySprite(
-                        spriteId: 'hero_${p.heroClass}',
+                        spriteId: hasSkin ? p.spriteId! : 'hero_${p.heroClass}',
                         size: 30,
-                        colorFilter: subclassById(p.subclassId ?? '')?.spriteColorFilter)),
+                        colorFilter: hasSkin ? null : subclassById(p.subclassId ?? '')?.spriteColorFilter),
+                  );
+                }),
                 const SizedBox(width: 8),
                 Builder(builder: (_) {
                   final sub = subclassById(p.subclassId ?? '');
+                  final nameColor = CosmeticItem.nameColorFor(p.nameColorId)
+                      ?? (isMe ? AppTheme.accentGold : Colors.white);
+                  final hasTitle = p.title != null && p.title!.isNotEmpty;
                   return Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
+                        if (hasTitle)
+                          Text(p.title!.toUpperCase(),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                  fontSize: 9,
+                                  fontWeight: FontWeight.bold,
+                                  letterSpacing: 0.5,
+                                  color: CosmeticItem.titleColorForName(p.title))),
                         Text(p.heroName,
                             style: TextStyle(
                                 fontSize: 14,
                                 fontWeight: FontWeight.bold,
-                                color: isMe ? AppTheme.accentGold : Colors.white)),
+                                color: nameColor)),
                         Text(
                           '${p.heroClass[0].toUpperCase()}${p.heroClass.substring(1)}  '
                           'Lv${p.level}  '

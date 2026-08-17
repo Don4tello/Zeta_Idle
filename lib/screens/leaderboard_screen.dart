@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import '../models/shop_catalog.dart';
 import '../services/game_state.dart';
 import '../services/leaderboard_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/battle_sprites.dart';
+import '../widgets/player_profile_sheet.dart';
 
 class LeaderboardScreen extends StatefulWidget {
   const LeaderboardScreen({super.key, this.board = LeaderboardBoard.campaign});
@@ -48,9 +50,14 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
         heroName:  game.hero.name,
         heroClass: game.hero.heroClass.displayName,
         subclass:  game.subclassName,
-        spriteId:  game.hero.spriteId,
+        spriteId:  game.heroBattleSpriteId,
         rebirths:  rebirths,
         stage:     stage,
+        title:       game.activeTitle,
+        nameColorId: game.activeNameColor,
+        frameId:     game.activeFrame,
+        level:       game.hero.level,
+        ascensionAp: game.totalAscensionAp,
       );
 
       final results = await Future.wait([
@@ -224,75 +231,98 @@ class _EntryTile extends StatelessWidget {
             ? rankColor.withValues(alpha: 0.4)
             : AppTheme.cardBorder;
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 6),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      decoration: BoxDecoration(
-        color: isMe
-            ? AppTheme.accentGold.withValues(alpha: 0.08)
-            : isTop3
-                ? rankColor.withValues(alpha: 0.06)
-                : const Color(0xFF231F1B),
-        border: Border.all(color: borderColor, width: isMe ? 1.5 : 1),
-        borderRadius: BorderRadius.circular(4),
-      ),
-      child: Row(children: [
-        SizedBox(
-          width: 36,
-          child: rank <= 3
-              ? Text(rankIcon, style: const TextStyle(fontSize: 19))
-              : Text(rankIcon,
-                  style: TextStyle(
-                      fontSize: 11,
-                      color: rankColor,
-                      fontWeight: FontWeight.bold)),
+    // Cosmetics.
+    final frameColor = CosmeticItem.frameColorFor(entry.frameId);
+    final nameColor = CosmeticItem.nameColorFor(entry.nameColorId)
+        ?? (isTop3 ? rankColor : Colors.white70);
+    final hasTitle = entry.title != null && entry.title!.isNotEmpty;
+
+    return InkWell(
+      onTap: () => showPlayerProfile(context, entry, board, rank, isMe),
+      borderRadius: BorderRadius.circular(4),
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 6),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        decoration: BoxDecoration(
+          color: isMe
+              ? AppTheme.accentGold.withValues(alpha: 0.08)
+              : isTop3
+                  ? rankColor.withValues(alpha: 0.06)
+                  : const Color(0xFF231F1B),
+          border: Border.all(color: borderColor, width: isMe ? 1.5 : 1),
+          borderRadius: BorderRadius.circular(4),
         ),
-        // Class-sprite avatar (legacy rows without a stored sprite show a chip).
-        Container(
-          width: 34,
-          height: 34,
-          margin: const EdgeInsets.only(right: 10),
-          decoration: BoxDecoration(
-            color: const Color(0xFF1B1A17),
-            border: Border.all(color: AppTheme.cardBorder),
-            borderRadius: BorderRadius.circular(4),
+        child: Row(children: [
+          SizedBox(
+            width: 36,
+            child: rank <= 3
+                ? Text(rankIcon, style: const TextStyle(fontSize: 19))
+                : Text(rankIcon,
+                    style: TextStyle(
+                        fontSize: 11,
+                        color: rankColor,
+                        fontWeight: FontWeight.bold)),
           ),
-          alignment: Alignment.center,
-          child: entry.spriteId.isNotEmpty
-              ? StaticEnemySprite(spriteId: entry.spriteId, size: 28)
-              : const Icon(Icons.person, size: 18, color: AppTheme.textMuted),
-        ),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(children: [
-                Flexible(
-                  child: Text(entry.name,
+          // Skin/class-sprite avatar with an optional cosmetic frame ring.
+          Container(
+            width: 34,
+            height: 34,
+            margin: const EdgeInsets.only(right: 10),
+            decoration: BoxDecoration(
+              color: const Color(0xFF1B1A17),
+              border: Border.all(
+                  color: frameColor ?? AppTheme.cardBorder,
+                  width: frameColor != null ? 2 : 1),
+              borderRadius: BorderRadius.circular(4),
+              boxShadow: frameColor != null
+                  ? [BoxShadow(color: frameColor.withValues(alpha: 0.5), blurRadius: 5)]
+                  : null,
+            ),
+            alignment: Alignment.center,
+            child: entry.spriteId.isNotEmpty
+                ? StaticEnemySprite(spriteId: entry.spriteId, size: 28)
+                : const Icon(Icons.person, size: 18, color: AppTheme.textMuted),
+          ),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(children: [
+                  Flexible(
+                    child: Text(entry.name,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
+                            color: nameColor)),
+                  ),
+                  if (isMe) ...[
+                    const SizedBox(width: 6),
+                    Text('YOU',
+                        style: AppTheme.pixelHeading(
+                            fontSize: 8, letterSpacing: 1, color: AppTheme.accentGold)),
+                  ],
+                ]),
+                if (hasTitle)
+                  Text(entry.title!,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
-                          fontSize: 14,
+                          fontSize: 10,
                           fontWeight: FontWeight.bold,
-                          color: isTop3 ? rankColor : Colors.white70)),
-                ),
-                if (isMe) ...[
-                  const SizedBox(width: 6),
-                  Text('YOU',
-                      style: AppTheme.pixelHeading(
-                          fontSize: 8, letterSpacing: 1, color: AppTheme.accentGold)),
-                ],
-              ]),
-              Text(entry.classLabel,
-                  style: const TextStyle(fontSize: 10, color: AppTheme.textMuted)),
-            ],
+                          letterSpacing: 0.5,
+                          color: CosmeticItem.titleColorForName(entry.title))),
+                Text(entry.classLabel,
+                    style: const TextStyle(fontSize: 10, color: AppTheme.textMuted)),
+              ],
+            ),
           ),
-        ),
-        Text(_formatScore(board, entry),
-            style: TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.bold,
-                color: isTop3 ? rankColor : Colors.white70)),
-      ]),
+          Text(_formatScore(board, entry),
+              style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.bold,
+                  color: isTop3 ? rankColor : Colors.white70)),
+        ]),
+      ),
     );
   }
 }

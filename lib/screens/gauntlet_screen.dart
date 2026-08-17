@@ -496,9 +496,14 @@ class _GauntletScreenState extends State<GauntletScreen> {
       heroName:  game.hero.name,
       heroClass: game.hero.heroClass.displayName,
       subclass:  game.subclassName,
-      spriteId:  game.hero.spriteId,
+      spriteId:  game.heroBattleSpriteId,
       rebirths:  game.prestigeLevel,
       stage:     game.gauntletHighScore,
+      title:       game.activeTitle,
+      nameColorId: game.activeNameColor,
+      frameId:     game.activeFrame,
+      level:       game.hero.level,
+      ascensionAp: game.totalAscensionAp,
     );
 
     setState(() {

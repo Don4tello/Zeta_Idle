@@ -19,6 +19,21 @@ int get kLatestPatchBuild => kPatchNotes.first.build;
 
 const kPatchNotes = <PatchNote>[
   PatchNote(
+    build: 60,
+    title: 'Cosmetics Show Off + Auto-Campaign',
+    date: '2026-08-17',
+    changes: [
+      'Your equipped Title, name colour, portrait frame and premium skin now '
+          'show on the Leaderboard, PvP, and your Hero sheet — flex your look!',
+      'Tap any player on the Leaderboard to view their character profile.',
+      'Auto-Campaign (subscribers) now runs hands-free right on the Battle '
+          'screen — fights animate and auto-advance while you watch.',
+      'Fixed the equipped skin not showing on the Leaderboard (was the base '
+          'class sprite).',
+      'Tidied the Battle screen back button.',
+    ],
+  ),
+  PatchNote(
     build: 59,
     title: 'Rebirth No Longer Re-Locks Content',
     date: '2026-08-17',

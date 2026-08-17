@@ -3,6 +3,26 @@
 Version numbers are the pubspec build number (`0.1.0+N`), which is the Play
 Store `versionCode`. Newest first.
 
+## +60 — Cosmetic identity everywhere + hands-free auto-campaign
+- **Cosmetics now render.** Equipped **title, name colour, portrait frame, and
+  premium skin sprite** show on the Leaderboard rows, PvP display, and a new
+  identity header on the Hero STATS sheet. `CosmeticItem` gained
+  `nameColorFor`/`frameColorFor`/`titleColorForName` helpers.
+- **Leaderboard entries carry identity:** `title`, `nameColorId`, `frameId`,
+  `level`, `ascensionAp`, and the equipped **battle sprite** (`heroBattleSpriteId`
+  — fixes premium skins showing the base class sprite). All 5 `submitScore`
+  call sites + Firestore validation updated.
+- **Tap a leaderboard row → player profile** (`player_profile_sheet.dart`):
+  read-only character sheet (avatar+frame, title, name, class, rank, rebirths,
+  level, AP) — no idle battle / next-action panels.
+- **PvP snapshots** carry title/nameColorId/frameId/spriteId; the PvP ladder
+  renders them.
+- **Hands-free auto-campaign:** the Battle screen now auto-advances between
+  stages when Auto-Campaign is on (visible animated fights). A new
+  `battleScreenActive` flag stops the silent background sim from double-running
+  the same stage while the screen is open.
+- Battle screen back button no longer shows a truncated "B…" title.
+
 ## +59 — Rebirth no longer re-locks content + AP display
 - **Fixed data loss:** `prestige()` and `ascend()` never saved/restored
   `subclassId`, so `_resetToDefaults` **permanently wiped the level-50

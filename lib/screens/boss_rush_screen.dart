@@ -455,9 +455,14 @@ class _BossRushScreenState extends State<BossRushScreen> {
       heroName:  game.hero.name,
       heroClass: game.hero.heroClass.displayName,
       subclass:  game.subclassName,
-      spriteId:  game.hero.spriteId,
+      spriteId:  game.heroBattleSpriteId,
       rebirths:  game.prestigeLevel,
       stage:     game.bossRushBestScore,
+      title:       game.activeTitle,
+      nameColorId: game.activeNameColor,
+      frameId:     game.activeFrame,
+      level:       game.hero.level,
+      ascensionAp: game.totalAscensionAp,
     );
     if (cleared) game.recordBossRushComplete(tier: _selectedTier);
     // Artifact drop: A or S rank clears reward 1 artifact
