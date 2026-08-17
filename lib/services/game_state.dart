@@ -731,9 +731,9 @@ class GameState extends ChangeNotifier {
   // boost or the Speed Pass subscription; the subscription also unlocks 3×.
   int get maxCampaignSpeedTier {
     if (kDebugMode) return 4;
-    if (hasSpeedSub) return 4;      // Speed Pass → up to 3×
-    if (speedBoostActive) return 3; // purchased 2× boost → 2×
-    return 2;                       // free → up to 1.5×
+    if (hasSpeedSub || hasPremium) return 4; // Speed Pass / Premium Pass → up to 3×
+    if (speedBoostActive) return 3;          // purchased 2× boost → 2×
+    return 2;                                // free → up to 1.5×
   }
 
   void cycleBattleSpeed() {

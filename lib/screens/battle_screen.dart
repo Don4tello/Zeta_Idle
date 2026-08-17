@@ -1200,11 +1200,11 @@ class _SpeedButton extends StatelessWidget {
 
   void _onTap(BuildContext context) {
     // Speed Pass subscribers reach a permanent 3× (tier 4).
-    final maxTier = kDebugMode ? 4 : (game.hasSpeedSub ? 4 : 3);
+    final maxTier = kDebugMode ? 4 : ((game.hasSpeedSub || game.hasPremium) ? 4 : 3);
     final next = (game.speedTier % maxTier) + 1;
 
     // Tier 3 (2×) is gated behind the ZCoin boost — but subscribers skip it.
-    if (!kDebugMode && next == 3 && !game.speedBoostActive && !game.hasSpeedSub) {
+    if (!kDebugMode && next == 3 && !game.speedBoostActive && !game.hasSpeedSub && !game.hasPremium) {
       _showPurchaseDialog(context);
       return;
     }

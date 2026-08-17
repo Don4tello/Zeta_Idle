@@ -116,7 +116,7 @@ class _BossRushScreenState extends State<BossRushScreen> {
   void _cycleSpeed() {
     final game = _game;
     if (game == null) return;
-    final maxTier = kDebugMode ? 4 : (game.hasSpeedSub ? 4 : (game.speedBoostActive ? 3 : 2));
+    final maxTier = kDebugMode ? 4 : ((game.hasSpeedSub || game.hasPremium) ? 4 : (game.speedBoostActive ? 3 : 2));
     game.setSpeedTier((game.speedTier % maxTier) + 1);
     _startAttackTimer();
   }
