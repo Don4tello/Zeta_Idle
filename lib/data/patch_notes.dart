@@ -19,6 +19,19 @@ int get kLatestPatchBuild => kPatchNotes.first.build;
 
 const kPatchNotes = <PatchNote>[
   PatchNote(
+    build: 62,
+    title: 'More Cosmetics + Glow Effects',
+    date: '2026-08-17',
+    changes: [
+      'Loads of new frames, name colours and titles in the Shop — several with '
+          'a glowing effect that shows on your name and portrait.',
+      'Cosmetic prices rebalanced (frames 500–1500, name colours 250–1000, '
+          'titles 500–1500 ZCoins).',
+      'NEW real-money exclusives: the Eclipse Frame, Prismatic Name and "The '
+          'Eternal" title — one-time purchases for the ultimate flex.',
+    ],
+  ),
+  PatchNote(
     build: 61,
     title: 'Framed Name + Endgame Unlocks',
     date: '2026-08-17',

@@ -81,6 +81,7 @@ class _StatsBody extends StatelessWidget {
     final frameColor = CosmeticItem.frameColorFor(game.activeFrame);
     final rawNameColor = CosmeticItem.nameColorFor(game.activeNameColor);
     final nameColor = rawNameColor ?? AppTheme.textLight;
+    final nameGlow = CosmeticItem.hasGlow(game.activeNameColor);
     // The name plate is framed in the equipped frame colour (or name colour,
     // else gold) so the cosmetic is unmistakable on the hero sheet.
     final nameFrame = frameColor ?? rawNameColor ?? AppTheme.accentGold;
@@ -140,7 +141,10 @@ class _StatsBody extends StatelessWidget {
                   child: Text(game.hero.name,
                       overflow: TextOverflow.ellipsis,
                       style: GoogleFonts.rajdhani(
-                          fontSize: 22, fontWeight: FontWeight.bold, color: nameColor)),
+                          fontSize: 22, fontWeight: FontWeight.bold, color: nameColor,
+                          shadows: nameGlow
+                              ? [Shadow(color: nameColor, blurRadius: 12)]
+                              : null)),
                 ),
                 Text(classLabel,
                     style: const TextStyle(fontSize: 12, color: AppTheme.textMuted)),

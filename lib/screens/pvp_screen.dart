@@ -476,7 +476,10 @@ class _PvpScreenState extends State<PvpScreen> {
                             style: TextStyle(
                                 fontSize: 14,
                                 fontWeight: FontWeight.bold,
-                                color: nameColor)),
+                                color: nameColor,
+                                shadows: CosmeticItem.hasGlow(p.nameColorId)
+                                    ? [Shadow(color: nameColor, blurRadius: 10)]
+                                    : null)),
                         Text(
                           '${p.heroClass[0].toUpperCase()}${p.heroClass.substring(1)}  '
                           'Lv${p.level}  '

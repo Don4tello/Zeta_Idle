@@ -3,6 +3,21 @@
 Version numbers are the pubspec build number (`0.1.0+N`), which is the Play
 Store `versionCode`. Newest first.
 
+## +62 — Cosmetic expansion + glow effects + real-money exclusives
+- **Reprice + expand** the cosmetic catalog: frames 500–1500, name colours
+  250–1000, titles 500–1500 ZCoins. Added new frames (Frost, Verdant, Storm,
+  Bloodforged), name colours (Emerald, Sunset, Shadow, Inferno, Celestial) and
+  titles (Warlord, Shadowblade, Dragonheart, Ascendant).
+- **Glow effect:** `CosmeticItem.glow` + `hasGlow()`; glowing name colours cast
+  a text shadow on the hero sheet, leaderboard, PvP and profile, and glow
+  frames/cards get a stronger ring in the shop.
+- **Real-money exclusives** (`productId` on `CosmeticItem`, `isRealMoney`): the
+  **Eclipse Frame** (`cosmetic_frame_eclipse`), **Prismatic Name**
+  (`cosmetic_name_prismatic`) and **"The Eternal"** title
+  (`cosmetic_title_eternal`) — IAP-only, wired through `IapService`
+  (`onCosmeticPurchased`) → `unlockCosmeticByProduct` (grants + auto-equips).
+  `purchaseCosmetic` refuses to spend ZCoins on them.
+
 ## +61 — Framed hero name + endgame unlock rule
 - Hero STATS identity header now wraps the name in a **frame plate tinted by the
   equipped frame / name colour** (falls back to gold).

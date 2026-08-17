@@ -167,6 +167,7 @@ class GameState extends ChangeNotifier {
         }
       },
       onPremiumSkinPurchased: (skinId) => unlockPremiumSkin(skinId),
+      onCosmeticPurchased: (productId) => unlockCosmeticByProduct(productId),
     );
     _iapService.init();
     steamService.init();
@@ -473,6 +474,7 @@ class GameState extends ChangeNotifier {
     if (ownedCosmetics.contains(cosmeticId)) return false;
     final item = CosmeticItem.all.where((c) => c.id == cosmeticId).firstOrNull;
     if (item == null) return false;
+    if (item.isRealMoney) return false; // real-money cosmetics are IAP-only
     if (zcoins < item.zcoinCost) return false;
     zcoins -= item.zcoinCost;
     ownedCosmetics.add(cosmeticId);
@@ -481,6 +483,18 @@ class GameState extends ChangeNotifier {
     notifyListeners();
     saveToLocal();
     return true;
+  }
+
+  /// Grant a real-money cosmetic after its IAP completes (id resolved from the
+  /// purchased product). Auto-equips it so the player immediately sees it.
+  void unlockCosmeticByProduct(String productId) {
+    final item = CosmeticItem.forProductId(productId);
+    if (item == null) return;
+    ownedCosmetics.add(item.id);
+    AnalyticsService.instance.cosmeticUnlocked('cosmetic_rm', item.id);
+    equipCosmetic(item.id);
+    notifyListeners();
+    saveToLocal();
   }
 
   void equipCosmetic(String cosmeticId) {

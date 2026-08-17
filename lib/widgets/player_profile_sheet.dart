@@ -120,7 +120,10 @@ class _PlayerProfileSheet extends StatelessWidget {
                     textAlign: TextAlign.center,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
-                        fontSize: 24, fontWeight: FontWeight.bold, color: nameColor)),
+                        fontSize: 24, fontWeight: FontWeight.bold, color: nameColor,
+                        shadows: CosmeticItem.hasGlow(entry.nameColorId)
+                            ? [Shadow(color: nameColor, blurRadius: 12)]
+                            : null)),
               ),
               if (isMe) ...[
                 const SizedBox(width: 8),

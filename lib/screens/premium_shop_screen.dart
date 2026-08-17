@@ -637,15 +637,25 @@ class _CosmeticCard extends StatelessWidget {
       CosmeticType.nameColor => game.activeNameColor == item.id,
       CosmeticType.frame     => game.activeFrame == item.id,
     };
+    final isRM = item.isRealMoney;
     final canAfford = game.zcoins >= item.zcoinCost;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 6),
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
-        color: equipped ? item.color.withValues(alpha: 0.08) : const Color(0xFF1a1816),
-        border: Border.all(color: equipped ? item.color : owned ? const Color(0xFF44cc88).withValues(alpha: 0.4) : AppTheme.cardBorder),
+        color: equipped ? item.color.withValues(alpha: 0.08)
+            : isRM ? item.color.withValues(alpha: 0.06) : const Color(0xFF1a1816),
+        border: Border.all(
+            color: equipped ? item.color
+                : isRM ? item.color.withValues(alpha: 0.7)
+                : owned ? const Color(0xFF44cc88).withValues(alpha: 0.4)
+                : AppTheme.cardBorder,
+            width: isRM ? 1.5 : 1),
         borderRadius: BorderRadius.circular(4),
+        boxShadow: (item.glow && (equipped || isRM))
+            ? [BoxShadow(color: item.color.withValues(alpha: 0.35), blurRadius: 8)]
+            : null,
       ),
       child: Row(children: [
         Text(item.icon, style: const TextStyle(fontSize: 18)),
@@ -653,7 +663,32 @@ class _CosmeticCard extends StatelessWidget {
         Expanded(child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(item.name, style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: item.color)),
+            Row(children: [
+              Flexible(
+                child: Text(item.name,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: item.color)),
+              ),
+              if (item.glow) ...[
+                const SizedBox(width: 5),
+                Text('✦ GLOW',
+                    style: TextStyle(fontSize: 7, letterSpacing: 0.5,
+                        fontWeight: FontWeight.bold, color: item.color.withValues(alpha: 0.8))),
+              ],
+              if (isRM) ...[
+                const SizedBox(width: 5),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                  decoration: BoxDecoration(
+                    color: item.color.withValues(alpha: 0.18),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                  child: Text('EXCLUSIVE',
+                      style: TextStyle(fontSize: 7, letterSpacing: 0.5,
+                          fontWeight: FontWeight.bold, color: item.color)),
+                ),
+              ],
+            ]),
             Text(item.description, style: const TextStyle(fontSize: 9, color: AppTheme.textMuted)),
           ],
         )),
@@ -671,6 +706,25 @@ class _CosmeticCard extends StatelessWidget {
               child: const Text('EQUIP', style: TextStyle(fontSize: 9, color: Color(0xFF44cc88), fontWeight: FontWeight.bold)),
             ),
           )
+        else if (isRM)
+          // Real-money exclusive — buy via IAP (shows store price when available).
+          Builder(builder: (_) {
+            final price = game.iapService.priceFor(item.productId!);
+            final ready = game.iapService.storeAvailable && price.isNotEmpty;
+            return GestureDetector(
+              onTap: ready ? () => game.iapService.buyNonConsumable(item.productId!) : null,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: item.color.withValues(alpha: 0.15),
+                  border: Border.all(color: item.color),
+                  borderRadius: BorderRadius.circular(3),
+                ),
+                child: Text(ready ? price : 'REAL MONEY',
+                    style: TextStyle(fontSize: 10, color: item.color, fontWeight: FontWeight.bold)),
+              ),
+            );
+          })
         else
           GestureDetector(
             onTap: canAfford ? () => game.purchaseCosmetic(item.id) : null,

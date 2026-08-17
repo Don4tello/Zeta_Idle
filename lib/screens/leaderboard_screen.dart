@@ -294,7 +294,10 @@ class _EntryTile extends StatelessWidget {
                         style: TextStyle(
                             fontSize: 14,
                             fontWeight: FontWeight.bold,
-                            color: nameColor)),
+                            color: nameColor,
+                            shadows: CosmeticItem.hasGlow(entry.nameColorId)
+                                ? [Shadow(color: nameColor, blurRadius: 10)]
+                                : null)),
                   ),
                   if (isMe) ...[
                     const SizedBox(width: 6),

@@ -21,12 +21,14 @@ typedef PurchaseCallback = void Function(String productId, int zcoins);
 
 class IapService {
   IapService(this._onCrystalsGranted,
-      {this.onPackPurchased, this.onSubscriptionActivated, this.onPremiumSkinPurchased});
+      {this.onPackPurchased, this.onSubscriptionActivated, this.onPremiumSkinPurchased,
+       this.onCosmeticPurchased});
 
   final void Function(int) _onCrystalsGranted;
   final void Function(String)? onPackPurchased;
   final void Function(String, int)? onSubscriptionActivated;
   final void Function(String)? onPremiumSkinPurchased;
+  final void Function(String)? onCosmeticPurchased; // real-money cosmetics
   StreamSubscription<List<PurchaseDetails>>? _sub;
   final Map<String, ProductDetails> _products = {};
   bool _storeAvailable = false;
@@ -48,6 +50,8 @@ class IapService {
     'skin_premium_druid', 'skin_premium_fighter', 'skin_premium_monk',
     'skin_premium_ranger', 'skin_premium_rogue', 'skin_premium_sorcerer',
     'skin_premium_warlock', 'skin_premium_wizard', 'skin_premium_paladin',
+    // Real-money exclusive cosmetics (non-consumable)
+    'cosmetic_frame_eclipse', 'cosmetic_name_prismatic', 'cosmetic_title_eternal',
     // Subscriptions
     'sub_speed_monthly', 'sub_premium_monthly',
   };
@@ -112,6 +116,12 @@ class IapService {
     // Premium class skins — productId 'skin_<skinId>' → skinId 'premium_<class>'
     if (productId.startsWith('skin_')) {
       onPremiumSkinPurchased?.call(productId.substring('skin_'.length));
+      return;
+    }
+
+    // Real-money exclusive cosmetics (frame / name colour / title)
+    if (productId.startsWith('cosmetic_')) {
+      onCosmeticPurchased?.call(productId);
       return;
     }
 
