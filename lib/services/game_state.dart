@@ -417,6 +417,9 @@ class GameState extends ChangeNotifier {
   bool get hasSpeedSub =>
       isSpeedSubscriber && speedSubExpiryMs > DateTime.now().millisecondsSinceEpoch;
 
+  /// Subscription idle-income bonus — Premium Pass +50%, Speed Boost +25%.
+  double get subIdleMult => hasPremium ? 1.5 : (hasSpeedSub ? 1.25 : 1.0);
+
   bool purchaseStarterPack(String packId) {
     if (purchasedPacks.contains(packId)) return false;
     final pack = StarterPack.all.where((p) => p.id == packId).firstOrNull;
@@ -477,11 +480,14 @@ class GameState extends ChangeNotifier {
     return CosmeticItem.all.where((c) => c.id == activeNameColor).firstOrNull?.color;
   }
 
+  // Subscriptions SET the expiry to now + period (not accumulate) so the
+  // restore-on-launch re-delivery refreshes the active window instead of
+  // stacking 30 days every launch. When the sub lapses Google stops delivering
+  // it on restore, and the window naturally elapses.
   void activatePremium(int durationDays) {
     isPremiumSubscriber = true;
-    final now = DateTime.now().millisecondsSinceEpoch;
-    if (premiumExpiryMs < now) premiumExpiryMs = now;
-    premiumExpiryMs += durationDays * 24 * 60 * 60 * 1000;
+    premiumExpiryMs = DateTime.now().millisecondsSinceEpoch
+        + durationDays * 24 * 60 * 60 * 1000;
     if (activeTitle == null) activeTitle = 'Premium';
     notifyListeners();
     saveToLocal();
@@ -489,9 +495,8 @@ class GameState extends ChangeNotifier {
 
   void activateSpeedSub(int durationDays) {
     isSpeedSubscriber = true;
-    final now = DateTime.now().millisecondsSinceEpoch;
-    if (speedSubExpiryMs < now) speedSubExpiryMs = now;
-    speedSubExpiryMs += durationDays * 24 * 60 * 60 * 1000;
+    speedSubExpiryMs = DateTime.now().millisecondsSinceEpoch
+        + durationDays * 24 * 60 * 60 * 1000;
     notifyListeners();
     saveToLocal();
   }
@@ -1413,6 +1418,7 @@ class GameState extends ChangeNotifier {
   int seasonMonth = 0; // tracks which month this data belongs to
 
   void addSeasonXp(int xp) {
+    if (hasPremium) xp *= 2; // Premium Pass perk: 2× Season Pass XP
     seasonPassXp += xp;
     while (seasonPassTier < SeasonPassTier.tiers.length &&
         seasonPassXp >= SeasonPassTier.tiers[seasonPassTier].xpRequired) {
@@ -6086,6 +6092,10 @@ class GameState extends ChangeNotifier {
       prestigeLevel = _confirmedPrestigeLevel;
     }
     _slotLoaded = true;
+    // Re-apply active subscriptions / non-consumables now that the slot is
+    // loaded, so a purchase whose live event was missed (or a reinstall) still
+    // activates. Runs after load so it can't be overwritten by the loaded save.
+    _iapService.restorePurchases();
     startPlaytimeTracking(); // begin the play-session clock (loadSlot never did)
     checkLoginStreak();
     notifyListeners();
@@ -8041,7 +8051,7 @@ class GameState extends ChangeNotifier {
     if (idleProgress == 0) return;
 
     // Gold
-    final earned = (idleProgress * hero.goldRate * prestigeIdleMult * paragonGoldIncomeMult * waystoneMult * allyIdleMult).round();
+    final earned = (idleProgress * hero.goldRate * prestigeIdleMult * paragonGoldIncomeMult * waystoneMult * allyIdleMult * subIdleMult).round();
     gold += earned;
     if (earned > 0) AnalyticsService.instance.currencyEarned('gold', earned, 'idle');
     lastIdleGold = earned;
@@ -8089,7 +8099,7 @@ class GameState extends ChangeNotifier {
 
   /// Gold that will be awarded when the cycle completes.
   int get pendingIdleGold =>
-      (idleProgress * hero.goldRate * prestigeIdleMult * paragonGoldIncomeMult * waystoneMult * allyIdleMult).round();
+      (idleProgress * hero.goldRate * prestigeIdleMult * paragonGoldIncomeMult * waystoneMult * allyIdleMult * subIdleMult).round();
 
   /// Sustained gold earned per minute at current idle rate.
   int get idleGoldPerMinute =>

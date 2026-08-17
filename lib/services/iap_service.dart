@@ -1,6 +1,6 @@
 ﻿import 'dart:async';
 import 'dart:io' show Platform;
-import 'package:flutter/foundation.dart' show kIsWeb, kDebugMode;
+import 'package:flutter/foundation.dart' show kIsWeb, kDebugMode, debugPrint;
 import 'package:in_app_purchase/in_app_purchase.dart';
 import 'analytics_service.dart';
 
@@ -93,6 +93,8 @@ class IapService {
   }
 
   void _fulfillPurchase(String productId) {
+    // Visible in `adb logcat | grep flutter` — confirms fulfillment fired.
+    debugPrint('[IAP] fulfill: $productId');
     AnalyticsService.instance.iapPurchase(productId);
     // Crystal consumables
     final pkg = packages.where((p) => p.productId == productId).firstOrNull;
