@@ -3,6 +3,32 @@
 Version numbers are the pubspec build number (`0.1.0+N`), which is the Play
 Store `versionCode`. Newest first.
 
+## +58 — Premium season-pass track
+- New **Season Pass** screen (PLAY → Progression): 30-tier two-track ladder with
+  an XP progress bar, per-tier free/premium claim, **Claim All**, and an *Unlock
+  Premium* CTA for non-subscribers. Auto-scrolls to the current tier; home menu
+  shows an unclaimed-rewards badge.
+- `claimSeasonPremium` now **requires an active Premium Pass** (free players could
+  previously claim premium rewards). Claim methods return `bool`; added
+  `claimAllSeason()`, `seasonUnclaimedCount`, and tier-progress getters.
+
+## +57 — Aura HP regen in every mode
+- Extended the aura per-turn HP-regen sustain to **Dungeon / Boss Rush /
+  Gauntlet** screen loops, matching the game_state path.
+
+## +56 — Aura sustain + achievement persistence
+- Auras with HP recovery now **heal a % of max HP each turn** (sustain) instead
+  of a small flat heal after each win; relabelled accordingly.
+- **Achievements persist through Rebirth and Ascension** (saved/restored around
+  the reset).
+
+## +53–55 — Subscription perks wired end-to-end
+- Premium Pass / Speed Boost now **activate reliably** (set-not-accumulate
+  expiry) and **restore on launch** (`restorePurchases` after slot load).
+- Wired all perks: **+50% idle gold**, **2× Season XP**, up to **3× battle
+  speed**, **auto-campaign** gating, and **monthly ZCoin grants** (Premium 300 /
+  Speed 100, idempotent).
+
 ## +52 — What's New panel + battle-log round dividers
 - **What's New** in-app patch-notes viewer (data-driven `kPatchNotes`, newest
   first, scrollable history). Megaphone button in the Hero header; a red dot
