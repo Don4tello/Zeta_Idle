@@ -22,6 +22,22 @@ service cloud.firestore {
       return request.auth != null && request.auth.uid == uid;
     }
 
+    // Leaderboard write validation — caps values/lengths and enforces types so
+    // malformed or absurd entries can't be written. Lenient (per-field guards)
+    // so it never rejects a legit, merge, or legacy write. NOTE: this does not
+    // make scores un-spoofable (a client can still submit a plausible high
+    // score); true anti-cheat needs Cloud Functions.
+    function validLeaderboard() {
+      let d = request.resource.data;
+      return (!('name' in d)      || (d.name is string && d.name.size() <= 24))
+          && (!('heroClass' in d) || (d.heroClass is string && d.heroClass.size() <= 40))
+          && (!('subclass' in d)  || d.subclass == null || d.subclass is string)
+          && (!('score' in d)     || (d.score is int && d.score >= 0 && d.score < 100000000000))
+          && (!('stage' in d)     || (d.stage is int && d.stage >= 0))
+          && (!('rebirths' in d)  || (d.rebirths is int && d.rebirths >= 0 && d.rebirths < 1000000))
+          && (!('floor' in d)     || (d.floor is int && d.floor >= 0));
+    }
+
     // ── Private per-user cloud saves ────────────────────────────────────────
     // Only the owner may read or write their save (doc id == uid).
     match /zeta_idle_saves/{uid} {
@@ -40,23 +56,23 @@ service cloud.firestore {
     // Public read to signed-in users; owner-only write (doc id == uid).
     match /endless_leaderboard/{uid} {
       allow read:  if signedIn();
-      allow write: if isOwner(uid);
+      allow write: if isOwner(uid) && validLeaderboard();
     }
     match /campaign_leaderboard/{uid} {
       allow read:  if signedIn();
-      allow write: if isOwner(uid);
+      allow write: if isOwner(uid) && validLeaderboard();
     }
     match /dungeon_leaderboard/{uid} {
       allow read:  if signedIn();
-      allow write: if isOwner(uid);
+      allow write: if isOwner(uid) && validLeaderboard();
     }
     match /boss_rush_leaderboard/{uid} {
       allow read:  if signedIn();
-      allow write: if isOwner(uid);
+      allow write: if isOwner(uid) && validLeaderboard();
     }
     match /gauntlet_leaderboard/{uid} {
       allow read:  if signedIn();
-      allow write: if isOwner(uid);
+      allow write: if isOwner(uid) && validLeaderboard();
     }
 
     // ── Guilds (collaborative) ──────────────────────────────────────────────
