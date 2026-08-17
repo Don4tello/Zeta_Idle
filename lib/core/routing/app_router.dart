@@ -6,6 +6,7 @@ import '../../screens/main_shell.dart';
 import '../../screens/campaign_screen.dart';
 import '../../screens/endless_screen.dart';
 import '../../screens/daily_screen.dart';
+import '../../screens/season_pass_screen.dart';
 import '../../screens/pvp_screen.dart';
 import '../../screens/dungeon_screen.dart';
 import '../../screens/gauntlet_screen.dart';
@@ -62,6 +63,7 @@ abstract final class Routes {
 
   // Daily / events
   static const daily    = '/game/daily';
+  static const seasonPass = '/game/season-pass';
   static const events   = '/game/events';
   static const bounties = '/game/bounties';
 
@@ -180,6 +182,7 @@ GoRouter buildRouter({
 
           // Daily / events
           _route('daily',    const DailyScreen()),
+          _route('season-pass', const SeasonPassScreen()),
           _route('events',   const WorldEventScreen()),
           _route('bounties', const BountyBoardScreen()),
 

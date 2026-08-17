@@ -1443,6 +1443,23 @@ class GameState extends ChangeNotifier {
   Set<int> seasonPremiumClaimed = {};
   int seasonMonth = 0; // tracks which month this data belongs to
 
+  // XP required to reach the next tier (0 once every tier is maxed).
+  int get seasonNextTierXp => seasonPassTier < SeasonPassTier.tiers.length
+      ? SeasonPassTier.tiers[seasonPassTier].xpRequired
+      : 0;
+  // Progress into the current tier, 0..1.
+  double get seasonTierProgress =>
+      seasonNextTierXp > 0 ? (seasonPassXp / seasonNextTierXp).clamp(0.0, 1.0) : 1.0;
+  // Number of reward tiers ready to claim on either track.
+  int get seasonUnclaimedCount {
+    var n = 0;
+    for (var t = 1; t <= seasonPassTier; t++) {
+      if (!seasonFreeClaimed.contains(t)) n++;
+      if (hasPremium && !seasonPremiumClaimed.contains(t)) n++;
+    }
+    return n;
+  }
+
   void addSeasonXp(int xp) {
     if (hasPremium) xp *= 2; // Premium Pass perk: 2× Season Pass XP
     seasonPassXp += xp;
@@ -1454,22 +1471,36 @@ class GameState extends ChangeNotifier {
     notifyListeners();
   }
 
-  void claimSeasonFree(int tier) {
-    if (tier > seasonPassTier || seasonFreeClaimed.contains(tier)) return;
+  bool claimSeasonFree(int tier) {
+    if (tier > seasonPassTier || seasonFreeClaimed.contains(tier)) return false;
     final t = SeasonPassTier.tiers[tier - 1];
     _applyRewards(t.freeRewards);
     seasonFreeClaimed.add(tier);
     notifyListeners();
     saveToLocal();
+    return true;
   }
 
-  void claimSeasonPremium(int tier) {
-    if (tier > seasonPassTier || seasonPremiumClaimed.contains(tier)) return;
+  bool claimSeasonPremium(int tier) {
+    // Premium track is a Premium Pass perk — requires an active subscription.
+    if (!hasPremium) return false;
+    if (tier > seasonPassTier || seasonPremiumClaimed.contains(tier)) return false;
     final t = SeasonPassTier.tiers[tier - 1];
     _applyRewards(t.premiumRewards);
     seasonPremiumClaimed.add(tier);
     notifyListeners();
     saveToLocal();
+    return true;
+  }
+
+  // Claim every reward currently available on both tracks. Returns the count claimed.
+  int claimAllSeason() {
+    var n = 0;
+    for (var t = 1; t <= seasonPassTier; t++) {
+      if (claimSeasonFree(t)) n++;
+      if (claimSeasonPremium(t)) n++;
+    }
+    return n;
   }
 
   void _checkSeasonReset() {

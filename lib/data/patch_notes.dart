@@ -19,6 +19,20 @@ int get kLatestPatchBuild => kPatchNotes.first.build;
 
 const kPatchNotes = <PatchNote>[
   PatchNote(
+    build: 58,
+    title: 'Season Pass Track + Fixes',
+    date: '2026-08-17',
+    changes: [
+      'NEW: Season Pass screen (PLAY → Progression) — view all 30 tiers, '
+          'track your XP, and claim free + premium rewards.',
+      'Premium Pass now unlocks the premium reward track and grants 2× Season XP.',
+      'Auras with HP recovery now heal a % of max HP every turn (sustain), '
+          'instead of a tiny flat heal after each win — in every game mode.',
+      'Achievements now persist through Rebirth and Ascension.',
+      'Premium Pass / Speed Boost perks now activate reliably and restore on launch.',
+    ],
+  ),
+  PatchNote(
     build: 52,
     title: 'What\'s New + Battle Log Rounds',
     date: '2026-08-16',

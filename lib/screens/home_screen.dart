@@ -341,6 +341,8 @@ class HomeScreen extends StatelessWidget {
 
             // ── Progression ───────────────────────────────────────────────────
             sec(GameIconType.mountain, 'PROGRESSION', const Color(0xFFaa88ff), [
+              btn('SEASON PASS',  5,  () => context.push(Routes.seasonPass),
+                  badge: game.seasonUnclaimedCount > 0),
               btn('ACHIEVEMENTS', 5,  () => context.push(Routes.achievements),
                   badge: game.achievementsClaimable > 0),
               btn('PRESTIGE',      20, () => context.push(Routes.prestige)),
