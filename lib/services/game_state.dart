@@ -3267,6 +3267,15 @@ class GameState extends ChangeNotifier {
   // ── Achievements ───────────────────────────────────────────────────────────
   final List<Achievement> achievements = buildAchievements();
 
+  // Re-apply saved achievement state onto the (freshly rebuilt) list — used to
+  // persist achievements through rebirth/ascension, which reset everything else.
+  void _restoreAchievements(List<Map<String, dynamic>> saved) {
+    final byId = {for (final e in saved) e['id'] as String: e};
+    for (final a in achievements) {
+      if (byId.containsKey(a.id)) a.loadFromJson(byId[a.id]!);
+    }
+  }
+
   int get achievementsUnlocked  => achievements.where((a) => a.unlocked).length;
   int get achievementsClaimable => achievements.where((a) => a.unlocked && !a.claimed).length;
 
@@ -3701,6 +3710,9 @@ class GameState extends ChangeNotifier {
     final savedEssence      = essence;
     final savedTree         = Map<String, dynamic>.from(passiveTree.toJson());
     final savedQuests       = Map<String, bool>.from(questsClaimed);
+    // Achievements are lifetime — persist their unlocked/claimed state through
+    // a rebirth (_resetToDefaults rebuilds them fresh).
+    final savedAchievements = achievements.map((a) => a.toJson()).toList();
     final savedTitle        = heroTitle;
     final savedAbilityUses  = _totalAbilityUses;
 
@@ -3832,6 +3844,7 @@ class GameState extends ChangeNotifier {
     questsClaimed
       ..clear()
       ..addAll(savedQuests);
+    _restoreAchievements(savedAchievements);
     heroTitle = savedTitle;
     _totalAbilityUses = savedAbilityUses;
 
@@ -4069,6 +4082,7 @@ class GameState extends ChangeNotifier {
     final savedMasteryRanks  = Map<String, int>.from(_elementalMasteryRanks);
     final savedAbilityAsc    = Map<String, int>.from(_abilityAscension);
     final savedTotalAscAp    = totalAscensionAp + ap; // cumulative AP ever earned
+    final savedAchievements  = achievements.map((a) => a.toJson()).toList();
     // Full reset (includes zeroing prestige + ascension)
     _resetToDefaults(savedName, savedClass, keepTutorials: true);
     // Restore ascension-permanent data
@@ -4083,6 +4097,7 @@ class GameState extends ChangeNotifier {
     _elementalMasteryRanks.addAll(savedMasteryRanks);
     _abilityAscension.addAll(savedAbilityAsc);
     totalAscensionAp = savedTotalAscAp;
+    _restoreAchievements(savedAchievements);
     // Ascension zeroes prestige — keep the dedicated confirmed-prestige key in
     // sync too, or loadSlot would restore prestigeLevel from it (leaving the
     // player able to re-ascend / stuck). prestige() does the same.
@@ -6795,6 +6810,16 @@ class GameState extends ChangeNotifier {
     _battleTurnCount++;
     if (_battleTurnCount > 1) battleLog.add('— Round $_battleTurnCount —');
 
+    // Aura HP regen — heal a % of max HP every turn (sustain), applied even
+    // when stunned. Replaces the old near-useless flat "+HP after victory".
+    if (auraHpRegen > 0 && hero.currentHealth > 0 && hero.currentHealth < hero.maxHealth) {
+      final regen = (hero.maxHealth * auraHpRegen / 100).round().clamp(1, 999999);
+      final before = hero.currentHealth;
+      hero.currentHealth = (hero.currentHealth + regen).clamp(0, hero.maxHealth);
+      final healed = hero.currentHealth - before;
+      if (healed > 0) battleLog.add('✚ Aura regen: +$healed HP.');
+    }
+
     // Boss ability stun: hero skips this turn
     if (_heroStunRounds > 0) {
       _heroStunRounds--;
@@ -7842,7 +7867,7 @@ class GameState extends ChangeNotifier {
     conRegen += inventory.totalOf(ItemStat.constitution) * 3;
     conRegen += _setTotal(ItemStat.constitution) * 3;
     conRegen += _gemTotal(ItemStat.constitution) * 3;
-    conRegen += skinHpRegen + auraHpRegen;
+    conRegen += skinHpRegen; // aura HP regen is now a per-turn heal (see heroAttack)
     // Void Curse affix: halve all hero HP recovery
     if (_activeAffixes.contains(ZoneAffix.voidCurse)) {
       conRegen = (conRegen / 2).round();
