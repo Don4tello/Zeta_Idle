@@ -395,7 +395,7 @@ class _MainShellState extends State<MainShell> {
         Expanded(child: _SwipeShell(
           tab: _tab,
           onTabChange: (i) => setState(() => _tab = i),
-          showGuild: game.campaignStageIndex >= 14,
+          showGuild: game.effectiveUnlockStage >= 14,
           onBackToSelect: widget.onBackToSelect,
         )),
       ]),
@@ -412,7 +412,7 @@ class _MainShellState extends State<MainShell> {
           false,
           game.guildId != null,
         ],
-        showGuild: game.campaignStageIndex >= 14,
+        showGuild: game.effectiveUnlockStage >= 14,
       )),
     );
   }

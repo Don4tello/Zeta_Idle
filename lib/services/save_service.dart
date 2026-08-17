@@ -10,6 +10,7 @@ class CharacterSummary {
     required this.level,
     this.heroClass,
     this.prestigeLevel = 0,
+    this.totalAscensionAp = 0,
     this.gender,
   });
   final int slot;
@@ -17,6 +18,7 @@ class CharacterSummary {
   final int level;
   final DndClass? heroClass;
   final int prestigeLevel;
+  final int totalAscensionAp; // cumulative Ascension Points ever earned (endgame reach)
   final HeroGender? gender;
 }
 
@@ -93,6 +95,7 @@ class SaveService {
           level: hero['level'] as int,
           heroClass: DndClass.tryParse(hero['heroClass'] as String?),
           prestigeLevel: jsonPl > directPl ? jsonPl : directPl,
+          totalAscensionAp: (data['totalAscensionAp'] as int?) ?? 0,
           gender: HeroGender.tryParse(hero['gender'] as String?),
         );
       } catch (_) {

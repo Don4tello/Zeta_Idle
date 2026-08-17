@@ -19,6 +19,20 @@ int get kLatestPatchBuild => kPatchNotes.first.build;
 
 const kPatchNotes = <PatchNote>[
   PatchNote(
+    build: 59,
+    title: 'Rebirth No Longer Re-Locks Content',
+    date: '2026-08-17',
+    changes: [
+      'Fixed: Rebirth wiped your level-50 Specialization — it is now permanent '
+          'and survives Rebirth and Ascension.',
+      'Fixed: after a Rebirth the Guild tab, boss selector, battle allies, '
+          'hard mode and other unlocked content stayed available (no more '
+          're-locking now that campaign progress resets).',
+      'NEW: your total Ascension Points (AP) now show on the character-select '
+          'screen and the Hero stats sheet, so endgame progress is visible.',
+    ],
+  ),
+  PatchNote(
     build: 58,
     title: 'Season Pass Track + Fixes',
     date: '2026-08-17',

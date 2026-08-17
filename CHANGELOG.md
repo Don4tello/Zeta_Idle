@@ -3,6 +3,21 @@
 Version numbers are the pubspec build number (`0.1.0+N`), which is the Play
 Store `versionCode`. Newest first.
 
+## +59 — Rebirth no longer re-locks content + AP display
+- **Fixed data loss:** `prestige()` and `ascend()` never saved/restored
+  `subclassId`, so `_resetToDefaults` **permanently wiped the level-50
+  Specialization** on every Rebirth/Ascension. Now saved and restored;
+  `subclassUnlocked` latches on `subclassId != null` so the tab stays visible.
+- **Fixed re-locking:** several unlock gates read `campaignStageIndex` (resets to
+  0 on rebirth) instead of `effectiveUnlockStage` (latches ≥100). Switched the
+  Guild tab (`main_shell`), defeat-dialog modes (`battle_screen`), quick-access
+  grid (`home_screen`), Endless boss selector, campaign Hard-Mode toggle, battle
+  allies (`battle_split_panel`), and the daily dashboard hint.
+- **AP visibility:** cumulative **Ascension Points** now render on the
+  character-select slot (`⭑ N AP`) and the Hero stats header, so you can see how
+  far a character got into the endgame. `CharacterSummary` carries
+  `totalAscensionAp`, read from the save.
+
 ## +58 — Premium season-pass track
 - New **Season Pass** screen (PLAY → Progression): 30-tier two-track ladder with
   an XP progress bar, per-tier free/premium claim, **Claim All**, and an *Unlock

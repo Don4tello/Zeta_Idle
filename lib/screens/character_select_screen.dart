@@ -165,6 +165,7 @@ class _CharacterSelectScreenState extends State<CharacterSelectScreen> {
                       level: game.hero.level,
                       heroClass: live.heroClass,
                       prestigeLevel: game.confirmedPrestigeLevel,
+                      totalAscensionAp: game.totalAscensionAp,
                       gender: live.gender,
                     );
                   }
@@ -394,6 +395,24 @@ class _SlotTile extends StatelessWidget {
                 letterSpacing: 1,
               ),
             ),
+            if (char.totalAscensionAp > 0) ...[
+              Text(
+                '  ·  ',
+                style: GoogleFonts.rajdhani(
+                  fontSize: 12,
+                  color: AppTheme.cardBorder,
+                ),
+              ),
+              Text(
+                '⭑ ${char.totalAscensionAp} AP',
+                style: GoogleFonts.rajdhani(
+                  fontSize: 12,
+                  color: AppTheme.accentGoldBright,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 1,
+                ),
+              ),
+            ],
           ],
         ),
       ],

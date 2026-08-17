@@ -232,7 +232,7 @@ class BattleSplitPanel extends StatelessWidget {
           'Vulnerable: enemy takes ${game.enemyVulnerablePct}% more damage from all sources.\n${game.enemyVulnerableRounds} round${game.enemyVulnerableRounds != 1 ? "s" : ""} remaining.');
     }
 
-    final allies = game.campaignStageIndex >= 15
+    final allies = game.effectiveUnlockStage >= 15
         ? game.unlockedAllies.where((a) => a.activeAbility != null).toList()
         : <dynamic>[];
     if (abilities.isEmpty && statusRows.isEmpty && allies.isEmpty) {

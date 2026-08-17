@@ -453,7 +453,7 @@ class _EndlessScreenState extends State<EndlessScreen> {
           const SizedBox(height: 12),
 
           // ── BOSS SELECTOR ─────────────────────────────────────
-          if (game.campaignStageIndex >= 5) ...[
+          if (game.effectiveUnlockStage >= 5) ...[
             Text('CHALLENGE A BOSS',
                 style: AppTheme.pixelHeading(fontSize: 10, letterSpacing: 2, color: AppTheme.textMuted)),
             const SizedBox(height: 6),

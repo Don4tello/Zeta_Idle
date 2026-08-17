@@ -616,7 +616,7 @@ class _QuickAccessGrid extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final stage = game.campaignStageIndex;
+    final stage = game.effectiveUnlockStage;
     final all = [
       _QuickItem(GameIconType.scroll,   'CAMPAIGN',  0,  () => context.push(Routes.campaign)),
       _QuickItem(GameIconType.armor,    'HERO',      0,  () => context.push(Routes.heroHub)),

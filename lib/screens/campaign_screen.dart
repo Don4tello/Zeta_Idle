@@ -32,7 +32,7 @@ class CampaignScreen extends StatelessWidget {
               color: game.campaignHardMode ? const Color(0xFFff4444) : AppTheme.accentGold),
         ),
         actions: [
-          if (game.campaignStageIndex >= 50)
+          if (game.effectiveUnlockStage >= 50)
             IconButton(
               icon: Icon(
                 game.campaignHardMode ? Icons.whatshot : Icons.whatshot_outlined,

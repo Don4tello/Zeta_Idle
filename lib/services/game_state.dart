@@ -3805,6 +3805,7 @@ class GameState extends ChangeNotifier {
     final savedEquippedSkin   = equippedSkinId;
     final savedEquippedPremium = equippedPremiumSkinId;
     final savedEquippedAttack = equippedAttackEffectId;
+    final savedSubclass       = subclassId; // level-50 specialization is permanent
 
     // Set confirmed level BEFORE the reset so it survives even if reset throws.
     _confirmedPrestigeLevel = savedPrestigeLvl;
@@ -3856,6 +3857,7 @@ class GameState extends ChangeNotifier {
     equippedSkinId          = savedEquippedSkin;
     equippedPremiumSkinId   = savedEquippedPremium;
     equippedAttackEffectId  = savedEquippedAttack;
+    subclassId              = savedSubclass;
     shards = savedShards;
     echoes = savedEchoes;
     essence = savedEssence;
@@ -4114,6 +4116,7 @@ class GameState extends ChangeNotifier {
     final savedAbilityAsc    = Map<String, int>.from(_abilityAscension);
     final savedTotalAscAp    = totalAscensionAp + ap; // cumulative AP ever earned
     final savedAchievements  = achievements.map((a) => a.toJson()).toList();
+    final savedSubclass      = subclassId; // level-50 specialization is permanent
     // Full reset (includes zeroing prestige + ascension)
     _resetToDefaults(savedName, savedClass, keepTutorials: true);
     // Restore ascension-permanent data
@@ -4129,6 +4132,7 @@ class GameState extends ChangeNotifier {
     _abilityAscension.addAll(savedAbilityAsc);
     totalAscensionAp = savedTotalAscAp;
     _restoreAchievements(savedAchievements);
+    subclassId = savedSubclass;
     // Ascension zeroes prestige — keep the dedicated confirmed-prestige key in
     // sync too, or loadSlot would restore prestigeLevel from it (leaving the
     // player able to re-ascend / stuck). prestige() does the same.
@@ -4163,7 +4167,9 @@ class GameState extends ChangeNotifier {
   static const int kSubclassUnlockLevel = 50;
   static const int kSubclassRespecCost  = 100; // ZCoins
 
-  bool get subclassUnlocked  => hero.level >= kSubclassUnlockLevel;
+  // Latches once chosen: a rebirth resets hero.level but the specialization is
+  // permanent, so the tab/choice must stay unlocked afterwards.
+  bool get subclassUnlocked  => hero.level >= kSubclassUnlockLevel || subclassId != null;
   bool get subclassAvailable => subclassUnlocked && subclassId == null;
 
   Subclass? get activeSubclass =>

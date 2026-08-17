@@ -241,6 +241,17 @@ class _StatsBody extends StatelessWidget {
                           fontSize: 11,
                           color: const Color(0xFF88ffdd))),
                 ],
+                if (game.totalAscensionAp > 0) ...[
+                  const SizedBox(width: 12),
+                  const Text('⭑',
+                      style: TextStyle(fontSize: 12, color: AppTheme.accentGoldBright)),
+                  const SizedBox(width: 4),
+                  Text('${game.totalAscensionAp} AP',
+                      style: GoogleFonts.rajdhani(
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                          color: AppTheme.accentGoldBright)),
+                ],
               ]),
             ),
           ],

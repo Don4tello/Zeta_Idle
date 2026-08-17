@@ -122,7 +122,7 @@ class _SmartNextActionPanel extends StatelessWidget {
   //   route — a go_router path to push (for screens that aren't a shell/hub tab,
   //     e.g. the Daily challenges screen). Takes priority when set.
   static (String, String, Color, int?, int?, String?)? _getAction(GameState game) {
-    if (game.hasClaimableDaily && game.campaignStageIndex >= 5) {
+    if (game.hasClaimableDaily && game.effectiveUnlockStage >= 5) {
       // Go straight to the Daily challenges screen, not the PLAY mode sheet.
       return ('🎯', 'Daily challenge ready to claim!',
           const Color(0xFFffaa44), null, null, Routes.daily);

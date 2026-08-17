@@ -269,7 +269,7 @@ class _BattleScreenState extends State<BattleScreen>
   Future<void> _showDefeatDialog(GameState game) async {
     if (!mounted) return;
     game.haptic(HapticFeedback.vibrate); // defeat rumble
-    final stage = game.campaignStageIndex;
+    final stage = game.effectiveUnlockStage; // latches ≥100 post-rebirth so modes stay unlocked
     await showDialog<void>(
       context: context,
       barrierDismissible: false,
