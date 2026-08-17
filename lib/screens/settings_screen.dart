@@ -367,10 +367,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
             _SettingsTile(
               title: 'Auto-Campaign',
-              subtitle: 'Automatically fight campaign battles in the background',
+              subtitle: game.canAutoCampaign
+                  ? 'Automatically fight campaign battles in the background'
+                  : '🔒 Speed Boost / Premium Pass subscribers only',
               trailing: Switch(
-                value: game.autoCampaign,
-                onChanged: (_) { setState(() => game.toggleAutoCampaign()); game.audioService.playUiClick(); },
+                value: game.autoCampaign && game.canAutoCampaign,
+                onChanged: game.canAutoCampaign
+                    ? (_) { setState(() => game.toggleAutoCampaign()); game.audioService.playUiClick(); }
+                    : null,
                 activeColor: const Color(0xFF44cc88),
                 inactiveTrackColor: AppTheme.cardBorder,
               ),

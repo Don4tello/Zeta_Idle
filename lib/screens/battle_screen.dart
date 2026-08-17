@@ -548,13 +548,26 @@ class _BattleScreenState extends State<BattleScreen>
           _SpeedButton(game: game),
           IconButton(
             icon: Icon(
-              game.autoCampaign ? Icons.autorenew : Icons.autorenew,
-              color: game.autoCampaign ? const Color(0xFF44cc88) : AppTheme.textMuted,
+              !game.canAutoCampaign
+                  ? Icons.lock_outline
+                  : Icons.autorenew,
+              color: game.autoCampaign
+                  ? const Color(0xFF44cc88)
+                  : (game.canAutoCampaign ? AppTheme.textMuted : const Color(0xFF886655)),
               size: 20,
             ),
-            tooltip: game.autoCampaign ? 'Auto-Campaign: ON' : 'Auto-Campaign: OFF',
+            tooltip: !game.canAutoCampaign
+                ? 'Auto-Campaign — Speed Boost / Premium Pass'
+                : (game.autoCampaign ? 'Auto-Campaign: ON' : 'Auto-Campaign: OFF'),
             onPressed: () {
-              game.toggleAutoCampaign();
+              if (!game.toggleAutoCampaign()) {
+                game.audioService.playUiError();
+                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                  content: Text('Auto-Campaign is a Speed Boost / Premium Pass perk.'),
+                  behavior: SnackBarBehavior.floating,
+                ));
+                return;
+              }
               game.audioService.playUiClick();
               (context as Element).markNeedsBuild();
             },

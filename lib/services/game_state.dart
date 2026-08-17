@@ -185,9 +185,11 @@ class GameState extends ChangeNotifier {
           _idleTickCount = 0;
           collectIdleRewards();
         }
-        // Auto-campaign: resolve a battle in the background
-        if (autoCampaign && currentEnemy == null && !heroDefeated) {
+        // Auto-campaign: resolve a battle in the background (subscriber-only).
+        if (autoCampaign && canAutoCampaign && currentEnemy == null && !heroDefeated) {
           _runAutoCampaignTick();
+        } else if (autoCampaign && !canAutoCampaign) {
+          autoCampaign = false; // subscription lapsed — turn it off
         }
       },
     );
@@ -410,6 +412,22 @@ class GameState extends ChangeNotifier {
   int premiumExpiryMs = 0;
   bool isSpeedSubscriber = false;
   int speedSubExpiryMs = 0;
+  int lastSubZcoinGrantMonth = 0; // year*12+month of the last monthly sub grant
+
+  /// Monthly bonus Z-Coins for active subscribers — Premium 300, Speed 100.
+  /// Idempotent per calendar month; runs whenever a sub is confirmed active.
+  void _grantMonthlySubZcoins() {
+    if (!hasPremium && !hasSpeedSub) return;
+    final now = DateTime.now();
+    final monthKey = now.year * 12 + now.month;
+    if (monthKey <= lastSubZcoinGrantMonth) return;
+    final amount = hasPremium ? 300 : 100;
+    zcoins += amount;
+    lastSubZcoinGrantMonth = monthKey;
+    logLoot('🪙', 'Subscriber bonus: +$amount Z-Coins');
+    notifyListeners();
+    saveToLocal();
+  }
 
   bool get hasPremium =>
       isPremiumSubscriber && premiumExpiryMs > DateTime.now().millisecondsSinceEpoch;
@@ -491,6 +509,7 @@ class GameState extends ChangeNotifier {
     if (activeTitle == null) activeTitle = 'Premium';
     notifyListeners();
     saveToLocal();
+    _grantMonthlySubZcoins();
   }
 
   void activateSpeedSub(int durationDays) {
@@ -499,6 +518,7 @@ class GameState extends ChangeNotifier {
         + durationDays * 24 * 60 * 60 * 1000;
     notifyListeners();
     saveToLocal();
+    _grantMonthlySubZcoins();
   }
 
   // ── Campaign Energy ────────────────────────────────────────────────────────
@@ -596,10 +616,16 @@ class GameState extends ChangeNotifier {
     100: 'Rebirth',
   };
 
-  void toggleAutoCampaign() {
+  // Auto-Campaign is a paid perk (Speed Boost / Premium Pass). Returns false if
+  // a non-subscriber tries to enable it (the UI shows an upsell in that case).
+  bool get canAutoCampaign => hasPremium || hasSpeedSub;
+
+  bool toggleAutoCampaign() {
+    if (!autoCampaign && !canAutoCampaign) return false; // gated to subscribers
     autoCampaign = !autoCampaign;
     notifyListeners();
     saveToLocal();
+    return true;
   }
 
   // Auto-loot settings
@@ -8216,6 +8242,7 @@ class GameState extends ChangeNotifier {
       'isPremiumSubscriber': isPremiumSubscriber,
       'premiumExpiryMs': premiumExpiryMs,
       'isSpeedSubscriber': isSpeedSubscriber,
+      'lastSubZcoinGrantMonth': lastSubZcoinGrantMonth,
       'speedSubExpiryMs': speedSubExpiryMs,
       'autoSalvageThreshold': autoSalvageThreshold?.name,
       'hapticsEnabled':      hapticsEnabled,
@@ -8552,6 +8579,7 @@ class GameState extends ChangeNotifier {
     premiumExpiryMs = (json['premiumExpiryMs'] as int?) ?? 0;
     isSpeedSubscriber = (json['isSpeedSubscriber'] as bool?) ?? false;
     speedSubExpiryMs = (json['speedSubExpiryMs'] as int?) ?? 0;
+    lastSubZcoinGrantMonth = (json['lastSubZcoinGrantMonth'] as int?) ?? 0;
     final savedThreshold = json['autoSalvageThreshold'] as String?;
     autoSalvageThreshold = savedThreshold != null
         ? ItemRarity.values.firstWhere((r) => r.name == savedThreshold,
