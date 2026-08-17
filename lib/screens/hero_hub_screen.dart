@@ -134,15 +134,17 @@ class _HeroHubScreenState extends State<HeroHubScreen>
         : game.prestigeLevel;
     return [
       for (int i = 0; i < _kAllTabs.length; i++)
-        if (i == 12                              // ASCEND: needs prestige
-            ? pl > 0
-            : i == 11                            // UPGRADES: latches once you can spend echoes
-                ? game.upgradesTabUnlocked
-                : i == 13                        // MASTERY: latches once you can afford an upgrade
-                    ? game.masteryTabUnlocked
-                    : i == 14                    // SPECIALIZE: hero level 50
-                        ? game.subclassUnlocked
-                        : game.effectiveUnlockStage >= _kAllTabs[i].unlock) i,
+        // Endgame (any Rebirth or Ascension AP) keeps every tab unlocked.
+        if (game.endgameUnlocked
+            || (i == 12                          // ASCEND: needs prestige
+                ? pl > 0
+                : i == 11                        // UPGRADES: latches once you can spend echoes
+                    ? game.upgradesTabUnlocked
+                    : i == 13                    // MASTERY: latches once you can afford an upgrade
+                        ? game.masteryTabUnlocked
+                        : i == 14                // SPECIALIZE: hero level 50
+                            ? game.subclassUnlocked
+                            : game.effectiveUnlockStage >= _kAllTabs[i].unlock)) i,
     ];
   }
 

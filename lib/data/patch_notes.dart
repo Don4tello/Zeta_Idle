@@ -19,6 +19,18 @@ int get kLatestPatchBuild => kPatchNotes.first.build;
 
 const kPatchNotes = <PatchNote>[
   PatchNote(
+    build: 61,
+    title: 'Framed Name + Endgame Unlocks',
+    date: '2026-08-17',
+    changes: [
+      'Your hero name on the Hero sheet now sits in a frame tinted with your '
+          'equipped frame / name colour.',
+      'Once you\'ve Rebirthed or earned any Ascension Points, every game mode '
+          'and Hero-sheet tab stays unlocked — Ascension no longer re-locks '
+          'content by resetting your rebirth count.',
+    ],
+  ),
+  PatchNote(
     build: 60,
     title: 'Cosmetics Show Off + Auto-Campaign',
     date: '2026-08-17',

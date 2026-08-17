@@ -79,7 +79,11 @@ class _StatsBody extends StatelessWidget {
   // ── Identity header (equipped cosmetics: skin, frame, title, name colour) ────
   Widget _identityHeader() {
     final frameColor = CosmeticItem.frameColorFor(game.activeFrame);
-    final nameColor = CosmeticItem.nameColorFor(game.activeNameColor) ?? AppTheme.textLight;
+    final rawNameColor = CosmeticItem.nameColorFor(game.activeNameColor);
+    final nameColor = rawNameColor ?? AppTheme.textLight;
+    // The name plate is framed in the equipped frame colour (or name colour,
+    // else gold) so the cosmetic is unmistakable on the hero sheet.
+    final nameFrame = frameColor ?? rawNameColor ?? AppTheme.accentGold;
     final hasTitle = game.activeTitle != null && game.activeTitle!.isNotEmpty;
     final sub = game.subclassName;
     final classLabel = (sub != null && sub.isNotEmpty)
@@ -122,10 +126,22 @@ class _StatsBody extends StatelessWidget {
                       style: TextStyle(
                           fontSize: 11, fontWeight: FontWeight.bold, letterSpacing: 1.2,
                           color: CosmeticItem.titleColorForName(game.activeTitle))),
-                Text(game.hero.name,
-                    overflow: TextOverflow.ellipsis,
-                    style: GoogleFonts.rajdhani(
-                        fontSize: 22, fontWeight: FontWeight.bold, color: nameColor)),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+                  margin: const EdgeInsets.symmetric(vertical: 3),
+                  decoration: BoxDecoration(
+                    color: nameFrame.withValues(alpha: 0.10),
+                    border: Border.all(color: nameFrame, width: 1.5),
+                    borderRadius: BorderRadius.circular(6),
+                    boxShadow: frameColor != null
+                        ? [BoxShadow(color: nameFrame.withValues(alpha: 0.4), blurRadius: 6)]
+                        : null,
+                  ),
+                  child: Text(game.hero.name,
+                      overflow: TextOverflow.ellipsis,
+                      style: GoogleFonts.rajdhani(
+                          fontSize: 22, fontWeight: FontWeight.bold, color: nameColor)),
+                ),
                 Text(classLabel,
                     style: const TextStyle(fontSize: 12, color: AppTheme.textMuted)),
               ],

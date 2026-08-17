@@ -3,6 +3,15 @@
 Version numbers are the pubspec build number (`0.1.0+N`), which is the Play
 Store `versionCode`. Newest first.
 
+## +61 — Framed hero name + endgame unlock rule
+- Hero STATS identity header now wraps the name in a **frame plate tinted by the
+  equipped frame / name colour** (falls back to gold).
+- **Endgame unlock rule:** new `endgameUnlocked` getter (Rebirth > 0 OR
+  Ascension AP/level > 0). `effectiveUnlockStage` and the Hero-sheet tab gating
+  now key off it, so **Ascension no longer re-locks** modes/tabs by zeroing the
+  prestige count. Every mode + tab stays unlocked once you've reached the
+  endgame.
+
 ## +60 — Cosmetic identity everywhere + hands-free auto-campaign
 - **Cosmetics now render.** Equipped **title, name colour, portrait frame, and
   premium skin sprite** show on the Leaderboard rows, PvP display, and a new

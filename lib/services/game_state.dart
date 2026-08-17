@@ -3568,12 +3568,21 @@ class GameState extends ChangeNotifier {
   // Rebirth unlocks when the player completes the full campaign (beats stage 100 — Omega Absolute).
   bool get canPrestige => campaignStageIndex >= 100;
 
-  /// Effective stage for unlock checks — at least 100 after first rebirth so previously
-  /// unlocked content stays accessible even though campaignStageIndex resets to 0.
-  int get effectiveUnlockStage {
-    final pl = prestigeLevel > _confirmedPrestigeLevel ? prestigeLevel : _confirmedPrestigeLevel;
-    return pl >= 1 ? max(campaignStageIndex, 100) : campaignStageIndex;
-  }
+  /// True once the player has reached any endgame milestone — a Rebirth or any
+  /// Ascension. From here on, everything that was ever unlocked stays unlocked
+  /// even though a Rebirth/Ascension resets campaign progress to 0.
+  bool get endgameUnlocked =>
+      prestigeLevel > 0 ||
+      _confirmedPrestigeLevel > 0 ||
+      totalAscensionAp > 0 ||
+      ascensionLevel > 0;
+
+  /// Effective stage for unlock checks — at least 100 once in the endgame so
+  /// previously unlocked content stays accessible even though campaignStageIndex
+  /// resets to 0. (Ascension zeroes prestigeLevel, so we key off endgameUnlocked
+  /// rather than prestige alone.)
+  int get effectiveUnlockStage =>
+      endgameUnlocked ? max(campaignStageIndex, 100) : campaignStageIndex;
 
   /// Named title earned at each prestige milestone (highest earned is shown).
   static const _prestigeTitles = <int, (String title, String emoji)>{
