@@ -2719,12 +2719,22 @@ class GameState extends ChangeNotifier {
   }
 
   // ── Extra character slots ───────────────────────────────────────────────────
-  int extraCharacterSlots = 0; // 0–2, stored globally in SharedPrefs
+  int extraCharacterSlots = 0; // 0–9 (3 default → up to 12 total), in SharedPrefs
+
+  /// Total character slots (3 free + purchased).
+  int get totalCharacterSlots => SaveService.defaultSlots + extraCharacterSlots;
+
+  /// ZCoin cost of the NEXT slot: 250, 500, 750, … (+250 per slot).
+  int get characterSlotCost => 250 * (extraCharacterSlots + 1);
+
+  /// Whether another slot can still be purchased (max 12 total).
+  bool get canBuyCharacterSlot => extraCharacterSlots < SaveService.maxExtraSlots;
 
   bool buyExtraCharacterSlot() {
-    if (extraCharacterSlots >= 2) return false;
-    if (zcoins < 100) return false;
-    zcoins -= 100;
+    if (!canBuyCharacterSlot) return false;
+    final cost = characterSlotCost;
+    if (zcoins < cost) return false;
+    zcoins -= cost;
     extraCharacterSlots++;
     SaveService.setExtraSlots(extraCharacterSlots);
     notifyListeners();

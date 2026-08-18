@@ -6,6 +6,7 @@ import '../models/palette_skin.dart';
 import '../models/pet.dart';
 import '../models/waystone.dart';
 import '../services/game_state.dart';
+import '../services/save_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/battle_sprites.dart';
 import '../widgets/zcoin_icon.dart';
@@ -884,11 +885,11 @@ class CosmeticsMiscSection extends StatelessWidget {
         const SizedBox(height: 4),
         Text(
           'Unlock additional character save slots. You currently have '
-          '${3 + game.extraCharacterSlots} of 5.',
+          '${game.totalCharacterSlots} of ${SaveService.maxSlots}.',
           style: const TextStyle(fontSize: 11, color: AppTheme.textMuted, height: 1.5),
         ),
         const SizedBox(height: 8),
-        if (game.extraCharacterSlots >= 2)
+        if (!game.canBuyCharacterSlot)
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
@@ -896,9 +897,9 @@ class CosmeticsMiscSection extends StatelessWidget {
               border: Border.all(color: const Color(0xFF44cc66).withValues(alpha: 0.4)),
               borderRadius: BorderRadius.circular(4),
             ),
-            child: const Row(children: [
+            child: Row(children: const [
               Text('✓ ', style: TextStyle(color: Color(0xFF44cc66))),
-              Text('All 5 slots unlocked.',
+              Text('All 12 slots unlocked.',
                   style: TextStyle(fontSize: 12, color: Color(0xFF44cc66))),
             ]),
           )
@@ -1061,7 +1062,7 @@ class _SlotUnlockCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const cost     = 100;
+    final cost     = game.characterSlotCost;
     final canAfford = game.zcoins >= cost;
     return Container(
       padding: const EdgeInsets.all(12),

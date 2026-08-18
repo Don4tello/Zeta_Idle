@@ -3,6 +3,20 @@
 Version numbers are the pubspec build number (`0.1.0+N`), which is the Play
 Store `versionCode`. Newest first.
 
+## +70 — 12 character slots + consumable IAP fix + auto-campaign/resource-bar
+- **Character slots up to 12** (was 5): `SaveService.maxSlots=12`,
+  `maxExtraSlots=9`, clamps updated. `GameState.characterSlotCost = 250 ×
+  (extra+1)` (250, 500, … 2250), `canBuyCharacterSlot`, `totalCharacterSlots`.
+  Slots UI + character-select lock tile extended to 12.
+- **Fixed "you already own this item" on ZCoin packs:** `_handlePurchases` now
+  distinguishes consumables (`crystals_*`) — restored consumables are completed
+  (consumed) without re-granting so a stuck owned pack clears; errors/cancels
+  with a pending completion are also finished. `restorePurchases()` on launch
+  surfaces stuck packs to consume.
+- (+68) Auto-campaign no longer stops at content-unlock stages — only on death
+  or manual toggle. (+69) Removed the non-rendering global resource bar; each
+  spending screen shows its own balance.
+
 ## +67 — Resource shop + omni dragon + battle-arena name cosmetics
 - **Shop → RESOURCES** tab: `ResourceBundle` catalog + `GameState.buyResourceBundle`
   (spend ZCoins on gold/shards/echoes/essence/mythril, two tiers each).

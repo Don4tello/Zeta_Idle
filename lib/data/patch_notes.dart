@@ -19,6 +19,19 @@ int get kLatestPatchBuild => kPatchNotes.first.build;
 
 const kPatchNotes = <PatchNote>[
   PatchNote(
+    build: 70,
+    title: 'More Character Slots + Shop Fixes',
+    date: '2026-08-18',
+    changes: [
+      'You can now own up to 12 characters! Extra slots cost 250 ZCoins for the '
+          'first and +250 for each one after.',
+      'Fixed ZCoin packs sometimes saying "you already own this item" — stuck '
+          'purchases are now cleared so you can buy again.',
+      'Auto-Campaign now runs until you die or turn it off; removed the '
+          'non-working resource bar (totals show on the screens that use them).',
+    ],
+  ),
+  PatchNote(
     build: 67,
     title: 'Resource Shop + Dragon Power + Battle Flair',
     date: '2026-08-18',

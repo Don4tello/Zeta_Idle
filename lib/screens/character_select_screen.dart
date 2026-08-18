@@ -170,7 +170,7 @@ class _CharacterSelectScreenState extends State<CharacterSelectScreen> {
                     );
                   }
                 }
-                final showLock = data.extraSlots < 2;
+                final showLock = data.extraSlots < SaveService.maxExtraSlots;
                 final itemCount = chars.length + (showLock ? 1 : 0);
                 return ListView.separated(
                   padding: const EdgeInsets.symmetric(horizontal: 40),

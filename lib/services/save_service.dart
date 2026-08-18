@@ -27,8 +27,9 @@ class SaveService {
   static const String _extraSlotsKey     = 'zeta_idle_extra_slots';
   static const String _welcomeSeenKey    = 'zeta_idle_welcome_seen';
   static const String _prestigePrefix    = 'zeta_pl_';
-  static const int maxSlots     = 5;
+  static const int maxSlots     = 12;
   static const int defaultSlots = 3;
+  static const int maxExtraSlots = maxSlots - defaultSlots; // 9 purchasable
 
   static Future<bool> isWelcomeSeen() async {
     final prefs = await SharedPreferences.getInstance();
@@ -71,12 +72,12 @@ class SaveService {
 
   static Future<int> getExtraSlots() async {
     final prefs = await SharedPreferences.getInstance();
-    return (prefs.getInt(_extraSlotsKey) ?? 0).clamp(0, 2);
+    return (prefs.getInt(_extraSlotsKey) ?? 0).clamp(0, maxExtraSlots);
   }
 
   static Future<void> setExtraSlots(int count) async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setInt(_extraSlotsKey, count.clamp(0, 2));
+    await prefs.setInt(_extraSlotsKey, count.clamp(0, maxExtraSlots));
   }
 
   Future<List<CharacterSummary?>> listCharacters(int totalSlots) async {

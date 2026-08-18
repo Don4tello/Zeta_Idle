@@ -87,14 +87,31 @@ class IapService {
     }
   }
 
+  // ZCoin packs are consumables — everything else (packs/skins/subs/cosmetics/
+  // pets) is a one-time entitlement.
+  static bool _isConsumable(String productId) => productId.startsWith('crystals_');
+
   void _handlePurchases(List<PurchaseDetails> list) {
     for (final p in list) {
+      if (p.status == PurchaseStatus.purchased) {
+        _fulfillPurchase(p.productID); // fresh purchase → grant
+      } else if (p.status == PurchaseStatus.restored) {
+        // Consumables must NOT be re-granted on restore — they were already
+        // delivered. We still complete them so a stuck "owned" ZCoin pack gets
+        // consumed and can be bought again. Non-consumables re-grant entitlement.
+        if (!_isConsumable(p.productID)) _fulfillPurchase(p.productID);
+      }
+      // Always finish purchased/restored transactions. For consumables this
+      // consumes them on Android (clearing the "you already own this" error);
+      // for non-consumables it acknowledges them.
       if (p.status == PurchaseStatus.purchased ||
           p.status == PurchaseStatus.restored) {
-        _fulfillPurchase(p.productID);
-        if (p.pendingCompletePurchase) {
-          InAppPurchase.instance.completePurchase(p);
-        }
+        if (p.pendingCompletePurchase) InAppPurchase.instance.completePurchase(p);
+      } else if ((p.status == PurchaseStatus.error ||
+                  p.status == PurchaseStatus.canceled) &&
+              p.pendingCompletePurchase) {
+        // Clear stuck pending transactions so they don't block future buys.
+        InAppPurchase.instance.completePurchase(p);
       }
     }
   }
