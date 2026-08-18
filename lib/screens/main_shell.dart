@@ -6,7 +6,6 @@ import '../screens/hero_hub_screen.dart';
 import '../screens/inventory_hub_screen.dart';
 import '../screens/guild_screen.dart';
 import '../screens/modes_screen.dart';
-import '../widgets/resource_bar.dart';
 import '../services/game_state.dart';
 import '../services/save_service.dart';
 import '../theme/app_theme.dart';
@@ -357,23 +356,27 @@ class _MainShellState extends State<MainShell> {
       body: SafeArea(
         bottom: false,
         child: Column(children: [
-        Row(children: [
-          const Expanded(child: ResourceBar()),
-          GestureDetector(
-            onTap: () => _showLootLog(context, game),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-              color: const Color(0xFF1a1916),
-              child: Stack(children: [
-                const Icon(Icons.notifications_outlined, size: 16, color: AppTheme.textMuted),
-                if (game.lootHistory.isNotEmpty)
-                  Positioned(top: 0, right: 0,
-                    child: Container(width: 6, height: 6,
-                      decoration: const BoxDecoration(color: Color(0xFFffcc44), shape: BoxShape.circle))),
-              ]),
+        // Resource totals are shown contextually on the screens that spend them
+        // (Abilities, Scores, Forge, Shop, …) rather than a global top bar.
+        Container(
+          color: const Color(0xFF1a1916),
+          child: Row(children: [
+            const Spacer(),
+            GestureDetector(
+              onTap: () => _showLootLog(context, game),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                child: Stack(children: [
+                  const Icon(Icons.notifications_outlined, size: 16, color: AppTheme.textMuted),
+                  if (game.lootHistory.isNotEmpty)
+                    Positioned(top: 0, right: 0,
+                      child: Container(width: 6, height: 6,
+                        decoration: const BoxDecoration(color: Color(0xFFffcc44), shape: BoxShape.circle))),
+                ]),
+              ),
             ),
-          ),
-        ]),
+          ]),
+        ),
         // Flash event banner
         if (game.activeFlashEvent != null && game.activeFlashEvent!.isActive)
           Container(
