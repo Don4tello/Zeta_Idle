@@ -178,7 +178,7 @@ class _CharacterSelectScreenState extends State<CharacterSelectScreen> {
                   separatorBuilder: (_, __) => const SizedBox(height: 16),
                   itemBuilder: (ctx, i) {
                     final Widget tile = i >= chars.length
-                        ? const _LockedSlotTile()
+                        ? _LockedSlotTile(cost: 250 * (data.extraSlots + 1))
                         : _SlotTile(
                             index: i,
                             summary: chars[i],
@@ -427,7 +427,8 @@ class _SelectData {
 }
 
 class _LockedSlotTile extends StatelessWidget {
-  const _LockedSlotTile();
+  const _LockedSlotTile({this.cost});
+  final int? cost;
 
   @override
   Widget build(BuildContext context) {
@@ -458,7 +459,9 @@ class _LockedSlotTile extends StatelessWidget {
               ),
               const SizedBox(height: 4),
               Text(
-                'Unlock in Cosmetics → Boosts (100 ZC)',
+                cost != null
+                    ? 'Buy in Shop → Misc ($cost ZC)'
+                    : 'Buy in Shop → Misc',
                 style: GoogleFonts.rajdhani(
                   fontSize: 10,
                   color: AppTheme.textMuted.withValues(alpha: 0.5),

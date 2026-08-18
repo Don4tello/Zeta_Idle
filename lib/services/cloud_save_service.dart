@@ -1,5 +1,9 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+/// Per-account cloud saves. Each save SLOT is stored independently within the
+/// single account document (doc id == uid, so Firestore rules stay unchanged),
+/// under the field keys `slot_<n>` / `ts_<n>`. This keeps characters isolated —
+/// loading slot 3 never pulls slot 1's cloud data.
 class CloudSaveService {
   FirebaseFirestore get _db => FirebaseFirestore.instance;
 
@@ -8,12 +12,14 @@ class CloudSaveService {
 
   // ── Write ─────────────────────────────────────────────────────────────────
 
-  Future<void> syncSave(String uid, Map<String, dynamic> saveData) async {
+  Future<void> syncSave(String uid, int slot, Map<String, dynamic> saveData) async {
     try {
-      final payload = Map<String, dynamic>.from(saveData)
-        ..['_syncedAt'] = FieldValue.serverTimestamp()
-        ..['_clientVersion'] = 1;
-      await _col.doc(uid).set(payload);
+      // merge:true so writing one slot never wipes the others.
+      await _col.doc(uid).set({
+        'slot_$slot': saveData,
+        'ts_$slot': FieldValue.serverTimestamp(),
+        '_clientVersion': 1,
+      }, SetOptions(merge: true));
     } catch (_) {
       // non-critical — silently ignore network errors
     }
@@ -21,11 +27,12 @@ class CloudSaveService {
 
   // ── Read ──────────────────────────────────────────────────────────────────
 
-  Future<Map<String, dynamic>?> fetchSave(String uid) async {
+  Future<Map<String, dynamic>?> fetchSave(String uid, int slot) async {
     try {
       final doc = await _col.doc(uid).get();
       if (!doc.exists) return null;
-      return doc.data();
+      final s = doc.data()?['slot_$slot'];
+      return s is Map<String, dynamic> ? Map<String, dynamic>.from(s) : null;
     } catch (_) {
       return null;
     }
@@ -33,7 +40,7 @@ class CloudSaveService {
 
   // ── Delete ────────────────────────────────────────────────────────────────
 
-  /// Permanently delete this user's cloud save document.
+  /// Permanently delete this user's cloud save document (all slots).
   Future<void> deleteSave(String uid) async {
     try {
       await _col.doc(uid).delete();
@@ -42,12 +49,12 @@ class CloudSaveService {
     }
   }
 
-  // Returns the server-side timestamp of the last cloud save, or null.
-  Future<DateTime?> fetchLastSyncTime(String uid) async {
+  // Server-side timestamp of the last cloud save for a specific slot, or null.
+  Future<DateTime?> fetchLastSyncTime(String uid, int slot) async {
     try {
       final doc = await _col.doc(uid).get();
       if (!doc.exists) return null;
-      final ts = doc.data()?['_syncedAt'];
+      final ts = doc.data()?['ts_$slot'];
       if (ts is Timestamp) return ts.toDate();
       return null;
     } catch (_) {

@@ -19,6 +19,17 @@ int get kLatestPatchBuild => kPatchNotes.first.build;
 
 const kPatchNotes = <PatchNote>[
   PatchNote(
+    build: 72,
+    title: 'Character Save Fix',
+    date: '2026-08-18',
+    changes: [
+      'Fixed a serious bug where cloud save could make two character slots show '
+          'the same hero — each slot now syncs to the cloud independently.',
+      'Corrected the locked-slot hint on Character Select (buy slots in '
+          'Shop → Misc).',
+    ],
+  ),
+  PatchNote(
     build: 71,
     title: 'Bigger Bounty Rewards',
     date: '2026-08-18',

@@ -3,6 +3,16 @@
 Version numbers are the pubspec build number (`0.1.0+N`), which is the Play
 Store `versionCode`. Newest first.
 
+## +72 — Per-slot cloud saves (fix cross-slot character bug) + locked-slot text
+- **Data-loss bug fixed:** the cloud save was one doc per account with no slot
+  dimension, so loading any slot pulled the same account-wide cloud save and
+  overwrote it — making multiple slots show the same character. `CloudSaveService`
+  now stores each slot independently within the account doc (`slot_<n>`/`ts_<n>`
+  fields, doc id stays `uid` so Firestore rules are unchanged); all
+  fetch/sync/loadSlot call sites pass `_currentSlot`.
+- Fixed the Character-Select locked-slot hint (was "Cosmetics → Boosts 100 ZC";
+  now "Shop → Misc" with the correct scaling price).
+
 ## +71 — 5× bounty rewards
 - `BountyReward` now applies a `rewardMultiplier = 5` in its constructor, so
   every bounty in the pool pays out 5× gold/ZCoins/shards/XP without editing

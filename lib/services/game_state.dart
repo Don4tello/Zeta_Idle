@@ -6254,11 +6254,11 @@ class GameState extends ChangeNotifier {
     try {
       if (!isNewCharacter && authService.isGoogleSignedIn) {
         final uid = authService.currentUser!.uid;
-        final cloudTs = await cloudSaveService.fetchLastSyncTime(uid);
+        final cloudTs = await cloudSaveService.fetchLastSyncTime(uid, slot);
         if (cloudTs != null) {
           final localTs = raw == null ? null : _parseLocalTimestamp(raw);
           if (localTs == null || cloudTs.isAfter(localTs)) {
-            final cloudRaw = await cloudSaveService.fetchSave(uid);
+            final cloudRaw = await cloudSaveService.fetchSave(uid, slot);
             if (cloudRaw != null) {
               loadFromJson(cloudRaw);
               _setLastAction('Loaded from cloud save.');
@@ -9170,7 +9170,7 @@ class GameState extends ChangeNotifier {
           now.difference(_lastCloudSyncAt!) < const Duration(minutes: 5)) return;
       _lastCloudSyncAt = now;
       final uid = authService.currentUser!.uid;
-      cloudSaveService.syncSave(uid, data);
+      cloudSaveService.syncSave(uid, _currentSlot, data);
     } catch (_) {}
   }
 
@@ -9229,11 +9229,11 @@ class GameState extends ChangeNotifier {
     final user = await authService.signInWithGoogle();
     if (user == null) return false;
     // Immediately check for a newer cloud save.
-    final cloudTs = await cloudSaveService.fetchLastSyncTime(user.uid);
+    final cloudTs = await cloudSaveService.fetchLastSyncTime(user.uid, _currentSlot);
     if (cloudTs != null) {
       final localTs = _parseLocalTimestamp(toJson());
       if (localTs == null || cloudTs.isAfter(localTs)) {
-        final cloudRaw = await cloudSaveService.fetchSave(user.uid);
+        final cloudRaw = await cloudSaveService.fetchSave(user.uid, _currentSlot);
         if (cloudRaw != null) {
           loadFromJson(cloudRaw);
           _setLastAction('Loaded cloud save.');
@@ -9244,7 +9244,7 @@ class GameState extends ChangeNotifier {
     }
     // No newer cloud save — push local up.
     _lastCloudSyncAt = DateTime.now();
-    await cloudSaveService.syncSave(user.uid, toJson());
+    await cloudSaveService.syncSave(user.uid, _currentSlot, toJson());
     _setLastAction('Signed in. Cloud save synced.');
     notifyListeners();
     return true;
@@ -9277,7 +9277,7 @@ class GameState extends ChangeNotifier {
     if (!authService.isGoogleSignedIn) return;
     final uid = authService.currentUser!.uid;
     _lastCloudSyncAt = DateTime.now();
-    await cloudSaveService.syncSave(uid, toJson());
+    await cloudSaveService.syncSave(uid, _currentSlot, toJson());
     _setLastAction('Cloud save synced.');
     notifyListeners();
   }
@@ -9289,7 +9289,7 @@ class GameState extends ChangeNotifier {
       _setLastAction('Could not sign into cloud save.');
       return;
     }
-    await cloudSaveService.syncSave(user.uid, toJson());
+    await cloudSaveService.syncSave(user.uid, _currentSlot, toJson());
     _setLastAction('Cloud save complete.');
   }
 
@@ -9300,7 +9300,7 @@ class GameState extends ChangeNotifier {
       _setLastAction('Could not sign into cloud save.');
       return;
     }
-    final raw = await cloudSaveService.fetchSave(user.uid);
+    final raw = await cloudSaveService.fetchSave(user.uid, _currentSlot);
     if (raw == null) {
       _setLastAction('No cloud save available.');
       return;
