@@ -37,6 +37,7 @@ class PetDefinition {
     this.productId,
     this.evoCostStep,
     this.fallbackPrice = '',
+    this.omniBonuses,
   });
 
   final String id;
@@ -54,6 +55,11 @@ class PetDefinition {
   final String? productId; // IAP product id (premium pets); null = zcoin pet
   final int? evoCostStep;  // if set, upgrade N costs evoCostStep*(N) — e.g. 500,1000,1500…
   final String fallbackPrice; // display price before the store loads (premium pets)
+  // If set, this pet grants EVERY listed bonus type at once (an "omni" pet,
+  // e.g. the premium dragon) — the value of every common pet combined.
+  final Map<PetBonusType, int>? omniBonuses;
+
+  bool get isOmni => omniBonuses != null;
 
   String get bonusLabel {
     final v = bonusValue;
@@ -234,11 +240,12 @@ const kPetCatalog = <PetDefinition>[
     id:          'ember_dragon',
     name:        'Ember Dragon',
     emoji:       '🐉',
-    description: 'A legendary dragon wyrmling that hoards gold and grows fiercer with every '
-                 'feeding. Its bonus scales far beyond any common companion.',
-    flavorLine:  'Premium exclusive',
+    description: 'A legendary dragon wyrmling with the combined power of every '
+                 'companion — it grants ALL pet bonuses at once and scales far '
+                 'beyond any common pet with each upgrade.',
+    flavorLine:  'Premium exclusive · grants every pet bonus',
     bonusType:   PetBonusType.goldPct,
-    bonusValue:  15,
+    bonusValue:  8,
     color:       Color(0xFFff6633),
     zcoinCost:   0,
     themeClass:  DndClass.sorcerer,
@@ -247,5 +254,18 @@ const kPetCatalog = <PetDefinition>[
     productId:   'pet_premium_dragon',
     evoCostStep: 500, // upgrades cost 500, 1000, 1500, 2000, …
     fallbackPrice: '\$4.99',
+    // Combined stats of every common pet, evolving with the dragon's upgrades.
+    omniBonuses: {
+      PetBonusType.goldPct:     8,
+      PetBonusType.xpPct:       8,
+      PetBonusType.hpRegen:     5,
+      PetBonusType.idleRate:    3,
+      PetBonusType.attackBonus: 6,
+      PetBonusType.armor:       5,
+      PetBonusType.damage:      6,
+      PetBonusType.shardBonus:  5,
+      PetBonusType.dodgeChance: 5,
+      PetBonusType.essenceGain: 8,
+    },
   ),
 ];

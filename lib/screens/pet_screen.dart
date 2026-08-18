@@ -263,20 +263,34 @@ class _PetCard extends StatelessWidget {
     final canAffordEvo = game.zcoins >= evoCost;
     final canBuy     = !isOwned && game.zcoins >= pet.zcoinCost;
 
+    final premium = pet.isPremium;
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: isEquipped
-            ? const Color(0xFF2a2516)
-            : const Color(0xFF231F1B),
+        // Premium pets get a golden gradient + glow so they stand out like the
+        // premium class skins.
+        gradient: premium
+            ? LinearGradient(
+                colors: [pet.color.withValues(alpha: 0.22), AppTheme.accentGold.withValues(alpha: 0.14)],
+                begin: Alignment.topLeft, end: Alignment.bottomRight)
+            : null,
+        color: premium
+            ? null
+            : (isEquipped ? const Color(0xFF2a2516) : const Color(0xFF231F1B)),
         border: Border.all(
-            color: isEquipped
+            color: premium
                 ? AppTheme.accentGold
-                : isOwned
-                    ? const Color(0xFF446633)
-                    : AppTheme.cardBorder),
+                : isEquipped
+                    ? AppTheme.accentGold
+                    : isOwned
+                        ? const Color(0xFF446633)
+                        : AppTheme.cardBorder,
+            width: premium ? 1.5 : 1),
         borderRadius: BorderRadius.circular(6),
+        boxShadow: premium
+            ? [BoxShadow(color: AppTheme.accentGold.withValues(alpha: 0.35), blurRadius: 10)]
+            : null,
       ),
       child: Row(
         children: [
@@ -309,8 +323,22 @@ class _PetCard extends StatelessWidget {
                         style: TextStyle(
                             fontSize: 15,
                             fontWeight: FontWeight.bold,
-                            color: isOwned ? AppTheme.textLight : AppTheme.textMuted)),
+                            color: premium
+                                ? AppTheme.accentGoldBright
+                                : (isOwned ? AppTheme.textLight : AppTheme.textMuted))),
                   ),
+                  if (premium) ...[
+                    const SizedBox(width: 6),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                      decoration: BoxDecoration(
+                        color: AppTheme.accentGold.withValues(alpha: 0.2),
+                        borderRadius: BorderRadius.circular(3),
+                      ),
+                      child: Text('★ PREMIUM',
+                          style: AppTheme.pixelHeading(fontSize: 8, color: AppTheme.accentGoldBright)),
+                    ),
+                  ],
                   if (isOwned) ...[
                     const SizedBox(width: 6),
                     _EvoStars(level: evoLevel),
@@ -657,6 +685,14 @@ String _bonusSuffix(PetBonusType type) => switch (type) {
 String _bonusLabel(PetDefinition pet, GameState game) {
   final evoLevel = game.petEvolutionLevel(pet.id);
   final isOwned  = game.ownedPetIds.contains(pet.id);
+  // Omni pet (dragon): show a couple of headline bonuses + "ALL".
+  if (pet.omniBonuses != null) {
+    final g = isOwned ? _evolvedBonus(pet.omniBonuses![PetBonusType.goldPct] ?? 0, evoLevel)
+                      : pet.omniBonuses![PetBonusType.goldPct] ?? 0;
+    final d = isOwned ? _evolvedBonus(pet.omniBonuses![PetBonusType.damage] ?? 0, evoLevel)
+                      : pet.omniBonuses![PetBonusType.damage] ?? 0;
+    return 'ALL bonuses — e.g. +$g% gold, +$d damage';
+  }
   final bonus    = isOwned ? _evolvedBonus(pet.bonusValue, evoLevel) : pet.bonusValue;
   return '+$bonus${_bonusSuffix(pet.bonusType)}';
 }

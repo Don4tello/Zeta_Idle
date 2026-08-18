@@ -3,6 +3,17 @@
 Version numbers are the pubspec build number (`0.1.0+N`), which is the Play
 Store `versionCode`. Newest first.
 
+## +67 — Resource shop + omni dragon + battle-arena name cosmetics
+- **Shop → RESOURCES** tab: `ResourceBundle` catalog + `GameState.buyResourceBundle`
+  (spend ZCoins on gold/shards/echoes/essence/mythril, two tiers each).
+- **Ember Dragon = omni pet:** `PetDefinition.omniBonuses` grants every
+  `PetBonusType` at once (combined stats of all pets, evolving via the step
+  upgrades). `_sumOwnedPetBonus` honours it. Pet card gets a gold gradient +
+  glow + ★ PREMIUM badge and an "ALL bonuses" label.
+- **Battle-arena hero name** now uses the equipped **name colour + glow** and is
+  wrapped in the equipped **frame** (was hardcoded green). Resolved via new
+  `GameStateProvider.maybeOf`; `_CombatantPanel` gained `frameColor`/`nameGlow`.
+
 ## +66 — Guild Castle (gold-built 10-tier construction track)
 - **New parallel guild progression** layered on top of the XP levels: members
   donate gold → **Construction Points** (daily-capped, `CastleTier.dailyCpCap`),

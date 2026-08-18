@@ -2,6 +2,7 @@
 import 'package:flutter/material.dart';
 import '../models/damage_type.dart';
 import 'game_icons.dart';
+import '../models/shop_catalog.dart';
 import '../models/hero_ability.dart' show AbilityEffect;
 import '../services/game_state.dart';
 import '../models/dnd_class.dart';
@@ -449,29 +450,42 @@ class BattleArenaState extends State<BattleArena> with TickerProviderStateMixin 
                       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                       crossAxisAlignment: CrossAxisAlignment.end,
                       children: [
-                        _CombatantPanel(
-                          name: widget.heroName,
-                          level: widget.heroLevel,
-                          currentHp: widget.heroCurrentHp,
-                          maxHp: widget.heroMaxHp,
-                          attack: widget.heroAttack,
-                          sprite: BattleSprite(
-                            key: _heroKey,
-                            spriteId: widget.heroSpriteId,
-                            facingLeft: false,
-                            gender: widget.heroGender,
-                            race: widget.heroRace,
-                            auraColor: widget.heroAuraColor,
-                            auraIntensity: widget.heroAuraIntensity,
-                            colorFilter: widget.heroColorFilter,
-                            buffGlows: widget.heroBuffGlows,
-                          ),
-                          petWidget: widget.heroPet,
-                          nameColor: const Color(0xFF4ad46a),
-                          alignRight: false,
-                          critPct: widget.heroCritPct,
-                          armor: widget.heroArmor,
-                        ),
+                        Builder(builder: (context) {
+                          // Resolve the local player's equipped name cosmetics.
+                          final g = GameStateProvider.maybeOf(context);
+                          final paidName = g == null
+                              ? null
+                              : CosmeticItem.nameColorFor(g.activeNameColor);
+                          final frameColor = g == null
+                              ? null
+                              : CosmeticItem.frameColorFor(g.activeFrame);
+                          final glow = g != null && CosmeticItem.hasGlow(g.activeNameColor);
+                          return _CombatantPanel(
+                            name: widget.heroName,
+                            level: widget.heroLevel,
+                            currentHp: widget.heroCurrentHp,
+                            maxHp: widget.heroMaxHp,
+                            attack: widget.heroAttack,
+                            sprite: BattleSprite(
+                              key: _heroKey,
+                              spriteId: widget.heroSpriteId,
+                              facingLeft: false,
+                              gender: widget.heroGender,
+                              race: widget.heroRace,
+                              auraColor: widget.heroAuraColor,
+                              auraIntensity: widget.heroAuraIntensity,
+                              colorFilter: widget.heroColorFilter,
+                              buffGlows: widget.heroBuffGlows,
+                            ),
+                            petWidget: widget.heroPet,
+                            nameColor: paidName ?? const Color(0xFF4ad46a),
+                            frameColor: frameColor,
+                            nameGlow: glow,
+                            alignRight: false,
+                            critPct: widget.heroCritPct,
+                            armor: widget.heroArmor,
+                          );
+                        }),
                         // Step 4 — VS bounce on new enemy
                         Padding(
                           padding: const EdgeInsets.only(bottom: 32),
@@ -889,6 +903,8 @@ class _CombatantPanel extends StatelessWidget {
     this.resistances,
     this.critPct,
     this.armor,
+    this.frameColor,
+    this.nameGlow = false,
   });
 
   final String  name;
@@ -896,6 +912,8 @@ class _CombatantPanel extends StatelessWidget {
   final Widget  sprite;
   final Color   nameColor;
   final bool    alignRight;
+  final Color?  frameColor; // equipped cosmetic frame (hero only)
+  final bool    nameGlow;   // equipped name-colour glow (hero only)
   final Widget? petWidget;
   final DamageType?           damageType;
   final Map<DamageType, int>? resistances;
@@ -949,16 +967,31 @@ class _CombatantPanel extends StatelessWidget {
         crossAxisAlignment:
             alignRight ? CrossAxisAlignment.end : CrossAxisAlignment.start,
         children: [
-          Text(
-            name.toUpperCase(),
-            style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.bold,
-                color: nameColor,
-                letterSpacing: 1),
-            maxLines: 2,
-            overflow: TextOverflow.visible,
-          ),
+          Builder(builder: (_) {
+            final nameText = Text(
+              name.toUpperCase(),
+              style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
+                  color: nameColor,
+                  letterSpacing: 1,
+                  shadows: nameGlow ? [Shadow(color: nameColor, blurRadius: 10)] : null),
+              maxLines: 2,
+              overflow: TextOverflow.visible,
+            );
+            if (frameColor == null) return nameText;
+            // Equipped cosmetic frame — a coloured plate around the name.
+            return Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              decoration: BoxDecoration(
+                color: frameColor!.withValues(alpha: 0.10),
+                border: Border.all(color: frameColor!, width: 1.5),
+                borderRadius: BorderRadius.circular(5),
+                boxShadow: [BoxShadow(color: frameColor!.withValues(alpha: 0.4), blurRadius: 5)],
+              ),
+              child: nameText,
+            );
+          }),
           Row(
             mainAxisSize: MainAxisSize.min,
             children: [

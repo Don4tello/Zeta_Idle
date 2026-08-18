@@ -25,10 +25,10 @@ class PremiumShopScreen extends StatefulWidget {
 
 class _PremiumShopScreenState extends State<PremiumShopScreen>
     with SingleTickerProviderStateMixin {
-  late final TabController _tabs = TabController(length: 8, vsync: this);
+  late final TabController _tabs = TabController(length: 9, vsync: this);
 
-  static const _tabLabels = ['BUNDLES', 'STARTER', 'SKINS', 'AURAS', 'BOOSTS', 'MISC', 'COSMETICS', 'VIP'];
-  static const _tabIcons  = ['💎', '🎁', '🎨', '✨', '⚡', '🎒', '👑', '⭐'];
+  static const _tabLabels = ['BUNDLES', 'RESOURCES', 'STARTER', 'SKINS', 'AURAS', 'BOOSTS', 'MISC', 'COSMETICS', 'VIP'];
+  static const _tabIcons  = ['💎', '💰', '🎁', '🎨', '✨', '⚡', '🎒', '👑', '⭐'];
 
   @override
   void dispose() {
@@ -88,6 +88,16 @@ class _PremiumShopScreenState extends State<PremiumShopScreen>
               _WatchAdCard(game: game),
               const SizedBox(height: 8),
               ...IapService.packages.map((pkg) => _CrystalCard(pkg: pkg, game: game)),
+              const SizedBox(height: 24),
+            ],
+          ),
+
+          // ── RESOURCES (spend ZCoins on resources) ─────────────
+          ListView(
+            padding: const EdgeInsets.all(14),
+            children: [
+              _SectionLabel('RESOURCES', 'Spend ZCoins on gold & materials'),
+              ...ResourceBundle.all.map((b) => _ResourceCard(bundle: b, game: game)),
               const SizedBox(height: 24),
             ],
           ),
@@ -634,6 +644,64 @@ class _SubCard extends StatelessWidget {
           ],
         ],
       ),
+    );
+  }
+}
+
+class _ResourceCard extends StatelessWidget {
+  const _ResourceCard({required this.bundle, required this.game});
+  final ResourceBundle bundle;
+  final GameState game;
+
+  @override
+  Widget build(BuildContext context) {
+    final canAfford = game.zcoins >= bundle.zcoinCost;
+    return Container(
+      margin: const EdgeInsets.only(bottom: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: const Color(0xFF1a1816),
+        border: Border.all(color: bundle.color.withValues(alpha: 0.4)),
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: Row(children: [
+        Text(bundle.icon, style: const TextStyle(fontSize: 20)),
+        const SizedBox(width: 10),
+        Expanded(child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(bundle.name,
+                style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: bundle.color)),
+            Text('+${AppTheme.fmtNumber(bundle.amount)} ${bundle.resource}',
+                style: const TextStyle(fontSize: 11, color: AppTheme.textMuted)),
+          ],
+        )),
+        GestureDetector(
+          onTap: canAfford ? () {
+            if (game.buyResourceBundle(bundle.id)) {
+              ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                content: Text('${bundle.icon} +${AppTheme.fmtNumber(bundle.amount)} ${bundle.resource}!'),
+                behavior: SnackBarBehavior.floating,
+                duration: const Duration(milliseconds: 1200)));
+            }
+          } : null,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            decoration: BoxDecoration(
+              color: canAfford ? bundle.color.withValues(alpha: 0.12) : Colors.transparent,
+              border: Border.all(color: canAfford ? bundle.color : AppTheme.cardBorder),
+              borderRadius: BorderRadius.circular(3),
+            ),
+            child: Row(mainAxisSize: MainAxisSize.min, children: [
+              const ZCoinIcon(size: 12, animate: false),
+              const SizedBox(width: 4),
+              Text('${bundle.zcoinCost}',
+                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold,
+                      color: canAfford ? bundle.color : AppTheme.textMuted)),
+            ]),
+          ),
+        ),
+      ]),
     );
   }
 }

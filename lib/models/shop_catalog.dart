@@ -265,6 +265,52 @@ class CosmeticItem {
   }
 }
 
+// ── Resource bundles (spend ZCoins on resources) ─────────────────────────────
+
+class ResourceBundle {
+  const ResourceBundle({
+    required this.id,
+    required this.name,
+    required this.icon,
+    required this.resource,   // gold / shards / echoes / essence / mythril
+    required this.amount,
+    required this.zcoinCost,
+    required this.color,
+  });
+
+  final String id, name, icon, resource;
+  final int amount, zcoinCost;
+  final Color color;
+
+  static const all = [
+    // Gold — soft currency, generous amounts (most useful early–mid game).
+    ResourceBundle(id: 'res_gold_s', name: 'Gold Pouch', icon: '💰',
+      resource: 'gold', amount: 100000, zcoinCost: 40, color: Color(0xFFFFD700)),
+    ResourceBundle(id: 'res_gold_l', name: 'Gold Vault', icon: '💰',
+      resource: 'gold', amount: 500000, zcoinCost: 150, color: Color(0xFFFFD700)),
+    // Shards.
+    ResourceBundle(id: 'res_shards_s', name: 'Shard Pouch', icon: '◆',
+      resource: 'shards', amount: 250, zcoinCost: 40, color: Color(0xFF66ccff)),
+    ResourceBundle(id: 'res_shards_l', name: 'Shard Chest', icon: '◆',
+      resource: 'shards', amount: 800, zcoinCost: 110, color: Color(0xFF66ccff)),
+    // Echoes.
+    ResourceBundle(id: 'res_echoes_s', name: 'Echo Crystal', icon: '🔊',
+      resource: 'echoes', amount: 200, zcoinCost: 45, color: Color(0xFFcc88ff)),
+    ResourceBundle(id: 'res_echoes_l', name: 'Echo Cluster', icon: '🔊',
+      resource: 'echoes', amount: 650, zcoinCost: 120, color: Color(0xFFcc88ff)),
+    // Essence.
+    ResourceBundle(id: 'res_essence_s', name: 'Essence Flask', icon: '✦',
+      resource: 'essence', amount: 300, zcoinCost: 45, color: Color(0xFF88ffcc)),
+    ResourceBundle(id: 'res_essence_l', name: 'Essence Font', icon: '✦',
+      resource: 'essence', amount: 1000, zcoinCost: 120, color: Color(0xFF88ffcc)),
+    // Mythril — premium crafting material, smaller amounts / higher price.
+    ResourceBundle(id: 'res_mythril_s', name: 'Mythril Crate', icon: '⬡',
+      resource: 'mythril', amount: 40, zcoinCost: 60, color: Color(0xFFe5e4e2)),
+    ResourceBundle(id: 'res_mythril_l', name: 'Mythril Hoard', icon: '⬡',
+      resource: 'mythril', amount: 140, zcoinCost: 180, color: Color(0xFFe5e4e2)),
+  ];
+}
+
 // ── Subscription tiers ───────────────────────────────────────────────────────
 
 class SubscriptionTier {

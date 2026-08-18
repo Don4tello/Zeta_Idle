@@ -19,6 +19,19 @@ int get kLatestPatchBuild => kPatchNotes.first.build;
 
 const kPatchNotes = <PatchNote>[
   PatchNote(
+    build: 67,
+    title: 'Resource Shop + Dragon Power + Battle Flair',
+    date: '2026-08-18',
+    changes: [
+      'NEW Shop → RESOURCES: spend ZCoins on gold, shards, echoes, essence and '
+          'mythril bundles.',
+      'The Ember Dragon now grants EVERY pet bonus at once and stands out with a '
+          'golden premium look.',
+      'Your equipped name colour (and glow) + portrait frame now show on your '
+          'hero in the battle arena — no more plain green name.',
+    ],
+  ),
+  PatchNote(
     build: 66,
     title: 'Guild Castle — Build It Together',
     date: '2026-08-18',

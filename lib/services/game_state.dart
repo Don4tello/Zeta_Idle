@@ -487,6 +487,24 @@ class GameState extends ChangeNotifier {
     return true;
   }
 
+  /// Buy a resource bundle with ZCoins. Returns false if unaffordable.
+  bool buyResourceBundle(String bundleId) {
+    final b = ResourceBundle.all.where((r) => r.id == bundleId).firstOrNull;
+    if (b == null || zcoins < b.zcoinCost) return false;
+    zcoins -= b.zcoinCost;
+    switch (b.resource) {
+      case 'gold':    gold += b.amount;
+      case 'shards':  shards += b.amount;
+      case 'echoes':  echoes += b.amount;
+      case 'essence': essence += b.amount;
+      case 'mythril': mythril += b.amount;
+    }
+    AnalyticsService.instance.currencySpent('zcoins', b.zcoinCost, 'resource_bundle');
+    notifyListeners();
+    saveToLocal();
+    return true;
+  }
+
   /// Grant a real-money cosmetic after its IAP completes (id resolved from the
   /// purchased product). Auto-equips it so the player immediately sees it.
   void unlockCosmeticByProduct(String productId) {
@@ -1041,7 +1059,12 @@ class GameState extends ChangeNotifier {
     var total = 0;
     for (final id in ownedPetIds) {
       final p = kPetCatalog.where((p) => p.id == id).firstOrNull;
-      if (p != null && p.bonusType == type) {
+      if (p == null) continue;
+      // Omni pets (e.g. the premium dragon) grant every listed bonus type.
+      if (p.omniBonuses != null) {
+        final v = p.omniBonuses![type];
+        if (v != null) total += _evolvedPetBonus(v, p.id);
+      } else if (p.bonusType == type) {
         total += _evolvedPetBonus(p.bonusValue, p.id);
       }
     }
@@ -9289,4 +9312,9 @@ class GameStateProvider extends InheritedNotifier<GameState> {
     assert(provider != null, 'GameStateProvider not found in widget tree');
     return provider!.notifier!;
   }
+
+  /// Null-safe lookup — for widgets that may render outside a provider
+  /// (e.g. the PvP sim / dev preview screens).
+  static GameState? maybeOf(BuildContext context) =>
+      context.dependOnInheritedWidgetOfExactType<GameStateProvider>()?.notifier;
 }
