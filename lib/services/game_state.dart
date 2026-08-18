@@ -8105,14 +8105,15 @@ class GameState extends ChangeNotifier {
     if (wasFirstKill) endlessTutorialPending = true;
     lastBattleWasFinalVictory = false;
 
-    // Pause auto-campaign when a new content area unlocks for the first time
-    if (autoCampaign && _isCampaignBattle) {
+    // Note a new content-area unlock (first time only). Auto-campaign keeps
+    // running — it only stops on death or a manual toggle; the notice is shown
+    // without interrupting the run.
+    if (_isCampaignBattle) {
       final unlockName = _unlockStageNames[campaignStageIndex];
       if (unlockName != null && !_seenUnlockStages.contains(campaignStageIndex) && campaignStageIndex == campaignAllTimeHigh) {
         _seenUnlockStages.add(campaignStageIndex);
         pendingUnlockNotice = unlockName;
         AnalyticsService.instance.featureUnlocked(unlockName, campaignStageIndex);
-        autoCampaign = false;
       }
     }
 
