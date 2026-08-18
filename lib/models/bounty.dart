@@ -14,7 +14,16 @@ enum BountyType {
 }
 
 class BountyReward {
-  const BountyReward({this.gold = 0, this.zcoins = 0, this.shards = 0, this.xp = 0});
+  /// All bounty payouts are scaled up by [rewardMultiplier] so the values in
+  /// the pool below stay readable while the actual rewards are more worthwhile.
+  const BountyReward({int gold = 0, int zcoins = 0, int shards = 0, int xp = 0})
+      : gold = gold * rewardMultiplier,
+        zcoins = zcoins * rewardMultiplier,
+        shards = shards * rewardMultiplier,
+        xp = xp * rewardMultiplier;
+
+  static const int rewardMultiplier = 5;
+
   final int gold;
   final int zcoins;
   final int shards;

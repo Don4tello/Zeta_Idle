@@ -3,6 +3,11 @@
 Version numbers are the pubspec build number (`0.1.0+N`), which is the Play
 Store `versionCode`. Newest first.
 
+## +71 — 5× bounty rewards
+- `BountyReward` now applies a `rewardMultiplier = 5` in its constructor, so
+  every bounty in the pool pays out 5× gold/ZCoins/shards/XP without editing
+  each entry. UI and claim both read the scaled values.
+
 ## +70 — 12 character slots + consumable IAP fix + auto-campaign/resource-bar
 - **Character slots up to 12** (was 5): `SaveService.maxSlots=12`,
   `maxExtraSlots=9`, clamps updated. `GameState.characterSlotCost = 250 ×

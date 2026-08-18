@@ -19,6 +19,15 @@ int get kLatestPatchBuild => kPatchNotes.first.build;
 
 const kPatchNotes = <PatchNote>[
   PatchNote(
+    build: 71,
+    title: 'Bigger Bounty Rewards',
+    date: '2026-08-18',
+    changes: [
+      'Bounty rewards are now 5× more generous across gold, shards, ZCoins and '
+          'XP — worth the effort!',
+    ],
+  ),
+  PatchNote(
     build: 70,
     title: 'More Character Slots + Shop Fixes',
     date: '2026-08-18',
