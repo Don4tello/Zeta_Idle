@@ -870,6 +870,8 @@ class _PvpBattleFullScreenState extends State<_PvpBattleFullScreen>
       if (firedAbility != null) {
         _arenaKey.currentState?.playAbilityBanner(firedAbility.name, firedAbility.effect, id: firedAbility.id);
         _effectKey.currentState?.playEffect(firedAbility.id);
+      } else {
+        _effectKey.currentState?.playEffect(game.autoAttackEffectId);
       }
 
       await (_arenaKey.currentState?.playHeroAttack(

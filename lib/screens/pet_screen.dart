@@ -353,7 +353,20 @@ class _PetCard extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              if (!isOwned)
+              if (!isOwned && pet.isPremium)
+                Builder(builder: (_) {
+                  final storePrice = game.iapService.priceFor(pet.productId!);
+                  final ready = game.iapService.storeAvailable && storePrice.isNotEmpty;
+                  return _ActionButton(
+                    label: ready
+                        ? storePrice
+                        : (pet.fallbackPrice.isNotEmpty ? pet.fallbackPrice : 'REAL MONEY'),
+                    enabled: ready,
+                    color: const Color(0xFF663322),
+                    onTap: () => game.iapService.buyNonConsumable(pet.productId!),
+                  );
+                })
+              else if (!isOwned)
                 _ActionButton(
                   label: '${pet.zcoinCost}',
                   prefixIcon: const ZCoinIcon(size: 12, animate: false),

@@ -1528,6 +1528,7 @@ class _AnimatedCombatRoomState extends State<_AnimatedCombatRoom> {
             ? '⚡ CRIT $dmg dmg! ($enemyName: $_enemyHp/$_enemyMaxHp)'
             : 'Hit! $dmg dmg ($enemyName: $_enemyHp/$_enemyMaxHp)');
       });
+      _effectKey.currentState?.playEffect(widget.game.autoAttackEffectId);
       _arenaKey.currentState?.playHeroAttack(dmg, isCrit: crit, heroClass: widget.game.hero.heroClass);
     }
 

@@ -3,6 +3,21 @@
 Version numbers are the pubspec build number (`0.1.0+N`), which is the Play
 Store `versionCode`. Newest first.
 
+## +65 — Ember Dragon pet + shop revamp + attack-effect override
+- **Premium Ember Dragon pet** (`ember_dragon`, real-money `pet_premium_dragon`,
+  $4.99): `PetDefinition` gains `isPremium`/`productId`/`evoCostStep`/
+  `fallbackPrice`. Upgrade cost uses a linear step curve (`evoCostStep*(level+1)`
+  → 500/1000/1500…). `purchasePet` refuses premium pets; `unlockPremiumPet`
+  grants+equips on IAP (`IapService.onPetPurchased`).
+- **Pets survive Ascension** too — `ascend()` now saves/restores
+  `ownedPetIds`/`equippedPetId`/`petEvolutionLevels` (prestige already did).
+- **Shop revamp:** the COSMETICS tab now has separate **Titles / Name Colours /
+  Frames / Attack Effects** sections; Attack Effects moved out of Boosts
+  (`AttackEffectsSection` extracted from `CosmeticsBoostsSection`).
+- **Attack effects take over everywhere:** the equipped effect now plays on
+  normal auto-attacks in Dungeon, Gauntlet, Boss Rush and PvP (battle_screen
+  already did); the effect's hit-text was already wired into the log.
+
 ## +62 — Cosmetic expansion + glow effects + real-money exclusives
 - **Reprice + expand** the cosmetic catalog: frames 500–1500, name colours
   250–1000, titles 500–1500 ZCoins. Added new frames (Frost, Verdant, Storm,

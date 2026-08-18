@@ -33,6 +33,10 @@ class PetDefinition {
     required this.zcoinCost,
     required this.themeClass,
     required this.isFlying,
+    this.isPremium = false,
+    this.productId,
+    this.evoCostStep,
+    this.fallbackPrice = '',
   });
 
   final String id;
@@ -46,6 +50,10 @@ class PetDefinition {
   final int zcoinCost;
   final DndClass themeClass;
   final bool isFlying;   // true → hovers/bobs in battle; false → stands on ground
+  final bool isPremium;  // real-money exclusive companion
+  final String? productId; // IAP product id (premium pets); null = zcoin pet
+  final int? evoCostStep;  // if set, upgrade N costs evoCostStep*(N) — e.g. 500,1000,1500…
+  final String fallbackPrice; // display price before the store loads (premium pets)
 
   String get bonusLabel {
     final v = bonusValue;
@@ -220,5 +228,24 @@ const kPetCatalog = <PetDefinition>[
     zcoinCost: 350,
     themeClass:  DndClass.wizard,
     isFlying:    true,
+  ),
+  // ── Premium real-money exclusive companion ──────────────────────────────────
+  PetDefinition(
+    id:          'ember_dragon',
+    name:        'Ember Dragon',
+    emoji:       '🐉',
+    description: 'A legendary dragon wyrmling that hoards gold and grows fiercer with every '
+                 'feeding. Its bonus scales far beyond any common companion.',
+    flavorLine:  'Premium exclusive',
+    bonusType:   PetBonusType.goldPct,
+    bonusValue:  15,
+    color:       Color(0xFFff6633),
+    zcoinCost:   0,
+    themeClass:  DndClass.sorcerer,
+    isFlying:    true,
+    isPremium:   true,
+    productId:   'pet_premium_dragon',
+    evoCostStep: 500, // upgrades cost 500, 1000, 1500, 2000, …
+    fallbackPrice: '\$4.99',
   ),
 ];

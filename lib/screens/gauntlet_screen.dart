@@ -319,6 +319,7 @@ class _GauntletScreenState extends State<GauntletScreen> {
       _totalDealt += dmg; _hitCount++; if (dmg > _maxHit) _maxHit = dmg;
       _log.add('${crit ? 'CRIT! ' : 'Hit! '}$dmg dmg${_enemyVulnRem > 0 ? ' (vuln)' : ''}.');
       game.audioService.playHitWithType(_heroDmgType);
+      _effectKey.currentState?.playEffect(game.autoAttackEffectId);
       _arenaKey.currentState?.playHeroAttack(dmg,
           isCrit: crit, heroClass: game.hero.heroClass,
           damageType: _heroDmgType);

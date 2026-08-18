@@ -19,6 +19,20 @@ int get kLatestPatchBuild => kPatchNotes.first.build;
 
 const kPatchNotes = <PatchNote>[
   PatchNote(
+    build: 65,
+    title: 'Ember Dragon + Shop Revamp + Attack FX',
+    date: '2026-08-18',
+    changes: [
+      'NEW premium companion: the 🐉 Ember Dragon — a real-money exclusive pet '
+          'whose upgrades scale 500 → 1000 → 1500 ZCoins and beyond.',
+      'Pets now stay with you through every Rebirth and Ascension.',
+      'Shop revamped: Titles, Name Colours, Frames and Attack Effects each get '
+          'their own section.',
+      'Attack Effects now actually replace your basic attack visual in every '
+          'combat mode — equip one and watch your hits change.',
+    ],
+  ),
+  PatchNote(
     build: 62,
     title: 'More Cosmetics + Glow Effects',
     date: '2026-08-17',

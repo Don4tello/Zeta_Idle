@@ -22,13 +22,14 @@ typedef PurchaseCallback = void Function(String productId, int zcoins);
 class IapService {
   IapService(this._onCrystalsGranted,
       {this.onPackPurchased, this.onSubscriptionActivated, this.onPremiumSkinPurchased,
-       this.onCosmeticPurchased});
+       this.onCosmeticPurchased, this.onPetPurchased});
 
   final void Function(int) _onCrystalsGranted;
   final void Function(String)? onPackPurchased;
   final void Function(String, int)? onSubscriptionActivated;
   final void Function(String)? onPremiumSkinPurchased;
   final void Function(String)? onCosmeticPurchased; // real-money cosmetics
+  final void Function(String)? onPetPurchased;      // real-money pets
   StreamSubscription<List<PurchaseDetails>>? _sub;
   final Map<String, ProductDetails> _products = {};
   bool _storeAvailable = false;
@@ -52,6 +53,8 @@ class IapService {
     'skin_premium_warlock', 'skin_premium_wizard', 'skin_premium_paladin',
     // Real-money exclusive cosmetics (non-consumable)
     'cosmetic_frame_eclipse', 'cosmetic_name_prismatic', 'cosmetic_title_eternal',
+    // Premium pet (non-consumable)
+    'pet_premium_dragon',
     // Subscriptions
     'sub_speed_monthly', 'sub_premium_monthly',
   };
@@ -122,6 +125,12 @@ class IapService {
     // Real-money exclusive cosmetics (frame / name colour / title)
     if (productId.startsWith('cosmetic_')) {
       onCosmeticPurchased?.call(productId);
+      return;
+    }
+
+    // Real-money exclusive pets
+    if (productId.startsWith('pet_')) {
+      onPetPurchased?.call(productId);
       return;
     }
 

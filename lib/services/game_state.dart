@@ -168,6 +168,7 @@ class GameState extends ChangeNotifier {
       },
       onPremiumSkinPurchased: (skinId) => unlockPremiumSkin(skinId),
       onCosmeticPurchased: (productId) => unlockCosmeticByProduct(productId),
+      onPetPurchased: (productId) => unlockPremiumPet(productId),
     );
     _iapService.init();
     steamService.init();
@@ -1060,6 +1061,7 @@ class GameState extends ChangeNotifier {
   bool purchasePet(String petId) {
     final pet = kPetCatalog.where((p) => p.id == petId).firstOrNull;
     if (pet == null) return false;
+    if (pet.isPremium) return false; // premium pets are real-money only (IAP)
     if (ownedPetIds.contains(petId)) return false;
     if (zcoins < pet.zcoinCost) return false;
     zcoins -= pet.zcoinCost;
@@ -1068,6 +1070,19 @@ class GameState extends ChangeNotifier {
     notifyListeners();
     saveToLocal();
     return true;
+  }
+
+  /// Grant a premium (real-money) pet after its IAP completes. Auto-equips it.
+  void unlockPremiumPet(String productId) {
+    final pet = kPetCatalog.where((p) => p.productId == productId).firstOrNull;
+    if (pet == null) return;
+    if (ownedPetIds.add(pet.id)) {
+      AnalyticsService.instance.cosmeticUnlocked('pet_rm', pet.id);
+    }
+    equippedPetId = pet.id;
+    _setLastAction('${pet.emoji} ${pet.name} joined your party!');
+    notifyListeners();
+    saveToLocal();
   }
 
   void equipPet(String? petId) {
@@ -2694,6 +2709,9 @@ class GameState extends ChangeNotifier {
   int evolutionCost(String petId) {
     final level = petEvolutionLevel(petId);
     if (level >= 10) return 0; // maxed
+    final pet = kPetCatalog.where((p) => p.id == petId).firstOrNull;
+    // Premium pets use a linear step curve (e.g. 500, 1000, 1500, …).
+    if (pet?.evoCostStep != null) return pet!.evoCostStep! * (level + 1);
     return _evoCosts[level];
   }
 
@@ -4155,6 +4173,10 @@ class GameState extends ChangeNotifier {
     final savedTotalAscAp    = totalAscensionAp + ap; // cumulative AP ever earned
     final savedAchievements  = achievements.map((a) => a.toJson()).toList();
     final savedSubclass      = subclassId; // level-50 specialization is permanent
+    // Pets are permanent companions — survive ascension too (prestige already keeps them).
+    final savedOwnedPets     = Set<String>.from(ownedPetIds);
+    final savedEquippedPet   = equippedPetId;
+    final savedPetEvolution  = Map<String, int>.from(petEvolutionLevels);
     // Full reset (includes zeroing prestige + ascension)
     _resetToDefaults(savedName, savedClass, keepTutorials: true);
     // Restore ascension-permanent data
@@ -4171,6 +4193,9 @@ class GameState extends ChangeNotifier {
     totalAscensionAp = savedTotalAscAp;
     _restoreAchievements(savedAchievements);
     subclassId = savedSubclass;
+    ownedPetIds..clear()..addAll(savedOwnedPets);
+    equippedPetId = savedEquippedPet;
+    petEvolutionLevels..clear()..addAll(savedPetEvolution);
     // Ascension zeroes prestige — keep the dedicated confirmed-prestige key in
     // sync too, or loadSlot would restore prestigeLevel from it (leaving the
     // player able to re-ascend / stuck). prestige() does the same.

@@ -831,13 +831,29 @@ class CosmeticsBoostsSection extends StatelessWidget {
           padding: const EdgeInsets.only(bottom: 10),
           child: _WaystoneCard(game: game, waystone: w),
         )),
-        const SizedBox(height: 20),
+      ],
+    );
+    if (!scrollable) return col;
+    return SingleChildScrollView(padding: const EdgeInsets.all(16), child: col);
+  }
+}
 
-        // ── Attack Effects ─────────────────────────────────────────────────
+// ── Attack Effects section (own section — replaces your basic attack visual) ──
+class AttackEffectsSection extends StatelessWidget {
+  const AttackEffectsSection({required this.game, this.scrollable = true, super.key});
+  final GameState game;
+  final bool scrollable;
+
+  @override
+  Widget build(BuildContext context) {
+    final col = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
         Text('ATTACK EFFECTS', style: AppTheme.pixelHeading(fontSize: 11, letterSpacing: 2, color: AppTheme.accentGold)),
         const SizedBox(height: 4),
         const Text(
-          'Cosmetic visual effects on your attacks. Purely decorative — no gameplay impact.',
+          'Replace your basic attack with a flashy elemental effect — shown in '
+          'battle across every mode. Equip one to see it take over your hits.',
           style: TextStyle(fontSize: 11, color: AppTheme.textMuted, height: 1.5),
         ),
         const SizedBox(height: 8),

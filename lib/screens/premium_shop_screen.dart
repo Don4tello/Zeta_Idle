@@ -27,7 +27,7 @@ class _PremiumShopScreenState extends State<PremiumShopScreen>
     with SingleTickerProviderStateMixin {
   late final TabController _tabs = TabController(length: 8, vsync: this);
 
-  static const _tabLabels = ['BUNDLES', 'STARTER', 'SKINS', 'AURAS', 'BOOSTS', 'MISC', 'TITLES', 'VIP'];
+  static const _tabLabels = ['BUNDLES', 'STARTER', 'SKINS', 'AURAS', 'BOOSTS', 'MISC', 'COSMETICS', 'VIP'];
   static const _tabIcons  = ['💎', '🎁', '🎨', '✨', '⚡', '🎒', '👑', '⭐'];
 
   @override
@@ -122,12 +122,26 @@ class _PremiumShopScreenState extends State<PremiumShopScreen>
           // ── MISC (character slots) ────────────────────────────
           CosmeticsMiscSection(game: game),
 
-          // ── TITLES ────────────────────────────────────────────
+          // ── COSMETICS (titles / name colours / frames / attack effects) ──
           ListView(
             padding: const EdgeInsets.all(14),
             children: [
-              _SectionLabel('TITLES & FRAMES', 'Cosmetic flair for your hero'),
-              ...CosmeticItem.all.map((item) => _CosmeticCard(item: item, game: game)),
+              _SectionLabel('TITLES', 'A rank displayed beneath your name'),
+              ...CosmeticItem.all
+                  .where((c) => c.type == CosmeticType.title)
+                  .map((item) => _CosmeticCard(item: item, game: game)),
+              const SizedBox(height: 20),
+              _SectionLabel('NAME COLOURS', 'Colour + glow for your hero name'),
+              ...CosmeticItem.all
+                  .where((c) => c.type == CosmeticType.nameColor)
+                  .map((item) => _CosmeticCard(item: item, game: game)),
+              const SizedBox(height: 20),
+              _SectionLabel('FRAMES', 'A frame around your hero portrait'),
+              ...CosmeticItem.all
+                  .where((c) => c.type == CosmeticType.frame)
+                  .map((item) => _CosmeticCard(item: item, game: game)),
+              const SizedBox(height: 20),
+              AttackEffectsSection(game: game, scrollable: false),
               const SizedBox(height: 24),
             ],
           ),
