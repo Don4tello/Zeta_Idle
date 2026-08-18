@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/guild.dart';
+import '../models/guild_castle.dart';
 
 class GuildService {
   FirebaseFirestore get _db => FirebaseFirestore.instance;
@@ -205,6 +206,87 @@ class GuildService {
       'xp': guild.xp,
       'level': guild.level,
     });
+  }
+
+  // ── Castle Construction ─────────────────────────────────────────────────────
+
+  /// Result of a construction contribution.
+  static int _epochToday() =>
+      DateTime.now().millisecondsSinceEpoch ~/ (24 * 60 * 60 * 1000);
+
+  /// Contribute [goldSpent] gold to the guild castle. Converts to CP at the
+  /// current tier's rate, capped by the member's remaining daily CP. Applies
+  /// weekly upkeep first. Returns (cpAdded, tiersGained, newTier) or null if
+  /// nothing could be contributed (cap hit / no guild). Gold is deducted by the
+  /// caller (GameState) only when this returns a non-null cpAdded > 0.
+  Future<CastleContribResult?> contributeConstruction(
+      String guildId, String userId, String userName, int goldSpent) async {
+    final doc = _db.collection(_collection).doc(guildId);
+    final snap = await doc.get();
+    if (!snap.exists) return null;
+    final data = snap.data()!;
+    final guild = Guild.fromJson(data);
+    final castle = guild.castle;
+
+    final today = _epochToday();
+    final week = GuildWarSchedule.currentWeekEpoch();
+
+    // Weekly upkeep — skim once per week before progress counts.
+    if (castle.lastUpkeepWeek != week) {
+      final upkeep = castle.weeklyUpkeepCP;
+      castle.storedCP = (castle.storedCP - upkeep).clamp(0, 1 << 30);
+      castle.lastUpkeepWeek = week;
+    }
+
+    // Load per-member construction contributions.
+    final contribs = ((data['constructions'] as List<dynamic>?) ?? [])
+        .map((e) => GuildContribution.fromJson(e as Map<String, dynamic>))
+        .toList();
+    var idx = contribs.indexWhere((g) => g.userId == userId);
+    var mine = idx >= 0 ? contribs[idx] : GuildContribution(userId: userId);
+
+    final remaining = mine.cpRemainingToday(today);
+    if (remaining <= 0) return CastleContribResult(0, 0, castle.tier, capReached: true);
+
+    // Gold → CP, capped by the daily remaining CP.
+    final affordableCP = goldSpent ~/ castle.goldPerCP;
+    final cp = affordableCP.clamp(0, remaining);
+    if (cp <= 0) return CastleContribResult(0, 0, castle.tier);
+
+    mine = mine.addCP(cp, today, week,
+        newWeek: _isNewContribWeek(mine.lastContribDay, today));
+    if (idx >= 0) {
+      contribs[idx] = mine;
+    } else {
+      contribs.add(mine);
+    }
+
+    final gained = castle.addCP(cp);
+    final goldSpentActual = cp * castle.goldPerCP;
+
+    await doc.update({
+      'castle': castle.toJson(),
+      'constructions': contribs.map((e) => e.toJson()).toList(),
+    });
+    return CastleContribResult(cp, gained, castle.tier, goldSpent: goldSpentActual);
+  }
+
+  // A member's weeklyCP resets on the ISO-week boundary. We approximate by
+  // resetting when the day-of-contribution crosses into a new 7-day block.
+  bool _isNewContribWeek(int lastDay, int today) {
+    if (lastDay == 0) return false;
+    return (today ~/ 7) != (lastDay ~/ 7);
+  }
+
+  /// Load the castle construction leaderboard (top lifetime contributors).
+  Future<List<GuildContribution>> fetchConstructions(String guildId) async {
+    final snap = await _db.collection(_collection).doc(guildId).get();
+    if (!snap.exists) return [];
+    final contribs = ((snap.data()!['constructions'] as List<dynamic>?) ?? [])
+        .map((e) => GuildContribution.fromJson(e as Map<String, dynamic>))
+        .toList();
+    contribs.sort((a, b) => b.lifetimeCP.compareTo(a.lifetimeCP));
+    return contribs;
   }
 
   // ── Ensure Weekly Boss ──────────────────────────────────────────────────────

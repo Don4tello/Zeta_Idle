@@ -7,6 +7,7 @@ import '../../screens/campaign_screen.dart';
 import '../../screens/endless_screen.dart';
 import '../../screens/daily_screen.dart';
 import '../../screens/season_pass_screen.dart';
+import '../../screens/castle_gallery_screen.dart';
 import '../../screens/pvp_screen.dart';
 import '../../screens/dungeon_screen.dart';
 import '../../screens/gauntlet_screen.dart';
@@ -112,6 +113,7 @@ abstract final class Routes {
   static const worldEvent   = '/game/world-event';
   static const guild        = '/game/guild';
   static const spriteExport = '/game/sprite-export';
+  static const castleGallery = '/game/castle-gallery';
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -246,6 +248,7 @@ GoRouter buildRouter({
           _route('world-event',   const WorldEventScreen()),
           _route('guild',         const GuildScreen()),
           _route('sprite-export', const SpriteExportScreen()),
+          _route('castle-gallery', const CastleGalleryScreen()),
         ],
       ),
     ],

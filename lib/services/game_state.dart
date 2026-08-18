@@ -10,6 +10,7 @@ import '../data/patch_notes.dart';
 import '../data/campaign_lore.dart';
 import '../data/world_zone_data.dart';
 import '../models/world_zone.dart';
+import '../models/guild_castle.dart';
 import '../models/dnd_class.dart';
 import '../models/campaign_stage.dart';
 import '../data/enemy_data.dart';
@@ -1470,6 +1471,15 @@ class GameState extends ChangeNotifier {
   // Guild
   String? guildId;
   int guildCoins = 0;
+  // Resolved guild-castle buffs — populated when the guild is loaded (guild
+  // screen). Gameplay reads this, never CastleState.tier. Default = no bonus.
+  GuildBuffs guildBuffs = const GuildBuffs();
+  void setGuildBuffs(GuildBuffs b) {
+    guildBuffs = b;
+    notifyListeners();
+  }
+  /// Castle gold multiplier (1.0 = none). Includes the +5% all-resource bonus.
+  double get guildCastleGoldMult => 1.0 + guildBuffs.effectiveGoldPct / 100.0;
 
   // Season Pass
   int seasonPassXp = 0;
@@ -7680,7 +7690,7 @@ class GameState extends ChangeNotifier {
     final bestiaryGoldMult = _isCampaignBattle ? bestiaryGoldBonus(enemy.id) : 1.0;
     final rc = RemoteConfigService.instance;
     var rewardGold =
-        ((enemy.level * 50 + 100) * endlessUpgrades.goldMultiplier * arcaneBonus * merchantScholarBonus * prestigeGoldMult * paragonGoldIncomeMult * prestigeGoldBattleMult * passiveGoldMult * goldSenseMult * petGoldMult * allyGoldMult * bestiaryGoldMult * rc.goldMult * (1.0 + _scoreLck / 100))
+        ((enemy.level * 50 + 100) * endlessUpgrades.goldMultiplier * arcaneBonus * merchantScholarBonus * prestigeGoldMult * paragonGoldIncomeMult * prestigeGoldBattleMult * passiveGoldMult * goldSenseMult * petGoldMult * allyGoldMult * bestiaryGoldMult * rc.goldMult * guildCastleGoldMult * (1.0 + _scoreLck / 100))
             .round();
     // Felix: Bribe — double gold on the first kill of the battle
     if (_felixBribeActive) {

@@ -3,6 +3,23 @@
 Version numbers are the pubspec build number (`0.1.0+N`), which is the Play
 Store `versionCode`. Newest first.
 
+## +66 — Guild Castle (gold-built 10-tier construction track)
+- **New parallel guild progression** layered on top of the XP levels: members
+  donate gold → **Construction Points** (daily-capped, `CastleTier.dailyCpCap`),
+  building a **10-tier castle**. `guild_castle.dart`: `CastleState`,
+  `GuildContribution`, `GuildBuffs`, `CastleContribResult`, cost curve
+  (`marginalCP = 1000×1.6^(t-2)`, `goldPerCP = 250×1.9^(t-1)`, tier-5+ upkeep).
+- **`PixelCastle` CustomPainter** — one painter renders tiers 1–10 as growth of
+  one structure (composable `_draw*` gated by tier, deterministic per-guild
+  banner tint, tier-10 animated flags). `CastleGallery` debug screen +
+  `/game/castle-gallery` route. 21 unit tests (thresholds/caps/upkeep/buffs).
+- **CASTLE tab** in the guild screen: castle art, CP progress bar, contribute
+  buttons (+10/25/50/100 CP), active-benefits list.
+- `GuildService.contributeConstruction` (gold→CP, daily cap, weekly upkeep) +
+  `fetchConstructions`. `Guild` gains a `castle` field (json round-trip).
+- **`GameState.guildBuffs`** resolves castle benefits; the castle gold % is
+  applied to kill gold (gameplay never reads `castle.tier`).
+
 ## +65 — Ember Dragon pet + shop revamp + attack-effect override
 - **Premium Ember Dragon pet** (`ember_dragon`, real-money `pet_premium_dragon`,
   $4.99): `PetDefinition` gains `isPremium`/`productId`/`evoCostStep`/

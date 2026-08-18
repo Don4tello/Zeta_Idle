@@ -5,6 +5,8 @@
 // Guild boss resets weekly (Monday 00:00 UTC).
 // ─────────────────────────────────────────────────────────────────────────────
 
+import 'guild_castle.dart';
+
 class Guild {
   Guild({
     required this.id,
@@ -22,10 +24,12 @@ class Guild {
     List<String>? ownedCosmetics,
     this.equippedBanner,
     this.equippedFrame,
+    CastleState? castle,
   })  : members        = List.of(members ?? const []),
         messages       = List.of(messages ?? const []),
         territories    = List.of(territories ?? const []),
-        ownedCosmetics = List.of(ownedCosmetics ?? const []);
+        ownedCosmetics = List.of(ownedCosmetics ?? const []),
+        castle         = castle ?? CastleState();
 
   final String id;
   String name;
@@ -42,6 +46,7 @@ class Guild {
   List<String> ownedCosmetics;
   String? equippedBanner;
   String? equippedFrame;
+  CastleState castle;
 
   static const int baseMaxMembers = 20;
   int get maxMembers => level >= 20 ? 30 : baseMaxMembers;
@@ -81,6 +86,7 @@ class Guild {
     'ownedCosmetics': ownedCosmetics,
     if (equippedBanner != null) 'equippedBanner': equippedBanner,
     if (equippedFrame != null) 'equippedFrame': equippedFrame,
+    'castle': castle.toJson(),
   };
 
   static Guild fromJson(Map<String, dynamic> json) => Guild(
@@ -107,6 +113,7 @@ class Guild {
     ownedCosmetics: (json['ownedCosmetics'] as List<dynamic>?)?.cast<String>() ?? [],
     equippedBanner: json['equippedBanner'] as String?,
     equippedFrame: json['equippedFrame'] as String?,
+    castle: CastleState.fromJson(json['castle'] as Map<String, dynamic>?),
   );
 }
 

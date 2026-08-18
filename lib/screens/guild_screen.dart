@@ -7,6 +7,7 @@ import '../models/damage_type.dart';
 import '../models/dnd_class.dart';
 import '../models/equipment.dart';
 import '../models/guild.dart';
+import '../models/guild_castle.dart';
 import '../models/hero_ability.dart';
 import '../models/passive_tree.dart';
 import '../models/pvp.dart';
@@ -16,6 +17,7 @@ import '../services/guild_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/arena_ability_effect.dart';
 import '../widgets/battle_arena.dart';
+import '../widgets/pixel_castle.dart';
 import '../widgets/battle_split_panel.dart';
 import '../widgets/battle_sprites.dart';
 import '../widgets/pixel_health_bar.dart';
@@ -376,15 +378,18 @@ class _GuildScreenState extends State<GuildScreen> {
     final boss = guild.weeklyBoss;
 
     return DefaultTabController(
-      length: 4,
+      length: 5,
       child: Column(
         children: [
           TabBar(
+            isScrollable: true,
+            tabAlignment: TabAlignment.start,
             labelColor: AppTheme.accentGold,
             unselectedLabelColor: AppTheme.textMuted,
             indicatorColor: AppTheme.accentGold,
             tabs: const [
               Tab(child: Row(mainAxisSize: MainAxisSize.min, children: [GameIcon(GameIconType.scroll,      size: 14, color: Colors.white54), SizedBox(width: 4), Text('INFO')])),
+              Tab(child: Row(mainAxisSize: MainAxisSize.min, children: [GameIcon(GameIconType.castle,       size: 14, color: Colors.white54), SizedBox(width: 4), Text('CASTLE')])),
               Tab(child: Row(mainAxisSize: MainAxisSize.min, children: [GameIcon(GameIconType.dragonSkull, size: 14, color: Colors.white54), SizedBox(width: 4), Text('BOSS')])),
               Tab(child: Row(mainAxisSize: MainAxisSize.min, children: [GameIcon(GameIconType.bubble,      size: 14, color: Colors.white54), SizedBox(width: 4), Text('CHAT')])),
               Tab(child: Row(mainAxisSize: MainAxisSize.min, children: [GameIcon(GameIconType.shopBag,     size: 14, color: Colors.white54), SizedBox(width: 4), Text('SHOP')])),
@@ -394,6 +399,7 @@ class _GuildScreenState extends State<GuildScreen> {
             child: TabBarView(
               children: [
                 _buildInfoTab(game, guild),
+                _buildCastleTab(game, guild),
                 _buildBossTab(game, guild, boss),
                 _buildChatTab(game, guild),
                 _buildShopTab(game),
@@ -403,6 +409,157 @@ class _GuildScreenState extends State<GuildScreen> {
         ],
       ),
     );
+  }
+
+  // ── Castle Construction Tab ──────────────────────────────────────────────────
+
+  Widget _buildCastleTab(GameState game, Guild guild) {
+    final castle = guild.castle;
+    final tint = PixelCastle.tintForGuildId(guild.id);
+    final buffs = GuildBuffs.fromCastle(castle,
+        activeThisWeek: guild.memberCount);
+    // Keep the live gold bonus in sync while viewing the guild.
+    WidgetsBinding.instance.addPostFrameCallback((_) => game.setGuildBuffs(buffs));
+
+    final goldPerCP = castle.goldPerCP;
+    final canContribute = !castle.isMaxTier;
+
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: [
+        // Castle art + tier.
+        Center(
+          child: Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: const Color(0xFF17150E),
+              border: Border.all(color: AppTheme.cardBorder),
+              borderRadius: BorderRadius.circular(6),
+            ),
+            child: Column(children: [
+              PixelCastle(tier: castle.tier, guildTint: tint, size: 160, animate: castle.isMaxTier),
+              const SizedBox(height: 8),
+              Text('CASTLE — TIER ${castle.tier} / 10',
+                  style: AppTheme.pixelHeading(fontSize: 14, color: AppTheme.accentGold, letterSpacing: 2)),
+            ]),
+          ),
+        ),
+        const SizedBox(height: 14),
+
+        // Progress to next tier.
+        if (!castle.isMaxTier) ...[
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text('Progress to Tier ${castle.tier + 1}',
+                  style: const TextStyle(fontSize: 13, color: AppTheme.textLight)),
+              Text('${castle.storedCP} / ${castle.cpToNextTier} CP',
+                  style: const TextStyle(fontSize: 12, color: AppTheme.textMuted)),
+            ],
+          ),
+          const SizedBox(height: 6),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(4),
+            child: LinearProgressIndicator(
+              value: castle.progress,
+              minHeight: 12,
+              backgroundColor: AppTheme.darkBg,
+              valueColor: const AlwaysStoppedAnimation(AppTheme.accentGold),
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text('Next: ${GuildBuffs.headlineFor(castle.tier + 1)}',
+              style: const TextStyle(fontSize: 12, color: Color(0xFF88ccff))),
+        ] else
+          Text('Citadel complete — the castle is fully built!',
+              style: AppTheme.pixelHeading(fontSize: 12, color: AppTheme.accentGoldBright),
+              textAlign: TextAlign.center),
+        const SizedBox(height: 16),
+
+        // Contribute.
+        if (canContribute) ...[
+          Text('CONTRIBUTE GOLD',
+              style: AppTheme.pixelHeading(fontSize: 11, letterSpacing: 2, color: AppTheme.accentGold)),
+          const SizedBox(height: 4),
+          Text('Convert gold to Construction Points (CP). Rate: ${AppTheme.fmtNumber(goldPerCP)} gold = 1 CP. '
+              'You can add up to ${CastleTier.dailyCpCap} CP per day.',
+              style: const TextStyle(fontSize: 12, color: AppTheme.textMuted, height: 1.4)),
+          const SizedBox(height: 10),
+          Row(children: [
+            for (final cp in const [10, 25, 50, 100]) ...[
+              Expanded(child: _CpButton(
+                cp: cp,
+                goldCost: cp * goldPerCP,
+                enabled: game.gold >= cp * goldPerCP,
+                onTap: () => _contributeConstruction(game, guild, cp * goldPerCP),
+              )),
+              if (cp != 100) const SizedBox(width: 6),
+            ],
+          ]),
+        ],
+        const SizedBox(height: 18),
+
+        // Active castle benefits.
+        Text('ACTIVE CASTLE BENEFITS',
+            style: AppTheme.pixelHeading(fontSize: 11, letterSpacing: 2, color: AppTheme.accentGold)),
+        const SizedBox(height: 8),
+        for (var t = 2; t <= castle.tier; t++)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 4),
+            child: Row(children: [
+              const Text('✓ ', style: TextStyle(color: Color(0xFF44cc88), fontSize: 13)),
+              Expanded(child: Text(GuildBuffs.headlineFor(t),
+                  style: const TextStyle(fontSize: 12, color: AppTheme.textLight))),
+            ]),
+          ),
+        if (castle.tier < 2)
+          const Text('Contribute to raise the castle and unlock benefits.',
+              style: TextStyle(fontSize: 12, color: AppTheme.textMuted)),
+      ],
+    );
+  }
+
+  Future<void> _contributeConstruction(GameState game, Guild guild, int goldCost) async {
+    if (game.gold < goldCost) return;
+    if (guild.id.startsWith('dev_guild_')) {
+      // Local dev guild — apply immediately for preview.
+      final gained = guild.castle.addCP(goldCost ~/ guild.castle.goldPerCP);
+      game.gold -= goldCost;
+      game.setGuildBuffs(GuildBuffs.fromCastle(guild.castle, activeThisWeek: guild.memberCount));
+      if (mounted) setState(() {});
+      if (gained > 0 && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('🏰 Castle advanced to Tier ${guild.castle.tier}!'),
+          backgroundColor: AppTheme.panelBg));
+      }
+      return;
+    }
+    final res = await _guildService.contributeConstruction(
+        guild.id, _authService.currentUser!.uid, game.hero.name, goldCost);
+    if (res == null) return;
+    if (res.capReached) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text('Daily construction cap reached — come back tomorrow!'),
+          behavior: SnackBarBehavior.floating));
+      }
+      return;
+    }
+    if (res.cpAdded > 0) {
+      game.gold -= res.goldSpent;
+      _guild = await _guildService.fetchGuild(guild.id);
+      if (_guild != null) {
+        game.setGuildBuffs(GuildBuffs.fromCastle(_guild!.castle, activeThisWeek: _guild!.memberCount));
+      }
+      if (mounted) {
+        setState(() {});
+        if (res.tiersGained > 0) {
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Text('🏰 Castle advanced to Tier ${res.newTier}!'),
+            backgroundColor: AppTheme.panelBg));
+        }
+      }
+    }
   }
 
   // ── Info Tab ───────────────────────────────────────────────────────────────
@@ -1427,6 +1584,47 @@ class _GuildBossBattleState extends State<_GuildBossBattle> {
               ]),
             ),
         ],
+      ),
+    );
+  }
+}
+
+// Contribution button — shows CP amount and its gold cost.
+class _CpButton extends StatelessWidget {
+  const _CpButton({
+    required this.cp,
+    required this.goldCost,
+    required this.enabled,
+    required this.onTap,
+  });
+  final int cp;
+  final int goldCost;
+  final bool enabled;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: enabled ? onTap : null,
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        decoration: BoxDecoration(
+          color: enabled ? AppTheme.accentGold.withValues(alpha: 0.12) : Colors.transparent,
+          border: Border.all(color: enabled ? AppTheme.accentGold : AppTheme.cardBorder),
+          borderRadius: BorderRadius.circular(4),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text('+$cp CP',
+                style: TextStyle(
+                    fontSize: 13, fontWeight: FontWeight.bold,
+                    color: enabled ? AppTheme.accentGold : AppTheme.textMuted)),
+            const SizedBox(height: 2),
+            Text('${AppTheme.fmtNumber(goldCost)}g',
+                style: const TextStyle(fontSize: 10, color: AppTheme.textMuted)),
+          ],
+        ),
       ),
     );
   }

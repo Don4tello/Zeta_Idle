@@ -19,6 +19,19 @@ int get kLatestPatchBuild => kPatchNotes.first.build;
 
 const kPatchNotes = <PatchNote>[
   PatchNote(
+    build: 66,
+    title: 'Guild Castle — Build It Together',
+    date: '2026-08-18',
+    changes: [
+      'NEW: your guild can now build a 10-tier Castle! Donate gold in the new '
+          'CASTLE tab to earn Construction Points and raise the keep.',
+      'Each tier unlocks real guild-wide benefits — gold, storage, roster '
+          'capacity, extra boss attacks, expedition slots and more.',
+      'Daily contribution cap keeps it fair: active guilds beat rich solo '
+          'players. Tier 10 is a months-long prestige goal.',
+    ],
+  ),
+  PatchNote(
     build: 65,
     title: 'Ember Dragon + Shop Revamp + Attack FX',
     date: '2026-08-18',
