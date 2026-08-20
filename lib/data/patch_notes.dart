@@ -19,6 +19,17 @@ int get kLatestPatchBuild => kPatchNotes.first.build;
 
 const kPatchNotes = <PatchNote>[
   PatchNote(
+    build: 78,
+    title: 'Energy Refills Offline + Battle UI Tidy',
+    date: '2026-08-19',
+    changes: [
+      'Campaign Energy now refills in real time and while you\'re away — no more '
+          'being stuck at 0/20.',
+      'Battle arena: replaced the "CRIT %" chip with a clearer ARMOR value.',
+      'Mercenary upgrades now show the correct ZCoin icon (not a crystal).',
+    ],
+  ),
+  PatchNote(
     build: 76,
     title: 'PvP Speed + Log, Mercs Indicator, Dragon Art',
     date: '2026-08-19',

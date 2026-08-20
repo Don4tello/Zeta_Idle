@@ -182,6 +182,7 @@ class GameState extends ChangeNotifier {
       const Duration(seconds: 5),
       (_) {
         if (!_slotLoaded) return;
+        tickEnergy(); // refill campaign energy in real time (and catch-up)
         generateIdleProgress();
         _idleTickCount++;
         if (_idleTickCount >= 12) {

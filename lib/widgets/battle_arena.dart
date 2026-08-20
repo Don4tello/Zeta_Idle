@@ -1003,16 +1003,11 @@ class _CombatantPanel extends StatelessWidget {
               ],
             ],
           ),
-          // Hero-side stat chips: crit chance and armor
-          if (critPct != null || armor != null) ...[
+          // Hero-side stat chip: Armour Class (AC).
+          if (armor != null && armor! > 0) ...[
             const SizedBox(height: 3),
             Row(mainAxisSize: MainAxisSize.min, children: [
-              if (critPct != null)
-                _StatChip('CRIT $critPct%', const Color(0xFFffcc44)),
-              if (critPct != null && armor != null)
-                const SizedBox(width: 4),
-              if (armor != null && armor! > 0)
-                _StatChip('ARM $armor', const Color(0xFF88aacc)),
+              _StatChip('ARMOR $armor', const Color(0xFF88aacc)),
             ]),
           ],
           // Resistance/vulnerability row (shown for enemy panel)

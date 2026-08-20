@@ -272,6 +272,9 @@ class _ZetaIdleAppState extends State<ZetaIdleApp> with WidgetsBindingObserver {
       }
     } else if (state == AppLifecycleState.resumed) {
       _gameState.audioService.resumeMusic();
+      // Catch up campaign energy for the time spent away (offline refill).
+      _gameState.tickEnergy();
+      _gameState.notifyListeners();
       // Player is back — clear any pending reminders.
       NotificationService.instance.cancelAll();
     }

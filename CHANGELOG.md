@@ -3,6 +3,16 @@
 Version numbers are the pubspec build number (`0.1.0+N`), which is the Play
 Store `versionCode`. Newest first.
 
+## +78 — Offline energy refill + battle-arena chip tidy + mercs currency icon
+- **Energy refills in real time & offline:** `tickEnergy()` now runs in the 5s
+  idle timer and on `AppLifecycleState.resumed` (main.dart), in addition to the
+  existing cold-load catch-up in `fromJson`. Fixes being stuck at 0/20 while
+  foregrounded or after backgrounding.
+- **Battle arena:** removed the `CRIT %` hero chip; the armour chip now reads
+  `ARMOR <value>` (was the ambiguous `ARM`).
+- **Mercs:** the upgrade "Have:" line uses the ZCoin emoji (🪙) instead of the
+  crystal (💎).
+
 ## +76 — PvP speed/log + mercs indicator + dragon art
 - **PvP Arena** gains a **speed button** (capped by `maxCampaignSpeedTier`; the
   round delays now use `scaledInterval`) and a **battle-log** button (dialog of

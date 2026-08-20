@@ -957,7 +957,7 @@ class _UpgradeButtonState extends State<_UpgradeButton> {
                 return Padding(
                   padding: const EdgeInsets.only(top: 3),
                   child: Text(
-                    'Have: ◆${g.shards}${widget.costCrystals > 0 ? "  💎${g.zcoins}" : ""}',
+                    'Have: ◆${g.shards}${widget.costCrystals > 0 ? "  🪙${g.zcoins}" : ""}',
                     style: const TextStyle(fontSize: 8, color: Color(0xFFcc4444)),
                   ),
                 );
