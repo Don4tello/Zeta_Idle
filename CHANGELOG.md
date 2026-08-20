@@ -3,6 +3,18 @@
 Version numbers are the pubspec build number (`0.1.0+N`), which is the Play
 Store `versionCode`. Newest first.
 
+## +79 — Rebirth boons revamp (27 boons, rarities, progress-weighted)
+- `rebirth_boon.dart` rewritten: **27 boons** across 4 rarities (Uncommon → Rare
+  → Epic → Legendary, mirroring `ItemRarity`). Each `RebirthBoon` gains `rarity`
+  + `value`; effects generalised (startingGold ×, bonusShards/Souls/Echoes/
+  Essence/Zcoins, startWeapon by rarity, xpThisRun ×). **Mythril boon removed.**
+- `RebirthBoon.rollBoons(rebirths, ap, rng)` weights the 3 offered boons by
+  rarity, shifting toward higher rarities as Rebirths + Ascension AP grow.
+  Rebirth flow now rolls via this in `didChangeDependencies`.
+- Boon cards show a **rarity-coloured frame** (+ glow when selected) and the
+  rarity is stated in the description. `game_state` apply switch + soul-preview
+  use `boon.value`.
+
 ## +78 — Offline energy refill + battle-arena chip tidy + mercs currency icon
 - **Energy refills in real time & offline:** `tickEnergy()` now runs in the 5s
   idle timer and on `AppLifecycleState.resumed` (main.dart), in addition to the

@@ -14,14 +14,17 @@ class RebirthFlowScreen extends StatefulWidget {
 class _RebirthFlowScreenState extends State<RebirthFlowScreen> {
   RebirthBoon? _selectedBoon;
   RebirthChallenge _challenge = RebirthChallenge.none;
-  late final List<RebirthBoon> _boonChoices;
+  List<RebirthBoon>? _boonChoices;
 
   @override
-  void initState() {
-    super.initState();
-    final rng = Random();
-    final shuffled = List<RebirthBoon>.from(RebirthBoon.all)..shuffle(rng);
-    _boonChoices = shuffled.take(3).toList();
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Roll boons weighted by the player's progress (Rebirths + Ascension AP).
+    if (_boonChoices == null) {
+      final game = GameStateProvider.of(context);
+      _boonChoices = RebirthBoon.rollBoons(
+          game.prestigeLevel, game.totalAscensionAp, Random());
+    }
   }
 
   @override
@@ -52,7 +55,7 @@ class _RebirthFlowScreenState extends State<RebirthFlowScreen> {
           _SoulTallyCard(game: game, challenge: _challenge, boon: _selectedBoon, soulsPreview: soulsPreview),
           const SizedBox(height: 16),
           _BoonPickerSection(
-            choices: _boonChoices,
+            choices: _boonChoices ?? const [],
             selected: _selectedBoon,
             onSelect: (b) => setState(() => _selectedBoon = b),
           ),
@@ -223,9 +226,9 @@ class _BoonCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final border = isSelected
-        ? Border.all(color: const Color(0xFFffdd88), width: 2)
-        : Border.all(color: Colors.white12);
+    // Rarity frame — colour + glow by boon rarity (like items).
+    final rarityColor = Color(boon.rarity.boonColorValue);
+    final border = Border.all(color: rarityColor, width: isSelected ? 2.5 : 1.5);
     final bg = isSelected ? const Color(0xFF2a2010) : const Color(0xFF181418);
 
     return GestureDetector(
@@ -233,7 +236,14 @@ class _BoonCard extends StatelessWidget {
       child: Container(
         margin: const EdgeInsets.only(bottom: 8),
         padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(color: bg, border: border, borderRadius: BorderRadius.circular(6)),
+        decoration: BoxDecoration(
+          color: bg,
+          border: border,
+          borderRadius: BorderRadius.circular(6),
+          boxShadow: isSelected
+              ? [BoxShadow(color: rarityColor.withValues(alpha: 0.4), blurRadius: 8)]
+              : null,
+        ),
         child: Row(
           children: [
             Text(boon.icon, style: const TextStyle(fontSize: 24)),
@@ -242,7 +252,16 @@ class _BoonCard extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(boon.name,    style: const TextStyle(color: Colors.white,  fontSize: 13, fontWeight: FontWeight.bold)),
+                  Row(children: [
+                    Flexible(
+                      child: Text(boon.name,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold)),
+                    ),
+                    const SizedBox(width: 6),
+                    Text(boon.rarity.boonLabel.toUpperCase(),
+                        style: TextStyle(color: rarityColor, fontSize: 9, fontWeight: FontWeight.bold, letterSpacing: 0.5)),
+                  ]),
                   Text(boon.tagline, style: const TextStyle(color: Color(0xFFffdd88), fontSize: 11)),
                   const SizedBox(height: 2),
                   Text(boon.description, style: const TextStyle(color: Colors.white54, fontSize: 11)),
@@ -250,7 +269,7 @@ class _BoonCard extends StatelessWidget {
               ),
             ),
             if (isSelected)
-              const Icon(Icons.check_circle, color: Color(0xFFffdd88), size: 20),
+              Icon(Icons.check_circle, color: rarityColor, size: 20),
           ],
         ),
       ),

@@ -3767,7 +3767,7 @@ class GameState extends ChangeNotifier {
     final bossRush  = bossRushHighestTier.clamp(0, 5);
     final gauntlet  = (gauntletHighScore / 10).floor().clamp(0, 10);
     final conduit   = prestigeSoulConduit;
-    final boonBonus = boon?.effect == RebirthBoonEffect.bonusSouls ? 30 : 0;
+    final boonBonus = boon?.effect == RebirthBoonEffect.bonusSouls ? boon!.value.toInt() : 0;
     return (base + dungeon + bossRush + gauntlet + conduit + challenge.bonusSouls + boonBonus).clamp(1, 9999);
   }
   bool   get prestigeHealOnKill     => prestigeShop.isUnlocked('blood_drinker');
@@ -3881,7 +3881,7 @@ class GameState extends ChangeNotifier {
     final dungeonBonus  = _dungeonClears.clamp(0, 20);
     final bossBonus     = bossRushHighestTier.clamp(0, 5);
     final gauntletBonus = (gauntletHighScore / 10).floor().clamp(0, 10);
-    final boonSouls     = boon?.effect == RebirthBoonEffect.bonusSouls ? 30 : 0;
+    final boonSouls     = boon?.effect == RebirthBoonEffect.bonusSouls ? boon!.value.toInt() : 0;
     final soulsEarned   = (baseSouls + dungeonBonus + bossBonus + gauntletBonus
                           + prestigeSoulConduit + challenge.bonusSouls + boonSouls)
                           .clamp(1, 9999);
@@ -4026,19 +4026,25 @@ class GameState extends ChangeNotifier {
 
     // Boon effects
     if (boon != null) {
+      final v = boon.value;
       switch (boon.effect) {
-        case RebirthBoonEffect.tripleGold:
-          gold *= 3;
+        case RebirthBoonEffect.startingGold:
+          gold = (gold * v).round();
         case RebirthBoonEffect.bonusShards:
-          shards += 300;
+          shards += v.toInt();
         case RebirthBoonEffect.bonusSouls:
           break; // already counted in soulsEarned
-        case RebirthBoonEffect.rareWeapon:
-          inventory.addToBag(ItemLootTable.craftAt(ItemSlot.weapon, ItemRarity.rare, 1, _rng));
-        case RebirthBoonEffect.mythrilCache:
-          mythril += 25;
-        case RebirthBoonEffect.bonusXpThisRun:
-          _boonXpMult = 1.60;
+        case RebirthBoonEffect.bonusEchoes:
+          echoes += v.toInt();
+        case RebirthBoonEffect.bonusEssence:
+          essence += v.toInt();
+        case RebirthBoonEffect.bonusZcoins:
+          zcoins += v.toInt();
+        case RebirthBoonEffect.startWeapon:
+          final r = ItemRarity.values[v.toInt().clamp(1, ItemRarity.values.length - 1)];
+          inventory.addToBag(ItemLootTable.craftAt(ItemSlot.weapon, r, 1, _rng));
+        case RebirthBoonEffect.xpThisRun:
+          _boonXpMult = v.toDouble();
       }
     }
 

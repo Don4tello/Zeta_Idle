@@ -19,6 +19,18 @@ int get kLatestPatchBuild => kPatchNotes.first.build;
 
 const kPatchNotes = <PatchNote>[
   PatchNote(
+    build: 79,
+    title: 'Rebirth Boons Revamp',
+    date: '2026-08-19',
+    changes: [
+      'Rebirth boons are now a pool of 27, each with a rarity from Uncommon to '
+          'Legendary shown by a coloured frame and in the description.',
+      'The rarer you\'ve grown (more Rebirths + Ascension Points), the better the '
+          'boons you\'ll be offered.',
+      'Replaced the Mythril boon with more useful gold/XP/soul/resource gifts.',
+    ],
+  ),
+  PatchNote(
     build: 78,
     title: 'Energy Refills Offline + Battle UI Tidy',
     date: '2026-08-19',
