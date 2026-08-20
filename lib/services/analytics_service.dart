@@ -63,13 +63,16 @@ class AnalyticsService {
 
   // ── Economy ─────────────────────────────────────────────────────────────────
   /// A spend at a sink, so sources vs sinks can be compared per currency.
+  /// NB: the parameter is `currency_type`, not `currency` — GA4 reserves
+  /// `currency` (ISO-4217) so it can't be a custom dimension.
   void currencySpent(String currency, int amount, String sink) => _log(
-      'currency_spent', {'currency': currency, 'amount': amount, 'sink': sink});
+      'currency_spent', {'currency_type': currency, 'amount': amount, 'sink': sink});
 
   /// Currency gained from a source (kill/boss/idle/…), the faucet side of the
   /// economy — pair with [currencySpent] to balance sources vs sinks.
+  /// NB: `earn_source` not `source` — GA4 reserves `source` (traffic).
   void currencyEarned(String currency, int amount, String source) => _log(
-      'currency_earned', {'currency': currency, 'amount': amount, 'source': source});
+      'currency_earned', {'currency_type': currency, 'amount': amount, 'earn_source': source});
 
   /// A lost battle — the #1 difficulty signal. Pair with [stageReached] /
   /// [bossDefeated] to compute per-stage clear rates and spot walls.
