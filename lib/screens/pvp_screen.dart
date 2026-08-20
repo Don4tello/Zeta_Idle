@@ -890,7 +890,7 @@ class _PvpBattleFullScreenState extends State<_PvpBattleFullScreen>
         break;
       }
 
-      await Future.delayed(const Duration(milliseconds: 500));
+      await Future.delayed(Duration(milliseconds: game.scaledInterval(500)));
       if (!mounted || !_fighting) break;
 
       game.clearPendingFloats();
@@ -906,7 +906,7 @@ class _PvpBattleFullScreenState extends State<_PvpBattleFullScreen>
       if (game.heroDefeated) break;
 
       if (mounted) setState(() {});
-      await Future.delayed(const Duration(milliseconds: 500));
+      await Future.delayed(Duration(milliseconds: game.scaledInterval(500)));
     }
 
     _autoRunning = false;
@@ -919,6 +919,39 @@ class _PvpBattleFullScreenState extends State<_PvpBattleFullScreen>
 
     await Future.delayed(const Duration(milliseconds: 600));
     if (mounted) setState(() { _showResult = true; _fighting = false; });
+  }
+
+  void _showPvpLog() {
+    final lines = List<String>.from(widget.game.battleLog);
+    showDialog<void>(
+      context: context,
+      builder: (_) => AlertDialog(
+        backgroundColor: const Color(0xFF14121c),
+        title: Text('BATTLE LOG',
+            style: AppTheme.pixelHeading(fontSize: 13, color: AppTheme.accentGold, letterSpacing: 2)),
+        content: SizedBox(
+          width: double.maxFinite,
+          child: lines.isEmpty
+              ? const Text('No combat yet.', style: TextStyle(fontSize: 12, color: AppTheme.textMuted))
+              : ListView(
+                  shrinkWrap: true,
+                  children: [
+                    for (final l in lines)
+                      Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 1),
+                        child: Text(l, style: const TextStyle(fontSize: 12, color: AppTheme.textLight)),
+                      ),
+                  ],
+                ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('CLOSE', style: AppTheme.pixelHeading(fontSize: 12, color: AppTheme.accentGold)),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -943,6 +976,37 @@ class _PvpBattleFullScreenState extends State<_PvpBattleFullScreen>
             Navigator.pop(context);
           },
         ),
+        actions: [
+          // Battle log
+          IconButton(
+            icon: const Icon(Icons.receipt_long, size: 20, color: AppTheme.accentGold),
+            tooltip: 'Battle log',
+            onPressed: _showPvpLog,
+          ),
+          // Speed — capped by the account's paid tier (same as every mode).
+          Padding(
+            padding: const EdgeInsets.only(right: 8),
+            child: TextButton(
+              onPressed: () {
+                final g = widget.game;
+                final maxTier = g.maxCampaignSpeedTier;
+                var next = g.speedTier + 1;
+                if (next > maxTier) next = 1;
+                g.setSpeedTier(next);
+                if (next == maxTier && maxTier < 4) {
+                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                    content: Text('Higher speed needs the Speed Boost / Premium Pass.'),
+                    behavior: SnackBarBehavior.floating,
+                    duration: Duration(milliseconds: 1200)));
+                }
+                setState(() {});
+              },
+              child: Text(widget.game.battleSpeedLabel,
+                  style: AppTheme.pixelHeading(fontSize: 13,
+                      color: widget.game.speedTier > 1 ? const Color(0xFFffaa00) : AppTheme.textMuted)),
+            ),
+          ),
+        ],
       ),
       body: Column(
         children: [
@@ -1004,7 +1068,9 @@ class _PvpBattleFullScreenState extends State<_PvpBattleFullScreen>
           if (_showResult)
             Container(
               width: double.infinity,
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+              // Add the system nav-bar inset so the RETURN button isn't hidden
+              // behind the Android buttons at the bottom.
+              padding: EdgeInsets.fromLTRB(20, 16, 20, 16 + MediaQuery.of(context).padding.bottom),
               color: color.withValues(alpha: 0.08),
               child: Column(
                 children: [

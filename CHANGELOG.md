@@ -3,6 +3,17 @@
 Version numbers are the pubspec build number (`0.1.0+N`), which is the Play
 Store `versionCode`. Newest first.
 
+## +76 — PvP speed/log + mercs indicator + dragon art
+- **PvP Arena** gains a **speed button** (capped by `maxCampaignSpeedTier`; the
+  round delays now use `scaledInterval`) and a **battle-log** button (dialog of
+  `game.battleLog`). Victory panel adds the system nav-bar inset so the RETURN
+  button isn't hidden behind the Android buttons.
+- **MERCS panel indicator:** new `GameState.hasAffordableAllyUpgrade`; the
+  hero-hub MERCS tab badge now lights up when an ally upgrade is affordable
+  (alongside expedition-ready / new-merc-unlock).
+- **Ember Dragon** premium pet now renders via `_EmberDragonPainter`
+  (pixel-art `CustomPainter`) instead of the emoji fallback (+75).
+
 ## +73 — Dungeon relic/speed fixes + artifact auto-equip + gem clarity + GA4 purchase
 - **Dungeon relic blocker:** `_RelicPicker` tap made robust (`HitTestBehavior.opaque`)
   + a `SKIP — DESCEND` fallback (`GameState.skipDungeonRelic`) so a boss reward

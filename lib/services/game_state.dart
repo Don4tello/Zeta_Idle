@@ -3341,6 +3341,18 @@ class GameState extends ChangeNotifier {
       .toList();
 
   // ── Level-up ──────────────────────────────────────────────────────────────
+  /// True if any unlocked mercenary has an affordable level-up available —
+  /// drives the "upgrade ready" indicator on the MERCS panel.
+  bool get hasAffordableAllyUpgrade {
+    for (final def in unlockedAllies) {
+      final cur = allyLevel(def.id);
+      if (cur == 0 || cur >= NpcAllyDef.maxLevel) continue;
+      final (costShards, costCrystals) = NpcAllyDef.levelUpCost(cur + 1);
+      if (shards >= costShards && zcoins >= costCrystals) return true;
+    }
+    return false;
+  }
+
   bool upgradeAlly(String id) {
     final cur = allyLevel(id);
     if (cur == 0 || cur >= NpcAllyDef.maxLevel) return false;

@@ -233,7 +233,8 @@ class _HeroHubScreenState extends State<HeroHubScreen>
     3  => game.achievementsClaimable > 0,      // ACHIEVEMENTS
     4  => game.hasAffordablePassiveNode,        // PASSIVES
     8  => game.hasAffordablePet,               // PETS
-    9  => game.hasReadyExpedition ||           // MERCS (expedition ready or new merc unlock)
+    9  => game.hasAffordableAllyUpgrade ||      // MERCS (upgrade ready, expedition ready, or new merc unlock)
+          game.hasReadyExpedition ||
           (game.unlockedAllies.length < NpcAllyDef.all.length &&
            NpcAllyDef.all.any((a) => !game.allyUnlocked(a.id) &&
                game.allyMilestoneProgress(a) >= a.milestoneTarget)),

@@ -19,6 +19,19 @@ int get kLatestPatchBuild => kPatchNotes.first.build;
 
 const kPatchNotes = <PatchNote>[
   PatchNote(
+    build: 76,
+    title: 'PvP Speed + Log, Mercs Indicator, Dragon Art',
+    date: '2026-08-19',
+    changes: [
+      'PvP Arena now has a speed button and a battle-log button, and the '
+          'victory screen no longer hides behind the phone\'s nav bar.',
+      'The MERCS panel now shows an indicator when a mercenary upgrade is '
+          'affordable.',
+      'The premium Ember Dragon pet now has hand-drawn pixel art matching the '
+          'other companions.',
+    ],
+  ),
+  PatchNote(
     build: 73,
     title: 'Dungeon Fix + Artifact Auto-Equip + Gem Clarity',
     date: '2026-08-19',
