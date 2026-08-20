@@ -14,13 +14,14 @@ CustomPainter? petPainterFor(String id) => switch (id) {
   'arcane_ferret' => const _ArcaneFerrretPainter(),
   'imp_familiar'  => const _ImpFamiliarPainter(),
   'arcane_owl'    => const _ArcaneOwlPainter(),
+  'ember_dragon'  => const _EmberDragonPainter(),
   _               => null,
 };
 
 Size petSizeFor(String id) => switch (id) {
   'stone_turtle' || 'arcane_ferret'                                => const Size(60, 35),
   'lute_sparrow' || 'sacred_dove' || 'shadow_hawk' ||
-  'imp_familiar' || 'arcane_owl'                                   => const Size(60, 50),
+  'imp_familiar' || 'arcane_owl'  || 'ember_dragon'               => const Size(60, 50),
   _                                                                => const Size(55, 45),
 };
 
@@ -605,5 +606,77 @@ class _ArcaneOwlPainter extends _PetPainter {
     b(c, 8, 8, 1, 2, NV);
     b(c, 3, 9, 2, 1, GL);   // talon colour
     b(c, 8, 9, 2, 1, GL);
+  }
+}
+
+// ── EMBER DRAGON ── (Premium · 12×10 grid · 60×50) flying, front-facing
+// Fiery wyrmling: spread bat wings, curved horns, glowing eyes, ember belly.
+class _EmberDragonPainter extends _PetPainter {
+  const _EmberDragonPainter();
+  @override
+  void draw(Canvas c, Size sz) {
+    const BD = 0xFF7A1F0A; // body dark (dark ember)
+    const BM = 0xFFCC3D18; // body mid (ember red)
+    const BL = 0xFFFF8C42; // body light (orange)
+    const MB = 0xFF4A1204; // wing membrane (dark)
+    const WG = 0xFFA8331A; // wing mid
+    const HN = 0xFFF0E0C0; // horn / claw / fang (ivory)
+    const EY = 0xFFFFDD44; // glowing eye
+    const FR = 0xFFFFB020; // fire / ember glow
+
+    // -- Wings (spread, bat-like) --
+    // Left
+    b(c, 0, 1, 4, 7, MB);
+    b(c, 0, 3, 5, 4, BD);   // darker toward body
+    b(c, 0, 1, 2, 3, WG);   // outer tip lighter
+    // Right
+    b(c, 8, 1, 4, 7, MB);
+    b(c, 7, 3, 5, 4, BD);
+    b(c, 10, 1, 2, 3, WG);
+    // Wing finger-ribs
+    b(c, 1, 2, 1, 5, BD);
+    b(c, 3, 3, 1, 4, BD);
+    b(c, 8, 3, 1, 4, BD);
+    b(c, 10, 2, 1, 5, BD);
+    // Wing-tip claws
+    b(c, 0, 0, 1, 1, HN);
+    b(c, 11, 0, 1, 1, HN);
+
+    // -- Body --
+    b(c, 4, 5, 4, 4, BM);
+    b(c, 4, 5, 4, 1, BL);   // shoulders highlight
+    b(c, 5, 6, 2, 2, FR);   // ember belly glow
+    b(c, 5, 5, 1, 1, BD);   // spine ridge
+    b(c, 6, 5, 1, 1, BD);
+
+    // -- Head --
+    b(c, 4, 1, 4, 4, BM);
+    b(c, 4, 1, 4, 1, BL);   // brow highlight
+    b(c, 3, 2, 6, 2, BM);   // cheeks
+    // Snout
+    b(c, 5, 3, 2, 1, BL);   // bridge
+    b(c, 5, 4, 2, 1, BD);   // nostril line
+    // Glowing reptilian eyes
+    b(c, 4, 2, 1, 1, EY);
+    b(c, 7, 2, 1, 1, EY);
+    // Fangs
+    b(c, 4, 4, 1, 1, HN);
+    b(c, 7, 4, 1, 1, HN);
+
+    // -- Horns (curved up-out, drawn over wings) --
+    b(c, 3, 0, 1, 2, HN);
+    b(c, 8, 0, 1, 2, HN);
+    b(c, 2, 0, 1, 1, HN);   // left tip
+    b(c, 9, 0, 1, 1, HN);   // right tip
+
+    // -- Legs + claws --
+    b(c, 4, 8, 2, 2, BD);
+    b(c, 6, 8, 2, 2, BD);
+    b(c, 4, 9, 1, 1, HN);
+    b(c, 7, 9, 1, 1, HN);
+
+    // -- Tail --
+    b(c, 6, 9, 2, 1, BM);
+    b(c, 8, 9, 1, 1, FR);   // ember tail tip
   }
 }
