@@ -1752,11 +1752,21 @@ class _AnimatedCombatRoomState extends State<_AnimatedCombatRoom> {
                     size: 14, color: _paused ? AppTheme.accentGold : AppTheme.textMuted),
               ),
             ),
-            // Speed button
+            // Speed button — capped by the account's paid speed tier (same as
+            // Campaign). Free players top out at 1.5×; the paid 3× is the only
+            // way past that, consistent across every mode.
             GestureDetector(
               onTap: () {
-                final next = (g.speedTier % 3) + 1;
+                final maxTier = g.maxCampaignSpeedTier;
+                var next = g.speedTier + 1;
+                if (next > maxTier) next = 1;
                 g.setSpeedTier(next);
+                if (next == maxTier && maxTier < 4) {
+                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                    content: Text('Higher speed needs the Speed Boost / Premium Pass.'),
+                    behavior: SnackBarBehavior.floating,
+                    duration: Duration(milliseconds: 1200)));
+                }
                 _timer?.cancel();
                 _timer = Timer.periodic(Duration(milliseconds: g.scaledInterval(1200)), (_) {
                   if (!_paused) _doRound();
@@ -2753,6 +2763,7 @@ class _RelicPicker extends StatelessWidget {
           Padding(
             padding: const EdgeInsets.only(bottom: 6),
             child: GestureDetector(
+              behavior: HitTestBehavior.opaque,
               onTap: () => game.chooseDungeonRelic(relic),
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
@@ -2781,6 +2792,14 @@ class _RelicPicker extends StatelessWidget {
               ),
             ),
           ),
+        // Fail-safe: always a way forward even if you don't want a relic.
+        Center(
+          child: TextButton(
+            onPressed: () => game.skipDungeonRelic(),
+            child: Text('SKIP — DESCEND',
+                style: AppTheme.pixelHeading(fontSize: 11, color: AppTheme.textMuted)),
+          ),
+        ),
       ],
     );
   }

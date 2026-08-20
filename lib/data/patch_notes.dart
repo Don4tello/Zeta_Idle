@@ -19,6 +19,21 @@ int get kLatestPatchBuild => kPatchNotes.first.build;
 
 const kPatchNotes = <PatchNote>[
   PatchNote(
+    build: 73,
+    title: 'Dungeon Fix + Artifact Auto-Equip + Gem Clarity',
+    date: '2026-08-19',
+    changes: [
+      'Fixed being unable to claim a relic (and progress) after a dungeon boss '
+          '— plus a Skip option so you\'re never stuck.',
+      'Dungeon speed now matches the rest of the game (the paid speed is the '
+          'only booster).',
+      'NEW: Auto-Equip button on the Artifact table — fills every slot with your '
+          'best artifacts by rarity.',
+      'Gems: fixed the cost label (Arcane Dust) and added a clear explanation of '
+          'what gems do and where to socket them.',
+    ],
+  ),
+  PatchNote(
     build: 72,
     title: 'Character Save Fix',
     date: '2026-08-18',

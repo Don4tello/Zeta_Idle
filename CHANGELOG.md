@@ -3,6 +3,21 @@
 Version numbers are the pubspec build number (`0.1.0+N`), which is the Play
 Store `versionCode`. Newest first.
 
+## +73 — Dungeon relic/speed fixes + artifact auto-equip + gem clarity + GA4 purchase
+- **Dungeon relic blocker:** `_RelicPicker` tap made robust (`HitTestBehavior.opaque`)
+  + a `SKIP — DESCEND` fallback (`GameState.skipDungeonRelic`) so a boss reward
+  can never leave you stuck.
+- **Dungeon speed** button now capped by `maxCampaignSpeedTier` (free ≤1.5×, paid
+  up to 3×) — no more separate free dungeon speed modifier.
+- **Artifact auto-equip:** `GameState.autoEquipArtifacts()` ranks owned artifacts
+  by rarity → total stats → drop level and fills every unlocked cell; `⚡ AUTO`
+  button on the artifact table header.
+- **Gems:** fixed mislabelled cost ("shards"/"gem shards" → **Arcane Dust**) in
+  the craft button + dismantle dialog; added a plain-language explainer of what
+  gems do and where to socket them.
+- **Analytics:** log GA4's reserved `purchase` event (rawPrice + currencyCode)
+  on fulfillment so Firebase revenue reports populate.
+
 ## +72 — Per-slot cloud saves (fix cross-slot character bug) + locked-slot text
 - **Data-loss bug fixed:** the cloud save was one doc per account with no slot
   dimension, so loading any slot pulled the same account-wide cloud save and

@@ -205,6 +205,25 @@ class _GemCraftingTabState extends State<_GemCraftingTab> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // What gems do — quick explainer
+          Container(
+            padding: const EdgeInsets.all(10),
+            margin: const EdgeInsets.only(bottom: 10),
+            decoration: BoxDecoration(
+              color: const Color(0xFF14121c),
+              border: Border.all(color: const Color(0xFFbb88ee).withValues(alpha: 0.35)),
+              borderRadius: BorderRadius.circular(4),
+            ),
+            child: const Text(
+              'Gems are permanent stat boosters you socket into gear. Each gem has '
+              'an element (Fire, Cold, Lightning…): sockets in a WEAPON add a % '
+              'damage bonus of that element, and in ARMOUR/ACCESSORIES add a % '
+              'resistance to it. Craft gems here with Arcane Dust, then socket '
+              'them from an item in your Inventory. Higher tiers give a bigger % '
+              'and cost more Arcane Dust; dismantling refunds the Dust.',
+              style: TextStyle(fontSize: 11, color: AppTheme.textLight, height: 1.45),
+            ),
+          ),
           // Gem placement rules
           Container(
             padding: const EdgeInsets.all(10),
@@ -366,7 +385,7 @@ class _GemCraftingTabState extends State<_GemCraftingTab> {
                     foregroundColor: canAfford ? _selectedType!.color : AppTheme.cardBorder,
                     side: BorderSide(color: canAfford ? _selectedType!.color : AppTheme.cardBorder),
                   ),
-                  child: Text('CRAFT ${_selectedType!.label.toUpperCase()} GEM  (${_tier.shardCost} shards)',
+                  child: Text('CRAFT ${_selectedType!.label.toUpperCase()} GEM  (${_tier.shardCost} Arcane Dust)',
                       style: AppTheme.pixelHeading(fontSize: 11,
                           color: canAfford ? _selectedType!.color : AppTheme.cardBorder)),
                 ),
@@ -392,12 +411,12 @@ class _GemCraftingTabState extends State<_GemCraftingTab> {
                       builder: (ctx) => AlertDialog(
                         backgroundColor: const Color(0xFF1a1a2e),
                         title: Text(gem.name, style: TextStyle(color: gem.type.color, fontSize: 14)),
-                        content: Text('${gem.bonusLabel}\nWeapon: +DMG%  Armor: +RES%\n\nDismantle returns ${gem.tier.shardCost} gem shards.',
+                        content: Text('${gem.bonusLabel}\n\nSocket into a WEAPON for +DMG%, or ARMOUR for +RES% of this gem\'s element.\n\nDismantle returns ${gem.tier.shardCost} Arcane Dust.',
                             style: const TextStyle(color: Colors.white70, fontSize: 12, height: 1.4)),
                         actions: [
                           TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('CANCEL', style: TextStyle(color: AppTheme.textMuted))),
                           TextButton(onPressed: () => Navigator.pop(ctx, 'dismantle'),
-                              child: Text('DISMANTLE (+${gem.tier.shardCost} shards)', style: const TextStyle(color: Color(0xFFff6644)))),
+                              child: Text('DISMANTLE (+${gem.tier.shardCost} Arcane Dust)', style: const TextStyle(color: Color(0xFFff6644)))),
                         ],
                       ),
                     );

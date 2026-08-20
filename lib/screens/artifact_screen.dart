@@ -62,6 +62,29 @@ class _ArtifactScreenState extends State<ArtifactScreen> {
         Text('ARTIFACT TABLE',
             style: AppTheme.pixelHeading(fontSize: 12, letterSpacing: 2)),
         const Spacer(),
+        // Auto-equip the best artifacts by rarity into every slot.
+        GestureDetector(
+          onTap: game.ownedArtifacts.isEmpty ? null : () {
+            final n = game.autoEquipArtifacts();
+            setState(() { _selectedArtifactId = null; _highlightedCell = null; });
+            ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+              content: Text(n > 0 ? 'Auto-equipped $n best artifacts.' : 'No artifacts to equip.'),
+              behavior: SnackBarBehavior.floating,
+              duration: const Duration(milliseconds: 1200)));
+          },
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            decoration: BoxDecoration(
+              color: game.ownedArtifacts.isEmpty ? Colors.transparent : AppTheme.accentGold.withValues(alpha: 0.12),
+              border: Border.all(color: game.ownedArtifacts.isEmpty ? AppTheme.cardBorder : AppTheme.accentGold),
+              borderRadius: BorderRadius.circular(3),
+            ),
+            child: Text('⚡ AUTO',
+                style: AppTheme.pixelHeading(fontSize: 10,
+                    color: game.ownedArtifacts.isEmpty ? AppTheme.textMuted : AppTheme.accentGold)),
+          ),
+        ),
+        const SizedBox(width: 10),
         Text('${game.unlockedArtifactCells.clamp(0, _maxCells)}/$_maxCells slots',
             style: const TextStyle(color: AppTheme.textMuted, fontSize: 11)),
         const SizedBox(width: 10),

@@ -112,6 +112,22 @@ class AnalyticsService {
   void iapPurchase(String productId) =>
       _log('iap_purchase', {'product': productId});
 
+  /// GA4's reserved `purchase` event — feeds Firebase revenue reports.
+  /// [value] is the localized price (rawPrice), [currency] an ISO-4217 code.
+  void purchase({
+    required double value,
+    required String currency,
+    String? productId,
+  }) {
+    final fa = _fa;
+    if (fa == null || value <= 0 || currency.isEmpty) return;
+    fa.logPurchase(
+      value: value,
+      currency: currency,
+      parameters: productId == null ? null : {'product': productId},
+    ).catchError((_) {});
+  }
+
   void cosmeticUnlocked(String type, String id) =>
       _log('cosmetic_unlocked', {'type': type, 'id': id});
 

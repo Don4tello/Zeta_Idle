@@ -120,6 +120,16 @@ class IapService {
     // Visible in `adb logcat | grep flutter` — confirms fulfillment fired.
     debugPrint('[IAP] fulfill: $productId');
     AnalyticsService.instance.iapPurchase(productId);
+    // GA4 revenue: log the reserved `purchase` event with the real price when
+    // we have store details (skipped for debug fulfills with no product data).
+    final pd = _products[productId];
+    if (pd != null) {
+      AnalyticsService.instance.purchase(
+        value: pd.rawPrice,
+        currency: pd.currencyCode,
+        productId: productId,
+      );
+    }
     // Crystal consumables
     final pkg = packages.where((p) => p.productId == productId).firstOrNull;
     if (pkg != null) {

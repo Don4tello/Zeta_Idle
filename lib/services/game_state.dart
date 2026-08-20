@@ -2875,6 +2875,28 @@ class GameState extends ChangeNotifier {
     saveToLocal();
   }
 
+  /// Auto-equip the best artifacts into every unlocked cell, ranked by rarity
+  /// first, then total stat value, then drop level. Clears the grid first.
+  /// Returns the number of cells filled.
+  int autoEquipArtifacts() {
+    if (ownedArtifacts.isEmpty) return 0;
+    int score(Artifact a) =>
+        a.rarity.index * 1000000 +
+        (a.powerBonus + a.acBonus + a.hpPct + a.shardPct + a.goldPct + a.xpPct) * 100 +
+        a.dropLevel;
+    final sorted = List<Artifact>.from(ownedArtifacts)
+      ..sort((x, y) => score(y).compareTo(score(x)));
+    artifactGrid.clear();
+    final n = _unlockedArtifactCells.clamp(0, sorted.length);
+    for (var i = 0; i < n; i++) {
+      artifactGrid[i] = sorted[i].uid;
+    }
+    _syncHeroHpPct();
+    notifyListeners();
+    saveToLocal();
+    return n;
+  }
+
   void buyUnlockArtifactCell() {
     if (_unlockedArtifactCells >= 81) return;
     final cost = 5 + (_unlockedArtifactCells ~/ 3) * 3;
@@ -6023,6 +6045,17 @@ class GameState extends ChangeNotifier {
     if (relic.bonesGranted > 0) run.bones += relic.bonesGranted;
     _setLastAction('Relic claimed: ${relic.name}');
     notifyListeners();
+    saveToLocal();
+  }
+
+  /// Skip the relic reward and continue the run (fail-safe so a boss reward can
+  /// never leave the player stuck).
+  void skipDungeonRelic() {
+    final run = activeDungeon;
+    if (run == null) return;
+    run.relicChoices = [];
+    notifyListeners();
+    saveToLocal();
   }
 
   /// Floor-scaled rarity: deeper floors roll better loot. Legendary opens up
