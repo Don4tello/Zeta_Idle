@@ -1,7 +1,7 @@
 name: zeta_idle
 description: A dark medieval idle RPG prototype.
 publish_to: 'none'
-version: 0.1.0+76
+version: 0.1.0+77
 environment:
   sdk: '>=3.0.0 <4.0.0'
   flutter: '>=3.0.0'

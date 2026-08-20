@@ -680,11 +680,13 @@ class TutorialTip extends StatelessWidget {
     required this.tutorialKey,
     required this.text,
     required this.game,
+    this.onDismiss,
   });
 
   final String tutorialKey;
   final String text;
   final GameState game;
+  final VoidCallback? onDismiss; // extra rebuild hook for screens that need it
 
   bool _isSeen() => switch (tutorialKey) {
     'battle'    => game.tutorialBattleSeen,
@@ -732,11 +734,15 @@ class TutorialTip extends StatelessWidget {
           Expanded(child: Text(text,
               style: const TextStyle(fontSize: 13, color: Color(0xFF88eeaa), height: 1.4))),
           GestureDetector(
-            onTap: () => game.markTutorialSeen(tutorialKey),
+            behavior: HitTestBehavior.opaque,
+            onTap: () {
+              game.markTutorialSeen(tutorialKey);
+              onDismiss?.call();
+            },
             child: Container(
               margin: const EdgeInsets.only(left: 10),
-              width: 36,
-              height: 36,
+              width: 40,
+              height: 40,
               decoration: BoxDecoration(
                 color: const Color(0xFF223322),
                 border: Border.all(color: const Color(0xFF44cc88), width: 1.5),

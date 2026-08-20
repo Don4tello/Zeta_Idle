@@ -615,6 +615,7 @@ class _GauntletScreenState extends State<GauntletScreen> {
         TutorialTip(
           tutorialKey: 'gauntlet',
           game: game,
+          onDismiss: () { if (mounted) setState(() {}); },
           text: 'The Gauntlet is a combat challenge — pick modifiers to increase difficulty '
               'and earn more Echoes. Echoes are used to purchase permanent Upgrades.',
         ),
