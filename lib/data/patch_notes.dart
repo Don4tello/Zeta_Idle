@@ -19,6 +19,16 @@ int get kLatestPatchBuild => kPatchNotes.first.build;
 
 const kPatchNotes = <PatchNote>[
   PatchNote(
+    build: 83,
+    title: 'Boss Rush Rebalance',
+    date: '2026-08-19',
+    changes: [
+      'Boss Rush tier 1 is now a fair ~level-20 challenge — its bosses come from '
+          'earlier campaign stages, and each higher tier scales deeper. No more '
+          'brick wall on the final tier-1 boss.',
+    ],
+  ),
+  PatchNote(
     build: 82,
     title: 'Clearer "How to Get" Resources',
     date: '2026-08-19',

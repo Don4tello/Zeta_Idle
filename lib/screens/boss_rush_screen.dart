@@ -25,8 +25,15 @@ import '../widgets/tier_selector.dart';
 import '../widgets/zcoin_icon.dart';
 import 'main_shell.dart' show TutorialTip;
 
-// The 5 campaign boss stages (0-indexed: every 5th stage starting at 4)
-const _bossStages = [4, 9, 14, 19, 24];
+// The 5 boss source-stages for a given Boss Rush tier. Tier 1 stays shallow so
+// it's a genuine ~level-20 checkpoint (tops out at the stage-14 boss); each
+// higher tier shifts +5 stages deeper. Clamped to the campaign length.
+List<int> _bossStagesForTier(int tier) {
+  final base = 4 + (tier - 1) * 5;
+  return [base, base + 2, base + 5, base + 7, base + 10]
+      .map((s) => s.clamp(0, 99))
+      .toList();
+}
 
 class BossRushScreen extends StatefulWidget {
   const BossRushScreen({super.key});
@@ -44,6 +51,8 @@ class _BossRushScreenState extends State<BossRushScreen> {
   bool _done    = false;
 
   int _selectedTier = 1;
+  // Boss source-stages for the active run, locked in when the run starts.
+  List<int> _stages = _bossStagesForTier(1);
   int _bossIndex    = 0;
   int _heroHp     = 0;
   int _heroMaxHp  = 0;
@@ -124,6 +133,7 @@ class _BossRushScreenState extends State<BossRushScreen> {
   void _startRun() {
     final game = GameStateProvider.of(context);
     if (!game.consumeBossRushAttempt()) return;
+    _stages = _bossStagesForTier(_selectedTier); // lock boss stages for this tier
     _heroDmgMod  = game.hero.baseDmg
         + game.passiveTree.totalOf(PassiveEffect.damageFlat)
         + game.inventory.totalOf(ItemStat.damageBonus)
@@ -165,7 +175,7 @@ class _BossRushScreenState extends State<BossRushScreen> {
       _fightAbilities.clear();
       _log.clear();
     });
-    _log.add('⚔ BOSS RUSH BEGINS — ${_bossStages.length} bosses await!');
+    _log.add('⚔ BOSS RUSH BEGINS — ${_stages.length} bosses await!');
     _spawnBoss();
 
     _timer = Timer.periodic(const Duration(seconds: 1), (_) {
@@ -179,7 +189,7 @@ class _BossRushScreenState extends State<BossRushScreen> {
   }
 
   void _spawnBoss() {
-    final stageIdx    = _bossStages[_bossIndex];
+    final stageIdx    = _stages[_bossIndex];
     final base        = EnemyData.enemyForStage(stageIdx, prestigeLevel: _rebirthLvl);
     final t           = _selectedTier - 1;
     // Steep per-tier scaling — each tier is a meaningful difficulty jump.
@@ -238,7 +248,7 @@ class _BossRushScreenState extends State<BossRushScreen> {
           _arenaKey.currentState?.playEnemyDeath();
           await Future.delayed(const Duration(milliseconds: 900));
           _bossIndex++;
-          if (_bossIndex >= _bossStages.length) { _endRun(cleared: true); return; }
+          if (_bossIndex >= _stages.length) { _endRun(cleared: true); return; }
           final heal = (_heroMaxHp * 0.25).round();
           _heroHp = (_heroHp + heal).clamp(0, _heroMaxHp);
           _log.add('⚕ Recovered $heal HP before next boss.');
@@ -283,7 +293,7 @@ class _BossRushScreenState extends State<BossRushScreen> {
       _arenaKey.currentState?.playEnemyDeath();
       await Future.delayed(const Duration(milliseconds: 900));
       _bossIndex++;
-      if (_bossIndex >= _bossStages.length) { _endRun(cleared: true); return; }
+      if (_bossIndex >= _stages.length) { _endRun(cleared: true); return; }
       final heal = (_heroMaxHp * 0.25).round();
       _heroHp = (_heroHp + heal).clamp(0, _heroMaxHp);
       _log.add('⚕ Recovered $heal HP before next boss.');
@@ -415,8 +425,8 @@ class _BossRushScreenState extends State<BossRushScreen> {
     _autoAttackTimer?.cancel();
     _game?.audioService.endBattleMusic();
     final result = BossRushResult(
-      bossesDefeated: cleared ? _bossStages.length : _bossIndex,
-      totalBosses:    _bossStages.length,
+      bossesDefeated: cleared ? _stages.length : _bossIndex,
+      totalBosses:    _stages.length,
       elapsedSeconds: _elapsedSec,
       finalHpPct:     cleared ? (_heroHp / _heroMaxHp) : 0.0,
       cleared:        cleared,
@@ -645,7 +655,10 @@ class _BossRushScreenState extends State<BossRushScreen> {
             selectedTier: _selectedTier,
             maxUnlocked: (game.bossRushHighestTier + 1).clamp(1, 10),
             highestCleared: game.bossRushHighestTier,
-            onTierChange: (t) => setState(() => _selectedTier = t),
+            onTierChange: (t) => setState(() {
+              _selectedTier = t;
+              _stages = _bossStagesForTier(t); // keep the preview in sync
+            }),
           ),
           const SizedBox(height: 12),
           _BossRushStartSection(
@@ -675,7 +688,7 @@ class _BossRushScreenState extends State<BossRushScreen> {
                 Text('TIER $_selectedTier',
                     style: AppTheme.pixelHeading(
                         fontSize: 12, color: AppTheme.accentGold, letterSpacing: 2)),
-                Text('BOSS ${_bossIndex + 1} / ${_bossStages.length}',
+                Text('BOSS ${_bossIndex + 1} / ${_stages.length}',
                     style: AppTheme.pixelHeading(
                         fontSize: 11, color: AppTheme.textMuted)),
               ],
@@ -701,7 +714,7 @@ class _BossRushScreenState extends State<BossRushScreen> {
               children: [
                 BattleArena(
                   key: _arenaKey,
-                  stageIndex:       _bossStages[_bossIndex.clamp(0, _bossStages.length - 1)],
+                  stageIndex:       _stages[_bossIndex.clamp(0, _stages.length - 1)],
                   heroName:         game.hero.name,
                   heroLevel:        game.hero.level,
                   heroCurrentHp:    _heroHp,

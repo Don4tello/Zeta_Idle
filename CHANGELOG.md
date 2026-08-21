@@ -3,6 +3,14 @@
 Version numbers are the pubspec build number (`0.1.0+N`), which is the Play
 Store `versionCode`. Newest first.
 
+## +83 — Boss Rush tier-scaled difficulty (Option 1)
+- Replaced the fixed boss stages `[4,9,14,19,24]` with `_bossStagesForTier(t)` =
+  `[4,6,9,11,14] + (t-1)×5` (clamped to campaign length). Tier 1 now tops out at
+  the stage-14 boss (Pharaoh, ~4,080 HP w/ 1 rebirth) instead of the stage-24
+  Lich Emperor (~9,600 HP), making it a real ~level-20 checkpoint; each higher
+  tier shifts +5 stages deeper. Stages lock at run start and update the pre-run
+  preview on tier change.
+
 ## +82 — "How to get" resource clarity across upgrade screens
 - New `CurrencySourceBar` widget renders the canonical `CurrencyDef.source` for
   one or more currencies; added to the **Forge** (Gold + Shards) and **Runes**
