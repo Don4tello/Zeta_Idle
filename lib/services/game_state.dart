@@ -189,13 +189,12 @@ class GameState extends ChangeNotifier {
           _idleTickCount = 0;
           collectIdleRewards();
         }
-        // Auto-campaign: resolve a battle in the background (subscriber-only).
-        // Skip while the Battle screen is open — it runs the fight visibly there.
-        if (autoCampaign && canAutoCampaign && !battleScreenActive &&
-            currentEnemy == null && !heroDefeated) {
-          _runAutoCampaignTick();
-        } else if (autoCampaign && !canAutoCampaign) {
-          autoCampaign = false; // subscription lapsed — turn it off
+        // Auto-campaign runs VISIBLY on the Battle screen only. We intentionally
+        // do NOT resolve battles silently in the background — that made the
+        // campaign look like it was "playing itself" with no fights. Just clear
+        // the flag if the subscription lapsed.
+        if (autoCampaign && !canAutoCampaign) {
+          autoCampaign = false;
         }
       },
     );
@@ -8244,33 +8243,6 @@ class GameState extends ChangeNotifier {
 
   void fightCampaign() {
     startBattle();
-  }
-
-  void _runAutoCampaignTick() {
-    // Batch all the round-by-round notifies into ONE rebuild at the end, and
-    // trim the battle log so it can't grow unbounded — this is what made the
-    // background fights lag.
-    _suppressNotify = true;
-    try {
-      startBattle();
-      if (currentEnemy == null) return;
-      // Simulate combat rounds until someone dies
-      for (int round = 0; round < 50; round++) {
-        heroAttack();
-        if (currentEnemy == null) break; // victory handled inside heroAttack
-        if (heroDefeated) {
-          heroDefeated = false;
-          autoCampaign = false; // stop auto on defeat
-          break;
-        }
-      }
-    } finally {
-      _suppressNotify = false;
-      if (battleLog.length > 40) {
-        battleLog = battleLog.sublist(battleLog.length - 40);
-      }
-      notifyListeners();
-    }
   }
 
   // ── Idle income ────────────────────────────────────────────────────────────

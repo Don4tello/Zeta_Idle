@@ -19,6 +19,16 @@ int get kLatestPatchBuild => kPatchNotes.first.build;
 
 const kPatchNotes = <PatchNote>[
   PatchNote(
+    build: 80,
+    title: 'Auto-Campaign Fix',
+    date: '2026-08-19',
+    changes: [
+      'Auto-Campaign no longer silently plays through the campaign in the '
+          'background — it now only auto-fights while you\'re watching the Battle '
+          'screen.',
+    ],
+  ),
+  PatchNote(
     build: 79,
     title: 'Rebirth Boons Revamp',
     date: '2026-08-19',

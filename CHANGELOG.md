@@ -3,6 +3,13 @@
 Version numbers are the pubspec build number (`0.1.0+N`), which is the Play
 Store `versionCode`. Newest first.
 
+## +80 — Auto-campaign is visible-only (no silent background sim)
+- Removed the silent background `_runAutoCampaignTick` sim from the idle timer —
+  it made the campaign appear to "play itself" with no battles. Auto-campaign
+  now only advances **visibly on the Battle screen** (the hands-free loop there
+  is unchanged); off-screen it no longer resolves fights. The idle timer still
+  clears `autoCampaign` if the subscription lapses.
+
 ## +79 — Rebirth boons revamp (27 boons, rarities, progress-weighted)
 - `rebirth_boon.dart` rewritten: **27 boons** across 4 rarities (Uncommon → Rare
   → Epic → Legendary, mirroring `ItemRarity`). Each `RebirthBoon` gains `rarity`
