@@ -70,7 +70,10 @@ class RuneScreen extends StatelessWidget {
       appBar: AppBar(
         title: Text('RUNES', style: AppTheme.pixelHeading(fontSize: 14, letterSpacing: 2)),
       ),
-      body: body,
+      body: Column(children: [
+        const CurrencySourceBar(['gemShards']),
+        Expanded(child: body),
+      ]),
     );
   }
 }

@@ -3,6 +3,14 @@
 Version numbers are the pubspec build number (`0.1.0+N`), which is the Play
 Store `versionCode`. Newest first.
 
+## +82 — "How to get" resource clarity across upgrade screens
+- New `CurrencySourceBar` widget renders the canonical `CurrencyDef.source` for
+  one or more currencies; added to the **Forge** (Gold + Shards) and **Runes**
+  (Arcane Dust) screens.
+- Hero-hub tab resource banners: **SCORES** now shows the Gold source and
+  **MERCS** shows Shards + ZCoins; the **Shards** source string is now
+  consistent between Abilities and Passives (was contradictory).
+
 ## +81 — Artifact farming guide
 - Added a "HOW TO GET ARTIFACTS" card (`_ArtifactSourcesCard`) to the Artifacts
   screen collection: Campaign bosses (~25% on boss kills), Dungeon runs (1 per

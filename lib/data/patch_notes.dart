@@ -19,6 +19,16 @@ int get kLatestPatchBuild => kPatchNotes.first.build;
 
 const kPatchNotes = <PatchNote>[
   PatchNote(
+    build: 82,
+    title: 'Clearer "How to Get" Resources',
+    date: '2026-08-19',
+    changes: [
+      'Upgrade screens now clearly show where to farm the resource they use — '
+          'Scores (Gold), Mercs (Shards + ZCoins), Forge and Runes all get a '
+          '"how to get" line, and the Shards sources are now consistent.',
+    ],
+  ),
+  PatchNote(
     build: 81,
     title: 'Artifact Farming Guide',
     date: '2026-08-19',

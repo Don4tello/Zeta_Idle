@@ -85,7 +85,10 @@ class _ForgeScreenState extends State<ForgeScreen>
         title: Text('FORGE', style: AppTheme.pixelHeading(fontSize: 14, letterSpacing: 2)),
         bottom: tabBar,
       ),
-      body: tabView,
+      body: Column(children: [
+        const CurrencySourceBar(['gold', 'shards']),
+        Expanded(child: tabView),
+      ]),
     );
   }
 }

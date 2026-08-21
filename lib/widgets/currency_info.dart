@@ -93,6 +93,43 @@ class CurrencyInfo {
   static final String ascensionPoints = currencyById('ascensionPoints').tooltip;
 }
 
+/// A compact "how to get X" bar for the top of a spending/upgrade screen.
+/// Reads the canonical [CurrencyDef.source], so every screen stays accurate.
+class CurrencySourceBar extends StatelessWidget {
+  const CurrencySourceBar(this.currencyIds, {super.key});
+  final List<String> currencyIds;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      color: const Color(0xFF1a1916),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          for (final id in currencyIds)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 1),
+              child: RichText(
+                text: TextSpan(
+                  style: const TextStyle(fontSize: 10, height: 1.35, color: Color(0xFFb7ae9f)),
+                  children: [
+                    TextSpan(
+                      text: '${currencyById(id).icon} How to get ${currencyById(id).name}: ',
+                      style: TextStyle(color: currencyById(id).color, fontWeight: FontWeight.bold),
+                    ),
+                    TextSpan(text: currencyById(id).source),
+                  ],
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
 /// Wraps any widget in an explanatory tooltip. Use for resources, upgrades, or
 /// items whose meaning isn't obvious from the icon/label alone.
 class InfoTip extends StatelessWidget {

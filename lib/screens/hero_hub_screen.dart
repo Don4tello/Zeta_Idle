@@ -50,15 +50,18 @@ class _TabDef {
 // Master list: order = display order, unlock = stage required.
 const _kAllTabs = <_TabDef>[
   _TabDef('SHEET',        GameIconType.armor,      0),
-  _TabDef('SCORES',       GameIconType.star,        1),
+  _TabDef('SCORES',       GameIconType.star,        1, resource: _TabResource(
+    icon: GameIconType.coin, color: Color(0xFFdaa520), name: 'Gold',
+    sources: 'Every enemy kill & idle income · Expeditions · Dungeons · Events',
+  )),
   _TabDef('ABILITIES',    GameIconType.swords,      2, resource: _TabResource(
     icon: GameIconType.diamond, color: Color(0xFF44ccff), name: 'Shards',
-    sources: 'Dungeon runs · Locked Chests · Treasure rooms',
+    sources: 'Enemy kills · Dungeons · Expeditions · Gauntlet',
   )),
   _TabDef('ACHIEVEMENTS', GameIconType.medal,       5),
   _TabDef('PASSIVES',     GameIconType.leaf,        8, resource: _TabResource(
     icon: GameIconType.diamond, color: Color(0xFF6699ff), name: 'Shards',
-    sources: 'Kills · Dungeons · Expeditions · Gauntlet',
+    sources: 'Enemy kills · Dungeons · Expeditions · Gauntlet',
   )),
   _TabDef('BONUSES',      GameIconType.barChart,   10),
   _TabDef('BESTIARY',     GameIconType.eyeMonster, 12),
@@ -67,7 +70,10 @@ const _kAllTabs = <_TabDef>[
     icon: GameIconType.coin, color: Color(0xFF66aaff), name: 'ZCoins',
     sources: 'Premium shop · Login rewards · Season pass',
   )),
-  _TabDef('MERCS',        GameIconType.warriors,   22),
+  _TabDef('MERCS',        GameIconType.warriors,   22, resource: _TabResource(
+    icon: GameIconType.diamond, color: Color(0xFF6699ff), name: 'Shards + ZCoins',
+    sources: 'Shards from kills/Dungeons; ZCoins from purchases, Bounties & streaks',
+  )),
   // Unlocks at stage 100 (when Prestige first becomes available) and stays
   // unlocked forever after — effectiveUnlockStage latches to >=100 once you've
   // prestiged, so a post-rebirth stage reset can't hide it.
