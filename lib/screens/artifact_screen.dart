@@ -227,6 +227,8 @@ class _ArtifactScreenState extends State<ArtifactScreen> {
       padding: const EdgeInsets.fromLTRB(8, 6, 8, 8),
       children: [
         _SetBonusPanel(counts: game.equippedSetPieceCounts),
+        // ── How to get artifacts ────────────────────────────────────────────
+        const _ArtifactSourcesCard(),
         // â”€â”€ Collection â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         Padding(
           padding: const EdgeInsets.only(bottom: 4),
@@ -776,4 +778,62 @@ class _TableGrainPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
+// ── How to get artifacts (farming guide) ──────────────────────────────────────
+class _ArtifactSourcesCard extends StatelessWidget {
+  const _ArtifactSourcesCard();
+
+  @override
+  Widget build(BuildContext context) {
+    Widget row(String icon, String title, String detail) => Padding(
+          padding: const EdgeInsets.only(bottom: 5),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              SizedBox(width: 22, child: Text(icon, style: const TextStyle(fontSize: 14))),
+              Expanded(
+                child: RichText(
+                  text: TextSpan(
+                    style: const TextStyle(fontSize: 11, color: AppTheme.textLight, height: 1.35),
+                    children: [
+                      TextSpan(text: '$title — ',
+                          style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFFccb088))),
+                      TextSpan(text: detail, style: const TextStyle(color: AppTheme.textMuted)),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+
+    return Container(
+      margin: const EdgeInsets.fromLTRB(8, 4, 8, 10),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: const Color(0xFF231d15),
+        border: Border.all(color: const Color(0xFF5a3a20)),
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('HOW TO GET ARTIFACTS',
+              style: AppTheme.pixelHeading(fontSize: 11, letterSpacing: 2, color: const Color(0xFFccb088))),
+          const SizedBox(height: 8),
+          row('👑', 'Campaign Bosses', 'about a 25% chance to drop on every boss-stage kill.'),
+          row('🏰', 'Dungeon runs', 'each boss you defeat drops one — up to 2 per run. Best steady farm.'),
+          row('⚔', 'Boss Rush', 'clear a run with an A or S rank to earn an artifact.'),
+          const SizedBox(height: 2),
+          const Text(
+            'Deeper floors / higher stages & tiers roll higher-level artifacts, and '
+            'deeper content has a better shot at Rare quality. Equip them on the grid '
+            'above and spend Mythril to upgrade.',
+            style: TextStyle(fontSize: 10, color: AppTheme.textMuted, height: 1.4),
+          ),
+        ],
+      ),
+    );
+  }
 }

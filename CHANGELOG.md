@@ -3,6 +3,12 @@
 Version numbers are the pubspec build number (`0.1.0+N`), which is the Play
 Store `versionCode`. Newest first.
 
+## +81 — Artifact farming guide
+- Added a "HOW TO GET ARTIFACTS" card (`_ArtifactSourcesCard`) to the Artifacts
+  screen collection: Campaign bosses (~25% on boss kills), Dungeon runs (1 per
+  boss defeated, up to 2/run), Boss Rush (A/S-rank clears), plus a note that
+  deeper content rolls higher-level/rarer artifacts.
+
 ## +80 — Auto-campaign is visible-only (no silent background sim)
 - Removed the silent background `_runAutoCampaignTick` sim from the idle timer —
   it made the campaign appear to "play itself" with no battles. Auto-campaign

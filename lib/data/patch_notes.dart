@@ -19,6 +19,15 @@ int get kLatestPatchBuild => kPatchNotes.first.build;
 
 const kPatchNotes = <PatchNote>[
   PatchNote(
+    build: 81,
+    title: 'Artifact Farming Guide',
+    date: '2026-08-19',
+    changes: [
+      'The Artifacts screen now shows exactly where to farm artifacts — Campaign '
+          'bosses, Dungeon runs and Boss Rush — and how each one drops.',
+    ],
+  ),
+  PatchNote(
     build: 80,
     title: 'Auto-Campaign Fix',
     date: '2026-08-19',
