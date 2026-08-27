@@ -35,13 +35,14 @@ class MainShell extends StatefulWidget {
   State<MainShell> createState() => _MainShellState();
 }
 
-class _MainShellState extends State<MainShell> {
+class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
   int _tab = 0;
   bool _comebackMerged = false;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     MainShell._onTabRequest = (tab) {
       if (mounted) setState(() => _tab = tab);
     };
@@ -50,8 +51,23 @@ class _MainShellState extends State<MainShell> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     MainShell._onTabRequest = null;
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // On a warm resume (app wasn't killed), compute idle earnings accrued while
+    // backgrounded and show the same welcome-back dialog as a cold start.
+    if (state != AppLifecycleState.resumed || !mounted) return;
+    final game = GameStateProvider.of(context);
+    game.computeOfflineOnResume();
+    if (game.offlineGoldEarned > 0) {
+      if (game.pendingComebackRewards != null) _comebackMerged = true;
+      _showOfflineDialog(game);
+      game.clearOfflineReport();
+    }
   }
 
   Future<void> _checkOnStart() async {
@@ -149,13 +165,20 @@ class _MainShellState extends State<MainShell> {
 
   void _showOfflineDialog(GameState game) {
     final secs = game.offlineSecondsAway;
-    final String timeLabel;
-    if (secs >= 3600) {
-      final h = secs ~/ 3600;
-      final m = (secs % 3600) ~/ 60;
-      timeLabel = m > 0 ? '${h}h ${m}m' : '${h}h';
+    final String awayLine;
+    if (game.offlineWasCapped) {
+      // Real time away exceeded the 8h idle cap — don't imply an exact figure.
+      awayLine = 'You were away for more than 8h — showing the maximum idle rewards.';
     } else {
-      timeLabel = '${secs ~/ 60}m';
+      final String timeLabel;
+      if (secs >= 3600) {
+        final h = secs ~/ 3600;
+        final m = (secs % 3600) ~/ 60;
+        timeLabel = m > 0 ? '${h}h ${m}m' : '${h}h';
+      } else {
+        timeLabel = '${secs ~/ 60}m';
+      }
+      awayLine = 'You were away for $timeLabel.';
     }
     final gold = game.offlineGoldEarned;
     final goldLabel = fmtNum(gold);
@@ -175,7 +198,7 @@ class _MainShellState extends State<MainShell> {
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text('You were away for $timeLabel.',
+            Text(awayLine,
                 style: const TextStyle(fontSize: 13, color: AppTheme.textMuted)),
             const SizedBox(height: 12),
             _offlineRow(GameIconType.coin, '+$goldLabel gold', AppTheme.accentGold),

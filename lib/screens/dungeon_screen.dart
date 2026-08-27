@@ -1299,6 +1299,7 @@ class _AnimatedCombatRoomState extends State<_AnimatedCombatRoom> {
   Timer? _timer;
   bool _finished = false;
   bool _paused = false;
+  int? _countdown; // 3/2/1 shown before the first round; null = none
   final List<String> _log = [];
 
   late int _heroHp;
@@ -1385,12 +1386,23 @@ class _AnimatedCombatRoomState extends State<_AnimatedCombatRoom> {
       _log.add('‼ Ambush! You take $pre damage before the fight begins.');
     }
 
-    // Dungeon caps at tier 3 (max 2— release / 5— debug) — higher tiers bleed
-    // in from the campaign speed button and make the dungeon impossibly fast.
-    if (g.speedTier > 3) g.setSpeedTier(3);
+    // Speed is account-wide and consistent across every mode — the dungeon
+    // honours the same tier (incl. the paid 3×) as Campaign, no local cap.
     g.audioService.startBattleMusic();
     // Fire ally battle-start abilities
     _fireAllyStart(g);
+    _startRoundsAfterCountdown(g);
+  }
+
+  // 3-2-1 countdown before the first round, matching Campaign / Tower.
+  Future<void> _startRoundsAfterCountdown(GameState g) async {
+    for (int i = 3; i >= 1; i--) {
+      if (!mounted) return;
+      setState(() => _countdown = i);
+      await Future.delayed(Duration(milliseconds: g.scaledInterval(1000)));
+    }
+    if (!mounted) return;
+    setState(() => _countdown = null);
     _timer = Timer.periodic(Duration(milliseconds: g.scaledInterval(1200)), (_) {
       if (!_paused) _doRound();
     });
@@ -1405,29 +1417,46 @@ class _AnimatedCombatRoomState extends State<_AnimatedCombatRoom> {
     return '${theme.prefix} $raw';
   }
 
+  // Staggers merc call-out animations so several firing at once don't overlap.
+  void _playMercFx(List<({String name, String icon, Color color})> fx) {
+    for (var i = 0; i < fx.length; i++) {
+      final e = fx[i];
+      Future.delayed(Duration(milliseconds: i * 850), () {
+        if (mounted) _arenaKey.currentState?.playMercAbility(e.name, e.icon, e.color);
+      });
+    }
+  }
+
   void _fireAllyStart(GameState g) {
     final enemyName = _displayEnemyName;
+    final fx = <({String name, String icon, Color color})>[];
     if (g.allyUnlocked('greybeard') && _allyUsed.add('greybeard')) {
       _bonusAtk += 5;
       _log.add('⚔ Greybeard: War Cry! +5 ATK for this fight.');
+      fx.add((name: 'Greybeard', icon: '📣', color: const Color(0xFFffaa44)));
     }
     if (g.allyUnlocked('elder_voss') && _allyUsed.add('elder_voss')) {
       final burst = (_enemyMaxHp * 0.10).round().clamp(1, 9999);
       _enemyHp = (_enemyHp - burst).clamp(0, _enemyMaxHp);
       _log.add('⚡ Voss: Arcane Surge! $enemyName takes $burst arcane damage!');
+      fx.add((name: 'Voss', icon: '🔮', color: const Color(0xFF66aaff)));
     }
     if (g.allyUnlocked('coin_felix') && _allyUsed.add('coin_felix')) {
-      _allyGoldMult = 2.0;
-      _log.add('💰 Felix: Bribe! $enemyName will drop 2x gold!');
+      _bonusAc += 6;
+      _log.add('💨 Felix: Smoke Screen! Harder to hit (+6 AC) this fight.');
+      fx.add((name: 'Felix', icon: '💨', color: const Color(0xFFffd700)));
     }
     if (g.allyUnlocked('shadow_lena') && _allyUsed.add('shadow_lena')) {
       _bonusAtk += 8;
       _log.add('⚔ Lena: Backstab! +8 ATK for first strike.');
+      fx.add((name: 'Lena', icon: '🌑', color: const Color(0xFF44cc88)));
     }
     if (g.allyUnlocked('golem_ruk') && _allyUsed.add('golem_ruk')) {
       _bonusAc += 4;
-      _log.add('◆ Ruk: Stone Skin! +4 ARM for this fight.');
+      _log.add('◆ Ruk: Stone Skin! +4 AC for this fight.');
+      fx.add((name: 'Ruk', icon: '🪨', color: const Color(0xFF99aabb)));
     }
+    _playMercFx(fx);
   }
 
   void _checkAllyHpAbilities(GameState g) {
@@ -1438,6 +1467,7 @@ class _AnimatedCombatRoomState extends State<_AnimatedCombatRoom> {
       final heal = (_heroMaxHp * 0.25).round().clamp(1, _heroMaxHp);
       _heroHp = (_heroHp + heal).clamp(0, _heroMaxHp);
       _log.add('⊕ Mira: Field Triage! Healed for $heal HP!');
+      _playMercFx([(name: 'Mira', icon: '💉', color: const Color(0xFFff88aa))]);
     }
   }
 
@@ -1724,7 +1754,7 @@ class _AnimatedCombatRoomState extends State<_AnimatedCombatRoom> {
     if (widget.isAmbush) { bannerColor = const Color(0xFFcc4444); bannerText = '⚔ AMBUSH — Enemy struck first!'; }
     if (widget.isElite)  { bannerColor = const Color(0xFFcc8833); bannerText = '★ ELITE ENEMY — Greater loot awaits'; }
     if (widget.isBoss)   { bannerColor = const Color(0xFFcc2222); bannerText = '☠ BOSS ENCOUNTER'; }
-    final speedLabel = ['1×', '1.5×', '2×'][g.speedTier.clamp(1, 3) - 1];
+    final speedLabel = g.battleSpeedLabel; // canonical 1× / 1.5× / 2× / 3× (same as Campaign)
     return Column(
       children: [
         Container(
@@ -1818,6 +1848,27 @@ class _AnimatedCombatRoomState extends State<_AnimatedCombatRoom> {
                 heroArmor:      g.heroArmorValue,
               ),
               ArenaAbilityEffect(key: _effectKey),
+              if (_countdown != null)
+                IgnorePointer(
+                  child: Center(
+                    child: AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 220),
+                      transitionBuilder: (child, anim) => ScaleTransition(
+                          scale: anim, child: FadeTransition(opacity: anim, child: child)),
+                      child: Text(
+                        '$_countdown',
+                        key: ValueKey(_countdown),
+                        style: const TextStyle(
+                          fontSize: 96, fontWeight: FontWeight.bold, color: Colors.white,
+                          shadows: [
+                            Shadow(color: Color(0xFFcc2200), blurRadius: 32),
+                            Shadow(color: Color(0xFFcc2200), blurRadius: 16),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
             ],
           ),
         ),

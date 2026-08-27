@@ -559,6 +559,8 @@ class CombatStatsPanel extends StatelessWidget {
         + game.petArmor + game.skinArmor;
 
     final critPct   = game.totalCritChancePct;
+    final critOver  = game.critOverflowPct;
+    final critDmg   = game.totalCritDamageMult;
     final pierce    = pt.totalOf(PassiveEffect.pierce);
     final regen     = pt.totalOf(PassiveEffect.regenFlat)
         + inv.totalOf(ItemStat.constitution) * 3
@@ -580,7 +582,14 @@ class CombatStatsPanel extends StatelessWidget {
       _CS('Armor',      '$acTotal',                        const Color(0xFF66aaff)),
       _CS('Max HP',     '${h.maxHealth}',                  const Color(0xFFff6666)),
       _CS('HP Regen',   '+$regen / round',                 const Color(0xFF44cc88)),
-      _CS('Crit Chance',critPct > 0 ? '+$critPct%' : '5% (nat 20)', const Color(0xFFffee44)),
+      _CS('Crit Chance',
+          critOver > 0 ? '100%  (+$critOver% overflow)'
+                       : critPct > 0 ? '+$critPct%' : '5% (nat 20)',
+          const Color(0xFFffee44)),
+      _CS('Crit Damage',
+          critOver > 0 ? '×${critDmg.toStringAsFixed(2)}  (+$critOver% from overflow)'
+                       : '×${critDmg.toStringAsFixed(2)}',
+          const Color(0xFFffaa22)),
       _CS('Pierce',     pierce > 0 ? '$pierce AC ignored' : '—', const Color(0xFFffaa44)),
       _CS('Dodge',      dodge > 0 ? '+$dodge%' : '—',     const Color(0xFF88ffcc)),
       _CS('XP Mult',    '×${xpMult.toStringAsFixed(2)}',  const Color(0xFF88ddff)),

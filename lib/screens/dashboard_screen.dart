@@ -139,7 +139,7 @@ class _SmartNextActionPanel extends StatelessWidget {
     if (ready.isNotEmpty) {
       return ('🗺️',
           '${ready.length} expedition${ready.length > 1 ? 's' : ''} ready to collect!',
-          const Color(0xFF55cc88), 9, null, null);
+          const Color(0xFF55cc88), null, null, Routes.expedition);
     }
     if (game.canPrestige) {
       return ('✨', 'Prestige available — reset for power!',
@@ -163,7 +163,7 @@ class _SmartNextActionPanel extends StatelessWidget {
     if (idleMercs.isNotEmpty) {
       return ('🧙',
           '${idleMercs.length} merc${idleMercs.length > 1 ? 's' : ''} idle — dispatch on an expedition',
-          const Color(0xFFffaa44), 9, null, null);
+          const Color(0xFFffaa44), null, null, Routes.expedition);
     }
     if (game.campaignStageIndex >= 18 && game.campaignStageIndex % 25 >= 18) {
       final remaining = 25 - (game.campaignStageIndex % 25);

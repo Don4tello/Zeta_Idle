@@ -27,6 +27,9 @@ class SaveService {
   static const String _extraSlotsKey     = 'zeta_idle_extra_slots';
   static const String _welcomeSeenKey    = 'zeta_idle_welcome_seen';
   static const String _prestigePrefix    = 'zeta_pl_';
+  // Account-wide entitlements (subscriptions + real-money cosmetics/pets). Not
+  // scoped to a character slot, so every character shares them.
+  static const String _entitlementsKey   = 'zeta_idle_account_entitlements';
   static const int maxSlots     = 12;
   static const int defaultSlots = 3;
   static const int maxExtraSlots = maxSlots - defaultSlots; // 9 purchasable
@@ -39,6 +42,23 @@ class SaveService {
   static Future<void> markWelcomeSeen() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_welcomeSeenKey, true);
+  }
+
+  /// Account-wide entitlements (shared across all character slots).
+  Future<void> saveEntitlements(Map<String, dynamic> data) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_entitlementsKey, jsonEncode(data));
+  }
+
+  Future<Map<String, dynamic>?> loadEntitlements() async {
+    final prefs = await SharedPreferences.getInstance();
+    final raw = prefs.getString(_entitlementsKey);
+    if (raw == null || raw.isEmpty) return null;
+    try {
+      return jsonDecode(raw) as Map<String, dynamic>;
+    } catch (_) {
+      return null;
+    }
   }
 
   Future<void> saveRaw(Map<String, dynamic> rawData, {int slot = 0}) async {

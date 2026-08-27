@@ -54,20 +54,17 @@ extension ArtifactBaseTypeExt on ArtifactBaseType {
       : 'assets/images/artifact_${name}_1.png';
 
   String imagePathForRarity(ArtifactRarity rarity) {
+    // Six rarities map onto the 1–3 art variants via the rarity's [artVariant].
     if (this == ArtifactBaseType.cross) {
-      return switch (rarity) {
-        ArtifactRarity.common => _crossFiles[0],
-        ArtifactRarity.magic  => _crossFiles[2],
-        ArtifactRarity.rare   => _crossFiles[4],
+      return switch (rarity.artVariant) {
+        1  => _crossFiles[0],
+        2  => _crossFiles[2],
+        _  => _crossFiles[4],
       };
     }
     final count = _imageCount[this] ?? 0;
     if (count == 0) return imagePath; // will trigger errorBuilder fallback
-    final idx = switch (rarity) {
-      ArtifactRarity.common => 1,
-      ArtifactRarity.magic  => count > 1 ? 2 : 1,
-      ArtifactRarity.rare   => count > 2 ? 3 : count,
-    };
+    final idx = rarity.artVariant.clamp(1, count);
     return 'assets/images/artifact_${name}_$idx.png';
   }
 }
@@ -76,19 +73,54 @@ extension ArtifactBaseTypeExt on ArtifactBaseType {
 // ArtifactRarity
 // ---------------------------------------------------------------------------
 
-enum ArtifactRarity { common, magic, rare }
+// Artifacts now share the same six rarities as equipment. Higher tiers roll
+// higher rarities far more often (see [ArtifactGenerator]).
+enum ArtifactRarity { common, uncommon, rare, epic, legendary, mythic }
 
 extension ArtifactRarityExt on ArtifactRarity {
   String get label => switch (this) {
-    ArtifactRarity.common => 'Common',
-    ArtifactRarity.magic  => 'Magic',
-    ArtifactRarity.rare   => 'Rare',
+    ArtifactRarity.common    => 'Common',
+    ArtifactRarity.uncommon  => 'Uncommon',
+    ArtifactRarity.rare      => 'Rare',
+    ArtifactRarity.epic      => 'Epic',
+    ArtifactRarity.legendary => 'Legendary',
+    ArtifactRarity.mythic    => 'Mythic',
   };
 
+  // Matches the equipment rarity palette so the two systems read consistently.
   Color get color => switch (this) {
-    ArtifactRarity.common => const Color(0xFF999999),
-    ArtifactRarity.magic  => const Color(0xFF4488ff),
-    ArtifactRarity.rare   => const Color(0xFFffcc44),
+    ArtifactRarity.common    => const Color(0xFFaaaaaa),
+    ArtifactRarity.uncommon  => const Color(0xFF55cc55),
+    ArtifactRarity.rare      => const Color(0xFF6699ff),
+    ArtifactRarity.epic      => const Color(0xFFcc44ff),
+    ArtifactRarity.legendary => const Color(0xFFFFD700),
+    ArtifactRarity.mythic    => const Color(0xFFDD1111),
+  };
+
+  /// Affix slots granted (artifacts carry at most a prefix + suffix).
+  int get affixCount => switch (this) {
+    ArtifactRarity.common => 0,
+    ArtifactRarity.uncommon => 1,
+    _ => 2,
+  };
+
+  /// Power multiplier on the artifact's stats — going up a rarity is always a
+  /// strict upgrade even once both affix slots are full.
+  double get powerMult => switch (this) {
+    ArtifactRarity.common    => 1.00,
+    ArtifactRarity.uncommon  => 1.15,
+    ArtifactRarity.rare      => 1.35,
+    ArtifactRarity.epic      => 1.60,
+    ArtifactRarity.legendary => 1.90,
+    ArtifactRarity.mythic    => 2.30,
+  };
+
+  /// Image "quality" bucket (1–3) — maps the six rarities onto the 1–3 art
+  /// variants that exist per artifact base.
+  int get artVariant => switch (this) {
+    ArtifactRarity.common || ArtifactRarity.uncommon => 1,
+    ArtifactRarity.rare || ArtifactRarity.epic       => 2,
+    ArtifactRarity.legendary || ArtifactRarity.mythic => 3,
   };
 }
 
@@ -479,6 +511,7 @@ class Artifact {
     this.prefix,
     this.suffix,
     required this.dropLevel,
+    this.rarity = ArtifactRarity.common,
     this.setId,
     this.setPieceIndex = 0,
   });
@@ -488,6 +521,7 @@ class Artifact {
   final ArtifactAffix? prefix;
   final ArtifactAffix? suffix;
   final int            dropLevel;
+  final ArtifactRarity rarity;       // explicit, rolled at drop (tier-biased)
   final String?        setId;        // non-null → belongs to an ArtifactSet
   final int            setPieceIndex; // 0..2, which piece of the set
 
@@ -495,15 +529,6 @@ class Artifact {
 
   bool get isSetPiece => setId != null;
   ArtifactSet? get set => ArtifactSet.byId(setId);
-
-  ArtifactRarity get rarity {
-    final count = (prefix != null ? 1 : 0) + (suffix != null ? 1 : 0);
-    return switch (count) {
-      0 => ArtifactRarity.common,
-      1 => ArtifactRarity.magic,
-      _ => ArtifactRarity.rare,
-    };
-  }
 
   /// Display colour — set pieces are green, otherwise rarity colour.
   Color get displayColor => isSetPiece ? kArtifactSetColor : rarity.color;
@@ -526,7 +551,8 @@ class Artifact {
   String get flavorText =>
       isSetPiece ? 'Part of the ${set?.name ?? 'set'}.' : base.flavorText;
 
-  double get _scale => 1.0 + dropLevel * 0.04;
+  // Level scaling × rarity power — a higher-rarity artifact is a strict upgrade.
+  double get _scale => (1.0 + dropLevel * 0.04) * rarity.powerMult;
 
   static int _n(int? v) => v ?? 0;
 
@@ -543,6 +569,7 @@ class Artifact {
     'prefixId': prefix?.id,
     'suffixId': suffix?.id,
     'dropLv':   dropLevel,
+    'rarity':   rarity.name,
     if (setId != null) 'setId': setId,
     if (setId != null) 'setPiece': setPieceIndex,
   };
@@ -550,12 +577,26 @@ class Artifact {
   static Artifact fromJson(Map<String, dynamic> json) {
     final base = ArtifactBase.byId(json['baseId'] as String);
     if (base == null) throw FormatException('Unknown base: ${json['baseId']}');
+    final prefix = ArtifactAffix.byId(json['prefixId'] as String?);
+    final suffix = ArtifactAffix.byId(json['suffixId'] as String?);
+    // Back-compat: pre-6-rarity saves stored no rarity — derive it from the
+    // affix count (0/1/2 → common/uncommon/rare), the old behaviour.
+    final rarityStr = json['rarity'] as String?;
+    final rarity = rarityStr != null
+        ? ArtifactRarity.values.firstWhere((r) => r.name == rarityStr,
+            orElse: () => ArtifactRarity.common)
+        : switch ((prefix != null ? 1 : 0) + (suffix != null ? 1 : 0)) {
+            0 => ArtifactRarity.common,
+            1 => ArtifactRarity.uncommon,
+            _ => ArtifactRarity.rare,
+          };
     return Artifact(
       uid:       json['uid'] as String,
       base:      base,
-      prefix:    ArtifactAffix.byId(json['prefixId'] as String?),
-      suffix:    ArtifactAffix.byId(json['suffixId'] as String?),
+      prefix:    prefix,
+      suffix:    suffix,
       dropLevel: (json['dropLv'] as num).toInt(),
+      rarity:    rarity,
       setId:     json['setId'] as String?,
       setPieceIndex: (json['setPiece'] as num?)?.toInt() ?? 0,
     );
@@ -569,47 +610,44 @@ class Artifact {
 class ArtifactGenerator {
   ArtifactGenerator._();
 
-  // Chance for any drop to instead be a green set piece (scales a little with
-  // depth so late-game runs assemble sets faster).
-  static double _setPieceChance(int lv) {
-    if (lv >= 31) return 0.22;
-    if (lv >= 16) return 0.18;
-    if (lv >= 6)  return 0.14;
-    return 0.10;
+  // Chance for any drop to instead be a green set piece. Scales with depth AND
+  // the active difficulty [tier], so climbing tiers assembles sets far faster.
+  static double _setPieceChance(int lv, int tier) {
+    final base = lv >= 31 ? 0.22 : lv >= 16 ? 0.18 : lv >= 6 ? 0.14 : 0.10;
+    return (base + tier * 0.025).clamp(0.0, 0.60);
   }
 
-  static Artifact rollSetPiece({required int dropLevel, required Random rng}) {
+  static Artifact rollSetPiece({required int dropLevel, required Random rng, int tier = 0}) {
+    final lv0 = dropLevel.clamp(1, 50);
     final set = ArtifactSet.all[rng.nextInt(ArtifactSet.all.length)];
     final idx = rng.nextInt(set.pieces.length);
     final type = set.pieces[idx].type;
     final base = ArtifactBase.all.firstWhere((b) => b.type == type);
     final uid  = '${DateTime.now().millisecondsSinceEpoch}_${rng.nextInt(999999)}';
     return Artifact(
-      uid: uid, base: base, dropLevel: dropLevel.clamp(1, 50),
+      uid: uid, base: base, dropLevel: lv0,
+      rarity: _rollRarity(lv0, tier, rng),
       setId: set.id, setPieceIndex: idx,
     );
   }
 
-  static Artifact roll({required int dropLevel, required Random rng}) {
+  static Artifact roll({required int dropLevel, required Random rng, int tier = 0}) {
     final lv0 = dropLevel.clamp(1, 50);
-    if (rng.nextDouble() < _setPieceChance(lv0)) {
-      return rollSetPiece(dropLevel: dropLevel, rng: rng);
+    if (rng.nextDouble() < _setPieceChance(lv0, tier)) {
+      return rollSetPiece(dropLevel: dropLevel, rng: rng, tier: tier);
     }
     final base = ArtifactBase.all[rng.nextInt(ArtifactBase.all.length)];
     final uid  = '${DateTime.now().millisecondsSinceEpoch}_${rng.nextInt(999999)}';
-    final lv   = dropLevel.clamp(1, 50);
 
-    final roll      = rng.nextDouble();
-    final rareThresh  = _rarePct(lv);
-    final magicThresh = rareThresh + _magicPct(lv);
+    final rarity = _rollRarity(lv0, tier, rng);
+    final slots  = rarity.affixCount; // 0 / 1 / 2
 
     ArtifactAffix? prefix;
     ArtifactAffix? suffix;
-
-    if (roll < rareThresh) {
+    if (slots >= 2) {
       prefix = ArtifactAffix.prefixes[rng.nextInt(ArtifactAffix.prefixes.length)];
       suffix = ArtifactAffix.suffixes[rng.nextInt(ArtifactAffix.suffixes.length)];
-    } else if (roll < magicThresh) {
+    } else if (slots == 1) {
       if (rng.nextBool()) {
         prefix = ArtifactAffix.prefixes[rng.nextInt(ArtifactAffix.prefixes.length)];
       } else {
@@ -617,21 +655,41 @@ class ArtifactGenerator {
       }
     }
 
-    return Artifact(uid: uid, base: base, prefix: prefix, suffix: suffix, dropLevel: lv);
+    return Artifact(
+      uid: uid, base: base, prefix: prefix, suffix: suffix,
+      dropLevel: lv0, rarity: rarity,
+    );
   }
 
-  static double _rarePct(int lv) {
-    if (lv >= 31) return 0.45;
-    if (lv >= 16) return 0.30;
-    if (lv >= 6)  return 0.15;
-    return 0.05;
-  }
+  // Tier-biased rarity roll. Base weights favour common; each difficulty tier
+  // (and, more gently, drop depth) multiplies the weight of every rarity above
+  // "rare" up and everything below down — so high tiers overwhelmingly roll
+  // epic/legendary/mythic.
+  static const _baseRarityWeights = <ArtifactRarity, double>{
+    ArtifactRarity.common:    60.0,
+    ArtifactRarity.uncommon:  25.0,
+    ArtifactRarity.rare:      10.0,
+    ArtifactRarity.epic:       4.0,
+    ArtifactRarity.legendary:  1.2,
+    ArtifactRarity.mythic:     0.3,
+  };
 
-  static double _magicPct(int lv) {
-    if (lv >= 31) return 0.45;
-    if (lv >= 16) return 0.50;
-    if (lv >= 6)  return 0.45;
-    return 0.35;
+  static ArtifactRarity _rollRarity(int lv, int tier, Random rng) {
+    const pivot = 2; // rare
+    final biasPerStep = 1 + 0.14 * tier + 0.5 * (lv / 50.0);
+    var total = 0.0;
+    final weights = <ArtifactRarity, double>{};
+    for (final e in _baseRarityWeights.entries) {
+      final w = e.value * pow(biasPerStep, e.key.index - pivot).toDouble();
+      weights[e.key] = w;
+      total += w;
+    }
+    var p = rng.nextDouble() * total;
+    for (final e in weights.entries) {
+      p -= e.value;
+      if (p <= 0) return e.key;
+    }
+    return ArtifactRarity.mythic;
   }
 }
 

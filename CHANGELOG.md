@@ -3,6 +3,136 @@
 Version numbers are the pubspec build number (`0.1.0+N`), which is the Play
 Store `versionCode`. Newest first.
 
+## +118 — Difficulty Tiers Replace Hard Mode
+- NEW Difficulty Tiers: every Rebirth unlocks a tier (up to 10). Tap the slider icon in the Campaign header to switch tiers any time.
+- Higher tiers make ALL PvE (Campaign, Tower, Dungeons) tougher but drop noticeably better loot — higher rarities, more sets, and rarer artifacts. PvP and Guild are unaffected.
+- Switching to a LOWER tier keeps every permanent rebirth buff — it only scales the enemies and loot you face, so you can farm comfortably.
+- Hard Mode has been removed and replaced by the tier system.
+- Leaderboard rankings now factor in your highest unlocked tier and campaign clearance.
+
+## +117 — Ability Upgrades & Tower Auto-Clear
+- Every ability upgrade now does something: utility abilities (Stun, Silence, Dodge) shorten their cooldown as you rank them, and ascending them adds duration.
+- Disarm and other max-strength debuffs no longer waste upgrades — extra power now spills into a Vulnerability debuff (enemy takes more damage).
+- PREMIUM: New "Auto-Clear All Bosses" button on Tower Ascension battles through every available boss for you.
+- Tower Ascension boss rewards now show the correct Tower Shard payout instead of misleading numbers.
+
+## +116 — Arcane Dust Fix & Polish
+- Fixed disenchanting most gear giving no Arcane Dust — every rarity now yields Arcane Dust, scaling up with rarity.
+- The Gems screen now explains how to get Arcane Dust.
+- The Dungeon now shows the 3-2-1 countdown before battle.
+- Renamed the two "Endless Mode" quests to Tower Ascension.
+
+## +115 — Artifacts Reforged: Six Rarities
+- Artifacts now use the same six rarities as gear (Common → Mythic) and roll much rarer at higher difficulty — climbing tiers massively boosts your odds of Epic/Legendary/Mythic artifacts and Set pieces.
+- Higher-rarity artifacts are strictly stronger (rarity now multiplies their stats on top of level scaling).
+
+## +114 — Boss Hunts
+- New Boss Hunt quests on the Quests screen — slay each campaign boss for a one-time bounty (gold, shards, essence, and a title for the final boss). They tick off automatically as you climb the campaign.
+
+## +113 — Account-Wide Purchases & Tower Fixes
+- Subscriptions and real-money cosmetics/pets are now account-wide — shared across every character and preserved through rebirth. (Restores a lost subscription on next launch.)
+- Fixed the Echoes Upgrades being wiped on rebirth/ascension — they are now truly permanent per character as stated.
+- Tower Ascension bosses no longer use a tier — you fight them at their campaign difficulty, gated by how far you've climbed the campaign.
+- Tower Ascension now shows the 3-2-1 countdown before battle like the other modes.
+
+## +112 — Clearer Long-Away Message
+- When you've been away longer than the 8-hour idle cap, the welcome-back dialog now says "away for more than 8h — showing the maximum idle rewards" instead of a misleading exact time.
+
+## +111 — Accurate Offline Time
+- Fixed "time away" being wildly under-counted (e.g. showing 22m after hours). The idle and autosave timers now pause while the app is in the background, so away time is measured from when you actually left — and idle earnings are granted once on return instead of double-counted.
+
+## +110 — Daily Rewards Survive Rebirth
+- Fixed a bug where rebirthing (or ascending) reset your Daily Challenges, daily chest, login streak and daily attempt limits. These are calendar-day based and now persist through a rebirth — they only reset on a new day or a brand-new character.
+
+## +109 — Zeta Absolute Final Boss
+- The final boss is now "Zeta Absolute" with a brand-new hand-drawn sprite modelled after the Zeta Idle icon — a slate-blue-and-gold armoured colossus with a glowing blue heart-gem.
+
+## +108 — Felix Combat Ability
+- Felix's economy "Bribe" is now a combat ability — Smoke Screen grants +30% dodge chance for the first 4 rounds of battle. He keeps his +Gold passive.
+
+## +107 — Mercenary Ability Rework
+- Greybeard's War Cry now Marks the enemy (+25% damage taken for 4 rounds) instead of a hidden crit-chance buff — a real, scaling effect.
+- Ruk's Stone Skin now reduces incoming damage by 30% (was a flat −4 that stopped mattering) and Voss's Arcane Surge hits for 12% max HP.
+
+## +106 — Mercenary Ability Animations
+- Mercenaries now get a call-out animation in battle when their ability fires — a glowing card slides in from your side showing the merc (Greybeard, Voss, Felix, Lena, Ruk, Mira, Ironhide). Shows in Campaign, Tower Ascension and the Dungeon.
+
+## +105 — Easier Dungeon Bosses
+- Dungeon bosses now hit 20% softer — both their HP and attack are reduced by 20% for a fairer fight at every floor.
+
+## +104 — Next-Action Fix & Mastery Polish
+- The "expeditions ready to collect" next-action now opens the Expeditions screen instead of the Mercenaries tab.
+- Elemental Mastery now shows your Gold balance (needed for upgrades) and uses custom hand-drawn element glyphs instead of text tags.
+
+## +103 — Balance Visibility Fixes
+- The Mercenaries screen now shows your Shards balance next to ZCoins (both are spent on merc unlocks and upgrades).
+- The Upgrades screen now shows your Echoes balance when viewed from the Hero Hub.
+
+## +102 — Hand-Drawn Passive Tree Icons
+- Passive tree nodes now use custom stat icons matched to their effect — crit, armor, HP, gold, XP and pierce sprites, elemental glyphs (flame, snowflake, bolt, droplet, void orb) for elemental damage, tinted shields for resistances, and a clock for idle/cooldown nodes.
+
+## +101 — Hand-Drawn Race & Gender Emblems
+- Gender (♂/♀) and all 10 races now use custom hand-drawn emblems in character creation and the hero header — a leaf for Elf, hammer for Dwarf, horns for Tiefling, dragon head for Dragonborn, and more.
+
+## +100 — Custom Combat Stat Icons
+- Artifact table bonuses and the Hero Stats page now use hand-drawn stat icons — power, armor, HP, crit, crit damage, pierce, gold, XP and shards — instead of generic icons.
+
+## +99 — More Hand-Drawn Icons
+- Ability Scores now use custom emblems — a fist for Power, feather for Agility, heart for Vitality, crosshair for Precision, shield for Fortitude and a clover for Luck.
+- Upgrade synergies now show the two node emblems that fuse to unlock them.
+
+## +98 — Hand-Drawn Upgrade Emblems
+- The Upgrades screen nodes now use custom hand-drawn emblems instead of text badges — a sword for Brutality, crosshair for Precision, shield for Toughness, coin for Prosperity, eye for Insight and star for Focus.
+
+## +97 — Echoes Upgrade Milestones Buffed
+- Every Lv5/10/25 milestone perk on the Upgrades screen now hits much harder: Iron Grip +12% crit, Keen Edge +20% crit, Light Footed +5 AC, Blade Flicker 22%, Shadow Step 25% dodge, Thick Hide −3 dmg, Battle Scarred 5% HP/hit, Exploit Weakness +30%, Arcane Efficiency +40% gold, Rally Cry +40% XP, Silver Tongue −15% cost, Frugal Mind 25%.
+- Fixed two milestones that did nothing: Studied Foe now gives +15% gold and Farsight now gives +20% Echoes.
+
+## +96 — Crit Overflow, Bestiary Sprites & ZCoin Visibility
+- Crit Chance cap raised from 75% to 100%. Any crit chance above 100% now overflows into bonus Crit Damage (+1% crit damage per 1% overflow) — no more wasted crit rating.
+- The Bestiary now shows each monster's actual battle sprite once discovered.
+- Companions and Mercenaries screens now show your ZCoins balance.
+
+## +95 — Claim Summary & Consistent AC
+- Claiming all achievements now shows a summary popup of exactly what you received — total Shards, Essence and ZCoins.
+- Armor is now labelled "AC" everywhere (artifacts, PvP, quests and combat logs previously showed "ARM").
+
+## +94 — Stat Glossary in Knowledge Base
+- Added a STATS tab to the Knowledge Base explaining every abbreviation — HP, ATK, DMG, AC/ARM, RES, CRIT, PEN, DODGE, CD, DoT and all gear attribute stats — with what each one means and how it improves your hero.
+
+## +93 — Hand-Drawn Rune Art (All Classes)
+- Every class now has custom carved-stone rune art — Wizard, Sorcerer, Warlock, Bard, Monk and Druid complete the set. All ~120 runes are drawn as themed engraved glyphs matching the game's art style.
+
+## +92 — Hand-Drawn Rune Art (6 Classes)
+- Custom carved-stone rune art now covers Fighter, Rogue, Ranger, Paladin and Cleric too — each rune drawn as a themed engraved glyph. Wizard, Sorcerer, Warlock, Bard, Monk and Druid are up next.
+
+## +91 — Hand-Drawn Rune Art (Barbarian)
+- Runes now use custom carved-stone pixel-art tablets instead of emoji, matching the game's crafted-gem style. Barbarian runes are done first; the rest of the classes follow in coming updates.
+
+## +90 — Tower Ascension Speed Control
+- Tower Ascension now has a battle-speed button in its top bar, matching every other mode — including the 3× from the Speed Boost / Premium Pass.
+
+## +89 — Cleaner Craft Gem Layout
+- The Craft Gem screen now lists one gem per line with room to spell out each gem's element (e.g. Ruby → Fire) and exactly how much damage it adds in a weapon and resistance it adds in armor. Removed the wall of explainer text at the top.
+
+## +88 — Consistent Battle Speed
+- The Dungeon now honours your full battle speed — including the 3× from the Speed Boost / Premium Pass — instead of capping at 2×. Battle speed is now identical across Campaign, Dungeon, Boss Rush, Gauntlet and PvP.
+
+## +87 — Ultimate Ability Clarity
+- The Ability screen now shows a locked Ultimate preview until you unlock it — clearly stating it unlocks at Level 30 and requires finishing your class questline, with live progress on both.
+
+## +86 — Clearer Gems
+- Gems now spell out both of their effects everywhere — one gem per line, showing the elemental DAMAGE they add in a weapon AND the elemental RESISTANCE they add in armor or jewelry.
+- When socketing, each item now shows exactly what the gem will do in that slot (e.g. "+10% Fire DMG" on a weapon vs "+10% Fire RES" on armor).
+
+## +85 — Gauntlet Curve Smoothed
+- Gauntlet tier 1 is now a fair challenge — the 10 waves ramp gently to a campaign-parity final boss instead of ending on a brick-wall enemy. Higher tiers scale up smoothly, and top tiers no longer flatten out.
+- Waves within a run are ordered easiest-to-toughest, so difficulty always climbs.
+
+## +84 — Boss Rush Curve Smoothed
+- Tier 1 now sits at campaign parity — the five bosses are the ones you already beat on the map, fought back-to-back, so a ~level-20 hero can clear it. Higher tiers ramp up smoothly from there.
+- Bosses within a run are now ordered easiest-to-toughest, so difficulty always climbs instead of spiking mid-run.
+
 ## +83 — Boss Rush tier-scaled difficulty (Option 1)
 - Replaced the fixed boss stages `[4,9,14,19,24]` with `_bossStagesForTier(t)` =
   `[4,6,9,11,14] + (t-1)×5` (clamped to campaign length). Tier 1 now tops out at

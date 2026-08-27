@@ -15,6 +15,110 @@ import '../widgets/zcoin_icon.dart';
 class CampaignScreen extends StatelessWidget {
   const CampaignScreen({super.key});
 
+  /// Difficulty-tier picker. Choose any tier from 0..highestUnlocked; higher
+  /// tiers hit harder but drop better loot. Switching down keeps all permanent
+  /// rebirth buffs — it only scales the enemies and loot you face.
+  void _showTierSelector(BuildContext context, GameState game) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: const Color(0xFF201C18),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(12)),
+      ),
+      builder: (ctx) {
+        return StatefulBuilder(builder: (ctx, setSheet) {
+          return SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('DIFFICULTY TIER',
+                      style: AppTheme.pixelHeading(
+                          fontSize: 14, letterSpacing: 2, color: const Color(0xFFff8844))),
+                  const SizedBox(height: 4),
+                  const Text(
+                    'Higher tiers = tougher enemies AND better loot (rarity, sets, '
+                    'artifacts). Switching down keeps every rebirth buff — it only '
+                    'scales what you fight and what drops.',
+                    style: TextStyle(fontSize: 13, color: AppTheme.textMuted, height: 1.4),
+                  ),
+                  const SizedBox(height: 12),
+                  ConstrainedBox(
+                    constraints: const BoxConstraints(maxHeight: 360),
+                    child: SingleChildScrollView(
+                      child: Column(
+                        children: [
+                          for (int t = game.highestUnlockedTier; t >= 0; t--)
+                            _tierRow(context, game, t, setSheet),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        });
+      },
+    );
+  }
+
+  Widget _tierRow(BuildContext context, GameState game, int t, StateSetter setSheet) {
+    final selected = game.activeTier == t;
+    final hpPct  = (t * 15);
+    final atkPct = (t * 8);
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: InkWell(
+        onTap: () {
+          game.setActiveTier(t);
+          setSheet(() {});
+        },
+        borderRadius: BorderRadius.circular(6),
+        child: Container(
+          constraints: const BoxConstraints(minHeight: 56),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+          decoration: BoxDecoration(
+            color: selected ? const Color(0xFF3a2414) : const Color(0xFF15120F),
+            border: Border.all(
+                color: selected ? const Color(0xFFff8844) : AppTheme.cardBorder,
+                width: selected ? 2 : 1),
+            borderRadius: BorderRadius.circular(6),
+          ),
+          child: Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(t == 0 ? 'TIER 0 — Normal' : 'TIER $t',
+                        style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: selected ? const Color(0xFFffb080) : Colors.white)),
+                    const SizedBox(height: 2),
+                    Text(
+                      t == 0
+                          ? 'Base enemies · base loot'
+                          : 'Enemies +$hpPct% HP · +$atkPct% ATK · better loot & rarer sets',
+                      style: const TextStyle(fontSize: 12, color: AppTheme.textMuted),
+                    ),
+                  ],
+                ),
+              ),
+              if (selected)
+                const Icon(Icons.check_circle, color: Color(0xFFff8844), size: 22)
+              else
+                const Icon(Icons.circle_outlined, color: AppTheme.textMuted, size: 22),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final game     = GameStateProvider.of(context);
@@ -27,20 +131,18 @@ class CampaignScreen extends StatelessWidget {
       appBar: AppBar(
         backgroundColor: const Color(0xFF2A2623),
         title: Text(
-          game.campaignHardMode ? '⚡ CAMPAIGN — HARD' : 'CAMPAIGN',
+          game.activeTier > 0 ? 'CAMPAIGN — TIER ${game.activeTier}' : 'CAMPAIGN',
           style: AppTheme.pixelHeading(fontSize: 14, letterSpacing: 2,
-              color: game.campaignHardMode ? const Color(0xFFff4444) : AppTheme.accentGold),
+              color: game.activeTier > 0 ? const Color(0xFFff8844) : AppTheme.accentGold),
         ),
         actions: [
-          if (game.effectiveUnlockStage >= 50)
+          if (game.highestUnlockedTier > 0)
             IconButton(
-              icon: Icon(
-                game.campaignHardMode ? Icons.whatshot : Icons.whatshot_outlined,
-                color: game.campaignHardMode ? const Color(0xFFff4444) : AppTheme.textMuted,
-                size: 20,
-              ),
-              tooltip: game.campaignHardMode ? 'Disable Hard Mode' : 'Enable Hard Mode (+50% rewards)',
-              onPressed: () => game.toggleHardMode(),
+              icon: Icon(Icons.tune,
+                  color: game.activeTier > 0 ? const Color(0xFFff8844) : AppTheme.textMuted,
+                  size: 20),
+              tooltip: 'Difficulty Tier',
+              onPressed: () => _showTierSelector(context, game),
             ),
           IconButton(
             icon: const Icon(Icons.leaderboard, color: AppTheme.accentGold, size: 20),

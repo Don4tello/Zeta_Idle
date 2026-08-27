@@ -4,8 +4,10 @@ import 'package:google_fonts/google_fonts.dart';
 import '../models/endless_upgrades.dart';
 import '../services/game_state.dart';
 import '../theme/app_theme.dart';
+import '../widgets/currency_icon.dart';
 import '../widgets/currency_info.dart';
 import '../widgets/hold_repeat_button.dart';
+import '../widgets/node_sprite.dart';
 import 'main_shell.dart' show TutorialTip;
 
 class EndlessUpgradeScreen extends StatelessWidget {
@@ -20,6 +22,32 @@ class EndlessUpgradeScreen extends StatelessWidget {
     final body = ListView(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
       children: [
+        // Embedded in the Hero Hub there's no AppBar — surface the Echoes balance
+        // (the currency spent on these upgrades).
+        if (embedded) ...[
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            margin: const EdgeInsets.only(bottom: 12),
+            decoration: BoxDecoration(
+              color: const Color(0xFF231F1B),
+              border: Border.all(color: const Color(0xFFcc88ff).withValues(alpha: 0.4)),
+              borderRadius: BorderRadius.circular(4),
+            ),
+            child: Row(children: [
+              const CurrencyIcon(id: 'echoes', size: 18),
+              const SizedBox(width: 8),
+              Text(AppTheme.fmtNumber(game.echoes),
+                  style: const TextStyle(
+                      fontSize: 17, fontWeight: FontWeight.bold, color: Color(0xFFcc88ff))),
+              const SizedBox(width: 6),
+              const Text('Echoes',
+                  style: TextStyle(fontSize: 12, color: Color(0xFFb69fd0))),
+              const Spacer(),
+              const Text('Your balance',
+                  style: TextStyle(fontSize: 11, color: Color(0xFF8a7a99))),
+            ]),
+          ),
+        ],
         TutorialTip(
           tutorialKey: 'upgrade',
           game: game,
@@ -194,7 +222,7 @@ class _NodeCardState extends State<_NodeCard> with SingleTickerProviderStateMixi
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          // Stat chip
+          // Stat emblem — hand-drawn sprite themed to the node
           Container(
             width: 48,
             height: 48,
@@ -202,17 +230,7 @@ class _NodeCardState extends State<_NodeCard> with SingleTickerProviderStateMixi
               color: col.withValues(alpha: 0.12),
               border: Border.all(color: col.withValues(alpha: 0.7)),
             ),
-            child: Center(
-              child: Text(
-                node.statLabel,
-                style: GoogleFonts.rajdhani(
-                  fontSize: 14,
-                  fontWeight: FontWeight.bold,
-                  color: col,
-                  letterSpacing: 1,
-                ),
-              ),
-            ),
+            child: Center(child: NodeSprite(node: node, size: 38)),
           ),
           const SizedBox(width: 14),
 
@@ -518,15 +536,16 @@ class _SynergyCard extends StatelessWidget {
       ),
       child: Row(
         children: [
-          Container(
-            width: 28, height: 28,
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(4),
+          // The two nodes that fuse into this synergy, drawn as their emblems.
+          Opacity(
+            opacity: unlocked ? 1.0 : 0.4,
+            child: SizedBox(
+              width: 40, height: 28,
+              child: Stack(clipBehavior: Clip.none, children: [
+                Positioned(left: 0,  top: 3, child: NodeSprite(node: status.node1, size: 22)),
+                Positioned(right: 0, top: 3, child: NodeSprite(node: status.node2, size: 22)),
+              ]),
             ),
-            child: Text(unlocked ? '✦' : '○',
-                style: TextStyle(color: color, fontSize: 14)),
           ),
           const SizedBox(width: 10),
           Expanded(

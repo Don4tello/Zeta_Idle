@@ -10,7 +10,7 @@ class KnowledgeBaseScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return DefaultTabController(
-      length: 3,
+      length: 4,
       child: Scaffold(
         backgroundColor: const Color(0xFF1B1A17),
         appBar: AppBar(
@@ -18,10 +18,13 @@ class KnowledgeBaseScreen extends StatelessWidget {
           title: Text('KNOWLEDGE BASE',
               style: AppTheme.pixelHeading(fontSize: 13, letterSpacing: 2)),
           bottom: TabBar(
+            isScrollable: true,
+            tabAlignment: TabAlignment.start,
             indicatorColor: AppTheme.accentGold,
             labelColor: AppTheme.accentGold,
             unselectedLabelColor: AppTheme.textMuted,
             tabs: const [
+              Tab(child: Text('STATS', style: TextStyle(fontSize: 11))),
               Tab(child: Text('KEYWORDS', style: TextStyle(fontSize: 11))),
               Tab(child: Text('SYSTEMS',  style: TextStyle(fontSize: 11))),
               Tab(child: Text('CURRENCIES', style: TextStyle(fontSize: 11))),
@@ -30,11 +33,160 @@ class KnowledgeBaseScreen extends StatelessWidget {
         ),
         body: const TabBarView(
           children: [
+            _StatsTab(),
             _KeywordsTab(),
             _SystemsTab(),
             _CurrenciesTab(),
           ],
         ),
+      ),
+    );
+  }
+}
+
+// ── Stats Tab ─────────────────────────────────────────────────────────────────
+
+class _StatEntry {
+  const _StatEntry(this.abbr, this.name, this.desc);
+  final String abbr;   // the acronym you see in-game
+  final String name;   // what it stands for
+  final String desc;   // what it does / how it helps your character
+}
+
+class _StatsTab extends StatelessWidget {
+  const _StatsTab();
+
+  // Core combat & general terms — the abbreviations that appear in battle, on
+  // enemy chips, and in ability / rune text (not covered by the gear-stat enum).
+  static const _combat = <_StatEntry>[
+    _StatEntry('HP', 'Health Points',
+        'Your life total. Reach 0 and you\'re defeated. Raised by Vitality, Max HP %, and gear.'),
+    _StatEntry('ATK', 'Attack',
+        'An attacker\'s hit power — shown on enemies as the damage they can roll against you.'),
+    _StatEntry('DMG', 'Damage',
+        'Flat damage added to every one of your hits. More DMG = harder hits.'),
+    _StatEntry('DPS', 'Damage Per Second',
+        'A rough measure of how much damage you output over time — higher clears content faster.'),
+    _StatEntry('AC', 'Armor Class',
+        'Reduces incoming physical damage. The higher your AC, the less each enemy hit takes off your HP.'),
+    _StatEntry('RES', 'Resistance',
+        'Reduces incoming damage of a specific element (Fire, Cold, Lightning, Poison, Void). '
+        'Gems socketed in armour grant RES.'),
+    _StatEntry('CRIT', 'Critical Hit Chance',
+        'Chance for a hit to deal 2× damage (3× with the Critical Fury keyword).'),
+    _StatEntry('PEN', 'Elemental Penetration',
+        'Ignores a % of the enemy\'s elemental resistance, so your elemental hits land harder.'),
+    _StatEntry('DODGE', 'Dodge / Evasion',
+        'Chance to avoid an incoming attack entirely, taking no damage. Raised by Agility.'),
+    _StatEntry('CD', 'Cooldown',
+        'Rounds an ability must wait before it can fire again. Lower CD = it triggers more often.'),
+    _StatEntry('DoT', 'Damage over Time',
+        'Poison / burn / bleed that ticks for damage each round instead of all at once.'),
+    _StatEntry('r', 'Rounds',
+        'A duration in combat turns — e.g. "3r" means the effect lasts 3 rounds.'),
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    // Gear/artifact stats are rendered straight from the ItemStat enum, so this
+    // reference can never drift from what items actually roll.
+    final gearStats = ItemStat.values;
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: [
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+          margin: const EdgeInsets.only(bottom: 10),
+          decoration: BoxDecoration(
+            color: const Color(0xFF181c24),
+            border: Border.all(color: const Color(0xFF66aaff).withValues(alpha: 0.35)),
+            borderRadius: BorderRadius.circular(3),
+          ),
+          child: const Text(
+            'Every abbreviation you\'ll see on gear, artifacts, and in battle — '
+            'what it stands for and how it improves your hero.',
+            style: TextStyle(fontSize: 12, color: AppTheme.textMuted, height: 1.5),
+          ),
+        ),
+        _SectionHeader(label: 'COMBAT & GENERAL', color: const Color(0xFF66aaff)),
+        const SizedBox(height: 8),
+        ..._combat.map((e) => _StatCard(
+              abbr: e.abbr, name: e.name, desc: e.desc,
+              color: const Color(0xFF66aaff))),
+        const SizedBox(height: 16),
+        _SectionHeader(label: 'GEAR & ARTIFACT STATS', color: AppTheme.accentGold),
+        const SizedBox(height: 4),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+          margin: const EdgeInsets.only(bottom: 10),
+          decoration: BoxDecoration(
+            color: const Color(0xFF231F1B),
+            border: Border.all(color: AppTheme.accentGold.withValues(alpha: 0.3)),
+            borderRadius: BorderRadius.circular(3),
+          ),
+          child: const Text(
+            'The six attribute stats use fantasy names (Power, Agility, Vitality, '
+            'Arcane, Focus, Fortune) — their classic Strength/Dexterity/etc. names '
+            'are shown in brackets.',
+            style: TextStyle(fontSize: 12, color: AppTheme.textMuted, height: 1.5),
+          ),
+        ),
+        ...gearStats.map((s) => _StatCard(
+              abbr: s.shortLabel, name: s.fullLabel, desc: s.description,
+              color: AppTheme.accentGold)),
+      ],
+    );
+  }
+}
+
+class _StatCard extends StatelessWidget {
+  const _StatCard({required this.abbr, required this.name, required this.desc, required this.color});
+  final String abbr, name, desc;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: const Color(0xFF231F1B),
+        border: Border.all(color: color.withValues(alpha: 0.35)),
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Acronym badge
+          Container(
+            width: 52,
+            padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 4),
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.12),
+              border: Border.all(color: color.withValues(alpha: 0.5)),
+              borderRadius: BorderRadius.circular(3),
+            ),
+            child: Text(abbr,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                    fontSize: 13, fontWeight: FontWeight.bold, color: color)),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(name,
+                    style: const TextStyle(
+                        fontSize: 14, fontWeight: FontWeight.bold, color: Colors.white)),
+                const SizedBox(height: 3),
+                Text(desc,
+                    style: const TextStyle(
+                        fontSize: 12, color: Colors.white60, height: 1.4)),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }

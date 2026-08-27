@@ -1331,31 +1331,17 @@ class _GemSocketRow extends StatelessWidget {
                             child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(gem.name,
+                            Text('${gem.name}  •  ${gem.type.elementLabel}',
                                 style: TextStyle(
-                                    fontSize: 13,
+                                    fontSize: 14,
                                     fontWeight: FontWeight.bold,
                                     color: gem.color)),
-                            Text(gem.type.elementLabel,
+                            const SizedBox(height: 3),
+                            Text('On this ${item.slot.label}: ${gem.bonusLabelFor(item.slot)}',
                                 style: const TextStyle(
-                                    fontSize: 11, color: AppTheme.textMuted)),
+                                    fontSize: 13, color: AppTheme.textLight)),
                           ],
                         )),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 6, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: gem.tier.color.withValues(alpha: 0.12),
-                            border: Border.all(
-                                color: gem.tier.color.withValues(alpha: 0.4)),
-                            borderRadius: BorderRadius.circular(3),
-                          ),
-                          child: Text('+${gem.value}',
-                              style: TextStyle(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.bold,
-                                  color: gem.tier.color)),
-                        ),
                       ]),
                     ),
                   );

@@ -1,8 +1,10 @@
 ﻿import 'package:flutter/material.dart';
+import '../data/boss_hunt_data.dart';
 import '../data/class_quest_data.dart';
 import '../models/class_quest.dart';
 import '../services/game_state.dart';
 import '../theme/app_theme.dart';
+import '../widgets/battle_sprites.dart';
 
 class QuestScreen extends StatelessWidget {
   const QuestScreen({super.key});
@@ -87,6 +89,46 @@ class QuestScreen extends StatelessWidget {
             ]),
           ),
           ...AdventureQuest.allQuests.map((q) => _AdventureQuestCard(quest: q, game: game)),
+
+          const SizedBox(height: 20),
+
+          // ── Boss Hunts ─────────────────────────────────────────────
+          Builder(builder: (_) {
+            final hunts = bossHunts;
+            // "Done" = defeated this run OR already claimed (claims persist through
+            // rebirth even though campaign progress resets).
+            bool done(BossHunt h) => game.isBossHuntClaimed(h) || game.isBossHuntMet(h);
+            final slain = hunts.where(done).length;
+            // Show every done boss plus the next one still to hunt.
+            final nextIdx = hunts.indexWhere((h) => !done(h));
+            final visible = nextIdx < 0 ? hunts : hunts.take(nextIdx + 1).toList();
+            return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+              Container(
+                padding: const EdgeInsets.all(12),
+                margin: const EdgeInsets.only(bottom: 10),
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(colors: [Color(0xFF2a0a12), Color(0xFF231F1B)]),
+                  border: Border.all(color: const Color(0xFFff5566).withValues(alpha: 0.5)),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: Row(children: [
+                  const Text('☠', style: TextStyle(fontSize: 20)),
+                  const SizedBox(width: 10),
+                  Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    Text('BOSS HUNTS',
+                        style: AppTheme.pixelHeading(
+                            fontSize: 12, color: const Color(0xFFff5566), letterSpacing: 2)),
+                    const SizedBox(height: 2),
+                    const Text('Slay each campaign boss for a bounty.',
+                        style: TextStyle(fontSize: 10, color: AppTheme.textMuted)),
+                  ])),
+                  Text('$slain/${hunts.length}',
+                      style: AppTheme.pixelHeading(fontSize: 11, color: const Color(0xFFff5566))),
+                ]),
+              ),
+              ...visible.map((h) => _BossHuntCard(hunt: h, game: game)),
+            ]);
+          }),
 
           const SizedBox(height: 20),
 
@@ -268,6 +310,81 @@ class _AdventureQuestCard extends StatelessWidget {
           ]),
         ],
       ),
+    );
+  }
+}
+
+// ── Boss hunt card ────────────────────────────────────────────────────────────
+
+class _BossHuntCard extends StatelessWidget {
+  const _BossHuntCard({required this.hunt, required this.game});
+  final BossHunt hunt;
+  final GameState game;
+
+  @override
+  Widget build(BuildContext context) {
+    final slain     = game.isBossHuntMet(hunt);
+    final claimed   = game.isBossHuntClaimed(hunt);
+    final claimable = game.isBossHuntClaimable(hunt);
+    const accent = Color(0xFFff5566);
+    final borderColor = claimed
+        ? const Color(0xFF44cc66)
+        : claimable
+            ? accent
+            : slain ? accent.withValues(alpha: 0.4) : AppTheme.cardBorder;
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: claimable ? const Color(0xFF2a1015) : const Color(0xFF1a1614),
+        border: Border.all(color: borderColor.withValues(alpha: 0.6)),
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: Row(children: [
+        SizedBox(
+          width: 40, height: 40,
+          child: Opacity(
+            opacity: slain ? 1.0 : 0.35,
+            child: slain
+                ? StaticEnemySprite(spriteId: hunt.spriteId, size: 38)
+                : const Icon(Icons.lock_outline, size: 20, color: AppTheme.textMuted),
+          ),
+        ),
+        const SizedBox(width: 10),
+        Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text(claimed ? '☠ ${hunt.name} — Slain' : 'Slay the ${hunt.name}',
+              style: TextStyle(
+                  fontSize: 13, fontWeight: FontWeight.bold,
+                  color: claimed ? const Color(0xFF66dd88) : Colors.white)),
+          const SizedBox(height: 2),
+          Text('Campaign Stage ${hunt.stageNumber}  •  Lv ${hunt.level}',
+              style: const TextStyle(fontSize: 10, color: AppTheme.textMuted)),
+          const SizedBox(height: 3),
+          Text(hunt.reward.summary,
+              style: const TextStyle(fontSize: 10, color: Color(0xFFd9b36a))),
+        ])),
+        const SizedBox(width: 8),
+        if (claimed)
+          const Text('✓', style: TextStyle(fontSize: 18, color: Color(0xFF44cc66), fontWeight: FontWeight.bold))
+        else if (claimable)
+          GestureDetector(
+            onTap: () => game.claimBossHunt(hunt),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                color: accent.withValues(alpha: 0.18),
+                border: Border.all(color: accent),
+                borderRadius: BorderRadius.circular(3),
+              ),
+              child: Text('CLAIM',
+                  style: AppTheme.pixelHeading(fontSize: 10, color: accent, letterSpacing: 1)),
+            ),
+          )
+        else
+          Text('Stage ${hunt.stageNumber}',
+              style: const TextStyle(fontSize: 9, color: AppTheme.textMuted)),
+      ]),
     );
   }
 }

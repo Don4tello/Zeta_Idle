@@ -111,34 +111,34 @@ enum EndlessNode {
   List<MilestonePerk> get milestones {
     switch (this) {
       case EndlessNode.str: return const [
-        MilestonePerk(levelRequired: 5,  name: 'Iron Grip',       description: '+3 critical damage on all attacks'),
-        MilestonePerk(levelRequired: 10, name: 'Keen Edge',       description: 'Critical hit threshold: 19+'),
-        MilestonePerk(levelRequired: 25, name: 'Savage Momentum', description: 'Double-strike chance after each kill'),
+        MilestonePerk(levelRequired: 5,  name: 'Iron Grip',       description: '+12% critical hit chance'),
+        MilestonePerk(levelRequired: 10, name: 'Keen Edge',       description: '+20% critical hit chance'),
+        MilestonePerk(levelRequired: 25, name: 'Savage Momentum', description: 'Guaranteed advantage on your next hit after each kill'),
       ];
       case EndlessNode.dex: return const [
-        MilestonePerk(levelRequired: 5,  name: 'Light Footed',  description: '+1 Armor'),
-        MilestonePerk(levelRequired: 10, name: 'Blade Flicker', description: '12% chance to strike twice per turn'),
-        MilestonePerk(levelRequired: 25, name: 'Shadow Step',   description: '15% chance to dodge enemy attacks'),
+        MilestonePerk(levelRequired: 5,  name: 'Light Footed',  description: '+5 Armor'),
+        MilestonePerk(levelRequired: 10, name: 'Blade Flicker', description: '22% chance to strike twice per turn'),
+        MilestonePerk(levelRequired: 25, name: 'Shadow Step',   description: '25% chance to dodge enemy attacks'),
       ];
       case EndlessNode.con: return const [
-        MilestonePerk(levelRequired: 5,  name: 'Thick Hide',    description: 'Reduce all incoming damage by 1'),
-        MilestonePerk(levelRequired: 10, name: 'Battle Scarred',description: 'Regen 2% HP after each hit taken'),
+        MilestonePerk(levelRequired: 5,  name: 'Thick Hide',    description: 'Reduce all incoming damage by 3'),
+        MilestonePerk(levelRequired: 10, name: 'Battle Scarred',description: 'Regen 5% max HP after each hit taken'),
         MilestonePerk(levelRequired: 25, name: 'Unbroken',      description: 'Survive one killing blow per battle at 1 HP'),
       ];
       case EndlessNode.intelligence: return const [
-        MilestonePerk(levelRequired: 5,  name: 'Studied Foe',       description: 'Enemy stats revealed before battle'),
-        MilestonePerk(levelRequired: 10, name: 'Exploit Weakness',  description: '+15% damage against low-armor enemies'),
-        MilestonePerk(levelRequired: 25, name: 'Arcane Efficiency', description: '+15% bonus gold on every kill'),
+        MilestonePerk(levelRequired: 5,  name: 'Studied Foe',       description: '+15% gold earned'),
+        MilestonePerk(levelRequired: 10, name: 'Exploit Weakness',  description: '+30% damage against low-armor enemies'),
+        MilestonePerk(levelRequired: 25, name: 'Arcane Efficiency', description: '+40% bonus gold on every kill'),
       ];
       case EndlessNode.wis: return const [
-        MilestonePerk(levelRequired: 5,  name: 'Farsight',        description: '+2 Echoes per kill'),
+        MilestonePerk(levelRequired: 5,  name: 'Farsight',        description: '+20% Echoes earned'),
         MilestonePerk(levelRequired: 10, name: 'Battle Awareness', description: 'Auto-dodge the first enemy attack each battle'),
-        MilestonePerk(levelRequired: 25, name: 'Frugal Mind',     description: '15% chance any upgrade costs 0 Echoes'),
+        MilestonePerk(levelRequired: 25, name: 'Frugal Mind',     description: '25% chance any upgrade costs 0 Echoes'),
       ];
       case EndlessNode.cha: return const [
-        MilestonePerk(levelRequired: 5,  name: "Silver Tongue",  description: 'All upgrade costs reduced by 5%'),
-        MilestonePerk(levelRequired: 10, name: 'Rally Cry',      description: '+20% XP from every kill'),
-        MilestonePerk(levelRequired: 25, name: "Fortune's Favour", description: '10% chance to double Echo drops'),
+        MilestonePerk(levelRequired: 5,  name: "Silver Tongue",  description: 'All upgrade costs reduced by 15%'),
+        MilestonePerk(levelRequired: 10, name: 'Rally Cry',      description: '+40% XP from every kill'),
+        MilestonePerk(levelRequired: 25, name: "Fortune's Favour", description: '25% chance to double Echo drops'),
       ];
     }
   }
@@ -158,11 +158,11 @@ class EndlessUpgrades {
   int levelOf(EndlessNode node) => _levels[node]!;
 
   /// Cost to upgrade node from its current level to the next.
-  /// Silver Tongue (CHA Lv5) applies a 5% discount.
+  /// Silver Tongue (CHA Lv5) applies a 15% discount.
   int costFor(EndlessNode node) {
     final lvl = _levels[node]!;
     final raw = (node.baseCost * pow(1.45, lvl)).round().clamp(node.baseCost, 999999999);
-    return silverTongue ? (raw * 0.95).round().clamp(1, 999999999) : raw;
+    return silverTongue ? (raw * 0.85).round().clamp(1, 999999999) : raw;
   }
 
   bool canAfford(EndlessNode node, int shards) => shards >= costFor(node);
@@ -176,11 +176,15 @@ class EndlessUpgrades {
 
   int get flatDamageReduction => levelOf(EndlessNode.con);
 
+  // INT Lv5 — Studied Foe: a flat +15% gold, folded into the gold multiplier.
   double get goldMultiplier =>
-      pow(1.012, levelOf(EndlessNode.intelligence)).toDouble();
+      pow(1.012, levelOf(EndlessNode.intelligence)).toDouble()
+          * (studiedFoe ? 1.15 : 1.0);
 
+  // WIS Lv5 — Farsight: a flat +20% Echoes, folded into the Echo multiplier.
   double get shardMultiplier =>
-      pow(1.008, levelOf(EndlessNode.wis)).toDouble();
+      pow(1.008, levelOf(EndlessNode.wis)).toDouble()
+          * (farsight ? 1.20 : 1.0);
 
   double get xpMultiplier =>
       pow(1.009, levelOf(EndlessNode.cha)).toDouble();
@@ -245,11 +249,11 @@ class EndlessUpgrades {
 
   List<SynergyStatus> get allSynergies => [
     SynergyStatus(name: 'Juggernaut',       nodeLabel: 'PWR×VIT', effectLabel: '−1 dmg taken, +10% HP',   unlocked: synergyJuggernaut,     level1: levelOf(EndlessNode.str),           level2: levelOf(EndlessNode.con),  node1: EndlessNode.str,           node2: EndlessNode.con),
-    SynergyStatus(name: 'Berserker',        nodeLabel: 'PWR×AGI', effectLabel: 'Blade Flicker: 20%',      unlocked: synergyBerserker,      level1: levelOf(EndlessNode.str),           level2: levelOf(EndlessNode.dex),  node1: EndlessNode.str,           node2: EndlessNode.dex),
-    SynergyStatus(name: 'Iron Sage',        nodeLabel: 'FOR×FOC', effectLabel: 'Battle Scarred heals 4%', unlocked: synergyIronSage,       level1: levelOf(EndlessNode.con),           level2: levelOf(EndlessNode.wis),  node1: EndlessNode.con,           node2: EndlessNode.wis),
+    SynergyStatus(name: 'Berserker',        nodeLabel: 'PWR×AGI', effectLabel: 'Blade Flicker: 35%',      unlocked: synergyBerserker,      level1: levelOf(EndlessNode.str),           level2: levelOf(EndlessNode.dex),  node1: EndlessNode.str,           node2: EndlessNode.dex),
+    SynergyStatus(name: 'Iron Sage',        nodeLabel: 'FOR×FOC', effectLabel: 'Battle Scarred heals 8%', unlocked: synergyIronSage,       level1: levelOf(EndlessNode.con),           level2: levelOf(EndlessNode.wis),  node1: EndlessNode.con,           node2: EndlessNode.wis),
     SynergyStatus(name: 'Mindweave',        nodeLabel: 'ARC×FOC', effectLabel: 'Exploit Weakness: AC≤16', unlocked: synergyMindweave,      level1: levelOf(EndlessNode.intelligence),  level2: levelOf(EndlessNode.wis),  node1: EndlessNode.intelligence,  node2: EndlessNode.wis),
     SynergyStatus(name: 'Merchant Scholar', nodeLabel: 'ARC×FOR', effectLabel: '+15% Gold on every kill', unlocked: synergyMerchantScholar,level1: levelOf(EndlessNode.intelligence),  level2: levelOf(EndlessNode.cha),  node1: EndlessNode.intelligence,  node2: EndlessNode.cha),
-    SynergyStatus(name: 'Shadow Merchant',  nodeLabel: 'AGI×FOR', effectLabel: "Fortune's Favour: 20%",   unlocked: synergyShadowMerchant, level1: levelOf(EndlessNode.dex),           level2: levelOf(EndlessNode.cha),  node1: EndlessNode.dex,           node2: EndlessNode.cha),
+    SynergyStatus(name: 'Shadow Merchant',  nodeLabel: 'AGI×FOR', effectLabel: "Fortune's Favour: 40%",   unlocked: synergyShadowMerchant, level1: levelOf(EndlessNode.dex),           level2: levelOf(EndlessNode.cha),  node1: EndlessNode.dex,           node2: EndlessNode.cha),
   ];
 
   // ── Mutation ───────────────────────────────────────────────

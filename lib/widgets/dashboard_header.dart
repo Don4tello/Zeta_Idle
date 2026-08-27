@@ -10,6 +10,7 @@ import '../models/hero_trait.dart';
 import '../models/shop_catalog.dart';
 import '../widgets/battle_sprites.dart';
 import '../widgets/progress_ring.dart';
+import '../widgets/race_gender_sprite.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // DashboardHeader
@@ -264,21 +265,16 @@ class _DashboardHeaderState extends State<DashboardHeader>
                                 ),
                               ),
                               const SizedBox(width: 6),
-                              Text(
-                                hero.gender.icon,
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  color: (raceColor ?? AppTheme.accentGold).withValues(alpha: 0.7),
-                                ),
+                              GenderSprite(
+                                gender: hero.gender,
+                                color: (raceColor ?? AppTheme.accentGold).withValues(alpha: 0.7),
+                                size: 14,
                               ),
                               if (game.heroRace != null) ...[
                                 const SizedBox(width: 4),
                                 GestureDetector(
                                   onTap: () => _showRacePopup(context, game.heroRace!),
-                                  child: Text(
-                                    game.heroRace!.info.icon,
-                                    style: const TextStyle(fontSize: 13),
-                                  ),
+                                  child: RaceSprite(race: game.heroRace!, size: 15),
                                 ),
                               ],
                             ],

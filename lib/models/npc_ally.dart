@@ -150,7 +150,7 @@ class NpcAllyDef {
       activeAbility: AllyAbility(
         name: 'War Cry',
         icon: '📣',
-        description: 'Start of battle: shouts a war cry that grants +5 ATK for 4 rounds.',
+        description: 'Start of battle: a war cry leaves the enemy exposed — it takes +25% damage for 4 rounds.',
       ),
       talent3: AllyTalentDef(
         unlocksAtLevel: 3,
@@ -202,9 +202,9 @@ class NpcAllyDef {
       bonusDescription: '+20% Gold / level',
       goldPctBonus:    0.20,
       activeAbility: AllyAbility(
-        name: 'Bribe',
-        icon: '🤑',
-        description: 'Once per battle: bribes the enemy — first kill grants double gold.',
+        name: 'Smoke Screen',
+        icon: '💨',
+        description: 'Start of battle: tosses a distraction — +30% dodge chance for the first 4 rounds.',
       ),
       talent3: AllyTalentDef(
         unlocksAtLevel: 3,
@@ -231,7 +231,7 @@ class NpcAllyDef {
       activeAbility: AllyAbility(
         name: 'Arcane Surge',
         icon: '🔮',
-        description: 'Start of battle: blasts the enemy with arcane energy for 10% of their max HP.',
+        description: 'Start of battle: blasts the enemy for 12% of their max HP as arcane damage (ignores armor).',
       ),
       talent3: AllyTalentDef(
         unlocksAtLevel: 3,
@@ -312,7 +312,7 @@ class NpcAllyDef {
       activeAbility: AllyAbility(
         name: 'Stone Skin',
         icon: '🪨',
-        description: 'Start of battle: hardens your skin — reduces all incoming damage by 4 for the first 5 enemy attacks.',
+        description: 'Start of battle: hardens your skin — reduces all incoming damage by 30% for the first 5 enemy attacks.',
       ),
       talent3: AllyTalentDef(
         unlocksAtLevel: 3,

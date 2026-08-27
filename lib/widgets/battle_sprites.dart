@@ -449,7 +449,7 @@ class BattleSpriteState extends State<BattleSprite>
       case 'gate_titan':       return _GolemPainter(facingLeft, t);
       case 'god_eater':        return _HydraPainter(facingLeft, t);
       case 'world_ender':      return _PhoenixPainter(facingLeft, t);
-      case 'omega_absolute':   return _ChimeraPainter(facingLeft, t);
+      case 'omega_absolute':   return _ZetaAbsolutePainter(facingLeft, t);
 
       // ── Crystal Sanctum (25-29) ───────────────────────────────────────────
       case 'crystal_shard':    return _PixiePainter(facingLeft, t);
@@ -3350,6 +3350,93 @@ class _ChimeraPainter extends _Painter {
 // Enchanted stone colossus — rune veins, arcane eyes, blue-grey
 // Distinct from STONE GOLEM (mossy, orange-eyed)
 // ─────────────────────────────────────────────────────────────
+
+// Zeta Absolute — the final boss, styled after the Zeta Idle app icon: a broad
+// slate-blue-and-gold armoured colossus with a glowing blue heart-gem.
+class _ZetaAbsolutePainter extends _Painter {
+  const _ZetaAbsolutePainter(super.facingLeft, [super.t = 0.0]);
+
+  @override
+  void draw(Canvas c, Size sz) {
+    const DK = 0xFF14161f; // near-black outline / recess
+    const D  = 0xFF2a3052; // dark slate-blue plate
+    const M  = 0xFF3c4670; // mid slate-blue
+    const L  = 0xFF56618f; // light slate-blue highlight
+    const G  = 0xFFc9a257; // gold trim
+    const GL = 0xFFe8cd8a; // light gold
+    const P1 = 0xFF1f6fb8; // gem deep
+    const P2 = 0xFF3fb8f0; // gem bright
+    const P3 = 0xFFbdefff; // gem highlight
+
+    // ── HEAD (helmet with gold crest + glowing visor) ──────
+    b(c, 6, 0, 4, 5, M);
+    b(c, 6, 0, 4, 1, L);
+    b(c, 6, 0, 1, 5, D);
+    b(c, 9, 0, 1, 5, D);
+    b(c, 7, 0, 2, 4, G);
+    b(c, 7, 0, 2, 1, GL);
+    b(c, 6, 3, 4, 2, DK);      // visor
+    b(c, 7, 3, 2, 1, P2);      // blue eye-glow
+
+    // ── SHOULDERS (broad plates, gold-trimmed) ─────────────
+    b(c, 0, 4, 5, 5, M);
+    b(c, 0, 4, 5, 1, G);
+    b(c, 0, 4, 1, 5, L);
+    b(c, 0, 8, 5, 1, D);
+    b(c, 11, 4, 5, 5, M);
+    b(c, 11, 4, 5, 1, G);
+    b(c, 15, 4, 1, 5, D);
+    b(c, 11, 8, 5, 1, D);
+
+    // ── CHEST / TORSO ──────────────────────────────────────
+    b(c, 5, 4, 6, 11, M);
+    b(c, 5, 4, 6, 1, L);
+    b(c, 5, 4, 1, 11, L);
+    b(c, 10, 4, 1, 11, D);
+    b(c, 6, 5, 4, 8, D);       // inner recess
+    b(c, 7, 4, 2, 2, G);       // upper gold stripe
+    b(c, 5, 11, 6, 1, G);      // gold chest band
+    b(c, 5, 13, 6, 1, DK);
+
+    // ── HEART-GEM (glowing blue diamond) ───────────────────
+    b(c, 7, 6, 2, 1, P1);
+    b(c, 6, 7, 4, 3, P2);
+    b(c, 7, 10, 2, 1, P1);
+    b(c, 7, 7, 1, 1, P3);
+    b(c, 6, 8, 1, 1, P3);
+
+    // ── ARMS + FISTS ───────────────────────────────────────
+    b(c, 0, 9, 4, 6, D);
+    b(c, 0, 9, 1, 6, M);
+    b(c, 0, 13, 4, 1, G);
+    b(c, 12, 9, 4, 6, D);
+    b(c, 15, 9, 1, 6, DK);
+    b(c, 12, 13, 4, 1, G);
+    b(c, 0, 15, 4, 3, M);
+    b(c, 0, 15, 4, 1, L);
+    b(c, 0, 17, 4, 1, DK);
+    b(c, 12, 15, 4, 3, M);
+    b(c, 12, 15, 4, 1, L);
+    b(c, 12, 17, 4, 1, DK);
+
+    // ── WAIST / HIPS (gold belt) ───────────────────────────
+    b(c, 5, 15, 6, 3, M);
+    b(c, 5, 15, 6, 1, G);
+    b(c, 5, 17, 6, 1, D);
+
+    // ── LEGS + FEET ────────────────────────────────────────
+    b(c, 5, 18, 2, 5, D);
+    b(c, 5, 18, 1, 5, M);
+    b(c, 9, 18, 2, 5, D);
+    b(c, 9, 18, 1, 5, M);
+    b(c, 5, 20, 2, 1, G);
+    b(c, 9, 20, 2, 1, G);
+    b(c, 4, 22, 3, 2, M);
+    b(c, 4, 22, 3, 1, L);
+    b(c, 9, 22, 3, 2, M);
+    b(c, 9, 22, 3, 1, L);
+  }
+}
 
 class _GolemPainter extends _Painter {
   const _GolemPainter(super.facingLeft, [super.t = 0.0]);

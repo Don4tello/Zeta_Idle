@@ -258,6 +258,10 @@ class _ZetaIdleAppState extends State<ZetaIdleApp> with WidgetsBindingObserver {
     // keeps ticking while locked/backgrounded and would otherwise play its
     // claim/coin sound over a locked phone.
     _gameState.audioService.appActive = state == AppLifecycleState.resumed;
+    // Gate the idle/autosave timers to the foreground so a backgrounded app
+    // stops ticking (no double income) and its save timestamp stops refreshing
+    // (so "time away" is measured from when you actually left).
+    _gameState.appActive = state == AppLifecycleState.resumed;
     if (state == AppLifecycleState.paused || state == AppLifecycleState.hidden) {
       _gameState.audioService.pauseMusic();
       // Fire-and-forget save after a short delay so audio pause completes first

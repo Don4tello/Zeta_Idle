@@ -5,6 +5,7 @@ import '../models/passive_tree.dart';
 import '../services/game_state.dart';
 import '../theme/app_theme.dart';
 import '../widgets/currency_info.dart';
+import '../widgets/passive_icon.dart';
 import 'main_shell.dart' show TutorialTip;
 
 class PassiveTreeScreen extends StatelessWidget {
@@ -260,7 +261,7 @@ class PassiveTreeScreen extends StatelessWidget {
                 borderRadius: BorderRadius.circular(4),
               ),
               child: Row(children: [
-                Text(node.emoji, style: const TextStyle(fontSize: 18)),
+                PassiveIcon(effect: node.effect, size: 20),
                 const SizedBox(width: 10),
                 Expanded(child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -474,7 +475,7 @@ class _NodeCard extends StatelessWidget {
             children: [
               // Header
               Row(children: [
-                Text(node.emoji, style: const TextStyle(fontSize: 22)),
+                PassiveIcon(effect: node.effect, size: 24),
                 const SizedBox(width: 10),
                 Expanded(
                   child: Column(
@@ -642,12 +643,9 @@ class _NodeCard extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            Text(
-              node.emoji,
-              style: TextStyle(
-                fontSize: 16,
-                color: locked ? Colors.white24 : Colors.white,
-              ),
+            Opacity(
+              opacity: locked ? 0.35 : 1.0,
+              child: PassiveIcon(effect: node.effect, size: 18),
             ),
             const SizedBox(height: 2),
             Text(

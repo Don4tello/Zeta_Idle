@@ -56,7 +56,7 @@ class QuestReward {
     if (echoes > 0) parts.add('🔊 $echoes');
     if (essence > 0) parts.add('✦ $essence');
     if (mythril > 0) parts.add('⬡ $mythril');
-    if (permanentACBonus > 0) parts.add('+$permanentACBonus ARM');
+    if (permanentACBonus > 0) parts.add('+$permanentACBonus AC');
     if (permanentAttackBonus > 0) parts.add('+$permanentAttackBonus ATK');
     if (permanentDamageBonus > 0) parts.add('+$permanentDamageBonus DMG');
     if (title != null) parts.add('"$title"');
@@ -128,8 +128,8 @@ class AdventureQuest {
       condition: QuestCondition.bossKills, target: 1,
       reward: QuestReward(gold: 1000, shards: 25)),
     AdventureQuest(id: 'adv_08', chapter: 'Growing Stronger', questIndex: 7,
-      title: 'Endless Warrior', hint: 'Enter Endless Mode and fight.',
-      description: 'Reach stage 5 in Endless Mode.',
+      title: 'Tower Climber', hint: 'Enter Tower Ascension and fight.',
+      description: 'Reach floor 5 in Tower Ascension.',
       condition: QuestCondition.endlessStage, target: 5,
       reward: QuestReward(gold: 1000, echoes: 30)),
     AdventureQuest(id: 'adv_09', chapter: 'Growing Stronger', questIndex: 8,
@@ -214,8 +214,8 @@ class AdventureQuest {
       condition: QuestCondition.earnGold, target: 100000,
       reward: QuestReward(zcoins: 30, shards: 100)),
     AdventureQuest(id: 'adv_24', chapter: 'Endgame', questIndex: 23,
-      title: 'Deep Diver', hint: 'Push your Endless Mode record.',
-      description: 'Reach stage 25 in Endless Mode.',
+      title: 'Tower Delver', hint: 'Push your Tower Ascension record.',
+      description: 'Reach floor 25 in Tower Ascension.',
       condition: QuestCondition.endlessStage, target: 25,
       reward: QuestReward(echoes: 200, zcoins: 20)),
     AdventureQuest(id: 'adv_25', chapter: 'Endgame', questIndex: 24,

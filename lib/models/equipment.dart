@@ -672,11 +672,12 @@ class ItemLootTable {
   };
 
   // ── tryDrop: regular combat drop ──────────────────────────────────────────
-  static EquipmentItem? tryDrop(int enemyLevel, Random rng) {
+  static EquipmentItem? tryDrop(int enemyLevel, Random rng, {int tier = 0}) {
     final dropChance = (30 + enemyLevel * 5.0).clamp(30.0, 100.0);
     if (rng.nextDouble() * 100 >= dropChance) return null;
 
-    final rarityRoll = rng.nextInt(100);
+    // Higher difficulty tiers bias the rarity roll upward (better loot).
+    final rarityRoll = max(0, rng.nextInt(100) - tier * 3);
     final rarity = rarityRoll < 3  ? ItemRarity.epic
                  : rarityRoll < 12 ? ItemRarity.rare
                  : rarityRoll < 37 ? ItemRarity.uncommon
@@ -697,8 +698,8 @@ class ItemLootTable {
   }
 
   // ── tryDropLegendary: 1% chance on boss kills ─────────────────────────────
-  static EquipmentItem? tryDropLegendary(int heroLevel, Random rng) {
-    if (rng.nextInt(100) >= 10) return null;
+  static EquipmentItem? tryDropLegendary(int heroLevel, Random rng, {int tier = 0}) {
+    if (rng.nextInt(100) >= 10 + tier) return null;
 
     final slot     = ItemSlot.values[rng.nextInt(ItemSlot.values.length)];
     final pool     = _statsFor(slot);
@@ -717,8 +718,8 @@ class ItemLootTable {
   }
 
   // ── tryDropSet: 0.3% chance on boss kills — very rare ────────────────────
-  static EquipmentItem? tryDropSet(int heroLevel, Random rng) {
-    if (rng.nextInt(1000) >= 30) return null;
+  static EquipmentItem? tryDropSet(int heroLevel, Random rng, {int tier = 0}) {
+    if (rng.nextInt(1000) >= 30 + tier * 5) return null;
 
     // Pick a random set, then a random slot from that set
     final set      = kSetCatalog[rng.nextInt(kSetCatalog.length)];
@@ -737,8 +738,8 @@ class ItemLootTable {
   }
 
   // ── tryDropMythic: 0.5% chance on boss kills — rarest procedural tier ──────
-  static EquipmentItem? tryDropMythic(int heroLevel, Random rng) {
-    if (rng.nextInt(1000) >= 5) return null;
+  static EquipmentItem? tryDropMythic(int heroLevel, Random rng, {int tier = 0}) {
+    if (rng.nextInt(1000) >= 5 + tier * 2) return null;
 
     final slot     = ItemSlot.values[rng.nextInt(ItemSlot.values.length)];
     final pool     = _statsFor(slot);

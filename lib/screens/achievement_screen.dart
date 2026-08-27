@@ -47,6 +47,56 @@ class _AchievementScreenState extends State<AchievementScreen> {
     );
   }
 
+  void _showClaimSummary(
+      BuildContext context, ({int count, int shards, int essence, int zcoins}) s) {
+    if (s.count == 0) return;
+    final rewards = <(String, String, int, Color)>[
+      ('◆', 'Shards',  s.shards,  const Color(0xFF80d0ff)),
+      ('✦', 'Essence', s.essence, const Color(0xFF88cc44)),
+      ('🪙', 'ZCoins',  s.zcoins,  AppTheme.accentGold),
+    ].where((r) => r.$3 > 0).toList();
+
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF2A2623),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(6),
+          side: BorderSide(color: AppTheme.accentGold.withValues(alpha: 0.5)),
+        ),
+        title: Text('🏆  ${s.count} ACHIEVEMENT${s.count == 1 ? '' : 'S'} CLAIMED',
+            style: AppTheme.pixelHeading(fontSize: 13, color: AppTheme.accentGold, letterSpacing: 1)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('You received:',
+                style: TextStyle(fontSize: 13, color: Colors.white70)),
+            const SizedBox(height: 12),
+            ...rewards.map((r) => Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Row(children: [
+                Text(r.$1, style: TextStyle(fontSize: 18, color: r.$4)),
+                const SizedBox(width: 10),
+                Text('+${r.$3}',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: r.$4)),
+                const SizedBox(width: 6),
+                Text(r.$2, style: const TextStyle(fontSize: 14, color: Colors.white60)),
+              ]),
+            )),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: Text('NICE!',
+                style: AppTheme.pixelHeading(fontSize: 11, color: AppTheme.accentGold)),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final game      = GameStateProvider.of(context);
@@ -65,7 +115,11 @@ class _AchievementScreenState extends State<AchievementScreen> {
             Padding(
               padding: const EdgeInsets.only(right: 8),
               child: TextButton(
-                onPressed: () { game.claimAllAchievements(); game.audioService.playClaimAll(); },
+                onPressed: () {
+                  final summary = game.claimAllAchievements();
+                  game.audioService.playClaimAll();
+                  _showClaimSummary(context, summary);
+                },
                 style: TextButton.styleFrom(
                   foregroundColor: AppTheme.accentGold,
                   side: const BorderSide(color: AppTheme.accentGold),

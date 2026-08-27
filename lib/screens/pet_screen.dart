@@ -27,6 +27,12 @@ class PetScreen extends StatelessWidget {
     final body = ListView(
       padding: const EdgeInsets.all(16),
       children: [
+        // When embedded in the Hero Hub there's no AppBar, so surface the ZCoins
+        // balance here — companions and evolutions are bought with ZCoins.
+        if (embedded) ...[
+          ZCoinBalanceBar(zcoins: game.zcoins),
+          const SizedBox(height: 12),
+        ],
         TutorialTip(
           tutorialKey: 'pets',
           game: game,

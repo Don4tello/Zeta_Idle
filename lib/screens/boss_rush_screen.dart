@@ -125,7 +125,7 @@ class _BossRushScreenState extends State<BossRushScreen> {
   void _cycleSpeed() {
     final game = _game;
     if (game == null) return;
-    final maxTier = kDebugMode ? 4 : ((game.hasSpeedSub || game.hasPremium) ? 4 : (game.speedBoostActive ? 3 : 2));
+    final maxTier = game.maxCampaignSpeedTier;
     game.setSpeedTier((game.speedTier % maxTier) + 1);
     _startAttackTimer();
   }
@@ -134,6 +134,10 @@ class _BossRushScreenState extends State<BossRushScreen> {
     final game = GameStateProvider.of(context);
     if (!game.consumeBossRushAttempt()) return;
     _stages = _bossStagesForTier(_selectedTier); // lock boss stages for this tier
+    // Order the 5 bosses by HP so difficulty ramps smoothly (some source stages
+    // are campaign bosses with ~2× the HP of adjacent regular stages).
+    _stages.sort((a, b) => EnemyData.enemyForStage(a, prestigeLevel: game.prestigeLevel).maxHealth
+        .compareTo(EnemyData.enemyForStage(b, prestigeLevel: game.prestigeLevel).maxHealth));
     _heroDmgMod  = game.hero.baseDmg
         + game.passiveTree.totalOf(PassiveEffect.damageFlat)
         + game.inventory.totalOf(ItemStat.damageBonus)
@@ -192,9 +196,11 @@ class _BossRushScreenState extends State<BossRushScreen> {
     final stageIdx    = _stages[_bossIndex];
     final base        = EnemyData.enemyForStage(stageIdx, prestigeLevel: _rebirthLvl);
     final t           = _selectedTier - 1;
-    // Steep per-tier scaling — each tier is a meaningful difficulty jump.
-    final tierHpMult  = 1.0 + t * 0.40;
-    final tierAtkMult = 1.0 + t * 0.25;
+    // Tier 1 sits at ~campaign parity (a fair back-to-back re-fight of bosses
+    // you've already cleared), and each tier ramps up meaningfully. Previously a
+    // flat ×2 HP / ×1.25 ATK made even tier 1 double the campaign version.
+    final tierHpMult  = 1.0 + t * 0.85; // T1 = 1.0 (parity) … T10 ≈ 8.65
+    final tierAtkMult = 1.0 + t * 0.35; // T1 = 1.0 … T10 ≈ 4.15
     final tierAcBonus = t ~/ 2;
     // Boss level scales with tier so its to-hit bonus grows meaningfully.
     final bossLevel   = base.level + 2 + t;
@@ -202,8 +208,8 @@ class _BossRushScreenState extends State<BossRushScreen> {
       id:          base.id,
       name:        '★ ${base.name} (Boss ${_bossIndex + 1})',
       description: base.description,
-      maxHealth:   (base.maxHealth * 2 * tierHpMult * RemoteConfigService.instance.bossRushHpMult).round(),
-      attack:      (base.attack * 1.25 * tierAtkMult * RemoteConfigService.instance.bossRushAtkMult).round(),
+      maxHealth:   (base.maxHealth * tierHpMult * RemoteConfigService.instance.bossRushHpMult).round(),
+      attack:      (base.attack * tierAtkMult * RemoteConfigService.instance.bossRushAtkMult).round(),
       level:       bossLevel,
       armorClass:  base.armorClass + 2 + tierAcBonus,
     );

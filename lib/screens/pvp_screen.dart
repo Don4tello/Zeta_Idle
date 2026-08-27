@@ -507,7 +507,7 @@ class _PvpScreenState extends State<PvpScreen> {
                             fontSize: 15,
                             color: AppTheme.accentGold,
                             fontWeight: FontWeight.bold)),
-                    Text('HP:${p.maxHp}  ARM:${p.armorClass}',
+                    Text('HP:${p.maxHp}  AC:${p.armorClass}',
                         style: const TextStyle(
                             fontSize: 10, color: AppTheme.textMuted)),
                   ],

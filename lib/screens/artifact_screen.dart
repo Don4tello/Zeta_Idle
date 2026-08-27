@@ -3,6 +3,7 @@ import '../models/artifact.dart';
 import '../services/game_state.dart';
 import '../theme/app_theme.dart';
 import '../widgets/currency_info.dart';
+import '../widgets/stat_icon.dart';
 
 class ArtifactScreen extends StatefulWidget {
   const ArtifactScreen({super.key, this.embedded = false});
@@ -171,13 +172,13 @@ class _ArtifactScreenState extends State<ArtifactScreen> {
   }
 
   Widget _buildTableBonuses(GameState game) {
-    final bonuses = <(IconData, String, int)>[
-      (Icons.bolt,              'PWR',    game.artifactPowerBonus),
-      (Icons.shield_outlined,   'ARM',    game.artifactAcBonus),
-      (Icons.favorite_outline,  'HP%',    game.artifactHpPct),
-      (Icons.monetization_on,   'Gold%',  game.artifactGoldPct),
-      (Icons.star_outline,      'XP%',    game.artifactXpPct),
-      (Icons.diamond_outlined,  'Shard%', game.artifactShardPct),
+    final bonuses = <(StatIconType, String, int)>[
+      (StatIconType.power,  'PWR',    game.artifactPowerBonus),
+      (StatIconType.armor,  'AC',     game.artifactAcBonus),
+      (StatIconType.hp,     'HP%',    game.artifactHpPct),
+      (StatIconType.gold,   'Gold%',  game.artifactGoldPct),
+      (StatIconType.xp,     'XP%',    game.artifactXpPct),
+      (StatIconType.shards, 'Shard%', game.artifactShardPct),
     ];
     final active = bonuses.where((b) => b.$3 > 0).toList();
     if (active.isEmpty) {
@@ -207,7 +208,7 @@ class _ArtifactScreenState extends State<ArtifactScreen> {
             children: active.map((b) => Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(b.$1, size: 11, color: const Color(0xFF9966ff)),
+                StatIcon(type: b.$1, color: const Color(0xFF9966ff), size: 15),
                 const SizedBox(width: 3),
                 Text('+${b.$3} ${b.$2}',
                     style: const TextStyle(fontSize: 11, color: Color(0xFF9966ff), fontWeight: FontWeight.bold)),

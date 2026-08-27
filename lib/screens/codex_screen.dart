@@ -243,7 +243,9 @@ class _GameModesContent extends StatelessWidget {
           title: 'Campaign',
           color: Color(0xFFcc9944),
           body: '100 stages across 20 zones. Every 5th stage is a boss.\n'
-              'Hard Mode: unlocks at stage 50 — 2× enemy stats, +50% rewards.\n'
+              'Difficulty Tiers: each Rebirth unlocks a tier (up to 10). Switch tiers '
+              'freely from the campaign header — higher tiers hit harder but drop '
+              'better loot; switching down keeps all your rebirth buffs.\n'
               '3-star system per stage: ★ Win, ★★ >50% HP, ★★★ Under 10 turns.\n'
               'Auto-Campaign: toggle in battle or settings to fight in the background.\n'
               'Battle Speed: 1×/1.5×/2× toggle available.\n'

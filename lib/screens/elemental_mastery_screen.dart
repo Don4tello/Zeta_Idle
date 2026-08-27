@@ -2,7 +2,9 @@
 import '../models/damage_type.dart';
 import '../services/game_state.dart';
 import '../theme/app_theme.dart';
+import '../widgets/currency_icon.dart';
 import '../widgets/currency_info.dart';
+import '../widgets/element_icon.dart';
 import '../widgets/hold_repeat_button.dart';
 
 class ElementalMasteryScreen extends StatelessWidget {
@@ -23,7 +25,16 @@ class ElementalMasteryScreen extends StatelessWidget {
             Text('ELEMENTAL MASTERY',
                 style: AppTheme.pixelHeading(
                     fontSize: 11, letterSpacing: 2, color: _accent)),
-            _ShardBadge(shards: game.towerShards),
+            Row(children: [
+              // Upgrades cost Gold + Tower Shards, so surface both balances.
+              const CurrencyIcon(id: 'gold', size: 15),
+              const SizedBox(width: 4),
+              Text(AppTheme.fmtNumber(game.gold),
+                  style: const TextStyle(
+                      fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFFffd54a))),
+              const SizedBox(width: 12),
+              _ShardBadge(shards: game.towerShards),
+            ]),
           ]),
           const SizedBox(height: 8),
         ],
@@ -144,7 +155,7 @@ class _ElementCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(4),
       ),
       child: Row(children: [
-        Text(type.emoji, style: const TextStyle(fontSize: 26)),
+        ElementIcon(type: type, size: 28),
         const SizedBox(width: 12),
         Expanded(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [

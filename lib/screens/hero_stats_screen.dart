@@ -11,6 +11,7 @@ import '../models/subclass.dart';
 import '../services/game_state.dart';
 import '../theme/app_theme.dart';
 import '../widgets/battle_sprites.dart';
+import '../widgets/stat_icon.dart';
 import 'main_shell.dart' show TutorialTip;
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -575,6 +576,7 @@ class _StatsBody extends StatelessWidget {
       _StatRow(
         label: 'Power',
         icon: Icons.flash_on,
+        statIcon: StatIconType.power,
         color: const Color(0xFFff6644),
         total: '+${atkBase + atkPass + atkEquip + atkSet + atkPets + atkSkin + atkAlly + dmgBase + dmgPass + dmgEquip + dmgSet + dmgPets + dmgSkin + dmgAlly}'
             '${dmgTrait != 0 ? "  ×${(1 + dmgTrait / 100).toStringAsFixed(2)}" : ""}',
@@ -593,6 +595,7 @@ class _StatsBody extends StatelessWidget {
       _StatRow(
         label: 'Armor',
         icon: Icons.shield_outlined,
+        statIcon: StatIconType.armor,
         color: const Color(0xFF66aaff),
         total: '${acBase + acPass + acEquip + acSet + acPets + acSkin + acAlly}',
         sources: [
@@ -608,6 +611,7 @@ class _StatsBody extends StatelessWidget {
       _StatRow(
         label: 'Max HP',
         icon: Icons.favorite_outline,
+        statIcon: StatIconType.hp,
         color: const Color(0xFFff6666),
         total: '$hpBase HP',
         sources: [
@@ -620,6 +624,7 @@ class _StatsBody extends StatelessWidget {
       _StatRow(
         label: 'Pierce (Armor Pen)',
         icon: Icons.compare_arrows,
+        statIcon: StatIconType.pierce,
         color: const Color(0xFFffaa44),
         total: '$pierce flat armor ignored',
         sources: [
@@ -631,9 +636,14 @@ class _StatsBody extends StatelessWidget {
       _StatRow(
         label: 'Crit Chance',
         icon: Icons.star_outline,
+        statIcon: StatIconType.crit,
         color: const Color(0xFFffee44),
-        total: '${game.totalCritChancePct}%  (cap 75%)',
+        total: game.critOverflowPct > 0
+            ? '100%  (+${game.critOverflowPct}% → crit dmg)'
+            : '${game.totalCritChancePct}%  (cap 100%)',
         sources: [
+          if (game.critOverflowPct > 0)
+            _Source('Overflow → Crit Damage', '+${game.critOverflowPct}% crit dmg'),
           _Source('Passives (crit nodes)', '+$critPass%'),
           _Source('ATK stat (items ×2)', '+${(game.inventory.totalOf(ItemStat.attackBonus) + game.inventorySetTotal(ItemStat.attackBonus)) * 2}%'),
           _Source('Passives (ATK flat ×2)', '+${pt.totalOf(PassiveEffect.attackFlat) * 2}%'),
@@ -648,6 +658,7 @@ class _StatsBody extends StatelessWidget {
       _StatRow(
         label: 'Crit Damage',
         icon: Icons.flash_on_outlined,
+        statIcon: StatIconType.critDamage,
         color: const Color(0xFFff8844),
         total: '${game.totalCritDamageMult.toStringAsFixed(1)}× damage',
         sources: [
@@ -1086,10 +1097,12 @@ class _StatRow {
     required this.icon,
     required this.color,
     required this.total,
+    this.statIcon,
     this.sources = const [],
   });
   final String        label;
   final IconData      icon;
+  final StatIconType? statIcon; // custom sprite icon; falls back to [icon]
   final Color         color;
   final String        total;
   final List<_Source> sources;
@@ -1152,7 +1165,9 @@ class _StatRowWidgetState extends State<_StatRowWidget> {
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
               child: Row(
                 children: [
-                  Icon(row.icon, color: row.color, size: 13),
+                  row.statIcon != null
+                      ? StatIcon(type: row.statIcon!, color: row.color, size: 16)
+                      : Icon(row.icon, color: row.color, size: 13),
                   const SizedBox(width: 7),
                   Expanded(
                     child: Text(

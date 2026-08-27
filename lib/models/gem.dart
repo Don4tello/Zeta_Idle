@@ -40,6 +40,11 @@ extension GemTypeInfo on GemType {
   };
   String get elementLabel => '${damageType.emoji} ${damageType.label}';
 
+  /// Plain-language explanation of what this element does in either socket.
+  String get roleBlurb =>
+      'In a weapon: adds ${damageType.label} damage to your hits.\n'
+      'In armor or jewelry: reduces ${damageType.label} damage you take.';
+
   // Legacy compat — map to an ItemStat for old code that reads gem.stat
   ItemStat get stat => switch (this) {
     GemType.ruby     => ItemStat.charisma,
@@ -103,6 +108,11 @@ class Gem {
   }
 
   String get bonusLabel => '+$value% ${type.elementLabel}';
+
+  /// The two effects a gem grants depending on where it is socketed. Both are
+  /// always shown so players know a gem is dual-purpose (damage OR resistance).
+  String get weaponEffect => '+$value% ${type.damageType.label} damage';
+  String get armorEffect  => '+$value% ${type.damageType.label} resistance';
 
   Map<String, dynamic> toJson() => {'type': type.name, 'tier': tier.name};
 

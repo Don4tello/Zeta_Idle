@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../services/game_state.dart';
 import '../theme/app_theme.dart';
 import '../widgets/hold_repeat_button.dart';
+import '../widgets/stat_emblem.dart';
 
 class AbilityScoresScreen extends StatelessWidget {
   const AbilityScoresScreen({super.key, this.embedded = false});
@@ -161,7 +162,10 @@ class _StatCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(4),
       ),
       child: Row(children: [
-        Icon(stat.icon, size: 28, color: stat.color.withValues(alpha: gateMet ? 1.0 : 0.4)),
+        Opacity(
+          opacity: gateMet ? 1.0 : 0.4,
+          child: StatEmblem(statKey: stat.key, color: stat.color, size: 30),
+        ),
         const SizedBox(width: 12),
         Expanded(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [

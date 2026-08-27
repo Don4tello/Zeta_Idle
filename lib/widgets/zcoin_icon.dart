@@ -46,6 +46,85 @@ class _ZCoinIconState extends State<ZCoinIcon> with SingleTickerProviderStateMix
   }
 }
 
+/// A compact "your ZCoins balance" bar for screens shown embedded in the Hero
+/// Hub (which have no AppBar of their own). Keeps the premium-currency balance
+/// visible where it's spent — Companions and Mercenaries.
+class ZCoinBalanceBar extends StatelessWidget {
+  const ZCoinBalanceBar({super.key, required this.zcoins, this.label = 'ZCoins', this.shards});
+  final int zcoins;
+  final String label;
+  /// When set, also shows a combat-Shards balance (the other spend currency).
+  final int? shards;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(
+        color: const Color(0xFF231F1B),
+        border: Border.all(color: const Color(0xFF66aaff).withValues(alpha: 0.4)),
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: Row(children: [
+        const ZCoinIcon(size: 18),
+        const SizedBox(width: 8),
+        Text('$zcoins',
+            style: const TextStyle(
+                fontSize: 17, fontWeight: FontWeight.bold, color: Color(0xFF88ccff))),
+        const SizedBox(width: 6),
+        Text(label,
+            style: const TextStyle(fontSize: 12, color: Color(0xFF9fb4c9))),
+        if (shards != null) ...[
+          const SizedBox(width: 16),
+          const _ShardDot(),
+          const SizedBox(width: 8),
+          Text('$shards',
+              style: const TextStyle(
+                  fontSize: 17, fontWeight: FontWeight.bold, color: Color(0xFF80d0ff))),
+          const SizedBox(width: 6),
+          const Text('Shards',
+              style: TextStyle(fontSize: 12, color: Color(0xFF9fb4c9))),
+        ],
+        const Spacer(),
+        const Text('Your balance',
+            style: TextStyle(fontSize: 11, color: Color(0xFF7a8a99))),
+      ]),
+    );
+  }
+}
+
+/// Tiny blue-gem dot for the Shards balance (avoids a heavy import here).
+class _ShardDot extends StatelessWidget {
+  const _ShardDot();
+  @override
+  Widget build(BuildContext context) => SizedBox(
+        width: 16, height: 16,
+        child: CustomPaint(painter: _ShardDotPainter()),
+      );
+}
+
+class _ShardDotPainter extends CustomPainter {
+  @override
+  void paint(Canvas cv, Size s) {
+    final cx = s.width / 2, cy = s.height / 2;
+    final crown = Path()
+      ..moveTo(cx, cy - s.height * 0.34)
+      ..lineTo(cx + s.width * 0.3, cy - s.height * 0.04)
+      ..lineTo(cx - s.width * 0.3, cy - s.height * 0.04)
+      ..close();
+    cv.drawPath(crown, Paint()..color = const Color(0xFFa8d0ff)..isAntiAlias = true);
+    final pav = Path()
+      ..moveTo(cx - s.width * 0.3, cy - s.height * 0.04)
+      ..lineTo(cx + s.width * 0.3, cy - s.height * 0.04)
+      ..lineTo(cx, cy + s.height * 0.36)
+      ..close();
+    cv.drawPath(pav, Paint()..color = const Color(0xFF4a86e0)..isAntiAlias = true);
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter old) => false;
+}
+
 class _ZCoinPainter extends CustomPainter {
   _ZCoinPainter({required this.t});
   final double t;

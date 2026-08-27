@@ -689,38 +689,56 @@ class _GemsTabState extends State<_GemsTab> {
           ),
           const SizedBox(height: 16),
 
-          // ── Gem type picker ───────────────────────────────────────────
+          // ── Gem type picker (one per line, with full description) ─────
           Text('GEM TYPE', style: AppTheme.pixelHeading(fontSize: 10, letterSpacing: 2, color: AppTheme.textMuted)),
           const SizedBox(height: 8),
-          GridView.count(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            crossAxisCount: 4,
-            mainAxisSpacing: 6,
-            crossAxisSpacing: 6,
-            childAspectRatio: 1.1,
-            children: GemType.values.map((t) {
-              final sel = _type == t;
-              return GestureDetector(
+          ...GemType.values.map((t) {
+            final sel = _type == t;
+            // Effect % for the currently selected tier, so the description is live.
+            final pct = _tier.pctBonus;
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 6),
+              child: GestureDetector(
                 onTap: () => setState(() => _type = t),
                 child: Container(
+                  constraints: const BoxConstraints(minHeight: 56),
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                   decoration: BoxDecoration(
                     color: sel ? t.color.withValues(alpha: 0.15) : const Color(0xFF231F1B),
                     border: Border.all(color: sel ? t.color : AppTheme.cardBorder, width: sel ? 1.5 : 1),
                     borderRadius: BorderRadius.circular(4),
                   ),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
-                      Text(t.emoji, style: const TextStyle(fontSize: 19)),
-                      const SizedBox(height: 2),
-                      Text(t.label, style: TextStyle(fontSize: 10, color: sel ? t.color : AppTheme.textMuted)),
+                      Text(t.emoji, style: const TextStyle(fontSize: 24)),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(children: [
+                              Text('${t.label}  ',
+                                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold,
+                                      color: sel ? t.color : AppTheme.textLight)),
+                              Text(t.elementLabel,
+                                  style: const TextStyle(fontSize: 13, color: AppTheme.textMuted)),
+                            ]),
+                            const SizedBox(height: 3),
+                            Text('⚔ Weapon: +$pct% ${t.damageType.label} damage',
+                                style: const TextStyle(fontSize: 13, color: Color(0xFFd9a066))),
+                            Text('🛡 Armor: +$pct% ${t.damageType.label} resistance',
+                                style: const TextStyle(fontSize: 13, color: Color(0xFF88aacc))),
+                          ],
+                        ),
+                      ),
+                      if (sel) Icon(Icons.check_circle, size: 18, color: t.color),
                     ],
                   ),
                 ),
-              );
-            }).toList(),
-          ),
+              ),
+            );
+          }),
           const SizedBox(height: 14),
 
           // ── Tier picker ───────────────────────────────────────────────
@@ -768,12 +786,16 @@ class _GemsTabState extends State<_GemsTab> {
               Expanded(child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(previewGem.name,
-                      style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: _type.color)),
-                  Text(_type.elementLabel,
-                      style: const TextStyle(fontSize: 12, color: AppTheme.textLight)),
-                  Text('+${previewGem.value}  •  ${_tier.shardCost} 💠 to craft',
-                      style: const TextStyle(fontSize: 11, color: AppTheme.textMuted)),
+                  Text('${previewGem.name}  •  ${_type.elementLabel}',
+                      style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: _type.color)),
+                  const SizedBox(height: 4),
+                  Text('⚔ Weapon: ${previewGem.weaponEffect}',
+                      style: const TextStyle(fontSize: 13, color: Color(0xFFd9a066))),
+                  Text('🛡 Armor: ${previewGem.armorEffect}',
+                      style: const TextStyle(fontSize: 13, color: Color(0xFF88aacc))),
+                  const SizedBox(height: 4),
+                  Text('${_tier.shardCost} 💠 to craft',
+                      style: const TextStyle(fontSize: 12, color: AppTheme.textMuted)),
                 ],
               )),
             ]),
@@ -850,11 +872,13 @@ class _GemsTabState extends State<_GemsTab> {
               children: [
                 Text('HOW GEMS WORK', style: AppTheme.pixelHeading(fontSize: 10, letterSpacing: 2, color: AppTheme.textMuted)),
                 const SizedBox(height: 6),
-                const Text('• Gem shards drop from combat kills (25% chance) and bosses.\n'
+                const Text('• Each gem is dual-purpose — the SAME gem gives '
+                    'elemental DAMAGE in a weapon, or elemental RESISTANCE in armor / jewelry.\n'
+                    '• Gem shards drop from combat kills (25% chance) and bosses.\n'
                     '• Each item can hold 1 gem in its socket.\n'
-                    '• Socket gems from this bag via the Inventory screen.\n'
+                    '• Socket gems from this bag, or via the Inventory screen.\n'
                     '• Replacing or removing a gem destroys the old one.',
-                    style: TextStyle(fontSize: 11, color: AppTheme.textMuted, height: 1.5)),
+                    style: TextStyle(fontSize: 12, color: AppTheme.textMuted, height: 1.5)),
               ],
             ),
           ),
@@ -888,19 +912,16 @@ class _GemBagTile extends StatelessWidget {
           Expanded(child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(gem.name, style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: gem.color)),
-              Text(gem.type.elementLabel, style: const TextStyle(fontSize: 11, color: AppTheme.textMuted)),
+              Text('${gem.name}  •  ${gem.type.elementLabel}',
+                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: gem.color)),
+              const SizedBox(height: 3),
+              Text('⚔ ${gem.weaponEffect}',
+                  style: const TextStyle(fontSize: 13, color: Color(0xFFd9a066))),
+              Text('🛡 ${gem.armorEffect}',
+                  style: const TextStyle(fontSize: 13, color: Color(0xFF88aacc))),
             ],
           )),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-            decoration: BoxDecoration(
-              color: gem.tier.color.withValues(alpha: 0.1),
-              border: Border.all(color: gem.tier.color.withValues(alpha: 0.4)),
-              borderRadius: BorderRadius.circular(3),
-            ),
-            child: Text('+${gem.value}', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: gem.tier.color)),
-          ),
+          const SizedBox(width: 8),
           const SizedBox(width: 8),
           Icon(Icons.open_in_new, size: 14, color: AppTheme.textMuted),
         ]),
@@ -1004,7 +1025,8 @@ class _SocketPickerSheet extends StatelessWidget {
                         children: [
                           Text(item.name,
                               style: TextStyle(fontSize: 13, color: item.rarityColor, fontWeight: FontWeight.bold)),
-                          Text(item.slot.label, style: const TextStyle(fontSize: 11, color: AppTheme.textMuted)),
+                          Text('${item.slot.label}  →  ${gem.bonusLabelFor(item.slot)}',
+                              style: const TextStyle(fontSize: 12, color: AppTheme.textLight)),
                         ],
                       )),
                       if (hasGem)

@@ -135,6 +135,14 @@ class BattleArenaState extends State<BattleArena> with TickerProviderStateMixin 
   String _bannerId    = '';
   Color  _bannerColor = Colors.white;
 
+  // Mercenary ability call-out — a card that slides in from the hero's side
+  // whenever a merc triggers its battle ability.
+  late final AnimationController _mercCtrl = AnimationController(
+      vsync: this, duration: const Duration(milliseconds: 1700));
+  String _mercName = '';
+  String _mercIcon = '';
+  Color  _mercColor = const Color(0xFFffcc66);
+
   static Color _effectColor(AbilityEffect e) => switch (e) {
     AbilityEffect.bonusDamage      => const Color(0xFFff6633),
     AbilityEffect.heal             => const Color(0xFF44cc66),
@@ -168,6 +176,7 @@ class BattleArenaState extends State<BattleArena> with TickerProviderStateMixin 
     _bossFlashCtrl.dispose();
     _enemyFadeCtrl.dispose();
     _bannerCtrl.dispose();
+    _mercCtrl.dispose();
     _elemFlashCtrl.dispose();
     for (final f in _floaters) f.ctrl.dispose();
     super.dispose();
@@ -275,6 +284,15 @@ class BattleArenaState extends State<BattleArena> with TickerProviderStateMixin 
     _bannerId    = id;
     _bannerColor = _effectColor(effect);
     _bannerCtrl.forward(from: 0);
+  }
+
+  /// Slides in a merc call-out card (emoji + name) from the hero's side.
+  void playMercAbility(String name, String icon, Color color) {
+    _mercName  = name;
+    _mercIcon  = icon;
+    _mercColor = color;
+    _shakeCtrl.forward(from: 0.25); // little punch
+    _mercCtrl.forward(from: 0);
   }
 
   // ── Internal ─────────────────────────────────────────────────────────────────
@@ -654,6 +672,74 @@ class BattleArenaState extends State<BattleArena> with TickerProviderStateMixin 
                       child: CustomPaint(
                         painter: _AbilityEdgeFlashPainter(
                             _bannerColor, alpha.clamp(0.0, 0.22)),
+                      ),
+                    ),
+                  );
+                },
+              ),
+              // Mercenary ability call-out — slides in from the hero's side
+              AnimatedBuilder(
+                animation: _mercCtrl,
+                builder: (_, __) {
+                  final t = _mercCtrl.value;
+                  if (t <= 0 || (!_mercCtrl.isAnimating && t >= 1)) {
+                    return const SizedBox.shrink();
+                  }
+                  // 0–0.18 slide in from left (+ elastic pop), hold, 0.78–1 fade/rise.
+                  final inT   = (t / 0.18).clamp(0.0, 1.0);
+                  final slide = (1 - Curves.easeOutBack.transform(inT)) * -70.0;
+                  final fadeT = ((t - 0.78) / 0.22).clamp(0.0, 1.0);
+                  final opacity = (1.0 - fadeT).clamp(0.0, 1.0);
+                  final riseY = fadeT * 18.0;
+                  return Positioned(
+                    left: 10 + slide,
+                    top: _arenaSize.height * 0.24 - riseY,
+                    child: IgnorePointer(
+                      child: Opacity(
+                        opacity: opacity,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF17130E).withValues(alpha: 0.92),
+                            border: Border.all(color: _mercColor.withValues(alpha: 0.9), width: 1.5),
+                            borderRadius: BorderRadius.circular(6),
+                            boxShadow: [
+                              BoxShadow(color: _mercColor.withValues(alpha: 0.5), blurRadius: 12, spreadRadius: 1),
+                            ],
+                          ),
+                          child: Row(mainAxisSize: MainAxisSize.min, children: [
+                            Container(
+                              width: 28, height: 28,
+                              alignment: Alignment.center,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: _mercColor.withValues(alpha: 0.18),
+                                border: Border.all(color: _mercColor, width: 1.2),
+                              ),
+                              child: Text(_mercIcon, style: const TextStyle(fontSize: 15)),
+                            ),
+                            const SizedBox(width: 7),
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text('MERC ABILITY',
+                                    style: TextStyle(
+                                        fontSize: 7,
+                                        letterSpacing: 1.5,
+                                        fontWeight: FontWeight.bold,
+                                        color: _mercColor.withValues(alpha: 0.75))),
+                                Text(_mercName.toUpperCase(),
+                                    style: TextStyle(
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.bold,
+                                        color: _mercColor,
+                                        shadows: const [Shadow(color: Colors.black, blurRadius: 3, offset: Offset(1, 1))])),
+                              ],
+                            ),
+                            const SizedBox(width: 6),
+                          ]),
+                        ),
                       ),
                     ),
                   );

@@ -4,6 +4,7 @@ import '../models/equipment.dart';
 import '../services/game_state.dart';
 import '../theme/app_theme.dart';
 import '../widgets/currency_info.dart';
+import '../widgets/rune_sprite.dart';
 
 class RuneScreen extends StatelessWidget {
   const RuneScreen({super.key, this.embedded = false});
@@ -107,7 +108,7 @@ class _RuneCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(children: [
-            Text(rune.icon, style: const TextStyle(fontSize: 22)),
+            RuneGlyph(rune: rune, size: 40),
             const SizedBox(width: 10),
             Expanded(child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,

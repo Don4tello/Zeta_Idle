@@ -10,6 +10,7 @@ import '../models/hero_trait.dart';
 import '../theme/app_theme.dart';
 import '../utils/profanity_filter.dart';
 import '../widgets/battle_sprites.dart';
+import '../widgets/race_gender_sprite.dart';
 
 /// Classes ordered so the beginner-recommended (low complexity) ones lead —
 /// stable within each complexity tier. Computed once.
@@ -302,11 +303,10 @@ class _NameStep extends StatelessWidget {
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Text(g.icon,
-                          style: TextStyle(
-                            fontSize: 20,
-                            color: active ? AppTheme.accentGold : AppTheme.textMuted,
-                          )),
+                      GenderSprite(
+                          gender: g,
+                          color: active ? AppTheme.accentGold : AppTheme.textMuted,
+                          size: 24),
                       const SizedBox(height: 4),
                       Text(g.label.toUpperCase(),
                           style: GoogleFonts.rajdhani(
@@ -907,7 +907,7 @@ class _RaceListRow extends StatelessWidget {
               padding: const EdgeInsets.fromLTRB(10, 6, 10, 6),
               child: Row(
                 children: [
-                  Text(info.icon, style: const TextStyle(fontSize: 26)),
+                  RaceSprite(race: race, size: 30),
                   const SizedBox(width: 10),
                   Expanded(
                     child: Column(

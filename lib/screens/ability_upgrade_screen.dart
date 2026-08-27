@@ -1,6 +1,7 @@
 ﻿import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../data/ability_data.dart';
+import '../data/class_quest_data.dart';
 import '../widgets/ability_icon.dart';
 import '../models/equipment.dart';
 import '../models/hero_ability.dart';
@@ -259,6 +260,14 @@ class AbilityUpgradeScreen extends StatelessWidget {
               categoryColor: _categoryColors[a.category] ?? Colors.grey,
               categoryLabel: _categoryLabel[a.category] ?? '',
             )),
+        // Locked Ultimate teaser — shown until the class questline is complete so
+        // players know the Ultimate exists, unlocks at Lv30, and needs the questline.
+        if (!game.classUltimateUnlocked &&
+            AbilityData.ultimateFor(game.hero.heroClass) != null)
+          _UltimateTeaserCard(
+            game: game,
+            ultimate: AbilityData.ultimateFor(game.hero.heroClass)!,
+          ),
       ],
     );
 
@@ -680,6 +689,114 @@ class _AbilityAscendRow extends StatelessWidget {
                 style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, letterSpacing: 1)),
           ),
       ]),
+    );
+  }
+}
+
+// ── Locked Ultimate teaser ────────────────────────────────────────────────────
+
+class _UltimateTeaserCard extends StatelessWidget {
+  const _UltimateTeaserCard({required this.game, required this.ultimate});
+  final GameState game;
+  final HeroAbility ultimate;
+
+  static const _ultColor = Color(0xFFcc88ff);
+
+  @override
+  Widget build(BuildContext context) {
+    final quests   = ClassQuestData.questsForClass(game.hero.heroClass);
+    final claimed  = quests.take(5).where((q) => game.questsClaimed[q.id] == true).length;
+    final atLevel  = game.hero.level >= ultimate.levelRequired; // 30
+
+    Widget req(bool met, String text) => Padding(
+      padding: const EdgeInsets.only(top: 4),
+      child: Row(children: [
+        Icon(met ? Icons.check_circle : Icons.radio_button_unchecked,
+            size: 16, color: met ? const Color(0xFF44cc66) : Colors.white38),
+        const SizedBox(width: 6),
+        Expanded(child: Text(text,
+            style: TextStyle(fontSize: 14, height: 1.3,
+                color: met ? Colors.white70 : Colors.white54))),
+      ]),
+    );
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Container(
+        decoration: BoxDecoration(
+          color: const Color(0xFF17131F),
+          border: Border.all(color: _ultColor.withOpacity(0.45), width: 1.5),
+        ),
+        padding: const EdgeInsets.all(14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Header: ULTIMATE badge + unlock level
+            Row(children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                color: _ultColor.withOpacity(0.18),
+                child: const Text('ULTIMATE',
+                    style: TextStyle(color: _ultColor, fontSize: 9,
+                        fontWeight: FontWeight.bold, letterSpacing: 1)),
+              ),
+              const SizedBox(width: 8),
+              Row(children: [
+                const Icon(Icons.lock, size: 12, color: Colors.white38),
+                const SizedBox(width: 3),
+                Text('UNLOCKS LV ${ultimate.levelRequired}',
+                    style: const TextStyle(color: Colors.white38, fontSize: 10,
+                        fontWeight: FontWeight.bold)),
+              ]),
+            ]),
+            const SizedBox(height: 10),
+            // Icon + name + description (greyed)
+            Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
+              ColorFiltered(
+                colorFilter: const ColorFilter.mode(Colors.black54, BlendMode.saturation),
+                child: AbilityIcon(abilityId: ultimate.id, size: 44),
+              ),
+              const SizedBox(width: 10),
+              Expanded(child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(ultimate.name,
+                      style: const TextStyle(color: Colors.white38, fontSize: 16,
+                          fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 4),
+                  Text(ultimate.description,
+                      style: const TextStyle(color: Colors.white38, fontSize: 14)),
+                ],
+              )),
+            ]),
+            const SizedBox(height: 12),
+            // Requirement box — makes the questline gate explicit
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: Colors.black.withOpacity(0.25),
+                border: Border.all(color: _ultColor.withOpacity(0.25)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('🔒 Finish your class questline to unlock',
+                      style: TextStyle(color: _ultColor, fontSize: 14,
+                          fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 4),
+                  req(atLevel, 'Reach Level ${ultimate.levelRequired}  (you: Lv ${game.hero.level})'),
+                  req(claimed >= 5, 'Complete all 5 ${game.hero.heroClass.displayName} class quests  ($claimed / 5)'),
+                  const SizedBox(height: 6),
+                  const Text('Track your quests in the Quests tab.',
+                      style: TextStyle(color: Colors.white38, fontSize: 13,
+                          fontStyle: FontStyle.italic)),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

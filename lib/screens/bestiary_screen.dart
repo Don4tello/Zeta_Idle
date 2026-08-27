@@ -3,6 +3,7 @@ import '../data/bestiary_data.dart';
 import '../models/bestiary_entry.dart';
 import '../services/game_state.dart';
 import '../theme/app_theme.dart';
+import '../widgets/battle_sprites.dart';
 import 'main_shell.dart' show TutorialTip;
 
 // ── Type metadata ──────────────────────────────────────────────────────────────
@@ -288,10 +289,10 @@ class _BestiaryCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(4),
       ),
       child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        // Type icon
+        // Enemy sprite (real battle sprite once discovered, else a locked box)
         Container(
-          width: 34,
-          height: 34,
+          width: 42,
+          height: 42,
           alignment: Alignment.center,
           decoration: BoxDecoration(
             color: color.withValues(alpha: discovered ? 0.10 : 0.04),
@@ -299,11 +300,10 @@ class _BestiaryCard extends StatelessWidget {
                 color: color.withValues(alpha: discovered ? 0.5 : 0.15)),
             borderRadius: BorderRadius.circular(4),
           ),
-          child: Icon(
-            discovered ? icon : Icons.help_outline,
-            size: 18,
-            color: color.withValues(alpha: discovered ? 1.0 : 0.3),
-          ),
+          child: discovered
+              ? StaticEnemySprite(spriteId: entry.enemyId, size: 38)
+              : Icon(Icons.help_outline, size: 18,
+                  color: color.withValues(alpha: 0.3)),
         ),
         const SizedBox(width: 12),
         Expanded(

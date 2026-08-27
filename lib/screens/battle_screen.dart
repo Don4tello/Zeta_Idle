@@ -438,9 +438,24 @@ class _BattleScreenState extends State<BattleScreen>
     );
   }
 
+  // Plays any queued merc-ability call-outs (staggered), from either battle
+  // start or an HP-triggered merc save.
+  void _playMercFx(GameState game) {
+    final fx = game.drainMercFx();
+    for (var i = 0; i < fx.length; i++) {
+      final e = fx[i];
+      Future.delayed(Duration(milliseconds: i * 850), () {
+        if (mounted) _arenaKey.currentState?.playMercAbility(e.name, e.icon, e.color);
+      });
+    }
+  }
+
   Future<void> _doAttack(GameState game) async {
     if (_busy || game.currentEnemy == null) return;
     if (mounted) setState(() => _busy = true);
+
+    // Show any merc abilities queued at battle start / from the last round.
+    _playMercFx(game);
 
     // -- Hero attacks --------------------------------------------------------
     game.clearPendingFloats();

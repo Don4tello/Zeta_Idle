@@ -708,8 +708,9 @@ class DungeonRun {
       enemyName: isFinal ? '★☠ ${e.name}, Dungeon Lord' : '☠ ${e.name}',
       // Boss ATK ramps from 1.2× at floor 1 to 1.6× at floor 17+, giving a smoother
       // difficulty curve instead of the hard cliff at floors 7–9.
-      enemyMaxHp: (e.maxHealth * 1.9 * finalMult * _hpScale).round(),
-      enemyAtk: (e.attack * (1.1 + (floor - 1) * 0.02).clamp(1.1, 1.4) * (isFinal ? 1.2 : 1.0) * _atkScale).round(),
+      // Dungeon bosses are toned down 20% (HP and ATK ×0.8) for a fairer fight.
+      enemyMaxHp: (e.maxHealth * 1.9 * finalMult * _hpScale * 0.8).round(),
+      enemyAtk: (e.attack * (1.1 + (floor - 1) * 0.02).clamp(1.1, 1.4) * (isFinal ? 1.2 : 1.0) * _atkScale * 0.8).round(),
       enemyAc: e.armorClass + 2 + (floor ~/ 5).clamp(0, 8) + (isFinal ? 2 : 0),
     );
   }

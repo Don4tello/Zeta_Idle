@@ -28,6 +28,12 @@ class NpcAllyScreen extends StatelessWidget {
                 'certain milestones. 🤝 Each one provides passive combat bonuses '
                 'in every battle and can synergise with others for extra power.',
           ),
+        // Embedded in the Hero Hub there's no AppBar — surface both spend
+        // currencies (ZCoins and Shards) since mercs are unlocked/upgraded with them.
+        if (embedded) ...[
+          ZCoinBalanceBar(zcoins: game.zcoins, shards: game.shards),
+          const SizedBox(height: 12),
+        ],
         _ActiveBonusBar(game: game),
         const SizedBox(height: 16),
         Text('ROSTER',

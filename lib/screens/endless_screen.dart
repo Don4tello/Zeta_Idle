@@ -36,7 +36,18 @@ class _EndlessScreenState extends State<EndlessScreen> {
   bool _showingReward = false;
   int? _selectedBossStage;
   int? _activeBossStage;
-  int _bossTier = 1;
+  // Tower bosses are fought at their campaign difficulty — no tier scaling.
+  static const int _bossTier = 1;
+  int? _countdown; // 3/2/1 shown before the first attack; null = none
+  bool _autoClear = false; // premium: auto-fight through all available bosses
+
+  /// The next campaign boss the player can challenge today (undefeated), or null.
+  int? _nextAvailableBossStage(GameState game) {
+    for (int stage = 4; stage < game.campaignStageIndex; stage += 5) {
+      if (!game.isTowerBossDefeatedToday(stage, _bossTier)) return stage;
+    }
+    return null;
+  }
   int  _rewardGold     = 0;
   int  _rewardExp      = 0;
   int  _rewardShards       = 0;
@@ -74,9 +85,22 @@ class _EndlessScreenState extends State<EndlessScreen> {
 
   // ── Single-battle run (no auto-loop) ────────────────────────────
 
+  Future<void> _runCountdown(GameState game) async {
+    for (int i = 3; i >= 1; i--) {
+      if (!mounted) return;
+      setState(() => _countdown = i);
+      await Future.delayed(Duration(milliseconds: game.scaledInterval(1000)));
+    }
+    if (mounted) setState(() => _countdown = null);
+  }
+
   void _startAutoAttack(GameState game) async {
     if (_autoRunning) return;
     _autoRunning = true;
+
+    // 3-2-1 countdown before the first hit (matches the campaign battle).
+    await _runCountdown(game);
+    if (!mounted) { _autoRunning = false; return; }
 
     // Fight until enemy dies or hero is defeated.
     while (mounted && _inBattle && game.currentEnemy != null) {
@@ -96,7 +120,7 @@ class _EndlessScreenState extends State<EndlessScreen> {
       game.stopEndlessMode();
       await _showDefeatDialog(game.hero.name);
       if (mounted) {
-        setState(() { _inBattle = false; _autoRunning = false; _busy = false; });
+        setState(() { _inBattle = false; _autoRunning = false; _busy = false; _autoClear = false; });
       }
       _autoRunning = false;
       return;
@@ -121,6 +145,22 @@ class _EndlessScreenState extends State<EndlessScreen> {
     await Future.delayed(Duration(seconds: game.lastItemDrop != null ? 3 : 2));
     if (!mounted) { _autoRunning = false; return; }
 
+    // Premium auto-clear: chain straight into the next available boss.
+    final nextBoss = _autoClear ? _nextAvailableBossStage(game) : null;
+    if (nextBoss != null) {
+      game.stopEndlessMode();
+      setState(() {
+        _showingReward   = false;
+        _rewardItem      = null;
+        _busy            = false;
+        _autoRunning     = false;
+        _activeBossStage = nextBoss;
+      });
+      game.startEndlessBattleAtStage(nextBoss);
+      setState(() { _inBattle = true; });
+      return; // arena rebuild auto-restarts the fight (with countdown)
+    }
+
     // Return to lobby (no auto-respawn).
     game.stopEndlessMode();
     setState(() {
@@ -130,13 +170,25 @@ class _EndlessScreenState extends State<EndlessScreen> {
       _autoRunning     = false;
       _busy            = false;
       _activeBossStage = null;
+      _autoClear       = false;
     });
+  }
+
+  void _playMercFx(GameState game) {
+    final fx = game.drainMercFx();
+    for (var i = 0; i < fx.length; i++) {
+      final e = fx[i];
+      Future.delayed(Duration(milliseconds: i * 850), () {
+        if (mounted) _arenaKey.currentState?.playMercAbility(e.name, e.icon, e.color);
+      });
+    }
   }
 
   Future<void> _doAttack(GameState game) async {
     if (_busy || game.currentEnemy == null) return;
     if (mounted) setState(() => _busy = true);
 
+    _playMercFx(game);
     game.clearPendingFloats();
     game.heroAttack();
     if (game.lastHeroCrit) game.haptic(HapticFeedback.lightImpact);
@@ -236,6 +288,41 @@ class _EndlessScreenState extends State<EndlessScreen> {
           },
         ),
         actions: [
+          // Battle speed — account-wide, identical to Campaign / Dungeon / etc.
+          // (incl. the paid 3×). Cycles 1× → 1.5× → 2× → 3× within the account cap.
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 4),
+            child: GestureDetector(
+              onTap: () {
+                final maxTier = game.maxCampaignSpeedTier;
+                var next = game.speedTier + 1;
+                if (next > maxTier) next = 1;
+                game.setSpeedTier(next);
+                if (next == maxTier && maxTier < 4) {
+                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                      content: Text('Higher speed needs the Speed Boost / Premium Pass.'),
+                      behavior: SnackBarBehavior.floating,
+                      duration: Duration(milliseconds: 1200)));
+                }
+                setState(() {}); // loop re-reads scaledInterval on its next tick
+              },
+              child: Container(
+                alignment: Alignment.center,
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                decoration: BoxDecoration(
+                  color: game.speedTier > 1
+                      ? const Color(0xFFffaa00).withValues(alpha: 0.15) : Colors.transparent,
+                  border: Border.all(color: game.speedTier > 1
+                      ? const Color(0xFFffaa00) : AppTheme.cardBorder),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: Text(game.battleSpeedLabel,
+                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold,
+                        color: game.speedTier > 1
+                            ? const Color(0xFFffaa00) : AppTheme.textMuted)),
+              ),
+            ),
+          ),
           IconButton(
             icon: Icon(Icons.assessment_outlined, size: 21,
                 color: game.lastFightSummary != null
@@ -534,6 +621,57 @@ class _EndlessScreenState extends State<EndlessScreen> {
                 ],
               ),
             ),
+            // ── PREMIUM AUTO-CLEAR ────────────────────────────────
+            Builder(builder: (_) {
+              final nextBoss = _nextAvailableBossStage(game);
+              final locked   = !game.hasPremium;
+              final enabled  = !locked && nextBoss != null;
+              return Padding(
+                padding: const EdgeInsets.only(top: 10),
+                child: SizedBox(
+                  width: double.infinity,
+                  height: 48,
+                  child: ElevatedButton(
+                    onPressed: enabled
+                        ? () {
+                            setState(() {
+                              _autoClear       = true;
+                              _selectedBossStage = null;
+                              _activeBossStage = nextBoss;
+                            });
+                            game.startEndlessBattleAtStage(nextBoss);
+                            setState(() { _inBattle = true; });
+                          }
+                        : locked
+                            ? () => ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('👑  Premium Pass required to auto-clear bosses'),
+                                  duration: Duration(seconds: 2),
+                                ))
+                            : null,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: enabled ? const Color(0xFF14402a) : const Color(0xFF1c1c1c),
+                      foregroundColor: Colors.white,
+                      side: BorderSide(
+                          color: enabled ? const Color(0xFF44cc88) : AppTheme.cardBorder,
+                          width: 1.5),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+                    ),
+                    child: Text(
+                      locked
+                          ? '👑  AUTO-CLEAR BOSSES  (PREMIUM)'
+                          : nextBoss == null
+                              ? '✓  ALL BOSSES CLEARED TODAY'
+                              : '⚡  AUTO-CLEAR ALL BOSSES',
+                      style: GoogleFonts.rajdhani(
+                          fontSize: 13,
+                          letterSpacing: 1.5,
+                          color: enabled ? Colors.white : AppTheme.textMuted),
+                    ),
+                  ),
+                ),
+              );
+            }),
             // ── BOSS PREVIEW ─────────────────────────────────────
             if (_selectedBossStage != null) ...[
               const SizedBox(height: 10),
@@ -545,6 +683,8 @@ class _EndlessScreenState extends State<EndlessScreen> {
                 final scaledAtk = (boss.attack * tierMult * 1.15).round();
                 final bossGold = ((boss.level * 15 + 50) * tierMult).round().clamp(50, 99999);
                 final bossXp = ((boss.level * 20 + 100) * tierMult).round().clamp(100, 99999);
+                // The Tower-Shard reward is exact (matches recordTowerBossDefeated).
+                final towerShardReward = 2 + _selectedBossStage! + _bossTier * 3;
                 return Container(
                   padding: const EdgeInsets.all(14),
                   decoration: BoxDecoration(
@@ -575,32 +715,7 @@ class _EndlessScreenState extends State<EndlessScreen> {
                         ],
                       )),
                     ]),
-                    // Tier selector
-                    const SizedBox(height: 8),
-                    Row(children: [
-                      Text('TIER ', style: AppTheme.pixelHeading(fontSize: 9, color: AppTheme.textMuted, letterSpacing: 1)),
-                      ...List.generate(10, (i) {
-                        final t = i + 1;
-                        final sel = _bossTier == t;
-                        return GestureDetector(
-                          onTap: () => setState(() => _bossTier = t),
-                          child: Container(
-                            width: 24, height: 24,
-                            margin: const EdgeInsets.only(right: 3),
-                            alignment: Alignment.center,
-                            decoration: BoxDecoration(
-                              color: sel ? const Color(0xFFcc44ff).withValues(alpha: 0.2) : const Color(0xFF1a1a2e),
-                              border: Border.all(color: sel ? const Color(0xFFcc44ff) : AppTheme.cardBorder, width: sel ? 1.5 : 0.5),
-                              borderRadius: BorderRadius.circular(3),
-                            ),
-                            child: Text('$t', style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold,
-                                color: sel ? const Color(0xFFcc44ff) : AppTheme.textMuted)),
-                          ),
-                        );
-                      }),
-                    ]),
-                    Text('Lv ${(_bossTier - 1) * 10 + 1}–${_bossTier * 10}',
-                        style: const TextStyle(fontSize: 8, color: AppTheme.textMuted)),
+                    // No tier — the boss is fought at its campaign difficulty.
                     const SizedBox(height: 8),
                     Container(
                       width: double.infinity,
@@ -616,12 +731,12 @@ class _EndlessScreenState extends State<EndlessScreen> {
                         Row(children: [
                           Text('REWARDS: ', style: AppTheme.pixelHeading(
                               fontSize: 9, letterSpacing: 1, color: AppTheme.textMuted)),
-                          Text('💰 $bossGold   ',
+                          Text('🔮 $towerShardReward   ',
+                              style: const TextStyle(fontSize: 11, color: Color(0xFFcc88ff), fontWeight: FontWeight.bold)),
+                          Text('~💰 $bossGold   ',
                               style: const TextStyle(fontSize: 11, color: Color(0xFFdaa520), fontWeight: FontWeight.bold)),
-                          Text('⚡ $bossXp XP   ',
+                          Text('~⚡ $bossXp',
                               style: const TextStyle(fontSize: 11, color: Color(0xFF88ccff), fontWeight: FontWeight.bold)),
-                          Text('◆ ${boss.level ~/ 3}',
-                              style: const TextStyle(fontSize: 11, color: Color(0xFF6699ff), fontWeight: FontWeight.bold)),
                         ]),
                         const SizedBox(height: 4),
                         Row(children: [
@@ -883,12 +998,38 @@ class _EndlessScreenState extends State<EndlessScreen> {
                 heroArmor:    game.heroArmorValue,
               ),
               ArenaAbilityEffect(key: _effectKey),
+              if (_countdown != null) _buildCountdownOverlay(_countdown!),
             ],
           ),
         ),
 
         const SafeArea(top: false, child: BattleIconBar()),
       ],
+    );
+  }
+
+  Widget _buildCountdownOverlay(int count) {
+    return IgnorePointer(
+      child: Center(
+        child: AnimatedSwitcher(
+          duration: const Duration(milliseconds: 220),
+          transitionBuilder: (child, anim) =>
+              ScaleTransition(scale: anim, child: FadeTransition(opacity: anim, child: child)),
+          child: Text(
+            '$count',
+            key: ValueKey(count),
+            style: const TextStyle(
+              fontSize: 96,
+              fontWeight: FontWeight.bold,
+              color: Colors.white,
+              shadows: [
+                Shadow(color: Color(0xFFcc2200), blurRadius: 32, offset: Offset(0, 0)),
+                Shadow(color: Color(0xFFcc2200), blurRadius: 16, offset: Offset(0, 0)),
+              ],
+            ),
+          ),
+        ),
+      ),
     );
   }
 

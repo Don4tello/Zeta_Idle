@@ -205,55 +205,6 @@ class _GemCraftingTabState extends State<_GemCraftingTab> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // What gems do — quick explainer
-          Container(
-            padding: const EdgeInsets.all(10),
-            margin: const EdgeInsets.only(bottom: 10),
-            decoration: BoxDecoration(
-              color: const Color(0xFF14121c),
-              border: Border.all(color: const Color(0xFFbb88ee).withValues(alpha: 0.35)),
-              borderRadius: BorderRadius.circular(4),
-            ),
-            child: const Text(
-              'Gems are permanent stat boosters you socket into gear. Each gem has '
-              'an element (Fire, Cold, Lightning…): sockets in a WEAPON add a % '
-              'damage bonus of that element, and in ARMOUR/ACCESSORIES add a % '
-              'resistance to it. Craft gems here with Arcane Dust, then socket '
-              'them from an item in your Inventory. Higher tiers give a bigger % '
-              'and cost more Arcane Dust; dismantling refunds the Dust.',
-              style: TextStyle(fontSize: 11, color: AppTheme.textLight, height: 1.45),
-            ),
-          ),
-          // Gem placement rules
-          Container(
-            padding: const EdgeInsets.all(10),
-            margin: const EdgeInsets.only(bottom: 10),
-            decoration: BoxDecoration(
-              color: const Color(0xFF0d1020),
-              border: Border.all(color: AppTheme.cardBorder),
-              borderRadius: BorderRadius.circular(4),
-            ),
-            child: const Row(
-              children: [
-                Expanded(child: Column(
-                  children: [
-                    Text('⚔ WEAPON / OFFHAND', style: TextStyle(fontSize: 9, color: Color(0xFFff6644), fontWeight: FontWeight.bold)),
-                    SizedBox(height: 2),
-                    Text('Increases % Damage', style: TextStyle(fontSize: 8, color: Color(0xFFff6644))),
-                  ],
-                )),
-                SizedBox(width: 8),
-                Expanded(child: Column(
-                  children: [
-                    Text('🛡 ARMOR / ACCESSORIES', style: TextStyle(fontSize: 9, color: Color(0xFF66aaff), fontWeight: FontWeight.bold)),
-                    SizedBox(height: 2),
-                    Text('Increases % Resistance', style: TextStyle(fontSize: 8, color: Color(0xFF66aaff))),
-                  ],
-                )),
-              ],
-            ),
-          ),
-
           // Gem shards balance
           Tooltip(
             message: CurrencyInfo.gemShards,
@@ -279,6 +230,17 @@ class _GemCraftingTabState extends State<_GemCraftingTab> {
             ]),
           ),
           ),
+          const SizedBox(height: 6),
+          Row(children: [
+            const Icon(Icons.info_outline, size: 12, color: AppTheme.textMuted),
+            const SizedBox(width: 6),
+            Expanded(
+              child: Text(
+                'Get Arcane Dust by disenchanting gear, gems & runes, and from PvP / Guild rewards.',
+                style: const TextStyle(fontSize: 10, color: AppTheme.textMuted, height: 1.3),
+              ),
+            ),
+          ]),
           const SizedBox(height: 12),
 
           // Tier selector
@@ -317,56 +279,70 @@ class _GemCraftingTabState extends State<_GemCraftingTab> {
           ),
           const SizedBox(height: 16),
 
-          // 2x3 gem grid
+          // Gem list — one per line, showing element + full DMG/RES effect
           Text('CRAFT GEM', style: AppTheme.pixelHeading(fontSize: 10, letterSpacing: 2, color: AppTheme.textMuted)),
           const SizedBox(height: 8),
-          GridView.count(
-            crossAxisCount: 3,
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            mainAxisSpacing: 8,
-            crossAxisSpacing: 8,
-            childAspectRatio: 1.1,
-            children: GemType.values.map((type) {
-              final gem = Gem(type: type, tier: _tier);
-              final canAfford = game.gemShards >= _tier.shardCost && game.gemBag.length < GameState.gemBagMax;
-              final isSelected = _selectedType == type;
-              return GestureDetector(
+          ...GemType.values.map((type) {
+            final gem = Gem(type: type, tier: _tier);
+            final canAfford = game.gemShards >= _tier.shardCost && game.gemBag.length < GameState.gemBagMax;
+            final isSelected = _selectedType == type;
+            final element = type.damageType.label; // e.g. Fire, Cold
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: GestureDetector(
                 onTap: () => setState(() => _selectedType = isSelected ? null : type),
                 child: Container(
+                  constraints: const BoxConstraints(minHeight: 64),
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                   decoration: BoxDecoration(
-                    color: canAfford
-                        ? type.color.withValues(alpha: 0.08)
-                        : const Color(0xFF0d0e18),
+                    color: isSelected
+                        ? type.color.withValues(alpha: 0.16)
+                        : type.color.withValues(alpha: 0.06),
                     border: Border.all(
-                      color: canAfford
-                          ? type.color.withValues(alpha: 0.6)
-                          : type.color.withValues(alpha: 0.15),
+                      color: isSelected
+                          ? type.color
+                          : type.color.withValues(alpha: canAfford ? 0.5 : 0.2),
+                      width: isSelected ? 2 : 1,
                     ),
                     borderRadius: BorderRadius.circular(6),
                   ),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
-                      // Gem sprite
                       CustomPaint(
-                        size: const Size(32, 32),
+                        size: const Size(40, 40),
                         painter: _GemSpritePainter(type: type, tier: _tier),
                       ),
-                      const SizedBox(height: 4),
-                      Text(type.label, style: TextStyle(
-                          fontSize: 10, color: type.color,
-                          fontWeight: FontWeight.bold)),
-                      Text('⚔ +${gem.value}% DMG', style: TextStyle(
-                          fontSize: 7, color: const Color(0xFFff6644).withValues(alpha: 0.8))),
-                      Text('🛡 +${gem.value}% RES', style: TextStyle(
-                          fontSize: 7, color: const Color(0xFF66aaff).withValues(alpha: 0.8))),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            // Name = element (e.g. "Ruby — 🔥 Fire")
+                            Row(children: [
+                              Text('${type.label}  ', style: TextStyle(
+                                  fontSize: 16, color: type.color, fontWeight: FontWeight.bold)),
+                              Text(type.elementLabel, style: const TextStyle(
+                                  fontSize: 13, color: AppTheme.textMuted)),
+                            ]),
+                            const SizedBox(height: 3),
+                            Text('⚔ Weapon: +${gem.value}% $element damage', style: const TextStyle(
+                                fontSize: 13, color: Color(0xFFff8855))),
+                            Text('🛡 Armor: +${gem.value}% $element resistance', style: const TextStyle(
+                                fontSize: 13, color: Color(0xFF66aaff))),
+                          ],
+                        ),
+                      ),
+                      if (isSelected)
+                        Icon(Icons.check_circle, size: 20, color: type.color)
+                      else if (!canAfford)
+                        const Icon(Icons.lock, size: 16, color: AppTheme.textMuted),
                     ],
                   ),
                 ),
-              );
-            }).toList(),
-          ),
+              ),
+            );
+          }),
           // Craft button
           if (_selectedType != null) ...[
             const SizedBox(height: 10),

@@ -857,7 +857,7 @@ class EnemyData {
       ],
     ),
     Enemy(
-      id: 'omega_absolute', name: 'Omega Absolute', level: 44, maxHealth: 28000, attack: 800, armorClass: 20,
+      id: 'omega_absolute', name: 'Zeta Absolute', level: 44, maxHealth: 28000, attack: 800, armorClass: 20,
       namedBoss: true, attackType: DamageType.void_,
       resistances: {DamageType.void_: 75, DamageType.physical: 25, DamageType.fire: 20, DamageType.cold: 20, DamageType.lightning: -25},
       description: "Not the Omega's herald or fragment. The Omega itself, fully manifested, having decided your persistence warrants personal attention. You made it here. You shouldn't have.",

@@ -28,8 +28,16 @@ import '../widgets/zcoin_icon.dart';
 const _kGauntletEnemies = 10;
 const _kMaxModifiers = 3;
 
-// Gauntlet uses a spread of stages: 3, 7, 10, 13, 16, 18, 20, 22, 23, 24
-const _kGauntletStages = [3, 7, 10, 13, 16, 18, 20, 22, 23, 24];
+// Fixed base stages (tier-independent) — a gentle campaign-parity ramp so tier 1
+// is a fair challenge at the level you unlock it. Higher tiers scale via a HP/ATK
+// multiplier instead of pushing stages deeper (which used to blow past the stage
+// cap, flattening and even regressing tiers 8–10). Waves are re-sorted by HP each
+// run so difficulty always climbs.
+const _kGauntletStages = [2, 4, 6, 8, 10, 12, 14, 16, 18, 20];
+
+// Per-tier difficulty growth (geometric — gentle at tier 1, steep at tier 10).
+double _gauntletTierHpMult(int tier)  => pow(1.5, tier - 1).toDouble();
+double _gauntletTierAtkMult(int tier) => pow(1.3, tier - 1).toDouble();
 
 enum _Phase { pick, battle, results }
 
@@ -49,6 +57,7 @@ class _GauntletScreenState extends State<GauntletScreen> {
   // -- Modifier selection ---------------------------------------------------
   final Set<String> _selectedIds = {};
   int _selectedTier = 1;
+  List<int> _waveStages = List<int>.of(_kGauntletStages); // HP-sorted per run
   bool _autoRepeat = false;
   Timer? _autoRestartTimer;
 
@@ -125,7 +134,7 @@ class _GauntletScreenState extends State<GauntletScreen> {
   void _cycleSpeed() {
     final game = _game;
     if (game == null) return;
-    final maxTier = kDebugMode ? 4 : ((game.hasSpeedSub || game.hasPremium) ? 4 : (game.speedBoostActive ? 3 : 2));
+    final maxTier = game.maxCampaignSpeedTier;
     game.setSpeedTier((game.speedTier % maxTier) + 1);
     _startTimer();
   }
@@ -216,6 +225,11 @@ class _GauntletScreenState extends State<GauntletScreen> {
       _heroHp     = baseMaxHp;
       _log.clear();
     });
+    // Order the 10 waves by HP so difficulty ramps smoothly (campaign bosses
+    // sprinkled in the stage list otherwise spike mid-run).
+    _waveStages = List<int>.of(_kGauntletStages)
+      ..sort((a, b) => EnemyData.enemyForStage(a, prestigeLevel: _rebirthLvl).maxHealth
+          .compareTo(EnemyData.enemyForStage(b, prestigeLevel: _rebirthLvl).maxHealth));
     _log.add('⚔ GAUNTLET STARTS — ${_kGauntletEnemies} enemies await!');
     _spawnEnemy();
 
@@ -225,15 +239,16 @@ class _GauntletScreenState extends State<GauntletScreen> {
   }
 
   void _spawnEnemy() {
-    final tierOffset = (_selectedTier - 1) * 10;
-    final stage = _kGauntletStages[_waveIndex] + tierOffset;
+    final stage = _waveStages[_waveIndex];
     final base  = EnemyData.enemyForStage(stage, prestigeLevel: _rebirthLvl);
+    final tierHp  = _gauntletTierHpMult(_selectedTier);
+    final tierAtk = _gauntletTierAtkMult(_selectedTier);
     final scaled = Enemy(
       id:          base.id,
       name:        '${base.name}  [${_waveIndex + 1}/$_kGauntletEnemies]',
       description: base.description,
-      maxHealth:   (base.maxHealth * _enemyHpMult * RemoteConfigService.instance.gauntletHpMult).round().clamp(1, 999999),
-      attack:      (base.attack * _enemyAtkMult * RemoteConfigService.instance.gauntletAtkMult).round().clamp(1, 9999),
+      maxHealth:   (base.maxHealth * tierHp * _enemyHpMult * RemoteConfigService.instance.gauntletHpMult).round().clamp(1, 999999),
+      attack:      (base.attack * tierAtk * _enemyAtkMult * RemoteConfigService.instance.gauntletAtkMult).round().clamp(1, 9999),
       level:       base.level,
       armorClass:  base.armorClass,
     );
