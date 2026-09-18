@@ -23,6 +23,7 @@ import 'models/hero_trait.dart';
 import 'screens/loading_screen.dart';
 import 'services/game_state.dart';
 import 'services/debug_logger.dart';
+import 'services/telemetry_service.dart';
 import 'core/routing/app_router.dart';
 import 'tools/debug_capture_surface.dart';
 
@@ -153,8 +154,14 @@ Future<void> _appMain() async {
       // and error-like entries as non-fatals. This surfaces the many caught
       // exceptions that used to be swallowed silently (init failures, save
       // parse fails, sync errors, …).
+      // Group this app run's fights, and mirror balance telemetry to Firestore
+      // (dev/test builds only — TelemetryService is compile-gated and a no-op
+      // in normal builds).
+      TelemetryService.sessionId =
+          DateTime.now().millisecondsSinceEpoch.toRadixString(36);
       DebugLogger.sink = (category, message) {
         try {
+          if (category == 'BALANCE') TelemetryService.recordFight(message);
           FirebaseCrashlytics.instance.log('[$category] $message');
           final lc = '$category $message'.toLowerCase();
           final looksLikeError = lc.contains('error') ||

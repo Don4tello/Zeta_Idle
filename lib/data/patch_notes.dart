@@ -19,6 +19,16 @@ int get kLatestPatchBuild => kPatchNotes.first.build;
 
 const kPatchNotes = <PatchNote>[
   PatchNote(
+    build: 277,
+    title: 'Behind-the-scenes Balance Tools',
+    date: '2026-09-14',
+    changes: [
+      'Added optional, privacy-light play telemetry so we can tune difficulty and '
+          'balance faster from real play. No gameplay changes — it only records '
+          'anonymous fight stats (rounds, HP, damage) and is off by default.',
+    ],
+  ),
+  PatchNote(
     build: 276,
     title: 'Guild Boss Fight Polish',
     date: '2026-09-14',

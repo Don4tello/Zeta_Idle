@@ -3,6 +3,15 @@
 Version numbers are the pubspec build number (`0.1.0+N`), which is the Play
 Store `versionCode`. Newest first.
 
+## +277 — Fight telemetry → Firestore (runtime-gated)
+User: get the alt-mode/campaign telemetry off-device into Firebase, and enable it for the closed test.
+- New `services/telemetry_service.dart`: writes each fight's JSON (same fields as the `ZBAL` logcat lines) as a doc in a Firestore `telemetry` collection, with a server `ts` and a per-run `session` id. Structured so the console can filter/sort by mode/tier/win/min-HP/etc.
+- Hooked at the single `DebugLogger.sink` point in `main.dart` (category `BALANCE`), so it covers campaign + Gauntlet + Boss Rush + Guild + Dungeon with no per-call-site changes. Sets `sessionId` at startup.
+- **Two gates, both default OFF** so production never writes uninvited: compile flag `--dart-define=ZETA_TELEMETRY=1` (dev), OR Remote Config `telemetry_enabled` (flip on for the closed test). `telemetry_sample_pct` dials volume on the RC path.
+- `remote_config_service.dart`: added `telemetry_enabled` (false) + `telemetry_sample_pct` (100) defaults, a `_b` bool reader, and the two getters.
+- `firestore.rules`: added a `telemetry` collection rule — create-only + field-count cap, no client read/update/delete (reads via console, which bypasses rules).
+- To use in closed testing: upload this build, publish the rule, set `telemetry_enabled=true` in Remote Config; set it back false (or sample down) for production.
+
 ## +276 — Guild boss fight polish (button + log)
 User: the Return-to-Guild button was stuck behind the system nav bar; also the Guild fight shouldn't show an on-screen battle log — match Campaign/other modes.
 - `guild_screen.dart`: wrapped the `!_fighting` result panel (BOSS DEFEATED / FALLEN + RETURN TO GUILD) in `SafeArea(top: false)` so the button clears the Android navigation bar. The in-fight icon bar already used this; the result panel was the one place missing it.

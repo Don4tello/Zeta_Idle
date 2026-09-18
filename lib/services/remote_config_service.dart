@@ -22,6 +22,8 @@ import 'package:firebase_remote_config/firebase_remote_config.dart';
 ///   boss_rush_atk_mult       (default 1.0)  Boss Rush-only boss attack dial
 ///   gauntlet_hp_mult         (default 1.0)  Gauntlet-only enemy HP dial
 ///   gauntlet_atk_mult        (default 1.0)  Gauntlet-only enemy attack dial
+///   telemetry_enabled        (default false) write fight telemetry to Firestore
+///   telemetry_sample_pct     (default 100)   % of fights to record when enabled
 class RemoteConfigService {
   RemoteConfigService._();
   static final RemoteConfigService instance = RemoteConfigService._();
@@ -42,6 +44,10 @@ class RemoteConfigService {
     'boss_rush_atk_mult': 1.0,
     'gauntlet_hp_mult': 1.0,
     'gauntlet_atk_mult': 1.0,
+    // Telemetry — OFF by default so a normal/production build never writes.
+    // Flip on in the console for closed testing (optionally target by version).
+    'telemetry_enabled': false,
+    'telemetry_sample_pct': 100.0,
   };
 
   Future<void> init(FirebaseRemoteConfig rc) async {
@@ -71,6 +77,16 @@ class RemoteConfigService {
     }
   }
 
+  bool _b(String key, bool fallback) {
+    final rc = _rc;
+    if (rc == null) return fallback;
+    try {
+      return rc.getBool(key);
+    } catch (_) {
+      return fallback;
+    }
+  }
+
   // ── Difficulty (applied in EnemyData.enemyForStage → all battle modes) ──────
   double get enemyHpMult         => _d('enemy_hp_mult', 1.0);
   double get enemyAtkMult        => _d('enemy_atk_mult', 1.0);
@@ -88,4 +104,8 @@ class RemoteConfigService {
   double get bossRushAtkMult  => _d('boss_rush_atk_mult', 1.0);
   double get gauntletHpMult   => _d('gauntlet_hp_mult', 1.0);
   double get gauntletAtkMult  => _d('gauntlet_atk_mult', 1.0);
+
+  // ── Telemetry (runtime gate for fight telemetry → Firestore) ────────────────
+  bool   get telemetryEnabled   => _b('telemetry_enabled', false);
+  double get telemetrySamplePct => _d('telemetry_sample_pct', 100.0);
 }

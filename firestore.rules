@@ -101,6 +101,17 @@ service cloud.firestore {
       allow read, write: if signedIn();
     }
 
+    // ── Balance telemetry (dev/test builds only) ────────────────────────────
+    // Only compile-gated dev/test builds emit these (client flag ZETA_TELEMETRY);
+    // real players' builds never write. Create-only + field-count cap so a rogue
+    // client can't read others' runs, tamper, or spam huge docs. Reads are
+    // console-only (the Firebase console bypasses these rules). Tighten to a
+    // specific UID later if you want stricter control.
+    match /telemetry/{id} {
+      allow read, update, delete: if false;
+      allow create: if signedIn() && request.resource.data.size() < 40;
+    }
+
     // ── Default deny ────────────────────────────────────────────────────────
     match /{document=**} {
       allow read, write: if false;
