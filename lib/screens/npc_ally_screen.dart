@@ -92,11 +92,11 @@ class _ActiveBonusBar extends StatelessWidget {
   Widget build(BuildContext context) {
     final chips = <_Chip>[];
 
-    final allyPower = game.allyAtkBonus + game.allyDmgBonus;
-    if (allyPower > 0)
-      chips.add(_Chip('+$allyPower Power', const Color(0xFFff6644)));
+    final allyDmgPct = game.allyDmgPctBonus;
+    if (allyDmgPct > 0)
+      chips.add(_Chip('+$allyDmgPct% Damage', const Color(0xFFff6644)));
     if (game.allyAcBonus > 0)
-      chips.add(_Chip('+${game.allyAcBonus} AC', const Color(0xFF66aaff)));
+      chips.add(_Chip('+${game.allyAcBonus}% AC', const Color(0xFF66aaff)));
     if (game.allyGoldMult > 1.0)
       chips.add(_Chip('+${((game.allyGoldMult - 1) * 100).round()}% Gold',
           const Color(0xFFffdd44)));
@@ -862,9 +862,9 @@ class _BonusTag extends StatelessWidget {
   final int level;
 
   String get _label {
-    final power = (def.atkBonus + def.dmgBonus) * level;
-    if (power > 0) return '+$power Power';
-    if (def.acBonus > 0)       return '+${def.acBonus * level} AC';
+    final dmgPct = def.dmgPctBonus * level;
+    if (dmgPct > 0) return '+$dmgPct% Damage';
+    if (def.acBonus > 0)       return '+${def.acBonus * level}% AC';
     if (def.goldPctBonus > 0)  return '+${(def.goldPctBonus * level * 100).round()}% Gold';
     if (def.xpPctBonus > 0)    return '+${(def.xpPctBonus * level * 100).round()}% XP';
     if (def.shardPctBonus > 0) return '+${(def.shardPctBonus * level * 100).round()}% Shards';
@@ -939,21 +939,23 @@ class _UpgradeButtonState extends State<_UpgradeButton> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
+              Text('UPGRADE',
+                  style: AppTheme.pixelHeading(fontSize: 10, color: color)),
+              const SizedBox(height: 2),
+              // Cost line spells out the currency so it's clear you SPEND shards.
               Row(mainAxisSize: MainAxisSize.min, children: [
-                Text('UPGRADE  ',
-                    style: AppTheme.pixelHeading(fontSize: 10, color: color)),
-                Text('◆${widget.costShards}',
+                Text('Cost: ◆ ${widget.costShards} Shards',
                     style: TextStyle(
-                        fontSize: 10,
+                        fontSize: 9,
                         color: color,
                         fontWeight: FontWeight.bold)),
                 if (widget.costCrystals > 0) ...[
                   const SizedBox(width: 6),
-                  ZCoinIcon(size: 10, animate: false),
+                  ZCoinIcon(size: 9, animate: false),
                   const SizedBox(width: 2),
                   Text('${widget.costCrystals}',
                       style: TextStyle(
-                          fontSize: 10,
+                          fontSize: 9,
                           color: color,
                           fontWeight: FontWeight.bold)),
                 ],
@@ -963,7 +965,7 @@ class _UpgradeButtonState extends State<_UpgradeButton> {
                 return Padding(
                   padding: const EdgeInsets.only(top: 3),
                   child: Text(
-                    'Have: ◆${g.shards}${widget.costCrystals > 0 ? "  🪙${g.zcoins}" : ""}',
+                    'You have: ◆ ${g.shards} Shards${widget.costCrystals > 0 ? "  🪙${g.zcoins}" : ""}',
                     style: const TextStyle(fontSize: 8, color: Color(0xFFcc4444)),
                   ),
                 );

@@ -82,6 +82,15 @@ class SubclassScreen extends StatelessWidget {
 
   void _confirmPick(BuildContext context, GameState game, Subclass sub) {
     if (game.subclassId != null) return;
+    final messenger = ScaffoldMessenger.of(context);
+    // Guard the level gate up front so tapping CONFIRM never silently no-ops.
+    if (!game.subclassUnlocked) {
+      messenger.showSnackBar(SnackBar(
+        content: Text('Specialization unlocks at Level ${GameState.kSubclassUnlockLevel}.'),
+        duration: const Duration(seconds: 2),
+      ));
+      return;
+    }
     showDialog<void>(
       context: context,
       builder: (_) => AlertDialog(
@@ -122,8 +131,14 @@ class SubclassScreen extends StatelessWidget {
           ),
           TextButton(
             onPressed: () {
-              game.pickSubclass(sub.id);
+              final ok = game.pickSubclass(sub.id);
               Navigator.pop(context); // close the dialog; screen rebuilds
+              if (!ok) {
+                messenger.showSnackBar(const SnackBar(
+                  content: Text('Could not set specialization — try again.'),
+                  duration: Duration(seconds: 2),
+                ));
+              }
             },
             child: Text('CONFIRM',
                 style: AppTheme.pixelHeading(fontSize: 11, color: AppTheme.accentGold)),

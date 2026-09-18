@@ -120,7 +120,7 @@ class _ModifierCard extends StatelessWidget {
                         fontSize: 11, color: AppTheme.textMuted, height: 1.3)),
                 const SizedBox(height: 8),
                 Row(children: [
-                  _StatBadge('+${mod.rewardShardBonus} essence/kill',
+                  _StatBadge('+${mod.rewardPctBonus}% essence',
                       const Color(0xFF44dd88)),
                   if (mod.enemyHpMult > 1)
                     _StatBadge(

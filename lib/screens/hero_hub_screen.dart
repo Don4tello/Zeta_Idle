@@ -25,6 +25,7 @@ import 'ascension_screen.dart';
 import 'codex_screen.dart';
 import 'achievement_screen.dart';
 import 'bestiary_screen.dart';
+import 'quest_screen.dart';
 import 'pet_screen.dart';
 import 'elemental_mastery_screen.dart';
 
@@ -50,7 +51,7 @@ class _TabDef {
 // Master list: order = display order, unlock = stage required.
 const _kAllTabs = <_TabDef>[
   _TabDef('SHEET',        GameIconType.armor,      0),
-  _TabDef('SCORES',       GameIconType.star,        1, resource: _TabResource(
+  _TabDef('SCORES',       GameIconType.star,        4, resource: _TabResource(
     icon: GameIconType.coin, color: Color(0xFFdaa520), name: 'Gold',
     sources: 'Every enemy kill & idle income · Expeditions · Dungeons · Events',
   )),
@@ -77,9 +78,9 @@ const _kAllTabs = <_TabDef>[
   // Unlocks at stage 100 (when Prestige first becomes available) and stays
   // unlocked forever after — effectiveUnlockStage latches to >=100 once you've
   // prestiged, so a post-rebirth stage reset can't hide it.
-  _TabDef('REBIRTH',      GameIconType.flame,     100, resource: _TabResource(
+  _TabDef('PARAGON',      GameIconType.flame,       2, resource: _TabResource(
     icon: GameIconType.crown, color: Color(0xFFcc8844), name: 'Paragon Points',
-    sources: 'Earned by Prestiging your hero',
+    sources: 'Earned by levelling up — 1 per level',
   )),
   _TabDef('UPGRADES',     GameIconType.gear,       45, resource: _TabResource(
     icon: GameIconType.bolt, color: Color(0xFFcc88ff), name: 'Echoes',
@@ -97,6 +98,9 @@ const _kAllTabs = <_TabDef>[
   // the special case in _unlockedIndices). Appended last so the index-based
   // _buildScreen mapping below stays stable.
   _TabDef('SPECIALIZE',   GameIconType.medal,     999),
+  // Moved here from the PLAY tab. Appended last to keep the index-based
+  // _buildScreen mapping stable; unlocks at campaign stage 10 as before.
+  _TabDef('QUESTS',       GameIconType.book,       10),
 ];
 
 Widget _buildScreen(int allTabIndex) => switch (allTabIndex) {
@@ -115,6 +119,7 @@ Widget _buildScreen(int allTabIndex) => switch (allTabIndex) {
   12 => const AscensionScreen(embedded: true),             // ASCEND
   13 => const ElementalMasteryScreen(embedded: true),      // MASTERY
   14 => const SubclassScreen(embedded: true),              // SPECIALIZE
+  15 => const QuestScreen(),                               // QUESTS (moved from PLAY)
   _  => const SizedBox.shrink(),
 };
 
@@ -140,8 +145,9 @@ class _HeroHubScreenState extends State<HeroHubScreen>
         : game.prestigeLevel;
     return [
       for (int i = 0; i < _kAllTabs.length; i++)
-        // Endgame (any Rebirth or Ascension AP) keeps every tab unlocked.
-        if (game.endgameUnlocked
+        // ASCEND (12) is hidden during the tier rework — a new ascension path is
+        // coming; until then the tab is suppressed everywhere.
+        if (i != 12 && (game.endgameUnlocked
             || (i == 12                          // ASCEND: needs prestige
                 ? pl > 0
                 : i == 11                        // UPGRADES: latches once you can spend echoes
@@ -150,7 +156,9 @@ class _HeroHubScreenState extends State<HeroHubScreen>
                         ? game.masteryTabUnlocked
                         : i == 14                // SPECIALIZE: hero level 50
                             ? game.subclassUnlocked
-                            : game.effectiveUnlockStage >= _kAllTabs[i].unlock)) i,
+                            : i == 10            // PARAGON: revealed at hero level 10
+                                ? game.hero.level >= 10
+                                : game.effectiveUnlockStage >= _kAllTabs[i].unlock))) i,
     ];
   }
 
@@ -255,6 +263,17 @@ class _HeroHubScreenState extends State<HeroHubScreen>
   Widget build(BuildContext context) {
     final game    = GameStateProvider.of(context);
     final indices = _unlockedIndices(game);
+
+    // Guided-tutorial deep link: select the requested sub-tab if it lives here.
+    final want = game.consumeNavRequestFor([for (final i in indices) _kAllTabs[i].label]);
+    if (want != null) {
+      final pos = indices.indexWhere((i) => _kAllTabs[i].label == want);
+      if (pos >= 0) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted && pos < _ctrl.length && _ctrl.index != pos) _ctrl.animateTo(pos);
+        });
+      }
+    }
 
     if (indices.isEmpty) return const Scaffold(backgroundColor: AppTheme.darkBg, body: SizedBox.shrink());
     final visIdx = _ctrl.index.clamp(0, indices.length - 1);

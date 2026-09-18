@@ -1,4 +1,5 @@
 ﻿import 'dart:async';
+import 'dart:convert' show jsonEncode;
 import 'dart:math';
 import 'debug_logger.dart';
 import 'package:flutter/foundation.dart' show kDebugMode;
@@ -53,6 +54,7 @@ import '../models/hero_trait.dart';
 import '../models/challenge_modifier.dart';
 import '../models/bestiary_entry.dart';
 import '../data/bestiary_data.dart';
+import '../data/system_tutorials.dart';
 import '../models/attack_effect.dart';
 import '../models/artifact.dart';
 import '../models/bounty.dart';
@@ -282,7 +284,9 @@ class GameState extends ChangeNotifier {
   bool canEquip(EquipmentItem item) {
     if (item.requiredClass != null && item.requiredClass != hero.heroClass) return false;
     if (hero.level < item.levelRequired) return false;
-    if (prestigeLevel < item.rebirthRequired) return false;
+    // rebirthRequired is now the difficulty tier the item rolled at; gate on the
+    // tier you've unlocked (prestige is retired).
+    if (highestUnlockedTier < item.rebirthRequired) return false;
     return true;
   }
 
@@ -690,9 +694,208 @@ class GameState extends ChangeNotifier {
   // Auto-campaign pauses so the player sees what unlocked. Cleared on Continue.
   String? pendingUnlockNotice;
 
+  // ── System tutorial (guided onboarding) ────────────────────────────────────
+  // When a progression system unlocks we pause the auto-fight, navigate to it,
+  // and show a coach overlay. The shell reads pendingTutorialStage; the target
+  // hub reads navRequestSubTab to select the exact sub-tab.
+  SystemTutorial? pendingTutorial;   // the coach currently showing (null = none)
+  bool _autoWasOnForTutorial = false;
+  String? navRequestSubTab;
+  int _lastAbilityTutorialLevel = 0; // highest level whose new-ability coach fired
+  bool _paragonTutorialSeen = false; // the level-10 Paragon reveal coach fired
+
+  /// Starts a coach (pauses the auto-fight). One at a time — ignored if another
+  /// is already showing (the caller keeps its "seen" guard so it can retry).
+  void _triggerTutorial(SystemTutorial? t) {
+    if (t == null || pendingTutorial != null) return;
+    pendingTutorial = t;
+    if (autoCampaign) { _autoWasOnForTutorial = true; autoCampaign = false; }
+  }
+
+  void dismissSystemTutorial() {
+    pendingTutorial = null;
+    if (_autoWasOnForTutorial) { _autoWasOnForTutorial = false; autoCampaign = true; }
+    notifyListeners();
+    saveToLocal();
+  }
+
+  /// Dev tool: clear every "seen" tutorial flag so the guided coaches re-trigger
+  /// as you play (unlock-stage coaches, ability coaches, gear, Paragon).
+  /// Dev tool: jump the hero's level by [n] (for measuring high-level leveling
+  /// pace / XP-curve calibration). Grants the matching Paragon points, refreshes
+  /// derived stats, and tops up HP.
+  void debugAddLevels(int n) {
+    hero.level += n;
+    hero.experience = 0;
+    hero.experienceToNextLevel = HeroModel.expToNextForLevel(hero.level);
+    _syncParagonLevels();
+    _syncHeroHpPct();
+    hero.currentHealth = hero.maxHealth;
+    notifyListeners();
+    saveToLocal();
+  }
+
+  void debugResetTutorials() {
+    _seenUnlockStages.clear();
+    _lastAbilityTutorialLevel = 0;
+    _paragonTutorialSeen = false;
+    pendingTutorial = null;
+    notifyListeners();
+    saveToLocal();
+  }
+
+  /// Dev tool: fully max the loaded character for top-down balance testing — a
+  /// maxed hero should be the anchor for "beats the Tier 10 final boss". Maxes
+  /// tier, level, currencies, ability scores, passives, paragon, gear (mythic in
+  /// every slot), pets and mercenaries. (Artifacts/runes/ascension/mastery are
+  /// not yet auto-maxed — the ZPWR power-breakdown log will show them at 0.)
+  void debugMaxCharacter() {
+    // Difficulty tier 10 (highest).
+    prestigeLevel = 10;
+    _confirmedPrestigeLevel = 10;
+    highestUnlockedTier = 10;
+    activeTier = 10;
+
+    // Level (drives base HP/damage + Paragon points).
+    hero.level = 1000;
+    hero.experienceToNextLevel = HeroModel.expToNextForLevel(1000);
+
+    // Currencies — plenty of everything so nothing gates the build.
+    gold = 1000000000;
+    shards = 1000000000;
+    essence = 1000000000;
+    zcoins = 1000000;
+    mythril = 1000000;
+    echoes = 1000000;
+    prestigeSouls = 1000000;
+
+    // Ability scores maxed.
+    for (final k in _abilityScoreKeys) {
+      _abilityScoreRanks[k] = 100;
+    }
+
+    // Passive tree fully maxed.
+    passiveTree.debugMaxAll();
+
+    // Paragon board — deep ranks in every stat + all one-time prestige nodes.
+    for (final s in kParagonStats) {
+      for (int i = 0; i < 200; i++) {
+        prestigeShop.rankUpParagon(s.id);
+      }
+    }
+    for (final n in kPrestigeNodes) {
+      prestigeShop.forceUnlock(n.id);
+    }
+
+    // Best-in-slot mythic gear in every equipment slot.
+    for (final slot in ItemSlot.values) {
+      final item = ItemLootTable.craftAt(slot, ItemRarity.mythic, hero.level, _rng, rebirthLevel: 10);
+      inventory.addToBag(item);
+      equipItem(item);
+    }
+
+    // Own every pet; equip the first.
+    ownedPetIds.addAll(kPetCatalog.map((p) => p.id));
+    if (kPetCatalog.isNotEmpty) equipPet(kPetCatalog.first.id);
+
+    // Every mercenary at max level (1..5).
+    for (final def in NpcAllyDef.all) {
+      _allyLevels[def.id] = 5;
+    }
+
+    // Ascension nodes maxed.
+    for (final n in AscensionNode.all) {
+      _ascensionNodes[n.id] = n.maxLevel;
+    }
+
+    // Class mastery maxed.
+    for (final m in kMasteryCatalog) {
+      masteryLevels[m.id] = m.maxLevel;
+    }
+
+    // Elemental mastery maxed (deep ranks in every element).
+    for (final dt in DamageType.values) {
+      _elementalMasteryRanks[dt.name] = 50;
+    }
+
+    // Endless / Tower upgrades maxed (all nodes + synergies + milestone perks).
+    endlessUpgrades.debugMaxAll();
+
+    // Abilities maxed (deep ranks in every class ability).
+    for (final a in AbilityData.forClass(hero.heroClass)) {
+      _abilityRanks[a.id] = 60;
+    }
+
+    // Artifacts: unlock every grid cell, roll a full grid of top-tier artifacts,
+    // then auto-equip the best.
+    _unlockedArtifactCells = 81;
+    for (int i = 0; i < 90; i++) {
+      ownedArtifacts.add(ArtifactGenerator.roll(dropLevel: hero.level, rng: _rng, tier: 10));
+    }
+    autoEquipArtifacts();
+
+    // Jump to the Tier 10 final boss (stage 100 = Omega Absolute) so the anchor
+    // fight is one tap away. campaignStageIndex is 0-based; 99 = the last stage.
+    campaignStageIndex = 99;
+    if (campaignAllTimeHigh < 99) campaignAllTimeHigh = 99;
+
+    // Recompute cached stats, top up HP, persist.
+    _syncHeroHpPct();
+    _syncParagonLevels();
+    hero.currentHealth = hero.maxHealth;
+    _setLastAction('DEV: character maxed (Tier 10, Lv 1000, all systems).');
+    notifyListeners();
+    saveToLocal();
+  }
+
+  /// A hub consumes the pending sub-tab navigation request if it matches one of
+  /// its own tab labels; returns the label to select (and clears it), else null.
+  String? consumeNavRequestFor(List<String> hubTabLabels) {
+    final req = navRequestSubTab;
+    if (req != null && hubTabLabels.contains(req)) {
+      navRequestSubTab = null;
+      return req;
+    }
+    return null;
+  }
+
+  /// Fires the Gear coach the first time the player has any item (event-based,
+  /// not stage-based). Defers if another tutorial is already showing.
+  void _maybeTriggerGearTutorial() {
+    if (_seenUnlockStages.contains(SystemTutorial.gearStage)) return;
+    if (inventory.bag.isEmpty && inventory.equipped.isEmpty) return;
+    if (pendingTutorial != null) return; // let the current one finish first
+    final t = SystemTutorial.forStage(SystemTutorial.gearStage);
+    if (t == null) return;
+    _seenUnlockStages.add(SystemTutorial.gearStage);
+    _triggerTutorial(t);
+  }
+
+  /// Fires a coach when a new active ability unlocks on level-up (levels 5, 10,
+  /// 15, 20, 25). Navigates to the Abilities tab.
+  static const _abilityTutorialLevels = [5, 10, 15, 20, 25];
+  void _maybeTriggerAbilityTutorial() {
+    if (pendingTutorial != null) return;
+    int? fire;
+    for (final lvl in _abilityTutorialLevels) {
+      if (hero.level >= lvl && _lastAbilityTutorialLevel < lvl) fire = lvl;
+    }
+    if (fire == null) return;
+    _lastAbilityTutorialLevel = fire;
+    _triggerTutorial(SystemTutorial(
+      stage: -2, navTab: 0, subTab: 'ABILITIES', icon: '✨',
+      title: 'New Ability Unlocked',
+      howTo: 'Reaching level $fire unlocked a new active ability! Abilities fire '
+          'automatically in battle — spend Shards here to rank it up and choose '
+          'its milestone upgrades.',
+    ));
+  }
+
   // Set to true the first time the hero hits level 30 (class questline unlocks).
   bool pendingClassQuestlineUnlock = false;
   bool _classQuestlineNoticeSeen   = false;
+  // Artifacts have no stage gate — the table unlocks the first time one drops.
+  bool artifactsUnlocked = false;
   final Set<int> _seenUnlockStages = {};
 
   static const Map<int, String> _unlockStageNames = {
@@ -713,7 +916,7 @@ class GameState extends ChangeNotifier {
     45: 'Gauntlet',
     50: 'PvP',
     55: 'Bestiary Mode',
-    100: 'Rebirth',
+    100: 'Difficulty Tiers',
   };
 
   // Auto-Campaign is a paid perk (Speed Boost / Premium Pass). Returns false if
@@ -1054,6 +1257,7 @@ class GameState extends ChangeNotifier {
       + inventory.totalOf(ItemStat.damagePercent)
       + _setTotal(ItemStat.damagePercent)
       + hero.levelBonusDamagePct
+      + allyDmgPctBonus
       + hero.damagePctFor(type)
       + elementalMasteryDamagePct(type);
 
@@ -1072,7 +1276,7 @@ class GameState extends ChangeNotifier {
       + _masteryTotal(MasteryEffect.flatDamagePerHit)
       + _masteryTotal(MasteryEffect.permanentDamage)
       + questDamageBonus + artifactPowerBonus + ascDmgBonus
-      + runeDmgBonus + allyDmgBonus;
+      + runeDmgBonus;
 
   int _setTotal(ItemStat stat) {
     var total = 0;
@@ -1312,20 +1516,61 @@ class GameState extends ChangeNotifier {
   }
 
   // ── Difficulty Tiers ──────────────────────────────────────────────────────
-  // Replaces the old prestige-as-difficulty and Hard Mode. Each rebirth unlocks
-  // one more tier (0..kMaxTier). [activeTier] is freely switchable up to your
-  // highest unlocked; switching DOWN keeps all permanent rebirth buffs but
-  // scales enemies AND loot down. Higher tiers = tougher PvE + better loot.
-  // PvP / Guild deliberately ignore tier (they use flat scaling elsewhere).
+  // The core meta-progression. [highestUnlockedTier] is raised by CLEARING the
+  // campaign (defeating the final boss) at your current tier — no rebirth/reset.
+  // [activeTier] is freely switchable up to your highest unlocked; switching
+  // DOWN keeps all permanent power but scales enemies AND loot down. Higher
+  // tiers = tougher PvE + better loot. PvP / Guild ignore tier.
   static const int kMaxTier = 10;
+
+  // Defensive ratings — dodge and armor use diminishing-returns curves that
+  // asymptote toward [kDefenseCapPct], so stacked sources can never reach
+  // immunity. Each additional point of rating is worth progressively less.
+  // %-benefit = kDefenseCapPct * rating / (rating + K).
+  static const double kDefenseCapPct = 37.5;
+  static const double kDodgeRatingK  = 50;   // dodge rating that yields half the cap
+  static const double kArmorRatingK  = 100;  // armor rating that yields half the cap
+  // Elemental resistance is its own rating: same diminishing-returns curve but a
+  // higher cap (75%). Reaching the cap is deliberately expensive — at the K
+  // below you get half the cap (37.5%) and each further point is worth less, so
+  // late-game 75% is asymptotic. Flat sources (stats, passives) add rating;
+  // mastery + gems boost the rating by a %.
+  static const double kResistCapPct  = 90.0; // aligns with the 90% max-damage-reduction floor
+  static const double kResistRatingK = 50.0; // resist rating that yields half the cap
+  // Total lifesteal healing per round is capped at this % of max HP. Without it,
+  // endgame damage (billions) dwarfs the HP pool, so even ~1% lifesteal
+  // full-heals every hit — the real "hero never drops below full" sustain hole.
+  static const double kLifestealMaxPctPerRound = 4.0;
+  // Global HP-recovery scalar. Multiplies ALL healing (ability heals, HoT auras,
+  // merc triage). Combined with the lower lifesteal cap and bigger HP pool, this
+  // makes HP a resource that's slowly ground down rather than instantly topped
+  // off — so incoming damage actually sticks and the endgame stays threatening.
+  static const double kRecoveryMult = 0.4;
+  // Heal Rating system: ALL healing is now a multiple of Heal Rating, decoupled
+  // from max HP (which caused endless out-healing). A heal's design value (its
+  // old "% of HP" number, e.g. Healing Ward 28) becomes a Heal-Rating multiplier
+  // of value / kHealValuePerMult — so 28 ≈ 3× Heal Rating, matching the example.
+  // Lower this to make every heal stronger; raise to weaken. Kept above the
+  // damage curve's growth so healing stays "always partial" at the endgame.
+  static const double kHealValuePerMult = 30.0;
+  // Hard ceiling on a SINGLE heal's multiplier: no heal exceeds this × Heal
+  // Rating (× its factor). Heal values span 8→100; without this a value-100 aura
+  // healed ~3× a normal heal. 0.4 keeps even the biggest heal a partial top-up.
+  static const double kHealMaxMult = 0.25;
+  // Total chance to FULLY avoid an incoming hit (dodge + Shadow Step + Void Step
+  // + enemy miss-chance combined), capped so the enemy always lands a meaningful
+  // share. These were independent rolls that multiplied to near-total avoidance —
+  // telemetry showed a hero taking 0 damage over a 14-round boss fight.
+  static const double kMaxAvoidChance = 0.60;
+  // Cooldown reduction is a rare, premium bonus — the total rounds any build can
+  // shave off an ability's cooldown is hard-capped, so abilities are never spammed.
+  static const int kMaxCooldownReduction = 2;
   int activeTier = 0;
 
-  /// The highest difficulty tier the player has unlocked (one per rebirth,
-  /// capped at [kMaxTier]).
-  int get highestUnlockedTier {
-    final t = prestigeLevel;
-    return t > kMaxTier ? kMaxTier : t;
-  }
+  /// The highest difficulty tier the player has unlocked. Persisted; raised by
+  /// clearing the campaign at your current highest tier (see the final-boss
+  /// handler). Seeded from legacy prestigeLevel on first migration.
+  int highestUnlockedTier = 0;
 
   /// Switch the active difficulty tier. Clamped to [0, highestUnlockedTier].
   /// Recalculates immediately (enemies/loot for the next encounter use it).
@@ -1335,6 +1580,22 @@ class GameState extends ChangeNotifier {
     activeTier = clamped;
     notifyListeners();
     saveToLocal();
+  }
+
+  /// Set when the final boss is cleared and a new tier unlocks — the UI reads
+  /// this to show the "Tier N Unlocked" celebration, then clears it.
+  int lastTierUnlocked = 0;
+
+  // Paragon-per-level: every hero level grants 1 Paragon Point (a prestige Soul,
+  // the currency the Paragon board already spends). We track the highest level
+  // already rewarded so only the delta is granted, and never retroactively dump
+  // points on existing saves (seeded to current level on migration).
+  int _paragonLevelsGranted = 0;
+  void _syncParagonLevels() {
+    if (hero.level > _paragonLevelsGranted) {
+      prestigeSouls += hero.level - _paragonLevelsGranted;
+      _paragonLevelsGranted = hero.level;
+    }
   }
 
   Set<int> stageStars = {}; // stores "stage_star" encoded as stage*10+star(1-3)
@@ -1801,7 +2062,7 @@ class GameState extends ChangeNotifier {
       'level_25': hero.level >= 25,
       'level_50': hero.level >= 50,
       'level_100': hero.level >= 100,
-      'first_rebirth': prestigeLevel >= 1,
+      'first_rebirth': highestUnlockedTier >= 1,
       'kills_100': _totalKills >= 100,
       'kills_1000': _totalKills >= 1000,
       'pvp_10_wins': pvpWins >= 10,
@@ -2589,6 +2850,16 @@ class GameState extends ChangeNotifier {
   int bestiaryKillCount(String enemyId) => bestiaryKills[enemyId] ?? 0;
   bool bestiaryDiscovered(String enemyId) => (bestiaryKills[enemyId] ?? 0) > 0;
 
+  /// The next uncleared bestiary kill-milestone for [enemyId], or null if the
+  /// enemy has already hit the final milestone. Used by the combat beacon.
+  int? nextBestiaryMilestone(String enemyId) {
+    final kills = bestiaryKillCount(enemyId);
+    for (final m in bestiaryMilestones) {
+      if (kills < m) return m;
+    }
+    return null;
+  }
+
   static const bestiaryMilestones = [10, 50, 100, 250, 500];
   static const _milestoneRewards = <int, ({int gold, int shards, int essence, int atk})>{
     10:  (gold: 100,  shards: 0,  essence: 0,  atk: 0),
@@ -2653,6 +2924,53 @@ class GameState extends ChangeNotifier {
   int bestiaryTypeDamagePct(BestiaryWeakness type) =>
       (typeKillCount(type) ~/ 100).clamp(0, 25);
 
+  // ── Defensive ratings (diminishing returns → % cap at kDefenseCapPct) ───────
+  /// Hero dodge rating from all persistent sources (the transient merc-buff is
+  /// added on top in combat only).
+  double get heroDodgeRating {
+    final dexTotal = hero.dexterity + inventory.totalOf(ItemStat.dexterity)
+        + _setTotal(ItemStat.dexterity) + _gemTotal(ItemStat.dexterity);
+    final dexDodge = max(0.0, (dexTotal - 10) * 0.5).clamp(0.0, 30.0);
+    final subclassDodge = (subclassEffect == SubclassEffect.shadowMonk ? 10 : 0) + subclassDodgePct;
+    return passiveTree.totalOf(PassiveEffect.dodgeChance) + subclassDodge
+        + runeDodgeBonus + auraDodgeChance + petDodgeChance + dexDodge;
+  }
+  /// Effective dodge chance % (diminishing returns, capped at kDefenseCapPct).
+  double get effectiveDodgePct =>
+      kDefenseCapPct * heroDodgeRating / (heroDodgeRating + kDodgeRatingK);
+  /// Effective physical damage-reduction % for a given armor rating.
+  double armorDrPctFor(num armorRating) =>
+      kDefenseCapPct * armorRating / (armorRating + kArmorRatingK);
+
+  /// Canonical physical mitigation shared by EVERY combat mode (main campaign,
+  /// Boss Rush, Dungeon, Gauntlet, Guild). Armor is a RATING that runs through
+  /// the diminishing-returns curve (asymptotes to [kDefenseCapPct]); the
+  /// acBonus ability buff and mercenary AC are % boosts to that rating, applied
+  /// via [tempAcPct]. Physical only — elemental attacks should bypass this
+  /// (resistances handle them). No flat subtraction and no damage cap, so it
+  /// scales cleanly at any tier. Static + pure so the Dungeon model (which has
+  /// no GameState instance) can share the exact same formula.
+  static int physicalAfterArmor(int rawDamage, int armorRating, {int tempAcPct = 0}) {
+    final rating = tempAcPct > 0
+        ? (armorRating * (1 + tempAcPct / 100.0)).round()
+        : armorRating;
+    final drPct = kDefenseCapPct * rating / (rating + kArmorRatingK);
+    return max(0, (rawDamage * (1 - drPct / 100)).round());
+  }
+
+  /// Full incoming-hit mitigation shared by every mode, matching the campaign:
+  /// PHYSICAL runs through armor DR ([physicalAfterArmor]); ELEMENTAL bypasses
+  /// armor and is reduced by the hero's resistance to that type (capped ±90%,
+  /// negative = extra damage taken). Dodge is a separate full-negation roll the
+  /// caller makes first (see [effectiveDodgePct]).
+  int mitigateIncoming(int rawDamage, DamageType attackType, int armorRating, {int tempAcPct = 0}) {
+    if (attackType == DamageType.physical) {
+      return physicalAfterArmor(rawDamage, armorRating, tempAcPct: tempAcPct);
+    }
+    final resPct = heroResistancePct(attackType);
+    return max(0, (rawDamage * (1 - resPct / 100.0)).round());
+  }
+
   double bestiaryTypeDamageMult(String enemyId) {
     final entry = bestiaryFor(enemyId);
     if (entry == null) return 1.0;
@@ -2663,7 +2981,15 @@ class GameState extends ChangeNotifier {
   // STR→Physical, DEX→Lightning, CON→Poison, INT→Void, WIS→Cold, CHA→Fire.
   // Scales linearly: 0% at stat 0, 25% at stat 100 (kStatCap) from base stats alone.
   // Items/passives/rebirth bonuses add to tot() and can push the total up to ±75%.
-  int heroResistancePct(DamageType type) {
+  /// Resistance % from a resistance rating (diminishing returns, caps at
+  /// kResistCapPct = 75%). Same shape as [armorDrPctFor].
+  double resistPctForRating(num rating) =>
+      kResistCapPct * rating / (rating + kResistRatingK);
+
+  /// FLAT resistance rating for [type] — the stat-based contribution plus the
+  /// per-element and all-element resistance passives. (Mastery + gems are a %
+  /// boost on top, see [heroResistRatingBoostPct].)
+  int heroResistFlatRating(DamageType type) {
     int tot(int base, ItemStat stat) =>
         base + inventory.totalOf(stat) + _setTotal(stat) + _gemTotal(stat);
     final statBased = switch (type) {
@@ -2682,10 +3008,24 @@ class GameState extends ChangeNotifier {
       DamageType.poison    => passiveTree.totalOf(PassiveEffect.poisonRes),
       DamageType.void_     => passiveTree.totalOf(PassiveEffect.voidRes),
     };
-    final passiveAll = passiveTree.totalOf(PassiveEffect.allRes);
-    final gemRes = gemElemResPct(type);
-    final masteryRes = elementalMasteryResistancePct(type);
-    return (statBased + passivePerElem + passiveAll + gemRes + masteryRes).clamp(-75, 75);
+    return statBased + passivePerElem + passiveTree.totalOf(PassiveEffect.allRes);
+  }
+
+  /// % boost to the resistance RATING from elemental mastery + gems.
+  int heroResistRatingBoostPct(DamageType type) =>
+      elementalMasteryResistancePct(type) + gemElemResPct(type);
+
+  int heroResistancePct(DamageType type) {
+    // Physical is NOT a resistance — Armor is the sole physical mitigation (no
+    // more armor + physical-resist double-dip). Only the 5 elements resist.
+    if (type == DamageType.physical) return 0;
+    // Flat rating (stats + passives) boosted by a % (mastery + gems), then run
+    // through the diminishing-returns curve — so approaching the 90% cap is
+    // expensive late-game. Negative net = vulnerability (kept flat, floor −75).
+    final rating = heroResistFlatRating(type) *
+        (1 + heroResistRatingBoostPct(type) / 100.0);
+    if (rating <= 0) return rating.round().clamp(-75, 0);
+    return resistPctForRating(rating).round().clamp(0, 90);
   }
 
   double passiveElemDamagePct(DamageType type) {
@@ -2914,6 +3254,18 @@ class GameState extends ChangeNotifier {
     ownedArtifacts.add(art);
     lastArtifactDrop = art;
     trackArtifactCollected();
+    // First artifact ever → unlock the Artifacts table and coach the player on it.
+    if (!artifactsUnlocked) {
+      artifactsUnlocked = true;
+      _triggerTutorial(const SystemTutorial(
+        stage: -5, navTab: 2, subTab: 'ARTIFACTS', icon: '💎',
+        title: 'Artifacts',
+        howTo: 'You found your first Artifact! Artifacts are powerful relics you '
+            'equip in the Inventory → Artifacts tab. Each grants permanent bonuses '
+            '(damage, HP, gold and more), and you can forge/upgrade them with '
+            'Mythril. Equip your best to boost every fight.',
+      ));
+    }
   }
 
   bool forgeArtifact() {
@@ -2927,14 +3279,40 @@ class GameState extends ChangeNotifier {
     return true;
   }
 
+  int get _artifactSalvageValue => (forgeCost * 0.33).round().clamp(1, 999);
+
   void disenchantArtifact(String uid) {
     final art = ownedArtifacts.where((a) => a.uid == uid).firstOrNull;
     if (art == null) return;
     artifactGrid.removeWhere((_, v) => v == uid);
     ownedArtifacts.removeWhere((a) => a.uid == uid);
-    mythril += (forgeCost * 0.33).round().clamp(1, 999);
+    mythril += _artifactSalvageValue;
     notifyListeners();
     saveToLocal();
+  }
+
+  /// Number of owned artifacts not currently placed on the grid.
+  int get unequippedArtifactCount =>
+      ownedArtifacts.where((a) => !isArtifactEquipped(a.uid)).length;
+
+  /// Mythril the player would gain by salvaging all unequipped artifacts.
+  int get salvageAllMythrilValue =>
+      unequippedArtifactCount * _artifactSalvageValue;
+
+  /// Salvages every owned artifact that isn't equipped, awarding mythril for
+  /// each (same rate as [disenchantArtifact]). Returns (count, mythril gained).
+  (int count, int mythril) salvageUnequippedArtifacts() {
+    final unequipped =
+        ownedArtifacts.where((a) => !isArtifactEquipped(a.uid)).toList();
+    if (unequipped.isEmpty) return (0, 0);
+    for (final a in unequipped) {
+      ownedArtifacts.removeWhere((x) => x.uid == a.uid);
+    }
+    final gained = _artifactSalvageValue * unequipped.length;
+    mythril += gained;
+    notifyListeners();
+    saveToLocal();
+    return (unequipped.length, gained);
   }
 
   void placeArtifact(int cell, String artifactId) {
@@ -2955,17 +3333,26 @@ class GameState extends ChangeNotifier {
     saveToLocal();
   }
 
+  /// Ranking score for an artifact: rarity first, then total stat value, then
+  /// drop level. Higher = better / more worth upgrading.
+  int artifactRankScore(Artifact a) =>
+      a.rarity.index * 1000000 +
+      (a.powerBonus + a.acBonus + a.hpPct + a.shardPct + a.goldPct + a.xpPct) * 100 +
+      a.dropLevel;
+
+  /// Owned artifacts sorted best-first (same ranking auto-equip uses), for the
+  /// Collection display so the strongest / most upgrade-worthy show at the top.
+  List<Artifact> get artifactsRankedBest =>
+      List<Artifact>.from(ownedArtifacts)
+        ..sort((x, y) => artifactRankScore(y).compareTo(artifactRankScore(x)));
+
   /// Auto-equip the best artifacts into every unlocked cell, ranked by rarity
   /// first, then total stat value, then drop level. Clears the grid first.
   /// Returns the number of cells filled.
   int autoEquipArtifacts() {
     if (ownedArtifacts.isEmpty) return 0;
-    int score(Artifact a) =>
-        a.rarity.index * 1000000 +
-        (a.powerBonus + a.acBonus + a.hpPct + a.shardPct + a.goldPct + a.xpPct) * 100 +
-        a.dropLevel;
     final sorted = List<Artifact>.from(ownedArtifacts)
-      ..sort((x, y) => score(y).compareTo(score(x)));
+      ..sort((x, y) => artifactRankScore(y).compareTo(artifactRankScore(x)));
     artifactGrid.clear();
     final n = _unlockedArtifactCells.clamp(0, sorted.length);
     for (var i = 0; i < n; i++) {
@@ -3008,6 +3395,11 @@ class GameState extends ChangeNotifier {
       prefix: art.prefix,
       suffix: art.suffix,
       dropLevel: (art.dropLevel + 5).clamp(1, 50),
+      // Preserve rarity + set membership — omitting these reset the artifact to
+      // a common, non-set piece on every upgrade (silent downgrade / lost set).
+      rarity: art.rarity,
+      setId: art.setId,
+      setPieceIndex: art.setPieceIndex,
     );
     notifyListeners();
     saveToLocal();
@@ -3134,6 +3526,7 @@ class GameState extends ChangeNotifier {
     if (b.def.reward.zcoins > 0) zcoins += b.def.reward.zcoins;
     if (b.def.reward.shards > 0) shards += b.def.reward.shards;
     if (b.def.reward.xp > 0) hero.gainExperience(b.def.reward.xp);
+    _syncParagonLevels();
     saveToLocal();
     notifyListeners();
   }
@@ -3151,6 +3544,12 @@ class GameState extends ChangeNotifier {
   int loginStreak = 0;
   bool loginTodayClaimed = false;
   String _lastLoginDate = '';
+
+  /// The login-reward day currently claimable — the single source of truth for
+  /// both the claim and the preview (they used to compute it differently, so the
+  /// preview showed Day 2 while claiming granted Day 1).
+  int get loginRewardDay =>
+      loginStreak <= 0 ? 1 : ((loginStreak - 1) % LoginReward.cycle.length) + 1;
 
   void checkLoginStreak() {
     final today = _dateKey(DateTime.now());
@@ -3174,7 +3573,7 @@ class GameState extends ChangeNotifier {
   void claimLoginReward() {
     if (loginTodayClaimed) return;
     HapticFeedback.mediumImpact();
-    final dayInCycle = loginStreak <= 0 ? 1 : ((loginStreak - 1) % LoginReward.cycle.length) + 1;
+    final dayInCycle = loginRewardDay;
     final reward = LoginReward.forDay(dayInCycle);
     if (reward.gold > 0)     gold += reward.gold;
     if (reward.zcoins > 0) zcoins += reward.zcoins;
@@ -3184,13 +3583,13 @@ class GameState extends ChangeNotifier {
     if (reward.essence > 0)  essence += reward.essence;
     if (reward.isEpicItem) {
       final slot = ItemSlot.values[_rng.nextInt(ItemSlot.values.length)];
-      final item = ItemLootTable.craftAt(slot, ItemRarity.epic, hero.level, _rng, rebirthLevel: prestigeLevel);
+      final item = ItemLootTable.craftAt(slot, ItemRarity.epic, hero.level, _rng, rebirthLevel: highestUnlockedTier);
       inventory.addToBag(item);
       lastLoginLegendary = item;
     }
     if (reward.isClassLegendary) {
       final slot = ItemSlot.values[_rng.nextInt(ItemSlot.values.length)];
-      final base = ItemLootTable.craftAt(slot, ItemRarity.legendary, hero.level, _rng, rebirthLevel: prestigeLevel);
+      final base = ItemLootTable.craftAt(slot, ItemRarity.legendary, hero.level, _rng, rebirthLevel: highestUnlockedTier);
       final item = EquipmentItem(
         id: base.id,
         name: '${hero.heroClass.displayName}\'s ${base.name}',
@@ -3307,7 +3706,7 @@ class GameState extends ChangeNotifier {
     if (reward.type == EventRewardType.gear && reward.gearSlot != null && reward.gearRarity != null) {
       final item = ItemLootTable.craftAt(
         reward.gearSlot!, reward.gearRarity!, hero.level, _rng,
-        rebirthLevel: prestigeLevel,
+        rebirthLevel: highestUnlockedTier,
       );
       inventory.addToBag(item);
     }
@@ -3319,6 +3718,13 @@ class GameState extends ChangeNotifier {
   // ── Challenge Gauntlet ────────────────────────────────────────────────────
   int gauntletHighScore = 0;
   int gauntletHighestTier = 0;
+
+  // Last modifier set the player ran, so the Gauntlet pre-selects it by default.
+  List<String> lastGauntletModifierIds = [];
+  void setLastGauntletModifiers(List<String> ids) {
+    lastGauntletModifierIds = List<String>.from(ids);
+    saveToLocal();
+  }
 
   void recordGauntletResult(GauntletResult result, {int tier = 1}) {
     if (result.score > gauntletHighScore) gauntletHighScore = result.score;
@@ -3392,10 +3798,10 @@ class GameState extends ChangeNotifier {
   }
 
   // ── Level-scaled bonuses (base × level + chosen talents) ─────────────────
-  int  get allyAtkBonus  => _allyIntStat((a) => a.atkBonus,  (t) => t.atkBonus)
-                          + activeSynergies.fold(0, (s, y) => s + y.atkBonus);
-  int  get allyDmgBonus  => _allyIntStat((a) => a.dmgBonus,  (t) => t.dmgBonus)
-                          + activeSynergies.fold(0, (s, y) => s + y.dmgBonus);
+  // Allies' single unified damage stat: % increased damage (feeds allDamagePct,
+  // not flat power — flat was worthless once heroes hit for thousands).
+  int  get allyDmgPctBonus => _allyIntStat((a) => a.dmgPctBonus, (t) => t.dmgPctBonus)
+                          + activeSynergies.fold(0, (s, y) => s + y.dmgPctBonus);
   int  get allyAcBonus   => _allyIntStat((a) => a.acBonus,   (t) => t.acBonus)
                           + activeSynergies.fold(0, (s, y) => s + y.acBonus);
   double get allyGoldMult  => 1.0
@@ -3468,7 +3874,7 @@ class GameState extends ChangeNotifier {
   int allyMilestoneProgress(NpcAllyDef def) => switch (def.milestone) {
     AllyMilestone.killCount            => _totalKills,
     AllyMilestone.campaignStage        => campaignStageIndex + 1,
-    AllyMilestone.prestigeLevel        => prestigeLevel,
+    AllyMilestone.prestigeLevel        => highestUnlockedTier, // now tracks tier unlocks
     AllyMilestone.ascensionLevel       => ascensionLevel,
     AllyMilestone.dungeonClears        => _dungeonClears,
     AllyMilestone.bossRushClears       => _bossRushClears,
@@ -3520,7 +3926,7 @@ class GameState extends ChangeNotifier {
     AchievementCondition.totalDisenchants   => _totalDisenchants,
     AchievementCondition.heroLevel          => hero.level,
     AchievementCondition.campaignStage      => campaignStageIndex + 1,
-    AchievementCondition.prestigeLevel      => prestigeLevel,
+    AchievementCondition.prestigeLevel      => highestUnlockedTier, // now tracks tier unlocks
     AchievementCondition.passiveNodesUnlocked => passiveTree.unlockedCount,
     AchievementCondition.survivedAt1HP      => _survivedAt1HP ? 1 : 0,
     AchievementCondition.subclassChosen     => subclassId != null ? 1 : 0,
@@ -3670,7 +4076,7 @@ class GameState extends ChangeNotifier {
   /// Rarity odds improve with hero level and prestige so the shop stays
   /// relevant late-game (commons phase out as you grow).
   ItemRarity _shopRarityRoll(Random rng) {
-    final tierBoost = (hero.level ~/ 10) + prestigeLevel * 2;
+    final tierBoost = (hero.level ~/ 10) + highestUnlockedTier * 2;
     final epicPct = (10 + tierBoost * 2).clamp(10, 45);
     final rarePct = (30 + tierBoost).clamp(30, 45);
     final roll = rng.nextInt(100);
@@ -3687,7 +4093,7 @@ class GameState extends ChangeNotifier {
     // Featured is always high rarity: mostly epic, sometimes legendary.
     final rarity  = rng.nextInt(100) < 30 ? ItemRarity.legendary : ItemRarity.epic;
     _featuredDeal = ItemLootTable.craftAt(slot, rarity, max(1, hero.level), rng,
-        rebirthLevel: prestigeLevel);
+        rebirthLevel: highestUnlockedTier);
   }
 
   void _regenerateShop() {
@@ -3700,7 +4106,7 @@ class GameState extends ChangeNotifier {
       for (var i = 0; i < 3; i++) {
         final rarity = _shopRarityRoll(rng);
         _shopStock.add(ItemLootTable.craftAt(slot, rarity, max(1, hero.level), rng,
-            rebirthLevel: prestigeLevel));
+            rebirthLevel: highestUnlockedTier));
       }
     }
   }
@@ -3718,6 +4124,10 @@ class GameState extends ChangeNotifier {
     if (essence < cost) return false;
     essence -= cost;
     passiveTree.upgrade(id);
+    // maxHp passives (e.g. Iron Skin) are cached into hero.extraHpPct rather than
+    // read live like every other passive effect, so recompute it now — otherwise
+    // ranking an HP node wouldn't change max HP until some other resync fired.
+    _syncHeroHpPct();
     _checkAchievements();
     notifyListeners();
     saveToLocal();
@@ -3732,6 +4142,7 @@ class GameState extends ChangeNotifier {
     if (passiveTree.branchPointsSpent(branch) == 0) return false;
     passiveTree.respecBranch(branch);
     essence += refund;
+    _syncHeroHpPct(); // maxHp nodes are cached — refresh after removing ranks
     notifyListeners();
     saveToLocal();
     return true;
@@ -3743,6 +4154,7 @@ class GameState extends ChangeNotifier {
     zcoins -= 50;
     passiveTree.fullRespec();
     essence += refund;
+    _syncHeroHpPct(); // maxHp nodes are cached — refresh after removing ranks
     notifyListeners();
     saveToLocal();
     return true;
@@ -3769,6 +4181,7 @@ class GameState extends ChangeNotifier {
   /// Ascension. From here on, everything that was ever unlocked stays unlocked
   /// even though a Rebirth/Ascension resets campaign progress to 0.
   bool get endgameUnlocked =>
+      highestUnlockedTier > 0 || // unlocking a tier is the modern endgame trigger
       prestigeLevel > 0 ||
       _confirmedPrestigeLevel > 0 ||
       totalAscensionAp > 0 ||
@@ -3780,6 +4193,11 @@ class GameState extends ChangeNotifier {
   /// rather than prestige alone.)
   int get effectiveUnlockStage =>
       endgameUnlocked ? max(campaignStageIndex, 100) : campaignStageIndex;
+
+  /// Boss Bounties unlock at campaign stage 20 (matches _unlockStageNames + the
+  /// tutorial). The BOUNTIES tab lives inside the Challenges screen (unlocked at
+  /// stage 5), so it must gate on this — not just on Challenges being open.
+  bool get bossBountiesUnlocked => effectiveUnlockStage >= 20;
 
   /// Named title earned at each prestige milestone (highest earned is shown).
   static const _prestigeTitles = <int, (String title, String emoji)>{
@@ -3804,19 +4222,33 @@ class GameState extends ChangeNotifier {
     return _prestigeTitles[keys.last];
   }
 
-  double get prestigeGoldMult    => (1.0 + prestigeLevel * 0.15) * _challengeGoldMult * ascGoldMult * ascPrestigeMult
+  // Permanent buffs now scale with your highest unlocked difficulty Tier (they
+  // used to scale per rebirth). They're kept when you switch tiers DOWN, and
+  // stack with the Paragon board. Existing rebirthed saves keep the value since
+  // highestUnlockedTier was seeded from prestigeLevel.
+  double get prestigeGoldMult    => (1.0 + highestUnlockedTier * 0.15) * _challengeGoldMult * ascGoldMult * ascPrestigeMult
       * (1.0 + prestigeShop.paragonTotal(ParagonEffect.gold) / 100);
-  double get prestigeXpMult      => (1.0 + prestigeLevel * 0.10)
+  double get prestigeXpMult      => (1.0 + highestUnlockedTier * 0.10)
       * (prestigeShop.isUnlocked('swift_learner') ? 1.30 : 1.0)
       * (1.0 + prestigeShop.paragonTotal(ParagonEffect.xp) / 100)
       * _boonXpMult * ascXpMult * ascPrestigeMult;
-  double get prestigeIdleMult    => (1.0 + prestigeLevel * 0.10) * ascIdleMult * ascPrestigeMult
+  double get prestigeIdleMult    => (1.0 + highestUnlockedTier * 0.10) * ascIdleMult * ascPrestigeMult
       * (1.0 + prestigeShop.paragonTotal(ParagonEffect.idle) / 100);
-  /// Flat % damage bonus from Paragon level — +3.5% per rebirth, plus Destroyer node.
-  double get prestigeDamageMult  => (1.0 + prestigeLevel * 0.035)
-      * (prestigeShop.isUnlocked('destroyer') ? 1.20 : 1.0)
-      * (1.0 + prestigeShop.paragonTotal(ParagonEffect.damage) / 100)
-      * (prestigeShop.isUnlocked('paragon_dominance') ? (1.0 + prestigeLevel * 0.01) : 1.0);
+  /// Flat % damage bonus — +3.5% per unlocked Tier, plus Destroyer node & Paragon.
+  // Diminishing-returns soft cap for runaway additive %s: values ≤ [soft] pass
+  // through unchanged; above [soft] each extra point is worth progressively less,
+  // asymptoting to [soft] + [k]. Keeps early/mid progression intact while stopping
+  // endgame multipliers (paragon dmg, endless str) from scaling to infinity and
+  // trivialising every boss. Tunable per call.
+  static double softCapPct(double raw, double soft, double k) =>
+      raw <= soft ? raw : soft + (raw - soft) * k / (k + (raw - soft));
+
+  double get prestigeDamageMult  => (1.0 + highestUnlockedTier * 0.035)
+      * (prestigeShop.isUnlocked('destroyer') ? 1.05 : 1.0)
+      // Paragon damage % soft-capped: linear ≤ +1500%, then diminishes toward a
+      // +1500%+3000% = +4500% (×46) asymptote (was uncapped, e.g. +6493% = ×66).
+      * (1.0 + softCapPct(prestigeShop.paragonTotal(ParagonEffect.damage), 1500, 3000) / 100)
+      * (prestigeShop.isUnlocked('paragon_dominance') ? (1.0 + highestUnlockedTier * 0.01) : 1.0);
   double get prestigeShardMult   => (prestigeShop.isUnlocked('carrion_picker') ? 1.50 : 1.0) * ascShardMult;
   double get prestigeEssenceMult => (prestigeShop.isUnlocked('essence_bonus')  ? 1.50 : 1.0) * ascEssenceMult;
   int    get prestigeIdleBonus   => prestigeShop.isUnlocked('idle_bonus') ? 30 : 0;
@@ -3834,8 +4266,6 @@ class GameState extends ChangeNotifier {
   }
   int get prestigeHeadStart {
     if (prestigeShop.isUnlocked('soul_overdrive')) return 40; // Stage 41
-    if (prestigeShop.isUnlocked('head_start_2'))   return 20; // Stage 21
-    if (prestigeShop.isUnlocked('head_start'))     return 10; // Stage 11
     return 0;
   }
   double get prestigeAbilityDiscount =>
@@ -3857,10 +4287,12 @@ class GameState extends ChangeNotifier {
     final boonBonus = boon?.effect == RebirthBoonEffect.bonusSouls ? boon!.value.toInt() : 0;
     return (base + dungeon + bossRush + gauntlet + conduit + challenge.bonusSouls + boonBonus).clamp(1, 9999);
   }
-  bool   get prestigeHealOnKill     => prestigeShop.isUnlocked('blood_drinker');
-  double get prestigeHealOnKillPct  => prestigeShop.isUnlocked('blood_drinker') ? 0.05 : 0.0;
+  // Blood Drinker — reworked from a fixed 5% heal-on-kill (didn't scale, and was
+  // an uncapped sustain source) into LIFESTEAL: heal a % of damage dealt, which
+  // scales with your power and rides the shared per-round lifesteal cap.
+  int    get prestigeLifestealPct   => prestigeShop.isUnlocked('blood_drinker') ? 6 : 0;
   int    get prestigeCritBonus      => (prestigeShop.isUnlocked('killing_blow')  ? 8  : 0) + prestigeShop.paragonTotal(ParagonEffect.crit).round();
-  double get prestigeCritDamageMult => (prestigeShop.isUnlocked('deaths_edge')   ? 1.8: 1.0) * (1.0 + prestigeShop.paragonTotal(ParagonEffect.critDmg) / 100);
+  double get prestigeCritDamageMult => (prestigeShop.isUnlocked('deaths_edge')   ? 1.05: 1.0) * (1.0 + prestigeShop.paragonTotal(ParagonEffect.critDmg) / 100);
 
   // ── Central crit chance aggregator ───────────────────────────────────────
   // All former "attack bonus" sources are repurposed as +1% crit per point.
@@ -3875,10 +4307,18 @@ class GameState extends ChangeNotifier {
         + petArmor + skinArmor + auraArmor
         + _setTotal(ItemStat.armorClass) + _setTotal(ItemStat.strength)
         + _gemTotal(ItemStat.armorClass) + _gemTotal(ItemStat.strength)
-        + artifactAcBonus + runeAcBonus + allyAcBonus
+        + artifactAcBonus + runeAcBonus
+        // Endless-upgrade (CON) armour sources — previously only the campaign's
+        // inline sum had these, so modes + the Bonuses sheet under-counted armour.
+        + (endlessUpgrades.lightFooted ? 5 : 0)
+        + (_hasKeyword(ItemKeyword.ironWill) ? 1 : 0)
+        + (endlessUpgrades.synergyJuggernaut ? 1 : 0)
+        + endlessUpgrades.flatDamageReduction
+        + (endlessUpgrades.thickHide ? 3 : 0)
         + _scoreFor;
-    // Subclass armor bonus is a % increase to total armor.
-    return (flat * (1 + subclassArmorPct / 100.0)).round();
+    // Subclass armor, mercenary AC, and the DUR (Durability) score are all %
+    // increases to total armor rating.
+    return (flat * (1 + (subclassArmorPct + allyAcBonus + _scoreDurPct) / 100.0)).round();
   }
 
   // Raw crit chance summed from every source, BEFORE the 100% cap. Anything
@@ -3886,32 +4326,15 @@ class GameState extends ChangeNotifier {
   // [critOverflowPct] / [totalCritDamageMult]) so heavily-invested crit builds
   // never waste a point.
   int get rawCritChancePct {
-    final fromPassive   = passiveTree.totalOf(PassiveEffect.critChance)
-                        + passiveTree.totalOf(PassiveEffect.attackFlat) * 2;
-    final fromItems     = inventory.totalOf(ItemStat.attackBonus) * 2
-                        + inventory.totalOf(ItemStat.dexterity);
-    final fromSets      = _setTotal(ItemStat.attackBonus) * 2
-                        + _setTotal(ItemStat.dexterity);
-    final fromGems      = _gemTotal(ItemStat.attackBonus) * 2;
-    final fromUpgrades  = (endlessUpgrades.ironGrip ? 12 : 0)
-                        + endlessUpgrades.attackRollBonus * 2;
-    final fromBuff      = _tempAttackBonus;        // ability ATK buff → crit buff
-    final fromSubclass  = (subclassEffect == SubclassEffect.champion ? 15 : 0)
-                        + subclassCritChancePct;
-    final fromPet       = petAttackBonus * 2;
-    final fromSkin      = skinAttackBonus * 2;
-    final fromAura      = auraAttackBonus * 2;
-    final fromAllies    = allyAtkBonus * 2;
-    final fromQuest     = questAttackBonus * 2;
-    final fromAsc       = ascAtkBonus * 5; // Veteran Arms: +5% crit chance / level
-    final fromRune      = runeAtkBonus * 2;
-    final fromBestiary  = bestiaryChapterBonus * 2;
-    final fromPrestige  = prestigeCritBonus;
-    return (fromPassive + fromItems + fromSets + fromGems + fromUpgrades
-          + fromBuff + fromSubclass + fromPet + fromSkin + fromAura
-          + fromAllies + fromQuest + fromAsc + fromRune + fromBestiary
-          + fromPrestige
-          + _scorePrc).clamp(0, 9999);
+    // Crit chance now comes ONLY from gear — attack-bonus and dexterity affixes
+    // on equipped items and set bonuses. Every other source was removed to make
+    // crit a deliberate gear specialization; they grant % All Damage instead
+    // (see [critReplacementDamagePct]).
+    final fromItems = inventory.totalOf(ItemStat.attackBonus) * 2
+                    + inventory.totalOf(ItemStat.dexterity);
+    final fromSets  = _setTotal(ItemStat.attackBonus) * 2
+                    + _setTotal(ItemStat.dexterity);
+    return (fromItems + fromSets).clamp(0, 999999999);
   }
 
   // Effective crit chance used in combat — now capped at 100% (was 75%).
@@ -3923,12 +4346,31 @@ class GameState extends ChangeNotifier {
   // Crit damage multiplier (combined from all sources). Overflow crit chance is
   // folded in here: every 1% of overflow adds +1% crit damage (+0.01 multiplier).
   double get totalCritDamageMult {
-    final base = (subclassEffect == SubclassEffect.assassin ||
-                  _hasKeyword(ItemKeyword.criticalFury)) ? 3.0 : 2.0;
+    // Crit damage is gear-only: base 2×, upgraded to 3× by the Critical Fury item
+    // keyword, plus the overflow recycled from >100% gear crit chance. Score /
+    // subclass / prestige crit-damage was removed and folded into % All Damage.
+    final base = _hasKeyword(ItemKeyword.criticalFury) ? 3.0 : 2.0;
     final overflowBonus = critOverflowPct / 100.0;
-    return ((base + _scoreAgi + subclassCritDmgPct / 100.0 + overflowBonus)
-            * prestigeCritDamageMult)
-        .clamp(1.5, 10.0);
+    return (base + overflowBonus).clamp(1.5, 10.0);
+  }
+
+  /// % All Damage granted in place of the crit chance / crit damage that used to
+  /// come from non-gear sources (ability scores, subclass, echo upgrades). Keeps
+  /// those investments meaningful now that crit is a gear-only specialization.
+  double get critReplacementDamagePct {
+    var pct = 0.0;
+    pct += _scorePrc * 0.5;                  // Wrath score (% damage)
+    // (Endurance 'agi' now grants % max HP, not damage — see _syncHeroHpPct.)
+    pct += subclassCritChancePct * 0.5;      // subclass crit-chance → damage
+    pct += subclassCritDmgPct * 0.25;        // subclass crit-damage → damage
+    if (subclassEffect == SubclassEffect.champion) pct += 8;
+    if (subclassEffect == SubclassEffect.assassin) pct += 10;
+    if (endlessUpgrades.ironGrip) pct += 10;  // Iron Grip echo (was +12 crit)
+    if (endlessUpgrades.keenEdge) pct += 12;  // Keen Edge echo (was +20 crit)
+    pct += endlessUpgrades.attackRollBonus.toDouble(); // DEX/Precision echo (was crit)
+    // Capped small to scale down damage (was reaching 200%+ from stacked scores
+    // /echoes). Tunable.
+    return pct.clamp(0, 10);
   }
   double get prestigeGoldBattleMult => prestigeShop.isUnlocked('treasure_sense') ? 1.35 : 1.0;
   int    get prestigeSoulConduit    => prestigeShop.isUnlocked('soul_conduit')   ? 5  : 0;
@@ -4231,7 +4673,7 @@ class GameState extends ChangeNotifier {
   // drops you. Survives every reset except a brand-new character.
   int totalAscensionAp = 0;
   // Effective Rebirths for leaderboard ranking: current + all sacrificed.
-  int get leaderboardRebirths => prestigeLevel + totalAscensionAp;
+  int get leaderboardRebirths => highestUnlockedTier + totalAscensionAp;
 
   bool get canAscend => prestigeLevel >= 5;
   // 1 Ascension Point per Rebirth sacrificed — so banking more Rebirths before
@@ -4255,6 +4697,10 @@ class GameState extends ChangeNotifier {
 
   bool get hasAffordablePassiveNode =>
       kPassiveNodes.any((n) =>
+          // Skip other classes' class-only nodes — they aren't shown on this
+          // hero's passive screen, so counting them left a stuck badge with
+          // nothing to actually buy.
+          (n.classOnly == null || n.classOnly == hero.heroClass.name) &&
           passiveTree.canUpgrade(n.id) &&
           essence >= passiveTree.costForNextRank(n.id));
 
@@ -4336,7 +4782,7 @@ class GameState extends ChangeNotifier {
   // the old flat +damage, which was negligible at high levels. The flat getter
   // stays at 0 for backward-compatible call sites; the % feeds the damage pipeline.
   int    get ascDmgBonus  => 0;
-  double get ascAllDamagePct => ascensionNodeLevel('dmg_bonus') * 12.0;
+  double get ascAllDamagePct => ascensionNodeLevel('dmg_bonus') * 5.0; // was 12/level
   double get ascIdleMult  => 1.0 + ascensionNodeLevel('idle_bonus') * 0.30;
   double get ascPrestigeMult => 1.0 + ascensionNodeLevel('prestige_bonus') * 0.30;
   double get ascEssenceMult  => 1.0 + ascensionNodeLevel('essence_bonus') * 0.30;
@@ -4493,6 +4939,79 @@ class GameState extends ChangeNotifier {
   double get subclassHealPct     => (activeSubclass?.healPct ?? 0) / 100.0;
   int get subclassCooldownReduce => activeSubclass?.cooldownReduce ?? 0;
 
+  /// Total "+% healing" that feeds the heal RATING (passives + subclass). Every
+  /// healing bonus raises this rating; the actual heal % of max HP is then
+  /// [armorDrPctFor] of it, capping at kDefenseCapPct (37.5%). Shared by combat
+  /// ([_fireAbility]) and the ability display so they always agree.
+  double get healBoostRatingPct {
+    final sub = subclassHealPct + switch (subclassEffect) {
+      SubclassEffect.lifeCleric => 0.30,
+      SubclassEffect.abjurer    => 0.15,
+      _ => 0.0,
+    };
+    return passiveTree.totalOf(PassiveEffect.healBoost).toDouble() + sub * 100.0;
+  }
+
+  /// Heal % of max HP for a heal ability of scaled [value] (its % base), via the
+  /// shared diminishing-returns rating curve. Bursts use factor 1.0, per-round
+  /// HoT auras 0.5. Caps at kDefenseCapPct.
+  double abilityHealPct(num value, {double factor = 1.0}) =>
+      armorDrPctFor(value + healBoostRatingPct) * factor;
+
+  /// Flat Heal Rating before % bonuses: items + set + gems + passive-tree flat.
+  /// This is the "Base Heal Rating" the Vitalist keystone / Paragon can double.
+  int get healRatingFlat =>
+      inventory.totalOf(ItemStat.healRating)
+      + _setTotal(ItemStat.healRating)
+      + _gemTotal(ItemStat.healRating)
+      + passiveTree.totalOf(PassiveEffect.healRatingFlat);
+
+  /// Paragon Heal-Rating multiplier (e.g. +% per rank; "double" = +100%).
+  double get paragonHealMult => 1.0 + prestigeShop.paragonTotal(ParagonEffect.healRating) / 100.0;
+
+  /// Total Heal Rating. Base (flat) doubled by the Vitalist keystone, then scaled
+  /// by all % heal bonuses ([healBoostRatingPct]: Vitalist %, subclass) and the
+  /// heal Paragon. EVERY heal in the game is a multiple of this (see [healFor]).
+  int get healRating {
+    var flat = healRatingFlat.toDouble();
+    if (passiveTree.hasKeystone(PassiveBranch.vitalist)) flat *= 2; // "Doubles Base Heal Rating"
+    final pctMult = 1.0 + healBoostRatingPct / 100.0;
+    return (flat * pctMult * paragonHealMult).round().clamp(0, 1000000000000000);
+  }
+
+  /// HP restored by a heal of design-[value] (its legacy "% of HP" number).
+  /// Decoupled from max HP — heals are value/[kHealValuePerMult] × Heal Rating.
+  /// [value] is clamped to kHealValuePerMult so NO single heal exceeds 1× Heal
+  /// Rating (× factor): heal values range 8→100, and un-clamped a value-100
+  /// aura healed ~3× a normal heal, out-pacing the boss on its own. factor:
+  /// bursts 1.0, per-round HoT auras 0.5.
+  int healFor(num value, {double factor = 1.0}) {
+    final mult = (value / kHealValuePerMult).clamp(0.0, kHealMaxMult);
+    return (healRating * mult * factor).round().clamp(0, 1000000000000000);
+  }
+
+  /// Total lifesteal % from every source (keyword, subclass, mastery, paragon,
+  /// draining aura). Public so every combat mode leeches the same as the campaign.
+  int get heroLifestealPct =>
+      (_hasKeyword(ItemKeyword.lifeSteal) ? 4 : 0)
+      + (subclassEffect == SubclassEffect.fiendPact ? 8 : 0) + subclassLifestealPct
+      + _masteryTotal(MasteryEffect.lifestealPct)
+      + prestigeLifestealPct
+      + (auraLifestealActive ? auraLifestealPct : 0);
+
+  /// HP restored per hero hit from lifesteal — Heal-Rating based, mirrors the
+  /// campaign formula in heroAttack(). Caller clamps to its own HP pool.
+  int lifestealHealPerHit() {
+    final pct = heroLifestealPct;
+    if (pct <= 0 || healRating <= 0) return 0;
+    return (healRating * pct / 100 / kHealValuePerMult)
+        .round().clamp(0, 1000000000000000).toInt();
+  }
+
+  /// Thorns reflect % — Thorn Wall keyword returns 30% of a landed hit to the
+  /// attacker. Public so every combat mode reflects the same as the campaign.
+  int get heroThornsPct => _hasKeyword(ItemKeyword.thornWall) ? 30 : 0;
+
   /// Increased damage % from the subclass for [type] (all-damage + matching elem).
   double subclassDamagePct(DamageType type) {
     final s = activeSubclass;
@@ -4557,7 +5076,7 @@ class GameState extends ChangeNotifier {
       inventory.bag.remove(item);
       inventory.equipped.remove(slot); // don't silently remove equipped
     }
-    final result = ItemLootTable.craftAt(slot, target, hero.level, _rng, rebirthLevel: prestigeLevel);
+    final result = ItemLootTable.craftAt(slot, target, hero.level, _rng, rebirthLevel: highestUnlockedTier);
     inventory.addToBag(result);
     _totalForges++;
     _setLastAction('Forged: ${result.name}!');
@@ -4775,6 +5294,9 @@ class GameState extends ChangeNotifier {
   int _enemyMissChancePct = 0;
   int _enemyMissChanceRounds = 0;
   int _heroAbsorbShield = 0;
+  // Consecutive enemy attacks fully skipped/avoided — after 2 in a row a boss
+  // attack becomes UNSTOPPABLE so it can't be perma-locked by stun/dodge/avoid.
+  int _bossAttacksSkipped = 0;
 
   // Boss ability state — reset each battle
   final Map<String, int> _bossAbilityCooldowns = {};
@@ -4808,6 +5330,7 @@ class GameState extends ChangeNotifier {
     _enemyStunRounds      = 0;
     _stunApplicationCount = 0;
     _roundsSinceLastStun  = 0;
+    _bossAttacksSkipped   = 0;
     _dodgeNextHit         = false;
     _auraHealPerRound     = 0;
     _auraRoundsLeft       = 0;
@@ -4863,7 +5386,7 @@ class GameState extends ChangeNotifier {
     }
     if (allyUnlocked('elder_voss') && !_allyAbilitiesUsed.contains('elder_voss')) {
       _allyAbilitiesUsed.add('elder_voss');
-      final burst = (enemy.maxHealth * 0.12).round().clamp(1, 9999);
+      final burst = (enemy.maxHealth * 0.12).round().clamp(1, 1000000000000000);
       enemy.takeDamage(burst);
       _recordFightDamage(burst);
       battleLog.add('🔮 Voss: Arcane Surge! ${enemy.name} takes $burst arcane damage!');
@@ -4901,7 +5424,8 @@ class GameState extends ChangeNotifier {
     if (allyUnlocked('mira') && !_allyAbilitiesUsed.contains('mira') &&
         hero.currentHealth < hero.maxHealth * 0.30) {
       _allyAbilitiesUsed.add('mira');
-      final heal = (hero.maxHealth * 0.25).round().clamp(1, hero.maxHealth);
+      // Field Triage now scales off Heal Rating (like all healing), value ≈ 25.
+      final heal = healFor(25).clamp(1, hero.maxHealth);
       hero.currentHealth = (hero.currentHealth + heal).clamp(0, hero.maxHealth);
       battleLog.add('💉 Mira: Field Triage! ${hero.name} is healed for $heal HP!');
       _queueMercFx('Mira', '💉', const Color(0xFFff88aa));
@@ -4926,10 +5450,14 @@ class GameState extends ChangeNotifier {
 
   // ── Ability Score upgrades (gold sink, available from level 1) ────────────
 
-  static const int kAbilityScoreMaxRank = 1000;
+  static const int kAbilityScoreMaxRank = 100;
   final Map<String, int> _abilityScoreRanks = {};
 
-  int abilityScoreRank(String id) => _abilityScoreRanks[id] ?? 0;
+  // Clamped to the max so any legacy ranks bought above the cap (was 1000) are
+  // effectively limited to 100 — the scores are potent per rank, so this keeps
+  // them balanced.
+  int abilityScoreRank(String id) =>
+      (_abilityScoreRanks[id] ?? 0).clamp(0, kAbilityScoreMaxRank);
 
   // Rebirth requirement removed — Ability Scores upgrade freely, gold permitting.
   int abilityScoreRebirthRequired(String id) => 0;
@@ -4957,9 +5485,11 @@ class GameState extends ChangeNotifier {
 
   int    get _scorePwr => abilityScoreRank('pwr') * 2;
   int    get _scorePrc => abilityScoreRank('prc');
-  int    get _scoreFor => abilityScoreRank('for_') ~/ 2;
-  int    get _scoreLck => abilityScoreRank('lck');
-  double get _scoreAgi => abilityScoreRank('agi') * 0.02;
+  // FOR (Fortitude): flat AC Rating, +1 per rank.
+  int    get _scoreFor => abilityScoreRank('for_');
+  // DUR (Durability, formerly LCK): +0.5% Armor Class Rating per rank. Stored
+  // under the legacy 'lck' key so existing invested ranks carry over.
+  double get _scoreDurPct => abilityScoreRank('lck') * 0.5;
 
   // ── Ability rank upgrades ──────────────────────────────────────────────────
 
@@ -4981,11 +5511,18 @@ class GameState extends ChangeNotifier {
   double abilityAscensionMult(String id) =>
       1.0 + abilityAscensionTier(id) * kAbilityAscendPerTier;
 
+  /// Ability ascension is unlocked by the difficulty tiers you've unlocked
+  /// (one per rebirth), not by spending Ascension Points. You can ascend each
+  /// ability up to your [highestUnlockedTier] (capped at [kAbilityAscendMaxTier]).
+  bool canAscendAbility(String id) {
+    final tier = abilityAscensionTier(id);
+    return tier < kAbilityAscendMaxTier && tier < highestUnlockedTier;
+  }
+
   bool ascendAbility(String id) {
     final tier = abilityAscensionTier(id);
     if (tier >= kAbilityAscendMaxTier) return false;
-    if (ascensionPoints < 1) return false;
-    ascensionPoints -= 1;
+    if (tier >= highestUnlockedTier) return false; // gated by unlocked difficulty tier
     _abilityAscension[id] = tier + 1;
     notifyListeners();
     saveToLocal();
@@ -5001,11 +5538,13 @@ class GameState extends ChangeNotifier {
   int abilityRankInTier(String id) => _abilityRankInTierFrom(abilityRank(id));
 
   // True if the next upgrade would cross into a new tier the player hasn't unlocked.
+  // Ability rank-tiers unlock with your difficulty tier (raised by clearing the
+  // campaign), matching the rest of the tier-based progression.
   bool abilityTierLocked(String id) {
     final r        = abilityRank(id);
     final nextTier = _abilityTierFromRank(r + 1);
     final curTier  = _abilityTierFromRank(r);
-    return nextTier > curTier && prestigeLevel < nextTier;
+    return nextTier > curTier && highestUnlockedTier < nextTier;
   }
 
   // Rebirth count needed to unlock the next tier for this ability.
@@ -5073,7 +5612,7 @@ class GameState extends ChangeNotifier {
     QuestCondition.dungeonClears     => _dungeonClears,
     QuestCondition.gauntletScore     => gauntletHighScore,
     QuestCondition.bossRushClears    => _bossRushClears,
-    QuestCondition.prestigeReach     => prestigeLevel,
+    QuestCondition.prestigeReach     => highestUnlockedTier, // "prestige" quests now track tier unlocks
     QuestCondition.ascensionReach    => ascensionLevel,
     QuestCondition.equipItem         => _itemsEquipped,
     QuestCondition.upgradeAbility    => _abilitiesUpgraded,
@@ -5092,6 +5631,20 @@ class GameState extends ChangeNotifier {
   // Adventure quest progress (universal questline)
   int adventureQuestProgress(AdventureQuest q) =>
       _questCounter(q.condition).clamp(0, q.target);
+
+  /// The quest to show in the in-combat beacon: the first unlocked quest that is
+  /// still IN PROGRESS (not yet claimed AND not yet met). A completed-but-unclaimed
+  /// quest (e.g. "First Kill" at 1/1) is skipped so it stops popping up mid-battle;
+  /// since quests unlock sequentially, this returns null until you claim it.
+  AdventureQuest? get currentAdventureQuest {
+    for (final q in AdventureQuest.allQuests) {
+      if (questsClaimed[q.id] == true) continue;
+      if (!isAdventureQuestUnlocked(q)) continue;
+      if (isAdventureQuestMet(q)) continue; // done but unclaimed — don't show
+      return q;
+    }
+    return null;
+  }
 
   bool isAdventureQuestMet(AdventureQuest q) =>
       _questCounter(q.condition) >= q.target;
@@ -5126,13 +5679,43 @@ class GameState extends ChangeNotifier {
   int get adventureQuestsClaimable => AdventureQuest.allQuests
       .where(isAdventureQuestClaimable).length;
 
-  // ── Boss Hunts (defeat specific campaign bosses) ────────────────────────────
-  // A boss is "slain" once you've advanced past its stage in the campaign.
-  bool isBossHuntMet(BossHunt h)   => campaignStageIndex >= h.stage + 1;
+  // ── Boss Bounties (defeat specific campaign bosses) ─────────────────────────
+  // The boss bounties for the tier you're currently playing. Reaching a new tier
+  // hands you a fresh set (campaign progress resets, so they re-lock) with
+  // rewards scaled up for the harder fights.
+  List<BossHunt> get bossBounties => bossBountiesForTier(activeTier);
+
+  // A boss is "slain" once you've advanced past its stage in the current tier,
+  // or if the bounty belongs to a tier you've already cleared past.
+  bool isBossHuntMet(BossHunt h) =>
+      h.tier < activeTier ||
+      (h.tier == activeTier && campaignStageIndex >= h.stage + 1);
   int  bossHuntProgress(BossHunt h) => isBossHuntMet(h) ? 1 : 0;
   bool isBossHuntClaimed(BossHunt h) => questsClaimed[h.id] == true;
   bool isBossHuntClaimable(BossHunt h) =>
       isBossHuntMet(h) && questsClaimed[h.id] != true;
+
+  /// The guaranteed loot rarity for a boss bounty. Ramps with the boss ordinal
+  /// (early bosses → uncommon/rare, later → epic/legendary, final → mythic) and
+  /// each difficulty tier raises the floor by one step, so higher tiers reliably
+  /// drop better gear.
+  ItemRarity bossBountyLootRarity(BossHunt h) {
+    final n = h.ordinal; // 1..20
+    // final boss → mythic; then legendary / epic / rare / uncommon by ordinal.
+    final base = n >= 20 ? 5 : n >= 15 ? 4 : n >= 10 ? 3 : n >= 5 ? 2 : 1;
+    final step = (base + h.tier).clamp(1, 5);
+    return switch (step) {
+      5 => ItemRarity.mythic,
+      4 => ItemRarity.legendary,
+      3 => ItemRarity.epic,
+      2 => ItemRarity.rare,
+      _ => ItemRarity.uncommon,
+    };
+  }
+
+  /// The last piece of gear dropped by a boss bounty claim — read by the UI to
+  /// announce what dropped.
+  EquipmentItem? lastBossBountyLoot;
 
   bool claimBossHunt(BossHunt h) {
     if (!isBossHuntClaimable(h)) return false;
@@ -5145,13 +5728,21 @@ class GameState extends ChangeNotifier {
     essence += r.essence;
     mythril += r.mythril;
     if (r.title != null) heroTitle = r.title;
-    _setLastAction('Boss Hunt complete: ${h.name} slain!');
+    // Guaranteed gear drop — rarity/power scale with boss ordinal and tier.
+    final rarity = bossBountyLootRarity(h);
+    final slot = ItemSlot.values[_rng.nextInt(ItemSlot.values.length)];
+    final loot = ItemLootTable.craftAt(
+        slot, rarity, max(1, hero.level), _rng, rebirthLevel: h.tier);
+    inventory.addToBag(loot);
+    lastBossBountyLoot = loot;
+    _syncParagonLevels();
+    _setLastAction('Boss Bounty: ${h.name} slain! Looted ${loot.name}.');
     notifyListeners();
     saveToLocal();
     return true;
   }
 
-  int get bossHuntsClaimable => bossHunts.where(isBossHuntClaimable).length;
+  int get bossHuntsClaimable => bossBounties.where(isBossHuntClaimable).length;
 
   int questProgress(ClassQuest q) =>
       _questCounter(q.condition).clamp(0, q.target);
@@ -5224,6 +5815,25 @@ class GameState extends ChangeNotifier {
 
   String? milestoneChoice(String abilityId, int rank) =>
       _milestoneChoices['${abilityId}_m$rank'];
+
+  /// The active milestone RIDER (secondary bonusEffect) the player chose for
+  /// [ability], if any. Alt-modes use this so milestone choices actually fire
+  /// outside the campaign. Last chosen rider wins — matches _fireAbility.
+  ({AbilityEffect? effect, int value, int duration}) activeMilestoneRider(HeroAbility ability) {
+    AbilityEffect? eff;
+    int val = 0, dur = 0;
+    for (final milestone in ability.milestones) {
+      final choiceId = _milestoneChoices['${ability.id}_m${milestone.rank}'];
+      if (choiceId == null) continue;
+      final ch = choiceId == 'a' ? milestone.a : milestone.b;
+      if (ch.bonusEffect != null) {
+        eff = ch.bonusEffect;
+        val = ch.bonusValue;
+        dur = ch.bonusDuration;
+      }
+    }
+    return (effect: eff, value: val, duration: dur);
+  }
 
   void setMilestoneChoice(String abilityId, int rank, String choice) {
     _milestoneChoices['${abilityId}_m$rank'] = choice;
@@ -5328,29 +5938,53 @@ class GameState extends ChangeNotifier {
   bool _isDamageAbilityEffect(AbilityEffect e) =>
       e == AbilityEffect.bonusDamage || e == AbilityEffect.dot;
 
-  // Damage scales with rankInTier (resets each tier) plus a +10% multiplier per tier.
-  // Tier 0: ×1.0, Tier 1: ×1.1, Tier 2: ×1.2 … Tier 10: ×2.0
+  // Core rank/tier scaling — the SINGLE source of truth shared by the display,
+  // the campaign combat, and the alternate modes. Callers layer on the
+  // situational mults (ascension / unique-item / role power). Damage abilities
+  // (bonusDamage / dot) scale off TOTAL rank so growth is smooth and monotonic
+  // — a new tier never drops the value back down — with a tier multiplier on
+  // top (×1 at T0 … ×4.5 at T10). Utility abilities (heals/buffs/debuffs are
+  // percentages/rounds) get a gentle monotonic curve so we don't get a 3000%
+  // heal.
+  double _abilityScaledBase(int baseValue, int rank, bool isDamage) {
+    if (rank == 0 || baseValue == 0) return baseValue.toDouble();
+    final tier = _abilityTierFromRank(rank);
+    if (isDamage) {
+      final perRank = baseValue / 6.0;
+      // Tier scaling smoothed 0.35 → 0.20 per tier (T10 spike ×4.5 → ×3.0) so
+      // tiering up abilities is a gentler curve, not a burst.
+      return (baseValue + rank * perRank) * (1.0 + tier * 0.20);
+    }
+    return (baseValue + rank * max<int>(1, baseValue ~/ 8)).toDouble();
+  }
+
+  // Full effective ability value used by the display AND the alternate modes:
+  // core scaling × ability ascension (+10% per ascended tier) × role power
+  // (damage only). The campaign combat path applies the role-power mult itself
+  // (see [_fireAbility]) so it calls [_abilityScaledBase] directly instead.
   int scaledAbilityValueAtRank(HeroAbility ability, int rank) {
     if (ability.value == 0) return 0;
-    int raw;
-    if (rank == 0) {
-      raw = ability.value;
-    } else {
-      final tier       = _abilityTierFromRank(rank);
-      final rankInTier = _abilityRankInTierFrom(rank);
-      final scale = ability.value ~/ 8;
-      final int base = ability.value + rankInTier * (scale < 1 ? 1 : scale);
-      raw = tier == 0 ? base : (base.toDouble() * (1.0 + tier * 0.10)).round();
-    }
-    // Role-based power weighting for damage abilities & ultimates.
-    if (_isDamageAbilityEffect(ability.effect)) {
-      raw = (raw * abilityPowerMult(ability)).round();
-    }
-    return raw;
+    final isDamage = _isDamageAbilityEffect(ability.effect);
+    var v = _abilityScaledBase(ability.value, rank, isDamage);
+    v *= abilityAscensionMult(ability.id);         // tier ascension (+10%/tier)
+    if (isDamage) v *= abilityPowerMult(ability);  // role weighting
+    return v.round();
   }
 
   int scaledAbilityValue(HeroAbility ability) =>
       scaledAbilityValueAtRank(ability, abilityRank(ability.id));
+
+  /// Scaled value the ability would have if its base were [baseValue], at the
+  /// current rank — used to preview a milestone choice's exact number change.
+  int scaledAbilityValueForBase(HeroAbility ability, int baseValue) {
+    if (baseValue <= 0) return 0;
+    final rank = abilityRank(ability.id);
+    final isDamage = _isDamageAbilityEffect(ability.effect);
+    var v = _abilityScaledBase(baseValue, rank, isDamage);
+    v *= abilityAscensionMult(ability.id);
+    if (isDamage) v *= abilityPowerMult(ability);
+    return v.round();
+  }
 
   int scaledAbilityCooldown(HeroAbility ability) {
     // Cooldown is role-based, not tier-based, so upgrading or unlocking a
@@ -5363,20 +5997,38 @@ class GameState extends ChangeNotifier {
         : ability.category == AbilityCategory.ultimate
             ? 5
             : 3;
-    // Build investments (cooldown passive, runes, subclass, trait, unique gear)
-    // can still shave it down, but the defaults above are what players see.
+    // Heal abilities carry a +2 cooldown surcharge on top of their role cooldown
+    // — even after the burst/aura nerfs, healing too often let heroes out-sustain
+    // incoming damage. Build cooldown-reductions below still apply.
+    final healSurcharge = ability.effect == AbilityEffect.heal ? 2 : 0;
+    // Timed effects (auras, self-buffs, lasting debuffs) get a +2 surcharge too.
+    // At base cooldown 3 a duration-3/4 buff sits at ~100% uptime, so its
+    // duration-extending milestones were dead picks. +2 gives base duration a
+    // downtime gap, so extending duration meaningfully raises uptime and is
+    // finally worth choosing.
+    final e = ability.effect;
+    final isTimedEffect = e == AbilityEffect.aura
+        || e == AbilityEffect.attackBonus
+        || e == AbilityEffect.acBonus
+        || e == AbilityEffect.debuffWeaken
+        || e == AbilityEffect.debuffVulnerable
+        || e == AbilityEffect.missChance;
+    final auraSurcharge = isTimedEffect ? 2 : 0;
+    // Cooldown reduction is meant to feel SPECIAL and rare, so the total shaved
+    // from build investments (cooldown passive, subclass, trait, unique gear) is
+    // hard-capped — abilities can never be spammed. Abilities also no longer
+    // auto-speed-up as you rank them (that made low cooldowns too easy). Ranking
+    // boosts an ability's power, not its cadence.
     final subclassDiscount = (subclassEffect == SubclassEffect.arcaneTrickster ? 1 : 0)
         + subclassCooldownReduce;
     final uniqueItem = inventory.equipped.values
         .where((i) => i.uniqueAbilityId == ability.id)
         .firstOrNull;
     final uniqueCdReduce = uniqueItem?.abilityCooldownFlat ?? 0;
-    // Pure-utility abilities (stun/silence/dodge) carry no scalable damage
-    // value, so instead they get faster as you rank them — every upgrade helps.
-    final rankCdReduce = ability.value == 0 ? (abilityRank(ability.id) ~/ 6) : 0;
-    return max(1, baseCd
-        - passiveTree.totalOf(PassiveEffect.cooldownReduce) - subclassDiscount
-        - traitCooldownReduction - uniqueCdReduce - rankCdReduce);
+    final cdReduce = (passiveTree.totalOf(PassiveEffect.cooldownReduce)
+        + subclassDiscount + traitCooldownReduction + uniqueCdReduce)
+        .clamp(0, kMaxCooldownReduction);
+    return max(1, baseCd + healSurcharge + auraSurcharge - cdReduce);
   }
 
   // Buff/debuff state exposed for the HUD
@@ -5452,14 +6104,20 @@ class GameState extends ChangeNotifier {
     final uniqueDurAdd    = uniqueModItem?.abilityDurationAdd ?? 0;
     // Ability Ascension: each ascended tier adds +10% to this ability's power.
     final ascMult   = abilityAscensionMult(ability.id);
-    final int sv    = (rank == 0 || baseValue == 0)
-        ? (baseValue * uniqueMult * ascMult).round()
-        : ((baseValue + rank * max<int>(1, baseValue ~/ 8)) * uniqueMult * ascMult).round();
-    // Ascension has no "power" to scale on value-less utility abilities (pure
-    // stun/silence/dodge), so instead it extends their duration: +1 round per
-    // 3 ascension tiers. Damage/buff abilities already scale via [ascMult].
-    final ascDurBonus = baseValue == 0 ? (abilityAscensionTier(ability.id) ~/ 3) : 0;
-    final effectiveDuration = ability.duration + durationDeltaSum + uniqueDurAdd + ascDurBonus;
+    // Same core rank/tier scaling as the display/modes; the role-power mult is
+    // applied later (at the damage step), so it is NOT included here.
+    final int sv    = (_abilityScaledBase(baseValue, rank, _isDamageAbilityEffect(ability.effect))
+        * uniqueMult * ascMult).round();
+    // Ascension only buffs ability magnitude (damage / heal via [ascMult]) — it no
+    // longer extends duration. Duration/cooldown are meant to feel special, so
+    // value-less utility abilities (pure stun/silence/dodge) gain nothing here.
+    var effectiveDuration = ability.duration + durationDeltaSum + uniqueDurAdd;
+    // Downtime rule: a timed effect can never reach its cooldown (that would mean
+    // ≥100% uptime), so cap duration below the cooldown. Instant effects (0) stay 0.
+    if (effectiveDuration > 0) {
+      final cd = scaledAbilityCooldown(ability);
+      if (cd > 1 && effectiveDuration >= cd) effectiveDuration = cd - 1;
+    }
     final primaryEffect     = effectOverride ?? ability.effect;
     lastAbilityFired = (id: ability.id, name: ability.name, effect: primaryEffect);
     _fightAbilities[ability.name] = (_fightAbilities[ability.name] ?? 0) + 1;
@@ -5470,14 +6128,15 @@ class GameState extends ChangeNotifier {
       SubclassEffect.evoker      => 0.35,
       _ => 0.0,
     };
-    final subclassHealBonus = subclassHealPct + switch (subclassEffect) {
-      SubclassEffect.lifeCleric => 0.30,
-      SubclassEffect.abjurer    => 0.15,
-      SubclassEffect.devotion   => 0.0,
-      _ => 0.0,
-    };
-    final healBoostMult  = 1.0 + passiveTree.totalOf(PassiveEffect.healBoost) / 100.0
-        + subclassHealBonus;
+    // Healing is a RATING with diminishing returns (same curve as armor): a
+    // single ability heals AT MOST kDefenseCapPct (37.5%) of max HP. Heal HP for
+    // a heal [value] (its % base, e.g. 30) = maxHP × [abilityHealPct]. [factor]
+    // scales it — bursts 1.0, per-round HoT auras 0.5. [fatigueMult] applies
+    // repeated-heal fatigue to bursts.
+    // Heals are now a multiple of Heal Rating (decoupled from max HP), so a hero
+    // who doesn't invest in Heal Rating gets little/no healing.
+    int healHp(num value, double factor, [double fatigueMult = 1.0]) =>
+        (healFor(value, factor: factor) * fatigueMult).round().clamp(0, 1000000000000000).toInt();
     if (subclassEffect == SubclassEffect.valorSurge) _valorSurgeReady = true;
 
     // Shared context params for damage abilities
@@ -5498,16 +6157,17 @@ class GameState extends ChangeNotifier {
 
     switch (primaryEffect) {
       case AbilityEffect.bonusDamage:
-        final psv = (sv * abilityPowerMult(ability)).round().clamp(1, 999999);
-        final baseDmg = _rng.nextInt(psv) + 1 + hero.baseDmg;
+        final psv = (sv * abilityPowerMult(ability)).round().clamp(1, 1000000000000000);
+        // nextDouble (not nextInt) so the roll works past nextInt's 2^32 limit.
+        final baseDmg = (_rng.nextDouble() * psv).floor() + 1 + hero.baseDmg;
         final ctx = buildAbilityAttackContext(
           baseDmg:              baseDmg,
           heroType:             hero.activeDamageType,
-          allDamagePct:         passiveTree.totalOf(PassiveEffect.allDamage).toDouble() + ascAllDamagePct
+          allDamagePct:         passiveTree.totalOf(PassiveEffect.allDamage).toDouble() + ascAllDamagePct + critReplacementDamagePct + allyDmgPctBonus
                                 + passiveElemDamagePct(hero.activeDamageType)
                                 + gemElemDamagePct(hero.activeDamageType)
                                 + inventory.totalOf(ItemStat.damagePercent)
-                                + hero.levelBonusDamagePct,
+                                + hero.levelBonusDamagePct + guildBuffs.allDamagePct,
           abilityDamagePct:     passiveTree.totalOf(PassiveEffect.abilityDamage).toDouble(),
           subclassAbilityBonus: subclassAbilityBonus,
           endlessDmgMult:       endlessUpgrades.damageMultiplier,
@@ -5518,7 +6178,7 @@ class GameState extends ChangeNotifier {
           enemyResistances:     enemy.resistances,
           penetration:          _abilityPenMap(ability.penetration),
         );
-        final dmg = calculateDamage(ctx, rng: _rng).total.round().clamp(1, 9999);
+        final dmg = calculateDamage(ctx, rng: _rng).total.round().clamp(1, 1000000000000000);
         enemy.takeDamage(dmg);
         _recordFightDamage(dmg);
         pendingFloats.add((value: dmg, isHeal: false, type: hero.activeDamageType));
@@ -5527,8 +6187,8 @@ class GameState extends ChangeNotifier {
       case AbilityEffect.heal:
         final fatigue = pow(0.85, _healsThisBattle).toDouble();
         _healsThisBattle++;
-        var hp = (hero.maxHealth * sv / 100 * healBoostMult * 0.5 * fatigue).round().clamp(1, 9999);
-        if (_activeAffixes.contains(ZoneAffix.voidCurse)) hp = (hp / 2).round().clamp(1, 9999);
+        var hp = healHp(sv, 1.0, fatigue);
+        if (_activeAffixes.contains(ZoneAffix.voidCurse)) hp = (hp / 2).round().clamp(1, 1000000000000000);
         hero.currentHealth = (hero.currentHealth + hp).clamp(0, hero.maxHealth);
         pendingFloats.add((value: hp, isHeal: true, type: DamageType.physical));
         battleLog.add(_healsThisBattle > 1
@@ -5537,11 +6197,11 @@ class GameState extends ChangeNotifier {
       case AbilityEffect.attackBonus:
         _tempAttackBonus = max(_tempAttackBonus, sv);
         _tempAttackBonusRounds = max(_tempAttackBonusRounds, effectiveDuration);
-        battleLog.add('${ability.name}! +$sv DMG for $effectiveDuration rounds.');
+        battleLog.add('${ability.name}! +$sv% damage for $effectiveDuration rounds.');
       case AbilityEffect.acBonus:
         _tempAcBonus = max(_tempAcBonus, sv);
         _tempAcBonusRounds = max(_tempAcBonusRounds, effectiveDuration);
-        battleLog.add('${ability.name}! +$sv AC for $effectiveDuration rounds.');
+        battleLog.add('${ability.name}! +$sv% Armor Class for $effectiveDuration rounds.');
       case AbilityEffect.stun:
         final stunDur = effectiveDuration + (subclassEffect == SubclassEffect.battleMaster ? 1 : 0);
         _applyStun(stunDur, '${ability.name}! ${enemy.name}');
@@ -5549,13 +6209,13 @@ class GameState extends ChangeNotifier {
         final sporeBonus = (subclassEffect == SubclassEffect.sporeCircle ? 0.50 : 0.0)
             + subclassDotPct;
         final dotCtx = buildAbilityAttackContext(
-          baseDmg:              (sv * abilityPowerMult(ability)).round().clamp(1, 999999),
+          baseDmg:              (sv * abilityPowerMult(ability)).round().clamp(1, 1000000000000000),
           heroType:             hero.activeDamageType,
-          allDamagePct:         passiveTree.totalOf(PassiveEffect.allDamage).toDouble() + ascAllDamagePct
+          allDamagePct:         passiveTree.totalOf(PassiveEffect.allDamage).toDouble() + ascAllDamagePct + critReplacementDamagePct + allyDmgPctBonus
                                 + passiveElemDamagePct(hero.activeDamageType)
                                 + gemElemDamagePct(hero.activeDamageType)
                                 + inventory.totalOf(ItemStat.damagePercent)
-                                + hero.levelBonusDamagePct,
+                                + hero.levelBonusDamagePct + guildBuffs.allDamagePct,
           abilityDamagePct:     passiveTree.totalOf(PassiveEffect.abilityDamage).toDouble() + sporeBonus * 100,
           subclassAbilityBonus: subclassAbilityBonus,
           endlessDmgMult:       endlessUpgrades.damageMultiplier,
@@ -5566,7 +6226,7 @@ class GameState extends ChangeNotifier {
           enemyResistances:     enemy.resistances,
           penetration:          _abilityPenMap(ability.penetration),
         );
-        _dotDmg = calculateDamage(dotCtx, rng: _rng).total.round().clamp(1, 9999);
+        _dotDmg = calculateDamage(dotCtx, rng: _rng).total.round().clamp(1, 1000000000000000);
         _dotRoundsLeft = effectiveDuration;
         _dotDamageType = hero.activeDamageType;
         battleLog.add('${ability.name}! ${enemy.name} takes $_dotDmg dmg/round for $effectiveDuration rounds.');
@@ -5575,38 +6235,114 @@ class GameState extends ChangeNotifier {
         _dodgeNextHit = true;
         battleLog.add('${ability.name}! ${hero.name} will dodge the next attack.');
       case AbilityEffect.aura:
-        // Scale with hero max HP so the HoT stays relevant through progression
-        _auraHealPerRound = (hero.maxHealth * sv / 100 * healBoostMult).round().clamp(1, 9999);
+        // HoT: per-round heal is half the burst cap (max ~18.75% of max HP/round)
+        _auraHealPerRound = healHp(sv, 0.5);
         _auraRoundsLeft   = effectiveDuration;
         battleLog.add('${ability.name}! ${hero.name} regenerates $_auraHealPerRound HP/round for $effectiveDuration rounds.');
       case AbilityEffect.debuffWeaken:
-        // ATK reduction caps at 100% (a full disarm). Anything above that —
-        // e.g. from ranking up Disarm — spills over into Vulnerability, so
-        // every upgrade still improves the ability.
-        _enemyWeakenPct    = sv.clamp(0, 100);
-        _enemyWeakenRounds = effectiveDuration;
+        // ATK reduction caps at 100% (a full disarm — hard CC, shares stun DR via
+        // _applyEnemyWeaken). Anything above that — e.g. from ranking up Disarm —
+        // spills over into Vulnerability (not CC), so every upgrade still helps.
+        _applyEnemyWeaken(sv, effectiveDuration, '${ability.name}! ${enemy.name}');
         final weakenOverflow = sv - 100;
         if (weakenOverflow > 0) {
           _enemyVulnerablePct    = max(_enemyVulnerablePct, weakenOverflow);
           _enemyVulnerableRounds = max(_enemyVulnerableRounds, effectiveDuration);
-          battleLog.add('${ability.name}! ${enemy.name} disarmed & exposed (+$weakenOverflow% damage taken) for $effectiveDuration rounds.');
-        } else {
-          battleLog.add('${ability.name}! ${enemy.name} ATK reduced by $sv% for $effectiveDuration rounds.');
+          battleLog.add('${enemy.name} exposed (+$weakenOverflow% damage taken) for $effectiveDuration rounds.');
         }
       case AbilityEffect.debuffVulnerable:
         _enemyVulnerablePct    = sv;
         _enemyVulnerableRounds = effectiveDuration;
         battleLog.add('${ability.name}! ${enemy.name} takes $sv% more damage for $effectiveDuration rounds.');
       case AbilityEffect.silence:
-        _enemySilenceRounds = effectiveDuration;
-        battleLog.add('${ability.name}! ${enemy.name} is silenced for $effectiveDuration round(s)!');
+        _applyEnemySilence(effectiveDuration, '${ability.name}! ${enemy.name}');
       case AbilityEffect.absorbShield:
         _heroAbsorbShield = sv;
         battleLog.add('${ability.name}! ${hero.name} gains a $sv HP barrier!');
       case AbilityEffect.missChance:
-        _enemyMissChancePct    = sv;
+        _enemyMissChancePct    = sv.clamp(0, 66).toInt(); // caps at ~2/3 — never a full lockout
         _enemyMissChanceRounds = effectiveDuration;
         battleLog.add('${ability.name}! ${enemy.name} has $sv% chance to miss for $effectiveDuration rounds.');
+      case AbilityEffect.frozen:
+        // Cold hard-CC: enemy skips its turn (like stun), shares the stun DR pool.
+        final dur = _hardCcDuration(effectiveDuration);
+        if (dur <= 0) {
+          battleLog.add('${ability.name}! ${enemy.name} resists being frozen! (DR)');
+        } else {
+          _enemyStunRounds = dur;
+          battleLog.add('❄ ${ability.name}! ${enemy.name} is frozen solid for $dur round(s)!');
+        }
+      case AbilityEffect.shocked:
+        // Lightning hard-CC: enemy skips its turn AND is conductive (+25% damage
+        // taken while shocked). Shares the stun DR pool.
+        final dur = _hardCcDuration(effectiveDuration);
+        if (dur <= 0) {
+          battleLog.add('${ability.name}! ${enemy.name} resists the shock! (DR)');
+        } else {
+          _enemyStunRounds = dur;
+          _enemyVulnerablePct    = max(_enemyVulnerablePct, 25);
+          _enemyVulnerableRounds = max(_enemyVulnerableRounds, dur);
+          battleLog.add('⚡ ${ability.name}! ${enemy.name} is shocked for $dur round(s) (+25% damage taken)!');
+        }
+      case AbilityEffect.burning:
+        // Fire DoT — torches the enemy each round (no CC, no DR).
+        final burnCtx = buildAbilityAttackContext(
+          baseDmg:              (sv * abilityPowerMult(ability)).round().clamp(1, 1000000000000000),
+          heroType:             hero.activeDamageType,
+          allDamagePct:         passiveTree.totalOf(PassiveEffect.allDamage).toDouble() + ascAllDamagePct + critReplacementDamagePct + allyDmgPctBonus
+                                + passiveElemDamagePct(hero.activeDamageType)
+                                + gemElemDamagePct(hero.activeDamageType)
+                                + inventory.totalOf(ItemStat.damagePercent)
+                                + hero.levelBonusDamagePct + guildBuffs.allDamagePct,
+          abilityDamagePct:     passiveTree.totalOf(PassiveEffect.abilityDamage).toDouble(),
+          subclassAbilityBonus: subclassAbilityBonus,
+          endlessDmgMult:       endlessUpgrades.damageMultiplier,
+          exploitMult:          _abilityExploitMult,
+          comboStacks:          _comboStacks,
+          bestiaryWeakMult:     _abilityWeakMult,
+          isDot:                true,
+          enemyResistances:     enemy.resistances,
+          penetration:          _abilityPenMap(ability.penetration),
+        );
+        final burnTick = calculateDamage(burnCtx, rng: _rng).total.round().clamp(1, 1000000000000000);
+        _dotDmg = max(_dotDmg, burnTick);
+        _dotRoundsLeft = max(_dotRoundsLeft, effectiveDuration);
+        _dotDamageType = hero.activeDamageType;
+        battleLog.add('🔥 ${ability.name}! ${enemy.name} is burning — $_dotDmg dmg/round for $effectiveDuration rounds.');
+        primaryHitDmg = burnTick;
+      case AbilityEffect.envenomed:
+        // Poison DoT — STACKS additively each application, capped at ~5 stacks so
+        // it ramps the longer poison is kept up but can't run away.
+        final venomCtx = buildAbilityAttackContext(
+          baseDmg:              (sv * abilityPowerMult(ability)).round().clamp(1, 1000000000000000),
+          heroType:             hero.activeDamageType,
+          allDamagePct:         passiveTree.totalOf(PassiveEffect.allDamage).toDouble() + ascAllDamagePct + critReplacementDamagePct + allyDmgPctBonus
+                                + passiveElemDamagePct(hero.activeDamageType)
+                                + gemElemDamagePct(hero.activeDamageType)
+                                + inventory.totalOf(ItemStat.damagePercent)
+                                + hero.levelBonusDamagePct + guildBuffs.allDamagePct,
+          abilityDamagePct:     passiveTree.totalOf(PassiveEffect.abilityDamage).toDouble(),
+          subclassAbilityBonus: subclassAbilityBonus,
+          endlessDmgMult:       endlessUpgrades.damageMultiplier,
+          exploitMult:          _abilityExploitMult,
+          comboStacks:          _comboStacks,
+          bestiaryWeakMult:     _abilityWeakMult,
+          isDot:                true,
+          enemyResistances:     enemy.resistances,
+          penetration:          _abilityPenMap(ability.penetration),
+        );
+        final venomTick = calculateDamage(venomCtx, rng: _rng).total.round().clamp(1, 1000000000000000);
+        _dotDmg = (_dotDmg + venomTick).clamp(1, venomTick * 5);
+        _dotRoundsLeft = max(_dotRoundsLeft, effectiveDuration);
+        _dotDamageType = hero.activeDamageType;
+        battleLog.add('☠ ${ability.name}! ${enemy.name} is envenomed — $_dotDmg dmg/round for $effectiveDuration rounds.');
+        primaryHitDmg = venomTick;
+      case AbilityEffect.withered:
+        // Void soft −ATK: saps the enemy's attack (not CC, no DR). Caps at 60%.
+        final wpct = sv.clamp(0, 60);
+        _enemyWeakenPct    = max(_enemyWeakenPct, wpct);
+        _enemyWeakenRounds = max(_enemyWeakenRounds, effectiveDuration);
+        battleLog.add('🟣 ${ability.name}! ${enemy.name} is withered — ATK −$wpct% for $effectiveDuration rounds.');
     }
 
     // ── Bonus effect from active milestone choice ─────────────────────────
@@ -5617,15 +6353,15 @@ class GameState extends ChangeNotifier {
       switch (bonusEff) {
         case AbilityEffect.dot:
           // bonusVal is % of the ability's damage output per tick
-          final dotBase = (ref * bonusVal / 100).round().clamp(1, 9999);
+          final dotBase = (ref * bonusVal / 100).round().clamp(1, 1000000000000000);
           final bonusDotCtx = buildAbilityAttackContext(
             baseDmg:              dotBase,
             heroType:             hero.activeDamageType,
-            allDamagePct:         passiveTree.totalOf(PassiveEffect.allDamage).toDouble() + ascAllDamagePct
+            allDamagePct:         passiveTree.totalOf(PassiveEffect.allDamage).toDouble() + ascAllDamagePct + critReplacementDamagePct + allyDmgPctBonus
                                   + passiveElemDamagePct(hero.activeDamageType)
                                 + gemElemDamagePct(hero.activeDamageType)
                                   + inventory.totalOf(ItemStat.damagePercent)
-                                  + hero.levelBonusDamagePct,
+                                  + hero.levelBonusDamagePct + guildBuffs.allDamagePct,
             abilityDamagePct:     passiveTree.totalOf(PassiveEffect.abilityDamage).toDouble(),
             subclassAbilityBonus: subclassAbilityBonus,
             endlessDmgMult:       endlessUpgrades.damageMultiplier,
@@ -5636,13 +6372,12 @@ class GameState extends ChangeNotifier {
             enemyResistances:     enemy.resistances,
             penetration:          _abilityPenMap(ability.penetration),
           );
-          _dotDmg       = calculateDamage(bonusDotCtx, rng: _rng).total.round().clamp(1, 9999);
+          _dotDmg       = calculateDamage(bonusDotCtx, rng: _rng).total.round().clamp(1, 1000000000000000);
           _dotRoundsLeft = bonusDur;
           _dotDamageType = hero.activeDamageType;
           battleLog.add('Wound! ${enemy.name} takes $_dotDmg dmg/round for $bonusDur rounds.');
         case AbilityEffect.aura:
-          // bonusVal is % of max HP per tick
-          _auraHealPerRound = (hero.maxHealth * bonusVal / 100 * healBoostMult).round().clamp(1, 9999);
+          _auraHealPerRound = healHp(bonusVal, 0.5);
           _auraRoundsLeft   = bonusDur;
           battleLog.add('Healing aura! ${hero.name} regenerates $_auraHealPerRound HP/round for $bonusDur rounds.');
         case AbilityEffect.stun:
@@ -5650,38 +6385,97 @@ class GameState extends ChangeNotifier {
         case AbilityEffect.attackBonus:
           _tempAttackBonus = max(_tempAttackBonus, bonusVal);
           _tempAttackBonusRounds = max(_tempAttackBonusRounds, bonusDur);
-          battleLog.add('+$bonusVal DMG for $bonusDur rounds.');
+          battleLog.add('+$bonusVal% DMG for $bonusDur rounds.');
         case AbilityEffect.acBonus:
           _tempAcBonus = max(_tempAcBonus, bonusVal);
           _tempAcBonusRounds = max(_tempAcBonusRounds, bonusDur);
-          battleLog.add('+$bonusVal AC for $bonusDur rounds.');
+          battleLog.add('+$bonusVal% AC for $bonusDur rounds.');
         case AbilityEffect.heal:
           final bonusFatigue = pow(0.85, _healsThisBattle).toDouble();
           _healsThisBattle++;
-          final hp = (hero.maxHealth * bonusVal / 100 * healBoostMult * 0.5 * bonusFatigue).round().clamp(1, 9999);
+          final hp = healHp(bonusVal, 1.0, bonusFatigue);
           hero.currentHealth = (hero.currentHealth + hp).clamp(0, hero.maxHealth);
           battleLog.add('+$hp HP restored.');
         case AbilityEffect.debuffWeaken:
-          _enemyWeakenPct    = bonusVal;
-          _enemyWeakenRounds = bonusDur;
-          battleLog.add('${enemy.name} ATK reduced by $bonusVal% for $bonusDur rounds.');
+          _applyEnemyWeaken(bonusVal, bonusDur, enemy.name);
         case AbilityEffect.debuffVulnerable:
           _enemyVulnerablePct    = bonusVal;
           _enemyVulnerableRounds = bonusDur;
           battleLog.add('Exposed! ${enemy.name} takes $bonusVal% more damage for $bonusDur round(s).');
         case AbilityEffect.silence:
-          _enemySilenceRounds = bonusDur;
-          battleLog.add('${enemy.name} is silenced for $bonusDur round(s)!');
+          _applyEnemySilence(bonusDur, enemy.name);
         case AbilityEffect.absorbShield:
           _heroAbsorbShield = bonusVal;
           battleLog.add('${hero.name} gains a $bonusVal HP barrier!');
         case AbilityEffect.missChance:
-          _enemyMissChancePct    = bonusVal;
+          _enemyMissChancePct    = bonusVal.clamp(0, 66).toInt();
           _enemyMissChanceRounds = bonusDur;
           battleLog.add('${enemy.name} has $bonusVal% chance to miss for $bonusDur rounds.');
         case AbilityEffect.dodge:
           _dodgeNextHit = true;
           battleLog.add('${hero.name} will dodge the next attack.');
+        case AbilityEffect.frozen:
+          final d = _hardCcDuration(bonusDur);
+          if (d <= 0) { battleLog.add('${enemy.name} resists being frozen! (DR)'); }
+          else { _enemyStunRounds = d; battleLog.add('❄ ${enemy.name} is frozen for $d round(s)!'); }
+        case AbilityEffect.shocked:
+          final d = _hardCcDuration(bonusDur);
+          if (d <= 0) { battleLog.add('${enemy.name} resists the shock! (DR)'); }
+          else {
+            _enemyStunRounds = d;
+            _enemyVulnerablePct    = max(_enemyVulnerablePct, 25);
+            _enemyVulnerableRounds = max(_enemyVulnerableRounds, d);
+            battleLog.add('⚡ ${enemy.name} is shocked for $d round(s) (+25% damage taken)!');
+          }
+        case AbilityEffect.burning:
+          final burnBase = (ref * bonusVal / 100).round().clamp(1, 1000000000000000);
+          final bBurnCtx = buildAbilityAttackContext(
+            baseDmg: burnBase, heroType: hero.activeDamageType,
+            allDamagePct: passiveTree.totalOf(PassiveEffect.allDamage).toDouble() + ascAllDamagePct + critReplacementDamagePct + allyDmgPctBonus
+                          + passiveElemDamagePct(hero.activeDamageType)
+                          + gemElemDamagePct(hero.activeDamageType)
+                          + inventory.totalOf(ItemStat.damagePercent)
+                          + hero.levelBonusDamagePct + guildBuffs.allDamagePct,
+            abilityDamagePct: passiveTree.totalOf(PassiveEffect.abilityDamage).toDouble(),
+            subclassAbilityBonus: subclassAbilityBonus,
+            endlessDmgMult: endlessUpgrades.damageMultiplier,
+            exploitMult: _abilityExploitMult, comboStacks: _comboStacks,
+            bestiaryWeakMult: _abilityWeakMult, isDot: true,
+            enemyResistances: enemy.resistances,
+            penetration: _abilityPenMap(ability.penetration),
+          );
+          final bBurnTick = calculateDamage(bBurnCtx, rng: _rng).total.round().clamp(1, 1000000000000000);
+          _dotDmg = max(_dotDmg, bBurnTick);
+          _dotRoundsLeft = max(_dotRoundsLeft, bonusDur);
+          _dotDamageType = hero.activeDamageType;
+          battleLog.add('🔥 ${enemy.name} is burning — $_dotDmg dmg/round for $bonusDur rounds.');
+        case AbilityEffect.envenomed:
+          final venomBase = (ref * bonusVal / 100).round().clamp(1, 1000000000000000);
+          final bVenomCtx = buildAbilityAttackContext(
+            baseDmg: venomBase, heroType: hero.activeDamageType,
+            allDamagePct: passiveTree.totalOf(PassiveEffect.allDamage).toDouble() + ascAllDamagePct + critReplacementDamagePct + allyDmgPctBonus
+                          + passiveElemDamagePct(hero.activeDamageType)
+                          + gemElemDamagePct(hero.activeDamageType)
+                          + inventory.totalOf(ItemStat.damagePercent)
+                          + hero.levelBonusDamagePct + guildBuffs.allDamagePct,
+            abilityDamagePct: passiveTree.totalOf(PassiveEffect.abilityDamage).toDouble(),
+            subclassAbilityBonus: subclassAbilityBonus,
+            endlessDmgMult: endlessUpgrades.damageMultiplier,
+            exploitMult: _abilityExploitMult, comboStacks: _comboStacks,
+            bestiaryWeakMult: _abilityWeakMult, isDot: true,
+            enemyResistances: enemy.resistances,
+            penetration: _abilityPenMap(ability.penetration),
+          );
+          final bVenomTick = calculateDamage(bVenomCtx, rng: _rng).total.round().clamp(1, 1000000000000000);
+          _dotDmg = (_dotDmg + bVenomTick).clamp(1, bVenomTick * 5);
+          _dotRoundsLeft = max(_dotRoundsLeft, bonusDur);
+          _dotDamageType = hero.activeDamageType;
+          battleLog.add('☠ ${enemy.name} is envenomed — $_dotDmg dmg/round for $bonusDur rounds.');
+        case AbilityEffect.withered:
+          final wp = bonusVal.clamp(0, 60);
+          _enemyWeakenPct    = max(_enemyWeakenPct, wp);
+          _enemyWeakenRounds = max(_enemyWeakenRounds, bonusDur);
+          battleLog.add('🟣 ${enemy.name} is withered — ATK −$wp% for $bonusDur rounds.');
         default:
           break;
       }
@@ -5700,25 +6494,22 @@ class GameState extends ChangeNotifier {
         case AbilityEffect.attackBonus:
           _tempAttackBonus = max(_tempAttackBonus, bv);
           _tempAttackBonusRounds = max(_tempAttackBonusRounds, bd);
-          battleLog.add('+$bv DMG for $bd rounds.');
+          battleLog.add('+$bv% DMG for $bd rounds.');
         case AbilityEffect.stun:
           _applyStun(bd, enemy.name);
         case AbilityEffect.debuffWeaken:
-          _enemyWeakenPct    = bv;
-          _enemyWeakenRounds = bd;
-          battleLog.add('${enemy.name} ATK reduced by $bv% for $bd rounds.');
+          _applyEnemyWeaken(bv, bd, enemy.name);
         case AbilityEffect.acBonus:
           _tempAcBonus = max(_tempAcBonus, bv);
           _tempAcBonusRounds = max(_tempAcBonusRounds, bd);
-          battleLog.add('+$bv AC for $bd rounds.');
+          battleLog.add('+$bv% AC for $bd rounds.');
         case AbilityEffect.silence:
-          _enemySilenceRounds = bd;
-          battleLog.add('${enemy.name} is silenced for $bd round(s)!');
+          _applyEnemySilence(bd, enemy.name);
         case AbilityEffect.absorbShield:
           _heroAbsorbShield = bv;
           battleLog.add('${hero.name} gains a $bv HP barrier!');
         case AbilityEffect.missChance:
-          _enemyMissChancePct    = bv;
+          _enemyMissChancePct    = bv.clamp(0, 66).toInt();
           _enemyMissChanceRounds = bd;
           battleLog.add('${enemy.name} has $bv% chance to miss for $bd rounds.');
         default: break;
@@ -5736,14 +6527,14 @@ class GameState extends ChangeNotifier {
         case AbilityEffect.stun:
           _applyStun(xd, '$tag ${enemy.name}');
         case AbilityEffect.dot:
-          final dotBase = (ref * xv / 100).round().clamp(1, 9999);
+          final dotBase = (ref * xv / 100).round().clamp(1, 1000000000000000);
           final xDotCtx = buildAbilityAttackContext(
             baseDmg: dotBase, heroType: hero.activeDamageType,
-            allDamagePct: passiveTree.totalOf(PassiveEffect.allDamage).toDouble() + ascAllDamagePct
+            allDamagePct: passiveTree.totalOf(PassiveEffect.allDamage).toDouble() + ascAllDamagePct + critReplacementDamagePct + allyDmgPctBonus
                           + passiveElemDamagePct(hero.activeDamageType)
                                 + gemElemDamagePct(hero.activeDamageType)
                           + inventory.totalOf(ItemStat.damagePercent)
-                          + hero.levelBonusDamagePct,
+                          + hero.levelBonusDamagePct + guildBuffs.allDamagePct,
             abilityDamagePct: passiveTree.totalOf(PassiveEffect.abilityDamage).toDouble(),
             subclassAbilityBonus: subclassAbilityBonus,
             endlessDmgMult: endlessUpgrades.damageMultiplier,
@@ -5752,26 +6543,24 @@ class GameState extends ChangeNotifier {
             enemyResistances: enemy.resistances,
             penetration: _abilityPenMap(ability.penetration),
           );
-          _dotDmg        = calculateDamage(xDotCtx, rng: _rng).total.round().clamp(1, 9999);
+          _dotDmg        = calculateDamage(xDotCtx, rng: _rng).total.round().clamp(1, 1000000000000000);
           _dotRoundsLeft = xd;
           _dotDamageType = hero.activeDamageType;
           battleLog.add('$tag ${enemy.name} takes $_dotDmg dmg/round for $xd rounds.');
         case AbilityEffect.attackBonus:
           _tempAttackBonus       = max(_tempAttackBonus, xv);
           _tempAttackBonusRounds = max(_tempAttackBonusRounds, xd);
-          battleLog.add('$tag +$xv DMG for $xd rounds.');
+          battleLog.add('$tag +$xv% DMG for $xd rounds.');
         case AbilityEffect.acBonus:
           _tempAcBonus       = max(_tempAcBonus, xv);
           _tempAcBonusRounds = max(_tempAcBonusRounds, xd);
-          battleLog.add('$tag +$xv AC for $xd rounds.');
+          battleLog.add('$tag +$xv% AC for $xd rounds.');
         case AbilityEffect.aura:
-          _auraHealPerRound = (hero.maxHealth * xv / 100 * healBoostMult).round().clamp(1, 9999);
+          _auraHealPerRound = healHp(xv, 0.5);
           _auraRoundsLeft   = xd;
           battleLog.add('$tag ${hero.name} regenerates $_auraHealPerRound HP/round for $xd rounds.');
         case AbilityEffect.debuffWeaken:
-          _enemyWeakenPct    = xv;
-          _enemyWeakenRounds = xd;
-          battleLog.add('$tag ${enemy.name} ATK reduced by $xv% for $xd rounds.');
+          _applyEnemyWeaken(xv, xd, '$tag ${enemy.name}');
         case AbilityEffect.debuffVulnerable:
           _enemyVulnerablePct    = xv;
           _enemyVulnerableRounds = xd;
@@ -5780,17 +6569,18 @@ class GameState extends ChangeNotifier {
           _dodgeNextHit = true;
           battleLog.add('$tag ${hero.name} will dodge the next attack.');
         case AbilityEffect.heal:
-          final hp = (hero.maxHealth * xv / 100 * healBoostMult * 0.5).round().clamp(1, 9999);
+          final xFatigue = pow(0.85, _healsThisBattle).toDouble();
+          _healsThisBattle++;
+          final hp = healHp(xv, 1.0, xFatigue);
           hero.currentHealth = (hero.currentHealth + hp).clamp(0, hero.maxHealth);
           battleLog.add('$tag +$hp HP restored.');
         case AbilityEffect.silence:
-          _enemySilenceRounds = xd;
-          battleLog.add('$tag ${enemy.name} is silenced for $xd round(s)!');
+          _applyEnemySilence(xd, '$tag ${enemy.name}');
         case AbilityEffect.absorbShield:
           _heroAbsorbShield = xv;
           battleLog.add('$tag ${hero.name} gains a $xv HP barrier!');
         case AbilityEffect.missChance:
-          _enemyMissChancePct    = xv;
+          _enemyMissChancePct    = xv.clamp(0, 66).toInt();
           _enemyMissChanceRounds = xd;
           battleLog.add('$tag ${enemy.name} has $xv% chance to miss for $xd rounds.');
         default:
@@ -5823,7 +6613,7 @@ class GameState extends ChangeNotifier {
     lastBattleWasFinalVictory = false;
     _resetBattlePerks();
     _activeAffixes = AffixEngine.affixesFor(endlessStageIndex, _rng);
-    currentEnemy = EnemyData.enemyForStage(endlessStageIndex, affixes: _activeAffixes, prestigeLevel: activeTier);
+    currentEnemy = EnemyData.enemyForStage(endlessStageIndex, affixes: _activeAffixes, prestigeLevel: activeTier, heroLevel: hero.level);
     hero.healToFull();
     battleLog = ['${hero.name} faces ${currentEnemy!.name} in the endless arena!'];
     if (_activeAffixes.isNotEmpty) {
@@ -5890,9 +6680,9 @@ class GameState extends ChangeNotifier {
     _resetBattlePerks();
     _activeAffixes = AffixEngine.affixesFor(stage, _rng);
     var enemy = EnemyData.enemyForStage(stage, affixes: _activeAffixes);
-    // Scale like campaign bosses: 2× HP, 1.25× ATK, +prestige scaling
-    final hpMult = 2.0 * (1.0 + activeTier * 0.15);
-    final atkMult = 1.25 * (1.0 + activeTier * 0.08);
+    // Scale like campaign bosses: 2× HP, 1.25× ATK, plus quadratic tier scaling.
+    final hpMult = 2.0 * EnemyData.tierHpMult(activeTier);
+    final atkMult = 1.25 * EnemyData.tierAtkMult(activeTier);
     final acBonus = 2 + activeTier ~/ 2;
     enemy = Enemy(
       id: enemy.id,
@@ -5962,7 +6752,7 @@ class GameState extends ChangeNotifier {
       simCount++;
 
       // Gold
-      final baseGold    = ((enemy.level * 50 + 100) * endlessUpgrades.goldMultiplier * arcaneBonus * merchantScholarBonus * prestigeGoldMult * paragonGoldIncomeMult * prestigeGoldBattleMult * passiveGoldMult * goldSenseMult * petGoldMult * allyGoldMult * RemoteConfigService.instance.goldMult * (1.0 + _scoreLck / 100)).round();
+      final baseGold    = ((((enemy.level - activeTier * EnemyData.kTierLevelStep).clamp(1, 9999999) * 50 + 100) * (1.0 + activeTier * 0.15)) * endlessUpgrades.goldMultiplier * arcaneBonus * merchantScholarBonus * prestigeGoldMult * paragonGoldIncomeMult * prestigeGoldBattleMult * passiveGoldMult * goldSenseMult * petGoldMult * allyGoldMult * RemoteConfigService.instance.goldMult).round();
       final bossGold    = isBoss ? (baseGold * 2).round() : 0;
       final battleGold  = baseGold + bossGold;
       totalGold += battleGold;
@@ -5970,9 +6760,10 @@ class GameState extends ChangeNotifier {
       _totalGoldEarned += battleGold;
 
       // XP
-      final battleXp = (((enemy.level * 20 + 40) * hero.xpMultiplier * endlessUpgrades.xpMultiplier * rallyCryBonus * prestigeXpMult * passiveXpMult * itemChaMult * petXpMult * allyXpMult * RemoteConfigService.instance.xpMult).round()).clamp(1, 999999);
+      final battleXp = (((enemy.level * 20 + 40) * hero.xpMultiplier * endlessUpgrades.xpMultiplier * rallyCryBonus * prestigeXpMult * passiveXpMult * itemChaMult * petXpMult * allyXpMult * RemoteConfigService.instance.xpMult).round()).clamp(1, 1000000000000000);
       totalXp += battleXp;
       hero.gainExperience(battleXp);
+      _syncParagonLevels();
 
       // Bestiary
       bestiaryKills[enemy.id] = (bestiaryKills[enemy.id] ?? 0) + 1;
@@ -6018,7 +6809,10 @@ class GameState extends ChangeNotifier {
 
   void startDungeon({int tier = 1}) {
     if (!consumeDungeonAttempt()) return;
-    if (activeDungeonAffix == null) rollDungeonAffix();
+    // Dungeon affixes removed — leave activeDungeonAffix null so all affix
+    // effects (HP/heal mults, burn, shield, toxic) resolve to their neutral
+    // defaults and no affix banner shows.
+    activeDungeonAffix = null;
     activeDungeon = DungeonRun(heroMaxHp: hero.maxHealth, heroHp: hero.maxHealth, tier: tier, prestigeLevel: activeTier);
     activeDungeon!.generateRoomChoices(_rng);
     notifyListeners();
@@ -6049,13 +6843,16 @@ class GameState extends ChangeNotifier {
         + inventory.totalOf(ItemStat.strength)
         + petAttackBonus + skinAttackBonus
         + questAttackBonus + bestiaryChapterBonus;
-    final fullAc = hero.armorClass
-        + passiveTree.totalOf(PassiveEffect.armorFlat)
-        + inventory.totalOf(ItemStat.armorClass)
-        + petArmor + skinArmor + questACBonus;
+    // Full hero armor RATING (incl. STR/sets/gems/artifacts/auras/mastery and
+    // the merc + subclass % boosts). resolveCombat runs it through the shared
+    // diminishing-returns curve, matching the campaign.
+    final fullAc = heroArmorValue;
     final dmgType = hero.activeDamageType;
     final dmgMult = (1 + heroAllDamagePctFor(dmgType) / 100)
-        * (prestigeLevel > 0 ? prestigeDamageMult : 1.0);
+        * prestigeDamageMult; // tier + Paragon damage (1.0 when none)
+    // Full combat parity: the hero's dodge rating, damage type (for enemy
+    // resistance) and resistances (for incoming elemental hits).
+    final heroRes = {for (final t in DamageType.values) t: heroResistancePct(t)};
     final earnedGold = run.resolveCombat(
       room,
       fullAtk,
@@ -6071,6 +6868,9 @@ class GameState extends ChangeNotifier {
       extHealMult: dungeonAffixHealMult,
       burnPerRound: dungeonAffixBurnTick(run.heroMaxHp),
       enemyShield: dungeonAffixEnemyShield,
+      heroDodgePct: effectiveDodgePct,
+      heroDamageType: dmgType,
+      heroResistances: heroRes,
     );
     room.resolved = true;
     dungeonLastDrop = null;
@@ -6417,6 +7217,19 @@ class GameState extends ChangeNotifier {
   }
 
   void _finishDungeon(DungeonRun run) {
+    // Balance telemetry (adb logcat -d | grep ZBAL) — run-level, since the
+    // dungeon resolves per-room in the animated screen.
+    try {
+      DebugLogger.balance(jsonEncode({
+        'mode': 'dungeon', 'tier': run.tier,
+        'win': run.isCleared, 'dead': run.isDead, 'abandoned': run.isAbandoned,
+        'floor': run.floor, 'rooms': run.roomsCleared, 'bosses': run.bossesDefeated,
+        'h_lvl': hero.level, 'h_hp': run.heroMaxHp, 'h_hp_end': run.heroHp,
+        'h_hp_pct': run.heroMaxHp > 0 ? (run.heroHp * 100 / run.heroMaxHp).round() : 0,
+        'gold': run.goldEarned,
+      }));
+    } catch (_) {/* telemetry must never break a run */}
+
     if (run.floor > _deepestDungeonFloor) {
       _deepestDungeonFloor = run.floor;
     }
@@ -6557,7 +7370,8 @@ class GameState extends ChangeNotifier {
     // Passive tree maxHp nodes
     final passiveHpPct = passiveTree.totalOf(PassiveEffect.maxHp);
     hero.extraHpPct = subclassHpPct + traitHpPct + artifactHpPct + runeHpPct + allyHpPct
-        + prestigeHpPct + itemHpPct + passiveHpPct;
+        + prestigeHpPct + itemHpPct + passiveHpPct
+        + abilityScoreRank('agi') * 2; // Endurance ability score: +2% max HP / rank
     hero.flatHpBonus = abilityScoreRank('vit') * 30;
     hero.currentHealth = hero.currentHealth.clamp(1, hero.maxHealth);
   }
@@ -6582,7 +7396,12 @@ class GameState extends ChangeNotifier {
     shards = 0;
     echoes = 0;
     idleProgress = 0;
-    campaignStageIndex = prestigeHeadStart;
+    // A genuinely-new character ALWAYS starts at Stage 1 (index 0). Only rebirth/
+    // ascension (keepTutorials) may apply a head-start — and note prestigeHeadStart
+    // here reads the still-current prestigeShop (reset happens further below), so
+    // for a new character it would otherwise inherit the PREVIOUS character's
+    // soul_overdrive node and wrongly start at Stage 41.
+    campaignStageIndex = keepTutorials ? prestigeHeadStart : 0;
     currentEnemy = null;
     battleLog = ['$name the ${heroClass.displayName} awakens in the cursed realm.'];
     lastAction = 'Ready to battle';
@@ -6638,6 +7457,8 @@ class GameState extends ChangeNotifier {
     // Reset prestige on full wipe
     prestigeLevel = 0;
     activeTier = 0;
+    highestUnlockedTier = 0;
+    _paragonLevelsGranted = 0;
     prestigeSouls = 0;
     prestigeShop.reset();
     passiveTree.reset();
@@ -6856,17 +7677,30 @@ class GameState extends ChangeNotifier {
   int _fightDamage = 0;
   int _fightMaxHit = 0;
   int _fightHits   = 0;
+  // Diagnostics: lowest HP the hero reached, and total damage they took, this
+  // fight — disambiguates "never got hit" (min≈100%, taken≈0) from "healed it
+  // all back" (min low, taken high, end 100%).
+  int _fightLowestHp = 1 << 62;
+  int _fightDmgTaken = 0;
   final Map<String, int> _fightAbilities = {};
   FightSummary? lastFightSummary;
+
+  /// Call after any enemy damage lands on the hero — tracks lowest HP + total taken.
+  void _noteHeroDamageTaken(int dmg) {
+    if (dmg > 0) _fightDmgTaken += dmg;
+    if (hero.currentHealth < _fightLowestHp) _fightLowestHp = hero.currentHealth;
+  }
 
   void _resetFightStats() {
     _fightDamage = 0;
     _fightMaxHit = 0;
     _fightHits   = 0;
+    _fightLowestHp = 1 << 62;
+    _fightDmgTaken = 0;
     _fightAbilities.clear();
   }
 
-  void _snapshotFight({required String enemyName, required bool victory}) {
+  void _snapshotFight({required String enemyName, required bool victory, Enemy? enemy}) {
     lastFightSummary = FightSummary(
       enemyName: enemyName,
       victory: victory,
@@ -6877,6 +7711,129 @@ class GameState extends ChangeNotifier {
       abilitiesUsed: Map<String, int>.from(_fightAbilities),
       log: List<String>.from(battleLog),
     );
+    _logBalanceTelemetry(enemy, victory);
+    _logPowerBreakdown();
+  }
+
+  /// Emits a per-fight power-source breakdown (ZPWR) itemising how much each
+  /// progression system contributes to the hero's HP%, damage% , flat damage and
+  /// armor. This is the tool for "are all my systems actually adding to the
+  /// total?" — any source reading 0 is either not built up yet or not wired in.
+  void _logPowerBreakdown() {
+    try {
+      final t = hero.activeDamageType;
+      num r2(num v) => (v is double) ? (v * 100).round() / 100 : v;
+      final rec = <String, dynamic>{
+        'h_lvl': hero.level,
+        'h_hp':  hero.maxHealth,
+        'type':  t.name,
+        // Max-HP: % multipliers by system (all stack additively into extraHpPct),
+        // plus CON (1%/pt) and flat HP.
+        'hp_pct': {
+          'con':       hero.constitution,
+          'items':     inventory.totalOf(ItemStat.maxHpPct) + _setTotal(ItemStat.maxHpPct) + _gemTotal(ItemStat.maxHpPct),
+          'passives':  passiveTree.totalOf(PassiveEffect.maxHp),
+          'subclass':  subclassHpPct,
+          'trait':     traitHpPct,
+          'artifact':  artifactHpPct,
+          'rune':      runeHpPct,
+          'mercs':     allyHpPct,
+          'prestige':  prestigeHpPct,
+          'endurance': abilityScoreRank('agi') * 2,
+        },
+        'hp_flat': {'vit': abilityScoreRank('vit') * 30},
+        // Damage%: additive % into the pipeline, plus the Paragon/tier multiplier.
+        'dmg_pct': {
+          'passives':    r2(passiveTree.totalOf(PassiveEffect.allDamage)),
+          'gear':        inventory.totalOf(ItemStat.damagePercent),
+          'sets':        _setTotal(ItemStat.damagePercent),
+          'stat':        hero.damagePctFor(t),
+          'elemPassive': r2(passiveElemDamagePct(t)),
+          'elemGem':     r2(gemElemDamagePct(t)),
+          'elemMastery': r2(elementalMasteryDamagePct(t)),
+          'ascension':   r2(ascAllDamagePct),
+          'mercs':       allyDmgPctBonus,
+          'critReplace': r2(critReplacementDamagePct),
+          'paragonMult': r2(prestigeDamageMult),
+          'upgradeMult': r2(endlessUpgrades.damageMultiplier),
+        },
+        // Flat damage added to every base hit.
+        'dmg_flat': {
+          'gear':    inventory.totalOf(ItemStat.damageBonus) + _setTotal(ItemStat.damageBonus) + _gemTotal(ItemStat.damageBonus),
+          'str':     inventory.totalOf(ItemStat.strength) + _setTotal(ItemStat.strength) + _gemTotal(ItemStat.strength),
+          'mastery': _masteryTotal(MasteryEffect.flatDamagePerHit) + _masteryTotal(MasteryEffect.permanentDamage),
+          'quest':   questDamageBonus,
+          'artifact':artifactPowerBonus,
+          'rune':    runeDmgBonus,
+          'score':   _scorePwr,
+          'pets':    petDamage,
+        },
+        // Armor (physical damage reduction rating).
+        'armor': {
+          'base':     hero.armorClass,
+          'passives': passiveTree.totalOf(PassiveEffect.armorFlat),
+          'gear':     inventory.totalOf(ItemStat.armorClass) + inventory.totalOf(ItemStat.strength) + _setTotal(ItemStat.armorClass) + _gemTotal(ItemStat.armorClass),
+          'pets':     petArmor,
+          'skin':     skinArmor,
+          'aura':     auraArmor,
+          'artifact': artifactAcBonus,
+          'rune':     runeAcBonus,
+          'mercs':    allyAcBonus,
+          'mastery':  _masteryTotal(MasteryEffect.permanentAC),
+          'quest':    questACBonus,
+        },
+        // Heal Rating (all healing = value/9 × this). 'flat' is pre-% base.
+        'heal': {
+          'rating':   healRating,
+          'flat':     healRatingFlat,
+          'gear':     inventory.totalOf(ItemStat.healRating) + _setTotal(ItemStat.healRating) + _gemTotal(ItemStat.healRating),
+          'passives': passiveTree.totalOf(PassiveEffect.healRatingFlat),
+          'pct':      healBoostRatingPct.round(),
+          'paragon':  r2(paragonHealMult),
+        },
+      };
+      DebugLogger.power(jsonEncode(rec));
+    } catch (_) {/* telemetry must never break a battle */}
+  }
+
+  /// Emits one compact JSON line per resolved fight for off-device balance
+  /// analysis (see DebugLogger.balance). Everything needed to judge a fight's
+  /// difficulty: who fought whom, enemy vs hero stats, how long it took, and how
+  /// close it was (hero HP % remaining — the key "was this dangerous" signal).
+  void _logBalanceTelemetry(Enemy? enemy, bool victory) {
+    try {
+      final maxHp = hero.maxHealth;
+      final rec = <String, dynamic>{
+        'mode':    _isCampaignBattle ? 'campaign' : 'endless',
+        'tier':    activeTier,
+        'stage':   (_isCampaignBattle ? campaignStageIndex : endlessStageIndex) + 1,
+        'boss':    isBossStage,
+        'win':     victory,
+        'rounds':  _battleTurnCount,
+        // Hero
+        'h_lvl':     hero.level,
+        'h_hp':      maxHp,
+        'h_hp_end':  hero.currentHealth,
+        'h_hp_pct':  maxHp > 0 ? (hero.currentHealth * 100 / maxHp).round() : 0,
+        // Diagnostics: lowest HP% reached, and total damage the hero took, over
+        // the fight. min≈100 + taken≈0 → hero isn't being hit (dodge/control);
+        // min low + taken high + end 100 → out-healing.
+        'h_hp_min_pct': (maxHp > 0 && _fightLowestHp != (1 << 62))
+            ? (_fightLowestHp * 100 / maxHp).round() : 100,
+        'h_dmg_taken':  _fightDmgTaken,
+        'h_dps':     avgHeroHit,
+        // Enemy
+        'e_name':  enemy?.name,
+        'e_lvl':   enemy?.level,
+        'e_hp':    enemy?.maxHealth,
+        'e_atk':   enemy?.attack,
+        // Fight totals
+        'dmg':     _fightDamage,
+        'maxhit':  _fightMaxHit,
+        'hits':    _fightHits,
+      };
+      DebugLogger.balance(jsonEncode(rec));
+    } catch (_) {/* telemetry must never break a battle */}
   }
 
   /// Average damage per swing. Uses recent real hits once the hero has fought;
@@ -6895,13 +7852,14 @@ class GameState extends ChangeNotifier {
         + inventory.totalOf(ItemStat.strength)
         + petDamage + skinDamage + auraDamage
         + questDamageBonus + artifactPowerBonus + ascDmgBonus
-        + runeDmgBonus + allyDmgBonus;
+        + runeDmgBonus;
     final dmgPct = passiveTree.totalOf(PassiveEffect.allDamage)
         + inventory.totalOf(ItemStat.damagePercent)
         + hero.levelBonusDamagePct
+        + allyDmgPctBonus
         + hero.damagePctFor(hero.activeDamageType);
     var est = (avgDie + flat) * (1.0 + dmgPct / 100.0);
-    if (prestigeLevel > 0) est *= prestigeDamageMult;
+    est *= prestigeDamageMult; // tier + Paragon damage (1.0 when none)
     return est.round().clamp(1, 9999999);
   }
   DamageType lastEnemyDamageType = DamageType.physical;
@@ -7070,11 +8028,12 @@ class GameState extends ChangeNotifier {
 
   void startBattle() {
     if (currentEnemy != null) return;
-    // Campaign caps at the final stage — no endless Abyss past stage 100. Beat
-    // the Omega, then Rebirth (canPrestige unlocks at stage 100).
+    // The campaign loops per tier — clearing the final boss unlocks the next
+    // tier and restarts at stage 0. If we ever find the index past the end
+    // (e.g. a legacy save that stalled in the old Abyss), wrap back to the start
+    // so the fight button always works instead of dead-ending.
     if (campaignStageIndex >= CampaignData.stages.length) {
-      autoCampaign = false;
-      return;
+      campaignStageIndex = 0;
     }
     if (!spendEnergy()) return;
     _isCampaignBattle = true;
@@ -7084,7 +8043,7 @@ class GameState extends ChangeNotifier {
     _resetFightStats();
     _resetBattlePerks();
     _activeAffixes = AffixEngine.affixesFor(campaignStageIndex, _rng);
-    var enemy = EnemyData.enemyForStage(campaignStageIndex, affixes: _activeAffixes, prestigeLevel: activeTier);
+    var enemy = EnemyData.enemyForStage(campaignStageIndex, affixes: _activeAffixes, prestigeLevel: activeTier, heroLevel: hero.level);
 
     // 5% chance: swap in a Treasure Goblin (skip on boss stages)
     if (!isBossStage && _rng.nextDouble() < 0.05) {
@@ -7147,19 +8106,18 @@ class GameState extends ChangeNotifier {
         battleLog.add('⚠ BOSS BATTLE! ${enemy.name} — 2× HP, +25% ATK, Enrages at 30% HP!');
       }
     }
-    // Tier difficulty scaling: higher active tier makes campaign enemies tougher.
+    // Tier: extra armor class + a visual mark at high tiers. HP/ATK scaling is
+    // handled by EnemyData.enemyForStage's quadratic tier multipliers (which
+    // match the hero's per-tier power growth), so it's not re-applied here.
     if (activeTier > 0) {
-      final hpMult  = 1.0 + activeTier * 0.15;
-      final atkMult = 1.0 + activeTier * 0.08;
-      final acBonus = activeTier ~/ 2;
       enemy = Enemy(
         id: enemy.id,
         name: activeTier >= 5 ? '⚔ ${enemy.name}' : enemy.name,
         description: enemy.description,
-        maxHealth: (enemy.maxHealth * hpMult).round().clamp(1, 9999999),
-        attack: (enemy.attack * atkMult).round().clamp(1, 9999),
+        maxHealth: enemy.maxHealth,
+        attack: enemy.attack,
         level: enemy.level,
-        armorClass: enemy.armorClass + acBonus,
+        armorClass: enemy.armorClass + activeTier ~/ 2,
         attackType: enemy.attackType,
         resistances: enemy.resistances,
       );
@@ -7172,7 +8130,7 @@ class GameState extends ChangeNotifier {
         name: enemy.name,
         description: enemy.description,
         maxHealth: (enemy.maxHealth * mod.enemyHpMult).round().clamp(1, 9999999),
-        attack: (enemy.attack * mod.enemyAtkMult).round().clamp(1, 9999),
+        attack: (enemy.attack * mod.enemyAtkMult).round().clamp(1, 1000000000000000),
         level: enemy.level,
         armorClass: enemy.armorClass,
       );
@@ -7204,10 +8162,12 @@ class GameState extends ChangeNotifier {
     _battleTurnCount++;
     if (_battleTurnCount > 1) battleLog.add('— Round $_battleTurnCount —');
 
-    // Aura HP regen — heal a % of max HP every turn (sustain), applied even
-    // when stunned. Replaces the old near-useless flat "+HP after victory".
+    // Aura HP regen — a FLAT heal every turn (not a % of max HP). Because it's
+    // flat, it becomes a smaller fraction as you build max HP (via Endurance),
+    // so it sustains without trivialising: you can still be worn down and nearly
+    // die in a long fight. Applied even when stunned.
     if (auraHpRegen > 0 && hero.currentHealth > 0 && hero.currentHealth < hero.maxHealth) {
-      final regen = (hero.maxHealth * auraHpRegen / 100).round().clamp(1, 999999);
+      final regen = (auraHpRegen * 3 * kRecoveryMult).round().clamp(1, 999999);
       final before = hero.currentHealth;
       hero.currentHealth = (hero.currentHealth + regen).clamp(0, hero.maxHealth);
       final healed = hero.currentHealth - before;
@@ -7227,6 +8187,7 @@ class GameState extends ChangeNotifier {
     if (zoneMod?.effect == ZoneEffect.heroDrain) {
       final drain = zoneMod!.value;
       hero.takeDamage(drain);
+      _noteHeroDamageTaken(drain);
       battleLog.add('${zoneMod.icon} ${zoneMod.label}: you lose $drain HP.');
       _checkAllyHpAbilities();
       if (hero.currentHealth <= 0) {
@@ -7288,7 +8249,7 @@ class GameState extends ChangeNotifier {
     final bloodlustCrit = _bloodlustReady;
     if (_bloodlustReady) _bloodlustReady = false;
     // Keen Edge upgrade adds +10% crit on top of the central getter
-    final critChancePct = totalCritChancePct + (endlessUpgrades.keenEdge ? 20 : 0);
+    final critChancePct = totalCritChancePct; // crit is gear-only; Keen Edge now grants % damage
     final crit = backstab
         || valorSurgeCrit  // Valor Surge guarantees a crit on next hit
         || bloodlustCrit   // Bloodlust keystone: kill → guaranteed crit on next attack
@@ -7332,22 +8293,21 @@ class GameState extends ChangeNotifier {
           + artifactPowerBonus
           + ascDmgBonus
           + runeDmgBonus
-          + allyDmgBonus
-          + _scorePwr).clamp(1, 9999);
+          + _scorePwr).clamp(1, 1000000000000000);
 
       // Blood Pact keyword: bonus damage equal to 20% of missing HP
       if (_hasKeyword(ItemKeyword.bloodPact)) {
-        baseDmg = (baseDmg + ((hero.maxHealth - hero.currentHealth) * 0.20).round()).clamp(1, 9999).toInt();
+        baseDmg = (baseDmg + ((hero.maxHealth - hero.currentHealth) * 0.20).round()).clamp(1, 1000000000000000).toInt();
       }
 
       // Flat affix reductions applied before pipeline (not % — keep inline)
       if (_activeAffixes.contains(ZoneAffix.ironSkin)) {
-        baseDmg = (baseDmg * 0.80).round().clamp(1, 9999).toInt();
+        baseDmg = (baseDmg * 0.80).round().clamp(1, 1000000000000000).toInt();
       }
       if (_activeAffixes.contains(ZoneAffix.diamondHide)) {
         final ratio = enemy.currentHealth / enemy.maxHealth;
         final reduction = (2 + (ratio * 6).floor()).clamp(2, 8);
-        baseDmg = (baseDmg - reduction).clamp(1, 9999).toInt();
+        baseDmg = (baseDmg - reduction).clamp(1, 1000000000000000).toInt();
       }
 
       // ── Damage pipeline ───────────────────────────────────────────────────
@@ -7372,14 +8332,15 @@ class GameState extends ChangeNotifier {
       final _dmgCtx = buildWeaponAttackContext(
         baseDmg:          baseDmg,
         heroType:         heroType,
-        allDamagePct:     passiveTree.totalOf(PassiveEffect.allDamage).toDouble() + ascAllDamagePct
+        allDamagePct:     passiveTree.totalOf(PassiveEffect.allDamage).toDouble() + ascAllDamagePct + critReplacementDamagePct + allyDmgPctBonus
                           + passiveElemDamagePct(heroType)
                           + gemElemDamagePct(heroType)
                           + inventory.totalOf(ItemStat.damagePercent)
                           + _setTotal(ItemStat.damagePercent)  // set bonus damage%
                           + hero.levelBonusDamagePct
                           + hero.damagePctFor(heroType)
-                          + elementalMasteryDamagePct(heroType),
+                          + elementalMasteryDamagePct(heroType)
+                          + guildBuffs.allDamagePct, // guild castle (T10) all-damage buff
         endlessDmgMult:   endlessUpgrades.damageMultiplier,
         exploitMult:      exploitMult,
         subclassDmgMult:  subclassDmgMult,
@@ -7391,11 +8352,17 @@ class GameState extends ChangeNotifier {
         enemyResistances: enemy.resistances,
         penetration:      _penMap,
       );
-      var damage = calculateDamage(_dmgCtx, rng: _rng).total.round().clamp(1, 9999);
-      if (prestigeLevel > 0) damage = (damage * prestigeDamageMult).round().clamp(1, 9999);
+      var damage = calculateDamage(_dmgCtx, rng: _rng).total.round().clamp(1, 1000000000000000);
+      damage = (damage * prestigeDamageMult).round().clamp(1, 1000000000000000); // tier + Paragon dmg
+      // attackBonus buff: now a % DAMAGE boost (was flat "bonus crit damage" that
+      // was never actually applied). Scales with the hero instead of being a
+      // meaningless flat number.
+      if (_tempAttackBonus > 0) {
+        damage = (damage * (1 + _tempAttackBonus / 100.0)).round().clamp(1, 1000000000000000);
+      }
 
       // Log resistance/vulnerability (value already applied by pipeline; res capped at 75)
-      final resistance = (enemy.resistances[heroType] ?? 0).clamp(-200, 75);
+      final resistance = (enemy.resistances[heroType] ?? 0).clamp(-200, 90);
       if (resistance > 0) {
         battleLog.add('${enemy.name} resists ${heroType.label} (${resistance}% resist)!');
       } else if (resistance < 0) {
@@ -7404,7 +8371,7 @@ class GameState extends ChangeNotifier {
 
       // Wild Magic: 15% chance triple damage (post-pipeline random event)
       if (subclassEffect == SubclassEffect.wildMagic && _rng.nextInt(100) < 15) {
-        damage = (damage * 3).clamp(1, 9999);
+        damage = (damage * 3).clamp(1, 1000000000000000);
         battleLog.add('Wild Magic surge!  $damage damage!');
       }
 
@@ -7418,7 +8385,7 @@ class GameState extends ChangeNotifier {
 
       // Vulnerable debuff: enemy takes extra % damage
       if (_enemyVulnerablePct > 0) {
-        damage = (damage * (1.0 + _enemyVulnerablePct / 100.0)).round().clamp(1, 9999);
+        damage = (damage * (1.0 + _enemyVulnerablePct / 100.0)).round().clamp(1, 1000000000000000);
       }
 
       // Flat armor DR: physical damage is reduced by enemy armor (minus pierce).
@@ -7438,35 +8405,28 @@ class GameState extends ChangeNotifier {
       _totalDamageDealt  += damage;
       _trackBountyProgress(BountyType.dealDamage, damage);
       audioService.playHitWithType(heroType);
-      // Life Steal keyword: heal 10% of damage dealt
-      if (_hasKeyword(ItemKeyword.lifeSteal)) {
-        final steal = (damage * 0.10).round().clamp(0, hero.maxHealth - hero.currentHealth);
-        if (steal > 0) hero.currentHealth += steal;
-      }
-
-      // Subclass lifesteal (Fiend Pact = 20%, plus any data-driven lifesteal)
-      final subLifestealPct =
-          (subclassEffect == SubclassEffect.fiendPact ? 20 : 0) + subclassLifestealPct;
-      if (subLifestealPct > 0) {
-        final steal = (damage * subLifestealPct / 100).round()
-            .clamp(0, hero.maxHealth - hero.currentHealth);
-        if (steal > 0) hero.currentHealth += steal;
-      }
-      // Class mastery lifesteal
-      final masteryLifestealPct = _masteryTotal(MasteryEffect.lifestealPct);
-      if (masteryLifestealPct > 0) {
-        final steal = (damage * masteryLifestealPct / 100).round()
-            .clamp(0, hero.maxHealth - hero.currentHealth);
-        if (steal > 0) hero.currentHealth += steal;
-      }
-      // Aura lifesteal — no-heal damage classes drain HP from the damage they
-      // deal while their aura is active (their sustain window).
-      if (auraLifestealActive) {
-        final steal = (damage * auraLifestealPct / 100).round()
-            .clamp(0, hero.maxHealth - hero.currentHealth);
+      // ── Lifesteal (all sources), capped per round ──────────────────────────
+      // Life Steal keyword (4%) + Fiend Pact/subclass + class mastery + draining
+      // aura. Heals a % of damage dealt, but the TOTAL is capped at
+      // kLifestealMaxPctPerRound of max HP per round — otherwise endgame damage
+      // (>> your HP) makes even a sliver of lifesteal full-heal every hit, which
+      // was the main reason heroes never dropped below full HP.
+      final lifestealPct = (_hasKeyword(ItemKeyword.lifeSteal) ? 4 : 0)
+          + (subclassEffect == SubclassEffect.fiendPact ? 8 : 0) + subclassLifestealPct
+          + _masteryTotal(MasteryEffect.lifestealPct)
+          + prestigeLifestealPct // Blood Drinker paragon
+          + (auraLifestealActive ? auraLifestealPct : 0);
+      // Lifesteal now scales off Heal Rating, NOT damage dealt — so billions of
+      // damage can no longer full-heal a hero with a sliver of lifesteal. Each
+      // hit restores lifestealPct% of Heal Rating.
+      if (lifestealPct > 0 && healRating > 0) {
+        // Per-HIT, and a round has many hits — so scale small: lifestealPct% of
+        // Heal Rating, divided by kHealValuePerMult, keeps it a minor top-up.
+        final steal = (healRating * lifestealPct / 100 / kHealValuePerMult).round()
+            .clamp(0, hero.maxHealth - hero.currentHealth).toInt();
         if (steal > 0) {
           hero.currentHealth += steal;
-          battleLog.add('🩸 Draining Aura — +$steal HP.');
+          if (auraLifestealActive) battleLog.add('🩸 Draining Aura — +$steal HP.');
         }
       }
       final effect   = AttackEffect.byId(equippedAttackEffectId);
@@ -7477,7 +8437,7 @@ class GameState extends ChangeNotifier {
       // Cael: Warmaster's Strike — on first crit, deal 15% enemy max HP as bonus damage
       if (crit && allyUnlocked('warmaster_cael') && !_allyAbilitiesUsed.contains('warmaster_cael')) {
         _allyAbilitiesUsed.add('warmaster_cael');
-        final bonusDmg = (enemy.maxHealth * 0.15).round().clamp(1, 9999);
+        final bonusDmg = (enemy.maxHealth * 0.15).round().clamp(1, 1000000000000000);
         enemy.takeDamage(bonusDmg);
         _recordFightDamage(bonusDmg);
         battleLog.add('⚡ Cael: Warmaster\'s Strike! +$bonusDmg bonus damage!');
@@ -7500,11 +8460,11 @@ class GameState extends ChangeNotifier {
       if (endlessUpgrades.bladeFlicker && _rng.nextInt(100) < bladeFlickerChance) {
         final c2 = _rng.nextInt(100) < critChancePct;
         var bd2 = ((c2 ? (_rng.nextInt(8) + 1) * 2 : _rng.nextInt(8) + 1) + hero.baseDmg)
-            .clamp(1, 9999);
-        if (_activeAffixes.contains(ZoneAffix.ironSkin)) bd2 = (bd2 * 0.80).round().clamp(1, 9999);
+            .clamp(1, 1000000000000000);
+        if (_activeAffixes.contains(ZoneAffix.ironSkin)) bd2 = (bd2 * 0.80).round().clamp(1, 1000000000000000);
         if (_activeAffixes.contains(ZoneAffix.diamondHide)) {
           final ratio = enemy.currentHealth / enemy.maxHealth;
-          bd2 = (bd2 - (2 + (ratio * 6).floor()).clamp(2, 8)).clamp(1, 9999);
+          bd2 = (bd2 - (2 + (ratio * 6).floor()).clamp(2, 8)).clamp(1, 1000000000000000);
         }
         final flickerArmor = max(0, enemy.armorClass - pierce);
         final dmg2 = max(1, (bd2 * endlessUpgrades.damageMultiplier).round() - flickerArmor);
@@ -7529,7 +8489,7 @@ class GameState extends ChangeNotifier {
         var dm = ((cm ? (_rng.nextInt(8) + 1) * critMult : _rng.nextInt(8) + 1)
             + hero.baseDmg
             + _masteryTotal(MasteryEffect.flatDamagePerHit)
-            + _masteryTotal(MasteryEffect.permanentDamage)).clamp(1, 9999);
+            + _masteryTotal(MasteryEffect.permanentDamage)).clamp(1, 1000000000000000);
         final dm2 = max(1, (dm * endlessUpgrades.damageMultiplier).round()
             - max(0, enemy.armorClass - pierce)).toInt();
         enemy.takeDamage(dm2);
@@ -7562,8 +8522,9 @@ class GameState extends ChangeNotifier {
       final extraPct = _activeAffixes.contains(ZoneAffix.deathSpiral)
           ? (_deathSpiralRounds ~/ 3) * 0.01
           : 0.0;
-      final drain = (hero.maxHealth * (0.05 + extraPct)).round().clamp(1, 9999);
+      final drain = (hero.maxHealth * (0.05 + extraPct)).round().clamp(1, 1000000000000000);
       hero.takeDamage(drain);
+      _noteHeroDamageTaken(drain);
       battleLog.add('Cursed Ground${_activeAffixes.contains(ZoneAffix.deathSpiral) ? " (Death Spiral)" : ""}: '
           '${hero.name} bleeds $drain HP.');
       if (hero.currentHealth <= 0 && passiveTree.hasKeystone(PassiveBranch.guardian) && !_unbreakableUsed) {
@@ -7587,8 +8548,9 @@ class GameState extends ChangeNotifier {
     // Boss ability DoT tick — ongoing damage applied to hero each enemy turn
     if (_heroDotRoundsLeft > 0) {
       _heroDotRoundsLeft--;
-      final dmg = _heroDotDmgPerRound.clamp(1, 9999);
+      final dmg = _heroDotDmgPerRound.clamp(1, 1000000000000000);
       hero.takeDamage(dmg);
+      _noteHeroDamageTaken(dmg);
       pendingFloats.add((value: dmg, isHeal: false, type: _heroDotType));
       battleLog.add('${_heroDotType.emoji} Ongoing damage: ${hero.name} takes $dmg ${_heroDotType.label} dmg ($_heroDotRoundsLeft rounds left).');
       if (hero.currentHealth <= 0 && passiveTree.hasKeystone(PassiveBranch.guardian) && !_unbreakableUsed) {
@@ -7610,28 +8572,37 @@ class GameState extends ChangeNotifier {
       final intTotal = hero.intelligence + inventory.totalOf(ItemStat.intelligence)
           + _setTotal(ItemStat.intelligence) + _gemTotal(ItemStat.intelligence);
       final intDotMult = 1.0 + max(0.0, (intTotal - 10) * 0.01);
-      final scaledDot = (_dotDmg * intDotMult).round().clamp(1, 9999);
+      final scaledDot = (_dotDmg * intDotMult).round().clamp(1, 1000000000000000);
       enemy.takeDamage(scaledDot);
       _recordFightDamage(scaledDot);
       pendingFloats.add((value: scaledDot, isHeal: false, type: _dotDamageType));
       battleLog.add('Ongoing damage: ${enemy.name} takes $scaledDot dmg ($_dotRoundsLeft rounds left).');
+      if (_dotRoundsLeft == 0) _dotDmg = 0; // clear so stacking Envenom restarts fresh
       if (enemy.isDefeated) {
         _battleVictory(enemy);
         return;
       }
     }
 
+    // Bosses can't be perma-locked: after 2 attacks skipped/avoided in a row, the
+    // next one is UNSTOPPABLE — it ignores stun/dodge/avoidance (still armor-
+    // mitigated). Keeps control abilities useful without making bosses harmless.
+    final bossUnstoppable = isBossStage && _bossAttacksSkipped >= 2;
+    if (bossUnstoppable) battleLog.add('${enemy.name} breaks through — unstoppable!');
+
     // Ability stun — enemy skips its attack
-    if (_enemyStunRounds > 0) {
+    if (!bossUnstoppable && _enemyStunRounds > 0) {
       _enemyStunRounds--;
+      _bossAttacksSkipped++;
       battleLog.add('${enemy.name} is stunned and cannot act!');
       _decrementBuffs();
       return;
     }
 
     // Ability dodge — hero negates the next incoming hit
-    if (_dodgeNextHit) {
+    if (!bossUnstoppable && _dodgeNextHit) {
       _dodgeNextHit = false;
+      _bossAttacksSkipped++;
       battleLog.add('${hero.name} dodges the attack!');
       _decrementBuffs();
       return;
@@ -7645,49 +8616,40 @@ class GameState extends ChangeNotifier {
       hero.currentHealth = (hero.currentHealth + petHpRegen).clamp(0, hero.maxHealth);
     }
 
-    // Passive dodge chance (includes DEX +0.5%/point above 10, shadowMonk +10%, pet dodge, rune dodge)
-    final dexTotal = hero.dexterity + inventory.totalOf(ItemStat.dexterity)
-        + _setTotal(ItemStat.dexterity) + _gemTotal(ItemStat.dexterity);
-    final dexDodge = max(0.0, (dexTotal - 10) * 0.5).clamp(0.0, 30.0);
-    final subclassDodge = (subclassEffect == SubclassEffect.shadowMonk ? 10 : 0) + subclassDodgePct;
     // Merc dodge buff (Felix Smoke Screen) — active for its first few rounds.
     final mercDodge = _mercDodgeRounds > 0 ? _mercDodgePct : 0;
     if (_mercDodgeRounds > 0) _mercDodgeRounds--;
-    final passiveDodge = passiveTree.totalOf(PassiveEffect.dodgeChance) + subclassDodge
-        + runeDodgeBonus + auraDodgeChance + petDodgeChance + dexDodge + mercDodge;
-    if (passiveDodge > 0 && _rng.nextDouble() * 100 < passiveDodge) {
-      battleLog.add('${hero.name} evades! (${mercDodge > 0 ? 'Smoke Screen' : dexDodge > 0 ? 'DEX' : 'Passive'} dodge)');
-      _decrementBuffs();
-      return;
-    }
 
-    // DEX Lv25 — Shadow Step: 25% chance to dodge the attack entirely
-    if (endlessUpgrades.shadowStep && _rng.nextInt(100) < 25) {
-      battleLog.add('${hero.name} sidesteps the blow! (Shadow Step)');
-      return;
-    }
-
-    // Void Step keyword: 15% chance to phase through an attack entirely
-    if (_hasKeyword(ItemKeyword.voidStep) && _rng.nextInt(100) < 15) {
-      battleLog.add('Void Step — attack phased through!');
-      _decrementBuffs();
-      return;
-    }
-
-    // WIS Lv10 — Battle Awareness: auto-dodge the enemy's first attack of the battle
-    if (!_battleAwarenessUsed && endlessUpgrades.battleAwareness) {
+    // WIS Lv10 — Battle Awareness: auto-dodge the enemy's FIRST attack (once, deterministic).
+    if (!bossUnstoppable && !_battleAwarenessUsed && endlessUpgrades.battleAwareness) {
       _battleAwarenessUsed = true;
+      _bossAttacksSkipped++;
       battleLog.add('Battle Awareness! ${hero.name} reads the strike and steps aside.');
       _decrementBuffs();
       return;
     }
 
-    // Miss chance debuff — enemy fumbles its attack
-    if (_enemyMissChancePct > 0 && _rng.nextInt(100) < _enemyMissChancePct) {
-      battleLog.add('${enemy.name} misses! ($_enemyMissChancePct% miss chance)');
+    // Consolidated avoidance: dodge rating + Shadow Step + Void Step + enemy
+    // miss-chance are combined into ONE roll (they used to be independent rolls
+    // that multiplied to near-total avoidance — a hero took 0 damage over a
+    // 14-round boss fight). Capped at kMaxAvoidChance so the enemy always lands a
+    // meaningful share of its attacks.
+    final dodgeRating  = heroDodgeRating + mercDodge;
+    final passiveDodge = kDefenseCapPct * dodgeRating / (dodgeRating + kDodgeRatingK);
+    final avoidChance  = (1.0
+        - (1.0 - passiveDodge / 100.0)
+        * (1.0 - (endlessUpgrades.shadowStep ? 0.25 : 0.0))
+        * (1.0 - (_hasKeyword(ItemKeyword.voidStep) ? 0.15 : 0.0))
+        * (1.0 - _enemyMissChancePct / 100.0))
+        .clamp(0.0, kMaxAvoidChance);
+    if (!bossUnstoppable && avoidChance > 0 && _rng.nextDouble() < avoidChance) {
+      _bossAttacksSkipped++;
+      battleLog.add('${hero.name} avoids the attack!');
       _decrementBuffs();
       return;
     }
+    // Attack is landing this round — reset the perma-lock breaker.
+    _bossAttacksSkipped = 0;
 
     // Abyssal Roar affix + zone modifier: flat damage bonus (formerly attack-roll bonus)
     final int affixDmgBonus = _activeAffixes.contains(ZoneAffix.abyssalRoar) ? 5 : 0;
@@ -7696,7 +8658,7 @@ class GameState extends ChangeNotifier {
 
     // Hero armor: reduces incoming physical damage (Last Epoch style).
     // STR adds to Armor Class; DEX gives Dodge Chance instead.
-    final heroArmor = hero.armorClass + (endlessUpgrades.lightFooted ? 5 : 0) + _tempAcBonus
+    final baseArmor = hero.armorClass + (endlessUpgrades.lightFooted ? 5 : 0)
         + passiveTree.totalOf(PassiveEffect.armorFlat)
         + _masteryTotal(MasteryEffect.permanentAC)
         + questACBonus
@@ -7711,30 +8673,49 @@ class GameState extends ChangeNotifier {
         + _gemTotal(ItemStat.strength)
         + artifactAcBonus
         + runeAcBonus
-        + allyAcBonus;
+        + _scoreFor                                        // FOR (Fortitude) score — flat AC Rating
+        // Former FLAT damage reductions, now Armor Class RATING so they run through
+        // the diminishing-returns curve like every other defensive source (no more
+        // flat "−N damage" that's meaningless once enemy hits are in the hundreds).
+        + (_hasKeyword(ItemKeyword.ironWill) ? 1 : 0)      // Iron Will keyword
+        + (endlessUpgrades.synergyJuggernaut ? 1 : 0)      // Juggernaut synergy
+        + endlessUpgrades.flatDamageReduction              // Fortitude (CON node)
+        + (endlessUpgrades.thickHide ? 3 : 0);             // Thick Hide (CON milestone)
+    // Armor Class RATING is boosted by a % from: the acBonus ability buff (while
+    // active), mercenaries' AC (allyAcBonus), subclass armour, and the DUR
+    // (Durability) score — all % of your rating, through the diminishing-returns curve.
+    final acPctBoost = _tempAcBonus + allyAcBonus + subclassArmorPct + _scoreDurPct;
+    final heroArmor = acPctBoost > 0
+        ? (baseArmor * (1 + acPctBoost / 100.0)).round()
+        : baseArmor;
 
-    var rawDamage = (_rng.nextInt(enemy.attack) + 1 + affixDmgBonus + zoneAtkBonus).clamp(1, 9999);
-    // Weaken debuff: reduce enemy ATK
-    if (_enemyWeakenPct > 0) rawDamage = (rawDamage * (1.0 - _enemyWeakenPct / 100.0)).round().clamp(1, 9999);
+    // Damage roll is 70-100% of the enemy's attack (was a wild 1..attack uniform
+    // roll that often whiffed for a fraction). No longer capped at 9999 — that
+    // old cap made high-tier enemies unable to threaten large HP pools.
+    var rawDamage = ((enemy.attack * (0.7 + _rng.nextDouble() * 0.3)).round()
+        + affixDmgBonus + zoneAtkBonus).clamp(1, 1000000000000000);
+    // Weaken/Disarm debuff: reduce enemy ATK. A full disarm now shares stun's
+    // diminishing returns (see _applyEnemyWeaken), so it can't be chained to keep
+    // an enemy permanently harmless. An unstoppable boss attack ignores it.
+    if (_enemyWeakenPct > 0 && !bossUnstoppable) {
+      rawDamage = (rawDamage * (1.0 - _enemyWeakenPct / 100.0)).round().clamp(1, 1000000000000000);
+    }
 
-    // Flat reductions: Thick Hide, Iron Will keyword, Juggernaut synergy
-    final ironWillReduction    = _hasKeyword(ItemKeyword.ironWill) ? 1 : 0;
-    final juggernautReduction  = endlessUpgrades.synergyJuggernaut ? 1 : 0;
-    final fortitudeReduction   = endlessUpgrades.flatDamageReduction;
     // Ruk Stone Skin now scales: 30% of the incoming hit is absorbed (was a
     // flat −4 that became meaningless as enemy damage grew).
     final rukActive            = _rukStoneSkinRoundsLeft > 0;
     if (_rukStoneSkinRoundsLeft > 0) _rukStoneSkinRoundsLeft--;
 
-    // Flat armor DR: physical damage reduced by heroArmor flat.
-    // Elemental attacks bypass armor — only flat keyword reductions apply.
+    // Armor is a damage-reduction RATING (diminishing returns, caps at
+    // kDefenseCapPct) applied to physical damage. Elemental attacks bypass armor
+    // (resistances handle those). The former flat keyword/CON reductions are now
+    // folded into heroArmor (the rating), so there is no flat subtraction here.
+    final armorDrPct = kDefenseCapPct * heroArmor / (heroArmor + kArmorRatingK);
     final int damage;
     {
-      final thickHide = endlessUpgrades.thickHide ? 3 : 0;
-      final flatReductions = ironWillReduction + juggernautReduction + fortitudeReduction + thickHide;
       var d = enemy.attackType == DamageType.physical
-          ? max(0, rawDamage - heroArmor - flatReductions)
-          : max(0, rawDamage - flatReductions);
+          ? max(0, (rawDamage * (1 - armorDrPct / 100)).round())
+          : rawDamage;
       if (rukActive) d = (d * 0.70).round();
       damage = d;
     }
@@ -7746,7 +8727,13 @@ class GameState extends ChangeNotifier {
       // ~+40% rather than a full-HP one-shot.
       final enrageMult = _bossEnraged ? 0.7 : 1.0;
       final resisted = heroRes != 0 ? damage * (1.0 - heroRes / 100.0) : damage.toDouble();
-      final finalDmg = (resisted * enrageMult).round().clamp(0, 9999);
+      // (acBonus now boosts the hero's Armor Class rating % above, folded into
+      // heroArmor's damage-reduction curve rather than a flat % reduction here.)
+      // Damage reduction is hard-capped at 90%: a landed hit always deals at
+      // least 10% of the raw roll, so stacked armor + resistance + this buff can
+      // never make the hero immune (a maxed hero was taking 0 damage via >100% resist).
+      final minDmg = rawDamage * 0.10;
+      final finalDmg = max(resisted * enrageMult, minDmg).round().clamp(0, 1000000000000000);
 
       int absorbed = 0;
       if (_heroAbsorbShield > 0) {
@@ -7756,6 +8743,7 @@ class GameState extends ChangeNotifier {
       }
       final shieldedDmg = finalDmg - absorbed;
       if (shieldedDmg > 0) hero.takeDamage(shieldedDmg);
+      _noteHeroDamageTaken(shieldedDmg);
       lastEnemyDamage     = shieldedDmg;
       lastEnemyDamageType = enemy.attackType;
       _comboStacks = 0; // taking damage breaks combo
@@ -7763,7 +8751,7 @@ class GameState extends ChangeNotifier {
       final typeTag  = enemy.attackType == DamageType.physical
           ? '' : ' (${enemy.attackType.label})';
       final armorTag = enemy.attackType == DamageType.physical && heroArmor > 0
-          ? ' [-$heroArmor arm]'
+          ? ' [-${armorDrPct.round()}% arm]'
           : '';
       final resTag = heroRes > 0 ? ' [$heroRes% res]'
           : heroRes < 0 ? ' [${-heroRes}% vuln]' : '';
@@ -7771,7 +8759,7 @@ class GameState extends ChangeNotifier {
 
       // Thorn Wall keyword: return 30% of incoming damage to attacker
       if (_hasKeyword(ItemKeyword.thornWall)) {
-        final thorn = (finalDmg * 0.30).round().clamp(1, 9999);
+        final thorn = (finalDmg * 0.30).round().clamp(1, 1000000000000000);
         enemy.takeDamage(thorn);
         _recordFightDamage(thorn);
         battleLog.add('Thorn Wall reflects $thorn dmg!');
@@ -7799,12 +8787,12 @@ class GameState extends ChangeNotifier {
         return;
       }
 
-      // CON Lv10 — Battle Scarred: regen 5% HP (8% with Iron Sage synergy)
+      // CON Lv10 — Battle Scarred: regen 3% HP (5% with Iron Sage synergy)
       if (endlessUpgrades.battleScarred) {
-        final scarredPct = endlessUpgrades.synergyIronSage ? 0.08 : 0.05;
-        var regen = (hero.maxHealth * scarredPct).round().clamp(1, 9999);
+        final scarredPct = endlessUpgrades.synergyIronSage ? 0.05 : 0.03;
+        var regen = (hero.maxHealth * scarredPct).round().clamp(1, 1000000000000000);
         // Void Curse affix: halve all hero HP recovery
-        if (_activeAffixes.contains(ZoneAffix.voidCurse)) regen = (regen / 2).round().clamp(1, 9999);
+        if (_activeAffixes.contains(ZoneAffix.voidCurse)) regen = (regen / 2).round().clamp(1, 1000000000000000);
         hero.currentHealth = (hero.currentHealth + regen).clamp(0, hero.maxHealth);
       }
     } else {
@@ -7840,11 +8828,12 @@ class GameState extends ChangeNotifier {
   bool _fireBossAbility(BossAbility ability, Enemy enemy) {
     switch (ability.effect) {
       case BossAbilityEffect.bonusDamage:
-        final raw = (enemy.attack * ability.value / 100).round().clamp(1, 9999);
-        final res = heroResistancePct(ability.damageType);
-        final dmg = res != 0 ? (raw * (1.0 - res / 100.0)).round().clamp(0, 9999) : raw;
+        final raw = (enemy.attack * ability.value / 100).round().clamp(1, 1000000000000000);
+        // Physical abilities are Armor-gated; elemental abilities resist-gated.
+        final dmg = mitigateIncoming(raw, ability.damageType, heroArmorValue);
         if (dmg > 0) {
           hero.takeDamage(dmg);
+          _noteHeroDamageTaken(dmg);
           pendingFloats.add((value: dmg, isHeal: false, type: ability.damageType));
           battleLog.add('${ability.emoji} ${enemy.name}: ${ability.name}! ${hero.name} takes $dmg ${ability.damageType.label} dmg.');
           if (hero.currentHealth <= 0 && passiveTree.hasKeystone(PassiveBranch.guardian) && !_unbreakableUsed) {
@@ -7860,7 +8849,10 @@ class GameState extends ChangeNotifier {
           if (hero.currentHealth <= 0) { _battleDefeat(); return true; }
         }
       case BossAbilityEffect.dot:
-        final perRound = (enemy.attack * ability.value / 100).round().clamp(1, 9999);
+        final rawPerRound = (enemy.attack * ability.value / 100).round().clamp(1, 1000000000000000);
+        // Mitigate the DoT tick by type at application (Armor for physical,
+        // resistance for elemental), consistent with basic hits and bursts.
+        final perRound = mitigateIncoming(rawPerRound, ability.damageType, heroArmorValue).clamp(1, 1000000000000000);
         _heroDotRoundsLeft  = ability.dotRounds;
         _heroDotDmgPerRound = perRound;
         _heroDotType        = ability.damageType;
@@ -7914,22 +8906,66 @@ class GameState extends ChangeNotifier {
     }
   }
 
-  void _applyStun(int baseDur, String label) {
+  /// Shared diminishing returns for ALL full crowd-control / 100%-negation
+  /// effects (stun, freeze, disarm): full duration the 1st application, half the
+  /// 2nd, immune the 3rd — resetting after 5 CC-free rounds. Returns the
+  /// DR-adjusted duration (0 = resisted). Every hard-CC effect must route through
+  /// this so nothing can perma-lock or perma-disarm an enemy.
+  int _hardCcDuration(int baseDur) {
     if (_roundsSinceLastStun >= 5) {
       _stunApplicationCount = 0;
       _roundsSinceLastStun  = 0;
     }
-    final drIdx  = _stunApplicationCount.clamp(0, _stunDrMult.length - 1);
-    final drMult = _stunDrMult[drIdx];
-    final dur    = (baseDur * drMult).floor();
+    final drIdx = _stunApplicationCount.clamp(0, _stunDrMult.length - 1);
+    final dur   = (baseDur * _stunDrMult[drIdx]).floor();
+    if (dur > 0) {
+      _stunApplicationCount++;
+      _roundsSinceLastStun = 0;
+    }
+    return dur;
+  }
+
+  void _applyStun(int baseDur, String label) {
+    final dur = _hardCcDuration(baseDur);
     if (dur <= 0) {
       battleLog.add('$label resists the stun! (DR immune)');
     } else {
-      _enemyStunRounds      = dur;
-      _stunApplicationCount++;
-      _roundsSinceLastStun  = 0;
-      final drNote = drMult < 1.0 ? ' (DR: ${(drMult * 100).round()}%)' : '';
-      battleLog.add('$label stunned for $dur turn(s)!$drNote');
+      _enemyStunRounds = dur;
+      battleLog.add('$label stunned for $dur turn(s)!');
+    }
+  }
+
+  /// Enemy ATK reduction. A FULL disarm (≥100%) is hard CC and shares the
+  /// [_hardCcDuration] diminishing returns with stun; partial weaken (<100%) is
+  /// not CC and applies at full duration. Returns true if any weaken was applied.
+  bool _applyEnemyWeaken(int pct, int baseDur, String label) {
+    if (pct >= 100) {
+      final dur = _hardCcDuration(baseDur);
+      if (dur <= 0) {
+        battleLog.add('$label resists the disarm! (DR immune)');
+        return false;
+      }
+      _enemyWeakenPct    = 100;
+      _enemyWeakenRounds = dur;
+      battleLog.add('$label disarmed for $dur round(s)!');
+      return true;
+    }
+    _enemyWeakenPct    = pct.clamp(0, 100);
+    _enemyWeakenRounds = baseDur;
+    battleLog.add('$label ATK reduced by $pct% for $baseDur rounds.');
+    return true;
+  }
+
+  /// Silence fully locks out enemy ABILITIES, so it's hard CC and shares the
+  /// [_hardCcDuration] diminishing returns with stun/disarm — can't be chained to
+  /// keep a boss's abilities permanently disabled.
+  void _applyEnemySilence(int baseDur, String label) {
+    final dur = _hardCcDuration(baseDur);
+    if (dur <= 0) {
+      battleLog.add('$label shakes off the silence! (DR immune)');
+    } else {
+      _enemySilenceRounds = dur;
+      battleLog.add('$label is silenced for $dur round(s)!');
     }
   }
 
@@ -7957,8 +8993,40 @@ class GameState extends ChangeNotifier {
     saveToLocal();
   }
 
+  // ── Combat objective beacon ─────────────────────────────────────────────────
+  // Captured on each campaign kill so the top-right beacon reveals the enemy you
+  // just VANQUISHED and its new count — never the next enemy's count at the start
+  // of a battle. The widget watches beaconSeq and shows this payload.
+  int beaconSeq = 0;
+  String beaconEnemyName = '';
+  int beaconKills = 0;
+  int? beaconKillTarget;
+  bool beaconQuestTicked = false;
+  String beaconQuestTitle = '';
+  int beaconQuestProg = 0;
+  int beaconQuestTarget = 0;
+
+  void _fireObjectiveBeacon(Enemy enemy, int questBefore) {
+    beaconEnemyName  = enemy.name;
+    beaconKills      = bestiaryKillCount(enemy.id);
+    beaconKillTarget = nextBestiaryMilestone(enemy.id);
+    final q = currentAdventureQuest;
+    final qNow = q != null ? adventureQuestProgress(q) : 0;
+    beaconQuestTicked = q != null && qNow > questBefore;
+    if (beaconQuestTicked && q != null) {
+      beaconQuestTitle  = q.title;
+      beaconQuestProg   = qNow;
+      beaconQuestTarget = q.target;
+    }
+    beaconSeq++;
+  }
+
   void _battleVictory(Enemy enemy) {
-    _snapshotFight(enemyName: enemy.name, victory: true);
+    _snapshotFight(enemyName: enemy.name, victory: true, enemy: enemy);
+    // Snapshot the active quest's progress BEFORE this kill's counters update, so
+    // the objective beacon can tell whether the quest ticked on this kill.
+    final questProgBefore = currentAdventureQuest != null
+        ? adventureQuestProgress(currentAdventureQuest!) : 0;
     // Clear ability cooldowns so the bar shows READY between battles
     _cooldownUntil.clear();
     _abilityRound = 0;
@@ -7975,7 +9043,7 @@ class GameState extends ChangeNotifier {
     final bestiaryGoldMult = _isCampaignBattle ? bestiaryGoldBonus(enemy.id) : 1.0;
     final rc = RemoteConfigService.instance;
     var rewardGold =
-        ((enemy.level * 50 + 100) * endlessUpgrades.goldMultiplier * arcaneBonus * merchantScholarBonus * prestigeGoldMult * paragonGoldIncomeMult * prestigeGoldBattleMult * passiveGoldMult * goldSenseMult * petGoldMult * allyGoldMult * bestiaryGoldMult * rc.goldMult * guildCastleGoldMult * (1.0 + _scoreLck / 100))
+        ((((enemy.level - activeTier * EnemyData.kTierLevelStep).clamp(1, 9999999) * 50 + 100) * (1.0 + activeTier * 0.15)) * endlessUpgrades.goldMultiplier * arcaneBonus * merchantScholarBonus * prestigeGoldMult * paragonGoldIncomeMult * prestigeGoldBattleMult * passiveGoldMult * goldSenseMult * petGoldMult * allyGoldMult * bestiaryGoldMult * rc.goldMult * guildCastleGoldMult)
             .round();
     // Felix: Bribe — double gold on the first kill of the battle
     if (_felixBribeActive) {
@@ -8006,7 +9074,7 @@ class GameState extends ChangeNotifier {
                 allyXpMult *
                 rc.xpMult)
             .round())
-        .clamp(1, 999999);
+        .clamp(1, 1000000000000000);
 
     // Midas keystone: crit kills award double gold
     if (passiveTree.hasKeystone(PassiveBranch.merchant) && lastHeroCrit) {
@@ -8028,6 +9096,7 @@ class GameState extends ChangeNotifier {
     final prevCha   = hero.charisma;
 
     hero.gainExperience(rewardExp);
+    _syncParagonLevels();
 
     if (hero.level > prevLevel) {
       audioService.playLevelUp();
@@ -8048,11 +9117,35 @@ class GameState extends ChangeNotifier {
         statGains: gains,
       );
       AnalyticsService.instance.levelUp(hero.level, hero.heroClass.name);
-      // First time reaching level 30 — class questline unlocks.
-      if (hero.level >= 30 && !_classQuestlineNoticeSeen) {
-        _classQuestlineNoticeSeen    = true;
-        pendingClassQuestlineUnlock  = true;
+      // First time reaching level 30 — class questline unlocks. Bring the player
+      // to the Quests tab with a coach so they know this is how the ultimate
+      // ability is earned (guided, like the Paragon reveal). Retries next level
+      // if another coach is mid-show (only marks seen once it actually fires).
+      if (hero.level >= 30 && !_classQuestlineNoticeSeen && pendingTutorial == null) {
+        _classQuestlineNoticeSeen = true;
+        _triggerTutorial(const SystemTutorial(
+          stage: -4, navTab: 0, subTab: 'QUESTS', icon: '⭐',
+          title: 'Ultimate Ability',
+          howTo: 'Level 30 — your class questline is unlocked! Complete its '
+              'challenges to earn your ULTIMATE ability, your class\'s most '
+              'powerful skill. Track your progress and claim it here in Quests.',
+        ));
       }
+      // Paragon revealed at level 10 (points have banked since level 1). Takes
+      // priority over the level-10 ability coach; the ability one retries next
+      // level-up (its guard only marks "seen" when it actually fires).
+      if (hero.level >= 10 && !_paragonTutorialSeen && pendingTutorial == null) {
+        _paragonTutorialSeen = true;
+        _triggerTutorial(const SystemTutorial(
+          stage: -3, navTab: 0, subTab: 'PARAGON', icon: '🔥',
+          title: 'Paragon Points',
+          howTo: 'You\'ve quietly earned a Paragon Point every level since the '
+              'start — now you can spend them! Paragon upgrades are permanent '
+              'passive boosts to your hero. Spend your banked points here.',
+        ));
+      }
+      // New active ability unlocked (levels 5/10/15/20/25) — coach it.
+      _maybeTriggerAbilityTutorial();
     } else {
       lastLevelUp = null;
     }
@@ -8060,12 +9153,8 @@ class GameState extends ChangeNotifier {
     lastRewardGold = rewardGold;
     lastRewardExp  = rewardExp;
     lastItemDrop   = null;
-
-    // Blood Drinker: restore 5% max HP on kill
-    if (prestigeHealOnKill) {
-      final healAmt = (hero.maxHealth * prestigeHealOnKillPct).round().clamp(1, 9999);
-      hero.currentHealth = (hero.currentHealth + healAmt).clamp(0, hero.maxHealth);
-    }
+    // Blood Drinker's old heal-on-kill was reworked into lifesteal (applied per
+    // hit in heroAttack via prestigeLifestealPct), so there's nothing on-kill here.
 
     // Bloodlust keystone: kill → guaranteed crit on next attack
     if (passiveTree.hasKeystone(PassiveBranch.slayer)) {
@@ -8117,6 +9206,10 @@ class GameState extends ChangeNotifier {
       logLoot(drop.rarityLabel[0], '${drop.name} (${drop.rarityLabel})', detail: drop.slot.label);
       battleLog.add('Item dropped: ${drop.name} (${drop.rarityLabel})!');
       DebugLogger.log('item_drop', '${drop.rarityLabel} ${drop.name} stage=$campaignStageIndex hero_lv=${hero.level}');
+      // Fire the Gear coach the instant the FIRST item lands — before the
+      // stage-unlock coaches below, so it isn't perpetually deferred behind them
+      // (which let several more items drop before it finally showed).
+      _maybeTriggerGearTutorial();
     }
     // One-time epic starter gift: 4th enemy of the very first run (stage index 3)
     if (campaignStageIndex == 3 && _isCampaignBattle && !isCampaignReplay && !_epicStarterAwarded) {
@@ -8232,8 +9325,9 @@ class GameState extends ChangeNotifier {
 
     // Volatile Death affix: enemy explodes on death — ATK÷4 unavoidable damage
     if (_activeAffixes.contains(ZoneAffix.volatileDeath)) {
-      final blast = (enemy.attack ~/ 4).clamp(1, 9999);
+      final blast = (enemy.attack ~/ 4).clamp(1, 1000000000000000);
       hero.takeDamage(blast);
+      _noteHeroDamageTaken(blast);
       battleLog.add('Volatile Death! Explosion deals $blast unavoidable damage.');
       if (hero.currentHealth <= 0 && passiveTree.hasKeystone(PassiveBranch.guardian) && !_unbreakableUsed) {
         hero.currentHealth = 1;
@@ -8287,6 +9381,9 @@ class GameState extends ChangeNotifier {
     _totalBattleWins++;
     if (isBossStage) _totalBossKills++;
     if (hero.currentHealth == 1) _survivedAt1HP = true;
+    // Objective beacon: reveal the just-slain enemy's bestiary count (and quest
+    // progress if it ticked) — now that this kill's counters have updated.
+    _fireObjectiveBeacon(enemy, questProgBefore);
     addSeasonXp(isBossStage ? 10 : 3);
     advanceWeekly('w_kills', 1);
     if (isBossStage) advanceWeekly('w_boss', 1);
@@ -8353,7 +9450,10 @@ class GameState extends ChangeNotifier {
 
     // Campaign is infinite — always advance
     final wasFinalBoss = campaignStageIndex == CampaignData.stages.length - 1;
-    final wasFirstKill = campaignStageIndex == 0;
+    // Only a genuinely-new player (never unlocked a tier) sees the first-kill
+    // tutorial — the campaign resets to stage 0 on every tier-up, so without this
+    // it would re-trigger each time you beat Tier 0.
+    final wasFirstKill = campaignStageIndex == 0 && highestUnlockedTier == 0;
     checkBattleStars(campaignStageIndex, _battleTurnCount);
     final firstClearCrystals = isBossStage ? 5 : 1;
     zcoins += firstClearCrystals;
@@ -8370,14 +9470,26 @@ class GameState extends ChangeNotifier {
     // Note a new content-area unlock (first time only). Auto-campaign keeps
     // running — it only stops on death or a manual toggle; the notice is shown
     // without interrupting the run.
-    if (_isCampaignBattle) {
+    // Fire the first time you reach a stage (guarded by _seenUnlockStages only —
+    // not by campaignAllTimeHigh, which blocked the coaches on any character that
+    // had already pushed deeper in a previous run, and broke "Replay Tutorials").
+    if (_isCampaignBattle && !_seenUnlockStages.contains(campaignStageIndex)) {
       final unlockName = _unlockStageNames[campaignStageIndex];
-      if (unlockName != null && !_seenUnlockStages.contains(campaignStageIndex) && campaignStageIndex == campaignAllTimeHigh) {
+      final tut = SystemTutorial.forStage(campaignStageIndex);
+      // Fire for any stage that has a notice OR a tutorial — so early always-on
+      // systems (Scores @1, Abilities @2) also get a coach, not just gated ones.
+      if (unlockName != null || tut != null) {
         _seenUnlockStages.add(campaignStageIndex);
-        pendingUnlockNotice = unlockName;
-        AnalyticsService.instance.featureUnlocked(unlockName, campaignStageIndex);
+        if (unlockName != null) {
+          pendingUnlockNotice = unlockName;
+          AnalyticsService.instance.featureUnlocked(unlockName, campaignStageIndex);
+        }
+        // Guided onboarding: pause the auto-fight, navigate + coach.
+        if (tut != null) _triggerTutorial(tut);
       }
     }
+    // First-item (Gear) coach now fires right at the drop (above), so it lands
+    // straight after your very first item instead of behind the stage coaches.
 
     // Set pending boss defeat message (first kill only)
     if (isBossStage && _isCampaignBattle) {
@@ -8390,9 +9502,21 @@ class GameState extends ChangeNotifier {
     }
 
     if (wasFinalBoss) {
-      // Only show the "Rebirth Unlocked" dialog on the very first clear.
-      if (prestigeLevel == 0) lastBattleWasFinalVictory = true;
       battleLog.add('The Omega falls. The curse is ended. A new age begins.');
+      // Tier progression replaces rebirth: clearing the campaign at your highest
+      // unlocked tier unlocks the next tier (harder enemies + better loot). The
+      // campaign ALWAYS loops back to the start afterwards (replay at your tier);
+      // Level, Paragon, gear and currencies all persist — nothing resets.
+      if (activeTier == highestUnlockedTier && highestUnlockedTier < kMaxTier) {
+        highestUnlockedTier += 1;
+        activeTier = highestUnlockedTier;
+        lastTierUnlocked = highestUnlockedTier;
+      }
+      // Head-start / instant-recall prestige nodes now apply on each tier restart.
+      campaignStageIndex = prestigeHeadStart;
+      gold += prestigeStartGold;
+      hero.currentHealth = hero.maxHealth;
+      lastBattleWasFinalVictory = true;
     } else {
       battleLog.add('${hero.name} advances to stage ${campaignStageIndex + 1}.');
     }
@@ -8404,7 +9528,7 @@ class GameState extends ChangeNotifier {
     // Capture the loss before currentEnemy is cleared — the #1 difficulty
     // signal for balance tuning (pair with stage_reached for clear rates).
     final lostTo = currentEnemy;
-    _snapshotFight(enemyName: lostTo?.name ?? 'Enemy', victory: false);
+    _snapshotFight(enemyName: lostTo?.name ?? 'Enemy', victory: false, enemy: lostTo);
     if (lostTo != null) {
       final stage = _endlessMode
           ? endlessStageIndex
@@ -8504,6 +9628,7 @@ class GameState extends ChangeNotifier {
     final hpSnapshot = hero.currentHealth;
     final inBattle = currentEnemy != null;
     hero.gainExperience(xpEarned);
+    _syncParagonLevels();
     if (inBattle) hero.currentHealth = hpSnapshot;
     lastIdleXp = xpEarned;
 
@@ -8621,6 +9746,8 @@ class GameState extends ChangeNotifier {
       'abilityMilestoneChoices': Map<String, String>.from(_milestoneChoices),
       'prestigeLevel': prestigeLevel,
       'activeTier': activeTier,
+      'highestUnlockedTier': highestUnlockedTier,
+      'paragonLevelsGranted': _paragonLevelsGranted,
       'prestigeSouls': prestigeSouls,
       'prestigeShop': prestigeShop.toJson(),
       'subclassId': subclassId,
@@ -8633,6 +9760,8 @@ class GameState extends ChangeNotifier {
       'dailyEnergyRefillsUsed': dailyEnergyRefillsUsed,
       'autoCampaign': autoCampaign,
       'seenUnlockStages': _seenUnlockStages.toList(),
+      'lastAbilityTutorialLevel': _lastAbilityTutorialLevel,
+      'paragonTutorialSeen': _paragonTutorialSeen,
       'ownedRunes': ownedRunes.toList(),
       'purchasedPacks': purchasedPacks.toList(),
       'ownedCosmetics': ownedCosmetics.toList(),
@@ -8793,12 +9922,14 @@ class GameState extends ChangeNotifier {
       'eventRewardsClaimed': _eventRewardsClaimed.toList(),
       // Gauntlet
       'gauntletHighScore': gauntletHighScore,
+      'lastGauntletModifierIds': lastGauntletModifierIds,
       'upgradesTabSeen': _upgradesTabSeen,
       'masteryTabSeen':  _masteryTabSeen,
       'gauntletHighestTier': gauntletHighestTier,
       'questItemsEquipped': _itemsEquipped,
       'questAbilitiesUpgraded': _abilitiesUpgraded,
       'classQuestlineNoticeSeen': _classQuestlineNoticeSeen,
+      'artifactsUnlocked': artifactsUnlocked,
       'questPassivesUnlocked': _passivesUnlocked,
       'questGemsSocketed': _gemsSocketed,
       'questItemsForged': _itemsForged,
@@ -8862,12 +9993,21 @@ class GameState extends ChangeNotifier {
       json = _migrateSave(json, saveVersion);
     }
     hero.loadFromJson(json['hero'] as Map<String, dynamic>);
+    // Migrate the XP curve: recompute the level threshold from the new gentle
+    // 1.08/level curve so saves made under the old steep 1.27 curve (which
+    // plateaued heroes ~L30) adopt the corrected pacing. Idempotent for saves
+    // already on the new curve.
+    hero.experienceToNextLevel = HeroModel.expToNextForLevel(hero.level);
+    hero.experience = hero.experience.clamp(0, hero.experienceToNextLevel - 1);
     gold = json['gold'] as int;
     // Essence merged into Shards — fold any legacy essence balance in on load.
     shards = ((json['shards'] as int?) ?? 0) + ((json['essence'] as int?) ?? 0);
     echoes = (json['echoes'] as int?) ?? 0;
     idleProgress = json['idleProgress'] as int;
     campaignStageIndex = json['campaignStageIndex'] as int;
+    // Repair legacy saves that stalled past the final stage (old Abyss / pre-tier
+    // rework): the campaign now loops per tier, so wrap them back to the start.
+    if (campaignStageIndex >= CampaignData.stages.length) campaignStageIndex = 0;
     campaignAllTimeHigh = (json['campaignAllTimeHigh'] as int?) ?? campaignStageIndex;
     lastAction = json['lastAction'] as String;
 
@@ -8942,11 +10082,19 @@ class GameState extends ChangeNotifier {
       });
     }
     prestigeLevel = (json['prestigeLevel'] as int?) ?? 0;
-    // Active difficulty tier: default legacy saves (no key) to the player's
-    // highest unlocked tier so existing progress plays at the same difficulty.
+    // Highest unlocked tier: now persisted and raised by clearing the campaign.
+    // Legacy saves (no key) seed from prestigeLevel so existing rebirthed players
+    // keep the tiers they already earned.
+    highestUnlockedTier = ((json['highestUnlockedTier'] as int?)
+            ?? (prestigeLevel > kMaxTier ? kMaxTier : prestigeLevel))
+        .clamp(0, kMaxTier);
+    // Active difficulty tier: default legacy saves to the highest unlocked tier.
     activeTier = ((json['activeTier'] as int?) ?? highestUnlockedTier)
         .clamp(0, highestUnlockedTier);
     prestigeSouls = (json['prestigeSouls'] as int?) ?? 0;
+    // Paragon-per-level: seed to current level on first migration so existing
+    // heroes don't get a retroactive point dump — they earn from here forward.
+    _paragonLevelsGranted = (json['paragonLevelsGranted'] as int?) ?? hero.level;
     if (json['prestigeShop'] != null) {
       prestigeShop.loadFromJson(json['prestigeShop'] as Map<String, dynamic>);
     }
@@ -8969,6 +10117,8 @@ class GameState extends ChangeNotifier {
     _seenUnlockStages.addAll(
       (json['seenUnlockStages'] as List<dynamic>?)?.cast<int>() ?? [],
     );
+    _lastAbilityTutorialLevel = (json['lastAbilityTutorialLevel'] as int?) ?? 0;
+    _paragonTutorialSeen = (json['paragonTutorialSeen'] as bool?) ?? false;
     ownedRunes.clear();
     ownedRunes.addAll((json['ownedRunes'] as List<dynamic>?)?.cast<String>() ?? []);
     purchasedPacks.clear();
@@ -9167,12 +10317,17 @@ class GameState extends ChangeNotifier {
     _refreshEventIfNeeded();
     // Gauntlet
     gauntletHighScore = (json['gauntletHighScore'] as int?) ?? 0;
+    lastGauntletModifierIds = (json['lastGauntletModifierIds'] as List?)
+            ?.map((e) => e.toString())
+            .toList() ??
+        [];
     _upgradesTabSeen = (json['upgradesTabSeen'] as bool?) ?? false;
     _masteryTabSeen  = (json['masteryTabSeen']  as bool?) ?? false;
     gauntletHighestTier = (json['gauntletHighestTier'] as int?) ?? 0;
     _itemsEquipped = (json['questItemsEquipped'] as int?) ?? 0;
     _abilitiesUpgraded = (json['questAbilitiesUpgraded'] as int?) ?? 0;
     _classQuestlineNoticeSeen = (json['classQuestlineNoticeSeen'] as bool?) ?? (hero.level >= 30);
+    artifactsUnlocked = (json['artifactsUnlocked'] as bool?) ?? ownedArtifacts.isNotEmpty;
     _passivesUnlocked = (json['questPassivesUnlocked'] as int?) ?? 0;
     _gemsSocketed = (json['questGemsSocketed'] as int?) ?? 0;
     _itemsForged = (json['questItemsForged'] as int?) ?? 0;
@@ -9356,13 +10511,23 @@ class GameState extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Offline idle-accumulation window, in hours. Base 24h; each unlocked
+  /// "Deep Reserves" Paragon node adds +6h, up to +24h (a 48h maximum).
+  int get idleCapHours {
+    var h = 24;
+    for (final id in const ['idle_reserve_1', 'idle_reserve_2', 'idle_reserve_3', 'idle_reserve_4']) {
+      if (prestigeShop.isUnlocked(id)) h += 6;
+    }
+    return h;
+  }
+
   /// Computes idle earnings for the time since [sinceMs] and stashes them in the
   /// offline* fields for the welcome-back dialog (gold/essence are awarded). Used
   /// on cold load (persisted savedAt) and warm resume ([computeOfflineOnResume]).
   void _applyOfflineProgress(int sinceMs) {
     offlineGoldEarned = 0; offlineXpEarned = 0; offlineEssenceEarned = 0;
     offlineSecondsAway = 0; offlineWasCapped = false;
-    const capSecs = 8 * 3600;
+    final capSecs = idleCapHours * 3600;
     final elapsedSecs = ((DateTime.now().millisecondsSinceEpoch - sinceMs) / 1000).floor();
     if (elapsedSecs >= 120 && idleGoldPerMinute > 0) {
       offlineWasCapped = elapsedSecs > capSecs;

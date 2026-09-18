@@ -63,19 +63,24 @@ class AbilityUpgradeScreen extends StatelessWidget {
     final sv = game.scaledAbilityValue(a);
     final cd = game.scaledAbilityCooldown(a);
     switch (a.effect) {
-      case AbilityEffect.bonusDamage:      return '~$sv dmg  •  ${cd}r cd';
-      case AbilityEffect.heal:             return '+${sv}% HP  •  ${cd}r cd';
-      case AbilityEffect.attackBonus:      return '+$sv DMG for ${a.duration}r  •  ${cd}r cd';
-      case AbilityEffect.acBonus:          return '+$sv AC for ${a.duration}r  •  ${cd}r cd';
+      case AbilityEffect.bonusDamage:      return '~${AppTheme.fmtNumber(sv)} dmg  •  ${cd}r cd';
+      case AbilityEffect.heal:             return 'Heals ${AppTheme.fmtNumber(game.healFor(sv))} (${(sv / GameState.kHealValuePerMult).toStringAsFixed(1)}× Heal Rating)  •  ${cd}r cd';
+      case AbilityEffect.attackBonus:      return '+$sv% DMG for ${a.duration}r  •  ${cd}r cd';
+      case AbilityEffect.acBonus:          return '+$sv% AC for ${a.duration}r  •  ${cd}r cd';
       case AbilityEffect.stun:             return 'Stun ${a.duration}r  •  ${cd}r cd';
-      case AbilityEffect.dot:              return '$sv dmg/r for ${a.duration}r  •  ${cd}r cd';
+      case AbilityEffect.dot:              return '${AppTheme.fmtNumber(sv)} dmg/r for ${a.duration}r  •  ${cd}r cd';
       case AbilityEffect.dodge:            return 'Dodge 1 hit  •  ${cd}r cd';
-      case AbilityEffect.aura:             return '$sv% max HP/r for ${a.duration}r  •  ${cd}r cd';
+      case AbilityEffect.aura:             return '${AppTheme.fmtNumber(game.healFor(sv, factor: 0.5))} HP/r for ${a.duration}r  •  ${cd}r cd';
       case AbilityEffect.debuffWeaken:     return sv >= 100 ? 'Disarm ${a.duration}r  •  ${cd}r cd' : '−$sv% ATK for ${a.duration}r  •  ${cd}r cd';
       case AbilityEffect.debuffVulnerable: return '+$sv% dmg taken for ${a.duration}r  •  ${cd}r cd';
       case AbilityEffect.silence:          return 'Silence ${a.duration}r  •  ${cd}r cd';
       case AbilityEffect.absorbShield:     return '$sv HP barrier  •  ${cd}r cd';
       case AbilityEffect.missChance:       return '$sv% miss chance for ${a.duration}r  •  ${cd}r cd';
+      case AbilityEffect.frozen:           return 'Freeze ${a.duration}r  •  ${cd}r cd';
+      case AbilityEffect.shocked:          return 'Shock ${a.duration}r (+25% dmg)  •  ${cd}r cd';
+      case AbilityEffect.burning:          return 'Burn ${AppTheme.fmtNumber(sv)} dmg/r for ${a.duration}r  •  ${cd}r cd';
+      case AbilityEffect.envenomed:        return 'Poison ${AppTheme.fmtNumber(sv)} dmg/r (stacks) for ${a.duration}r  •  ${cd}r cd';
+      case AbilityEffect.withered:         return 'Wither −${sv.clamp(0, 60)}% ATK for ${a.duration}r  •  ${cd}r cd';
     }
   }
 
@@ -89,19 +94,24 @@ class AbilityUpgradeScreen extends StatelessWidget {
     // and no longer scales with rank — a rank-up never changes the cooldown.
     final ncd = game.scaledAbilityCooldown(a);
     switch (a.effect) {
-      case AbilityEffect.bonusDamage:      return '~$nv dmg  •  ${ncd}r cd';
-      case AbilityEffect.heal:             return '+${nv}% HP  •  ${ncd}r cd';
-      case AbilityEffect.attackBonus:      return '+${a.value + nextRankInTier} DMG for ${a.duration}r  •  ${ncd}r cd';
-      case AbilityEffect.acBonus:          return '+${a.value + nextRankInTier} AC for ${a.duration}r  •  ${ncd}r cd';
+      case AbilityEffect.bonusDamage:      return '~${AppTheme.fmtNumber(nv)} dmg  •  ${ncd}r cd';
+      case AbilityEffect.heal:             return 'Heals ${AppTheme.fmtNumber(game.healFor(nv))} (${(nv / GameState.kHealValuePerMult).toStringAsFixed(1)}× Heal Rating)  •  ${ncd}r cd';
+      case AbilityEffect.attackBonus:      return '+${a.value + nextRankInTier}% DMG for ${a.duration}r  •  ${ncd}r cd';
+      case AbilityEffect.acBonus:          return '+${a.value + nextRankInTier}% AC for ${a.duration}r  •  ${ncd}r cd';
       case AbilityEffect.stun:             return 'Stun ${a.duration}r  •  ${ncd}r cd';
-      case AbilityEffect.dot:              return '$nv dmg/r for ${a.duration}r  •  ${ncd}r cd';
+      case AbilityEffect.dot:              return '${AppTheme.fmtNumber(nv)} dmg/r for ${a.duration}r  •  ${ncd}r cd';
       case AbilityEffect.dodge:            return 'Dodge 1 hit  •  ${ncd}r cd';
-      case AbilityEffect.aura:             return '$nv% max HP/r for ${a.duration}r  •  ${ncd}r cd';
+      case AbilityEffect.aura:             return '${AppTheme.fmtNumber(game.healFor(nv, factor: 0.5))} HP/r for ${a.duration}r  •  ${ncd}r cd';
       case AbilityEffect.debuffWeaken:     return nv >= 100 ? 'Disarm ${a.duration}r  •  ${ncd}r cd' : '−$nv% ATK for ${a.duration}r  •  ${ncd}r cd';
       case AbilityEffect.debuffVulnerable: return '+$nv% dmg taken for ${a.duration}r  •  ${ncd}r cd';
       case AbilityEffect.silence:          return 'Silence ${a.duration}r  •  ${ncd}r cd';
       case AbilityEffect.absorbShield:     return '$nv HP barrier  •  ${ncd}r cd';
       case AbilityEffect.missChance:       return '$nv% miss chance for ${a.duration}r  •  ${ncd}r cd';
+      case AbilityEffect.frozen:           return 'Freeze ${a.duration}r  •  ${ncd}r cd';
+      case AbilityEffect.shocked:          return 'Shock ${a.duration}r (+25% dmg)  •  ${ncd}r cd';
+      case AbilityEffect.burning:          return 'Burn ${AppTheme.fmtNumber(nv)} dmg/r for ${a.duration}r  •  ${ncd}r cd';
+      case AbilityEffect.envenomed:        return 'Poison ${AppTheme.fmtNumber(nv)} dmg/r (stacks) for ${a.duration}r  •  ${ncd}r cd';
+      case AbilityEffect.withered:         return 'Wither −${nv.clamp(0, 60)}% ATK for ${a.duration}r  •  ${ncd}r cd';
     }
   }
 
@@ -121,12 +131,12 @@ class AbilityUpgradeScreen extends StatelessWidget {
     final mod  = game.hero.baseDmg;
     switch (a.effect) {
       case AbilityEffect.bonusDamage:
-        final lo = ((1 + mod) * mult).round().clamp(1, 9999);
-        final hi = ((sv + mod) * mult).round().clamp(1, 9999);
-        return '~$lo–$hi dmg  (+$pct% bonuses)';
+        final lo = ((1 + mod) * mult).round().clamp(1, 1000000000000000).toInt();
+        final hi = ((sv + mod) * mult).round().clamp(1, 1000000000000000).toInt();
+        return '~${AppTheme.fmtNumber(lo)}–${AppTheme.fmtNumber(hi)} dmg  (+$pct% bonuses)';
       case AbilityEffect.dot:
-        final scaled = (sv * mult).round().clamp(1, 9999);
-        return '~$scaled dmg/r  (+$pct% bonuses)';
+        final scaled = (sv * mult).round().clamp(1, 1000000000000000).toInt();
+        return '~${AppTheme.fmtNumber(scaled)} dmg/r  (+$pct% bonuses)';
       default:
         return null;
     }
@@ -143,12 +153,12 @@ class AbilityUpgradeScreen extends StatelessWidget {
     final mod  = game.hero.baseDmg;
     switch (a.effect) {
       case AbilityEffect.bonusDamage:
-        final lo = ((1 + mod) * mult).round().clamp(1, 9999);
-        final hi = ((nv + mod) * mult).round().clamp(1, 9999);
-        return '~$lo–$hi dmg';
+        final lo = ((1 + mod) * mult).round().clamp(1, 1000000000000000).toInt();
+        final hi = ((nv + mod) * mult).round().clamp(1, 1000000000000000).toInt();
+        return '~${AppTheme.fmtNumber(lo)}–${AppTheme.fmtNumber(hi)} dmg';
       case AbilityEffect.dot:
-        final scaled = (nv * mult).round().clamp(1, 9999);
-        return '~$scaled dmg/r';
+        final scaled = (nv * mult).round().clamp(1, 1000000000000000).toInt();
+        return '~${AppTheme.fmtNumber(scaled)} dmg/r';
       default:
         return null;
     }
@@ -173,7 +183,7 @@ class AbilityUpgradeScreen extends StatelessWidget {
           const Icon(Icons.diamond_outlined, color: Color(0xFF80d0ff), size: 13),
           const SizedBox(width: 5),
           Text(
-            '${game.shards}',
+            AppTheme.fmtNumber(game.shards),
             style: GoogleFonts.rajdhani(
               color: const Color(0xFF80d0ff),
               fontSize: 15,
@@ -244,7 +254,7 @@ class AbilityUpgradeScreen extends StatelessWidget {
         ),
         const SizedBox(height: 4),
         const Text(
-          'Spend shards to empower your abilities. Milestones at ranks 5, 10 and 15. Tier up after rank 15 — each tier requires a Rebirth.',
+          'Spend shards to empower your abilities. Milestones at ranks 5, 10 and 15. Tier up after rank 15 — each tier unlocks with your difficulty Tier.',
           style: TextStyle(color: Colors.white38, fontSize: 14),
         ),
         const SizedBox(height: 16),
@@ -296,7 +306,7 @@ class AbilityUpgradeScreen extends StatelessWidget {
                     color: Color(0xFF80d0ff), size: 14),
                 const SizedBox(width: 5),
                 Text(
-                  '${game.shards}',
+                  AppTheme.fmtNumber(game.shards),
                   style: GoogleFonts.rajdhani(
                     color: const Color(0xFF80d0ff),
                     fontSize: 17,
@@ -495,7 +505,7 @@ class _AbilityCard extends StatelessWidget {
               if (rank >= ms.rank)
                 _MilestoneRow(
                   milestone: ms,
-                  abilityId: ability.id,
+                  ability: ability,
                   game: game,
                   effectColor: effectColor,
                 ),
@@ -529,7 +539,7 @@ class _AbilityCard extends StatelessWidget {
                         ),
                         const SizedBox(width: 8),
                         Text(
-                          'TIER ${tier + 1}  —  Requires Rebirth ${game.abilityNextTierPrestige(ability.id)}',
+                          'TIER ${tier + 1}  —  Requires Difficulty Tier ${game.abilityNextTierPrestige(ability.id)}',
                           style: const TextStyle(
                             color: Colors.white30,
                             fontSize: 13,
@@ -631,8 +641,9 @@ class _AbilityAscendRow extends StatelessWidget {
     const gold = AppTheme.accentGold;
     final tier   = game.abilityAscensionTier(ability.id);
     final maxed  = tier >= GameState.kAbilityAscendMaxTier;
-    final ap     = game.ascensionPoints;
-    final canAscend = !maxed && ap >= 1;
+    final cap    = game.highestUnlockedTier; // ability ascension is unlocked by difficulty tiers
+    final tierLocked = !maxed && tier >= cap;
+    final canAscend  = !maxed && !tierLocked;
     final curPct  = (tier * GameState.kAbilityAscendPerTier * 100).round();
     final nextPct = ((tier + 1) * GameState.kAbilityAscendPerTier * 100).round();
 
@@ -658,13 +669,15 @@ class _AbilityAscendRow extends StatelessWidget {
                 Text('$tier / ${GameState.kAbilityAscendMaxTier}',
                     style: const TextStyle(color: Colors.white70, fontSize: 11)),
                 const Spacer(),
-                Text('$ap AP',
+                Text('Tier $cap unlocked',
                     style: const TextStyle(color: Colors.white38, fontSize: 11)),
               ]),
               Text(
                 maxed
                     ? 'Fully ascended  ·  +$curPct% ability power'
-                    : '+$curPct% power  →  +$nextPct% (1 AP)',
+                    : tierLocked
+                        ? '+$curPct% power  ·  Clear the campaign to unlock Tier ${tier + 1}'
+                        : '+$curPct% power  →  +$nextPct% (free — Tier ${tier + 1})',
                 style: const TextStyle(color: Colors.white38, fontSize: 11),
               ),
             ],
@@ -685,8 +698,8 @@ class _AbilityAscendRow extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
               minimumSize: const Size(0, 34),
             ),
-            child: const Text('ASCEND',
-                style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, letterSpacing: 1)),
+            child: Text(tierLocked ? 'LOCKED' : 'ASCEND',
+                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, letterSpacing: 1)),
           ),
       ]),
     );
@@ -842,23 +855,68 @@ class _RankPips extends StatelessWidget {
   }
 }
 
+/// A concrete, numbers-first note for a milestone choice's magnitude change so
+/// the player sees exactly what it does — e.g. "+100% damage" or "+15% (to 40%)".
+/// A valueDelta scales the ability's output by exactly valueDelta / baseValue
+/// (rank/tier independent) for damage/heal/DoT/aura/shield abilities; for
+/// percentage effects (attack/armor buffs, weaken, miss, vulnerable) it adds
+/// percentage points. Returns null when there's no valueDelta to describe.
+String? _milestoneEffectNote(AbilityChoice c, HeroAbility ability, GameState game) {
+  if (c.valueDelta == 0) return null;
+  switch (ability.effect) {
+    // Magnitude effects: show the exact scaled number this milestone adds now.
+    case AbilityEffect.bonusDamage:
+    case AbilityEffect.dot:
+    case AbilityEffect.heal:
+    case AbilityEffect.aura:
+      final baseScaled = game.scaledAbilityValue(ability);
+      final withScaled = game.scaledAbilityValueForBase(ability, ability.value + c.valueDelta);
+      final delta = withScaled - baseScaled;
+      if (delta <= 0) return null;
+      switch (ability.effect) {
+        case AbilityEffect.dot:
+          return '+${AppTheme.fmtNumber(delta)} damage/round';
+        case AbilityEffect.heal:
+          return '+${AppTheme.fmtNumber(game.healFor(delta))} HP';
+        case AbilityEffect.aura:
+          return '+${AppTheme.fmtNumber(game.healFor(delta, factor: 0.5))} HP/round';
+        default:
+          return '+${AppTheme.fmtNumber(delta)} damage';
+      }
+    // Percentage effects: value IS a %, so valueDelta adds percentage points.
+    case AbilityEffect.attackBonus:
+      return '+${c.valueDelta}% damage (to ${ability.value + c.valueDelta}%)';
+    case AbilityEffect.acBonus:
+      return '+${c.valueDelta}% armor (to ${ability.value + c.valueDelta}%)';
+    case AbilityEffect.debuffWeaken:
+      return '+${c.valueDelta}% weaken (to ${ability.value + c.valueDelta}%)';
+    case AbilityEffect.missChance:
+      return '+${c.valueDelta}% miss (to ${ability.value + c.valueDelta}%)';
+    case AbilityEffect.debuffVulnerable:
+      return '+${c.valueDelta}% vuln (to ${ability.value + c.valueDelta}%)';
+    default:
+      return null;
+  }
+}
+
 // ── Milestone row (shown once rank >= milestone.rank) ─────────────────────────
 
 class _MilestoneRow extends StatelessWidget {
   const _MilestoneRow({
     required this.milestone,
-    required this.abilityId,
+    required this.ability,
     required this.game,
     required this.effectColor,
   });
 
   final AbilityMilestone milestone;
-  final String           abilityId;
+  final HeroAbility      ability;
   final GameState        game;
   final Color            effectColor;
 
   @override
   Widget build(BuildContext context) {
+    final abilityId = ability.id;
     final chosen = game.milestoneChoice(abilityId, milestone.rank);
 
     return Padding(
@@ -885,6 +943,7 @@ class _MilestoneRow extends StatelessWidget {
               children: [
                 Expanded(child: _ChoiceOption(
                   choice: milestone.a,
+                  effectNote: _milestoneEffectNote(milestone.a, ability, game),
                   effectColor: effectColor,
                   onChoose: () {
                     game.setMilestoneChoice(abilityId, milestone.rank, 'a');
@@ -894,6 +953,7 @@ class _MilestoneRow extends StatelessWidget {
                 const SizedBox(width: 8),
                 Expanded(child: _ChoiceOption(
                   choice: milestone.b,
+                  effectNote: _milestoneEffectNote(milestone.b, ability, game),
                   effectColor: effectColor,
                   onChoose: () {
                     game.setMilestoneChoice(abilityId, milestone.rank, 'b');
@@ -905,6 +965,8 @@ class _MilestoneRow extends StatelessWidget {
           else
             _ChosenBadge(
               choice: chosen == 'a' ? milestone.a : milestone.b,
+              effectNote: _milestoneEffectNote(
+                  chosen == 'a' ? milestone.a : milestone.b, ability, game),
               effectColor: effectColor,
             ),
         ],
@@ -916,11 +978,13 @@ class _MilestoneRow extends StatelessWidget {
 class _ChoiceOption extends StatelessWidget {
   const _ChoiceOption({
     required this.choice,
+    required this.effectNote,
     required this.effectColor,
     required this.onChoose,
   });
 
   final AbilityChoice  choice;
+  final String?        effectNote;
   final Color          effectColor;
   final VoidCallback   onChoose;
 
@@ -945,6 +1009,14 @@ class _ChoiceOption extends StatelessWidget {
           Text(choice.description,
               style: const TextStyle(
                   color: Colors.white54, fontSize: 12, height: 1.3)),
+          if (effectNote != null) ...[
+            const SizedBox(height: 4),
+            Text(effectNote!,
+                style: TextStyle(
+                    color: effectColor,
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold)),
+          ],
           const SizedBox(height: 8),
           SizedBox(
             width: double.infinity,
@@ -970,9 +1042,10 @@ class _ChoiceOption extends StatelessWidget {
 }
 
 class _ChosenBadge extends StatelessWidget {
-  const _ChosenBadge({required this.choice, required this.effectColor});
+  const _ChosenBadge({required this.choice, required this.effectNote, required this.effectColor});
 
   final AbilityChoice choice;
+  final String?       effectNote;
   final Color         effectColor;
 
   @override
@@ -999,6 +1072,10 @@ class _ChosenBadge extends StatelessWidget {
             Text(choice.description,
                 style:
                     const TextStyle(color: Colors.white38, fontSize: 11)),
+            if (effectNote != null)
+              Text(effectNote!,
+                  style: TextStyle(
+                      color: effectColor, fontSize: 11, fontWeight: FontWeight.bold)),
           ],
         )),
       ]),

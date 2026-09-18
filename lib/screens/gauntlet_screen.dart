@@ -5,6 +5,8 @@ import 'package:flutter/material.dart';
 import '../data/bestiary_data.dart';
 import '../data/enemy_data.dart';
 import '../models/challenge_modifier.dart';
+import '../models/cc_tracker.dart';
+import '../models/mode_combat.dart';
 import '../models/damage_type.dart';
 import '../models/enemy.dart';
 import '../models/equipment.dart';
@@ -68,6 +70,8 @@ class _GauntletScreenState extends State<GauntletScreen> {
   int _enemyHp    = 0;
   int _enemyMaxHp = 0;
   int _kills      = 0;
+  int _minHp      = 1 << 30; // lowest HP reached (telemetry)
+  int _totalTaken = 0;       // total damage taken (telemetry)
   // Per-run fight-summary tracking (across all gauntlet waves).
   int _totalDealt = 0;
   int _maxHit = 0;
@@ -94,23 +98,55 @@ class _GauntletScreenState extends State<GauntletScreen> {
   double _enemyHpMult   = 1.0;
   double _enemyAtkMult  = 1.0;
   double _heroHpMult    = 1.0;
-  int    _essenceBonusPerKill = 0;
+  int    _essencePctBonus = 0; // sum of selected modifiers' % essence increase
 
   // -- Local ability state ---------------------------------------------------
   final _rng = Random();
   int _gAbilityRound = 0;
   final Map<String, int> _gCooldownUntil = {};
-  int _tempAtkBonus   = 0;
-  int _tempAtkRounds  = 0;
-  int _tempAcBonus    = 0;
-  int _tempAcRounds   = 0;
-  bool _enemyStunned  = false;
-  int _enemyWeakenRem = 0;
-  int _enemyVulnRem   = 0;
+  // Shared cross-mode combat status (buffs, debuffs, CC-DR, barrier). The old
+  // per-screen fields are now proxies onto it so the attack maths below is
+  // unchanged while ability resolution routes through the shared ModeCombat.
+  final _st = ModeStatus();
+  int  get _tempAtkBonus => _st.tempAtkPct;
+  set  _tempAtkBonus(int v) => _st.tempAtkPct = v;
+  int  get _tempAtkRounds => _st.tempAtkRounds;
+  set  _tempAtkRounds(int v) => _st.tempAtkRounds = v;
+  int  get _tempAcBonus => _st.tempAcPct;
+  set  _tempAcBonus(int v) => _st.tempAcPct = v;
+  int  get _tempAcRounds => _st.tempAcRounds;
+  set  _tempAcRounds(int v) => _st.tempAcRounds = v;
+  bool get _enemyStunned => _st.enemyStunnedThisRound;
+  set  _enemyStunned(bool v) => _st.enemyStunnedThisRound = v;
+  CcTracker get _cc => _st.cc;
+  int  get _enemyWeakenRem => _st.enemyWeakenRounds;
+  set  _enemyWeakenRem(int v) => _st.enemyWeakenRounds = v;
+  int  get _enemyVulnRem => _st.enemyVulnRounds;
+  set  _enemyVulnRem(int v) => _st.enemyVulnRounds = v;
 
   // -- Result ---------------------------------------------------------------
   GauntletResult? _result;
   GameState? _game;
+
+  bool _initializedDefaults = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Pre-select the last modifier set the player used, so their preferred
+    // modifiers are always active by default.
+    if (_initializedDefaults) return;
+    _initializedDefaults = true;
+    final last = GameStateProvider.of(context)
+        .lastGauntletModifierIds
+        .where((id) => ChallengeModifier.all.any((m) => m.id == id))
+        .take(_kMaxModifiers);
+    if (last.isNotEmpty) {
+      _selectedIds
+        ..clear()
+        ..addAll(last);
+    }
+  }
 
   @override
   void dispose() {
@@ -139,13 +175,6 @@ class _GauntletScreenState extends State<GauntletScreen> {
     _startTimer();
   }
 
-  void _pickRandomModifiers() {
-    final all = ChallengeModifier.all.map((m) => m.id).toList()..shuffle();
-    _selectedIds
-      ..clear()
-      ..addAll(all.take(_kMaxModifiers));
-  }
-
   // -- Modifier pick ---------------------------------------------------------
 
   void _toggleModifier(String id) {
@@ -166,15 +195,18 @@ class _GauntletScreenState extends State<GauntletScreen> {
     _enemyHpMult  = 1.0;
     _enemyAtkMult = 1.0;
     _heroHpMult   = 1.0;
-    _essenceBonusPerKill = 0;
+    _essencePctBonus = 0;
 
     for (final id in _selectedIds) {
       final mod = ChallengeModifier.all.firstWhere((m) => m.id == id);
       _enemyHpMult  *= mod.enemyHpMult;
       _enemyAtkMult *= mod.enemyAtkMult;
       _heroHpMult   *= mod.heroHpMult;
-      _essenceBonusPerKill += mod.rewardShardBonus;
+      _essencePctBonus += mod.rewardPctBonus;
     }
+
+    // Remember this modifier set so it's pre-selected next time.
+    game.setLastGauntletModifiers(_selectedIds.toList());
 
     // Cache hero stats
 
@@ -185,23 +217,20 @@ class _GauntletScreenState extends State<GauntletScreen> {
         + game.runeDmgBonus
         + game.ascDmgBonus;
 
-    _heroAc = game.hero.armorClass
-        + game.passiveTree.totalOf(PassiveEffect.armorFlat)
-        + game.inventory.totalOf(ItemStat.armorClass)
-        + game.petArmor
-        + game.skinArmor
-        + game.questACBonus
-        + game.runeAcBonus;
+    // Full hero armor RATING (same source as the campaign, incl. STR/sets/gems/
+    // artifacts/auras/mastery and the merc + subclass % boosts). Runs through the
+    // shared diminishing-returns curve in combat below.
+    _heroAc = game.heroArmorValue;
 
     _heroWeaponBase   = game.inventory.equippedWeaponDamage;
     _heroDmgType      = game.hero.activeDamageType;
     _heroDmgAllPct    = game.heroAllDamagePctFor(_heroDmgType);
-    _heroPrestigeMult = game.prestigeLevel > 0 ? game.prestigeDamageMult : 1.0;
-    _rebirthLvl        = game.prestigeLevel;
+    _heroPrestigeMult = game.prestigeDamageMult; // tier + Paragon damage (1.0 when none)
+    _rebirthLvl        = 0; // Gauntlet scales by its own tier, not the global tier
     _heroCritChancePct = game.totalCritChancePct;
     _heroCritDmgMult   = game.totalCritDamageMult.round();
 
-    final baseMaxHp = (game.hero.maxHealth * _heroHpMult).round().clamp(1, 999999);
+    final baseMaxHp = (game.hero.maxHealth * _heroHpMult).round().clamp(1, 1000000000000000);
 
     _gAbilityRound  = 0;
     _gCooldownUntil.clear();
@@ -210,6 +239,7 @@ class _GauntletScreenState extends State<GauntletScreen> {
     _tempAcBonus    = 0;
     _tempAcRounds   = 0;
     _enemyStunned   = false;
+    _cc.reset();
     _enemyWeakenRem = 0;
     _enemyVulnRem   = 0;
 
@@ -240,17 +270,22 @@ class _GauntletScreenState extends State<GauntletScreen> {
 
   void _spawnEnemy() {
     final stage = _waveStages[_waveIndex];
-    final base  = EnemyData.enemyForStage(stage, prestigeLevel: _rebirthLvl);
+    final base  = EnemyData.enemyForStage(stage, prestigeLevel: _rebirthLvl,
+        resistanceTier: _selectedTier);
     final tierHp  = _gauntletTierHpMult(_selectedTier);
     final tierAtk = _gauntletTierAtkMult(_selectedTier);
     final scaled = Enemy(
       id:          base.id,
       name:        '${base.name}  [${_waveIndex + 1}/$_kGauntletEnemies]',
       description: base.description,
-      maxHealth:   (base.maxHealth * tierHp * _enemyHpMult * RemoteConfigService.instance.gauntletHpMult).round().clamp(1, 999999),
-      attack:      (base.attack * tierAtk * _enemyAtkMult * RemoteConfigService.instance.gauntletAtkMult).round().clamp(1, 9999),
+      maxHealth:   (base.maxHealth * tierHp * _enemyHpMult * RemoteConfigService.instance.gauntletHpMult).round().clamp(1, 1000000000000000),
+      attack:      (base.attack * tierAtk * _enemyAtkMult * RemoteConfigService.instance.gauntletAtkMult).round().clamp(1, 1000000000000000),
       level:       base.level,
       armorClass:  base.armorClass,
+      // Full parity with the campaign: keep the enemy's attack type and
+      // (mode-tier-scaled) resistances so hero resistances/penetration matter.
+      attackType:  base.attackType,
+      resistances: base.resistances,
     );
     _enemyWeakenRem = 0;
     _enemyVulnRem   = 0;
@@ -273,7 +308,7 @@ class _GauntletScreenState extends State<GauntletScreen> {
     if (_gAbilityRound > 1) _log.add('— Round $_gAbilityRound —');
     // Aura HP regen — heal a % of max HP each turn (sustain).
     if (game.auraHpRegen > 0 && _heroHp > 0 && _heroHp < _heroMaxHp) {
-      final r = (_heroMaxHp * game.auraHpRegen / 100).round().clamp(1, 999999);
+      final r = (_heroMaxHp * game.auraHpRegen / 100).round().clamp(1, 1000000000000000);
       _heroHp = (_heroHp + r).clamp(0, _heroMaxHp);
       _log.add('✚ Aura regen: +$r HP.');
     }
@@ -316,20 +351,32 @@ class _GauntletScreenState extends State<GauntletScreen> {
       if (_tempAcRounds == 0) _tempAcBonus = 0;
     }
 
+    // -- Enemy damage-over-time tick (Fire/Poison/DoT abilities) ------------
+    final dotTick = _st.tickDot();
+    if (dotTick > 0) {
+      _enemyHp -= dotTick;
+      _totalDealt += dotTick;
+      _log.add('✸ Ongoing damage: $dotTick.');
+      _arenaKey.currentState?.addExtraFloat(dotTick);
+    }
+
     // -- Hero attacks (always lands, same formula as campaign; crit is
-    //    chance-based; ability ATK buff converts to crit chance) -----------
-    final critPct = _heroCritChancePct + _tempAtkBonus * 2;
+    //    chance-based; the attackBonus buff is a % damage boost only — applied
+    //    below — NOT extra crit chance, matching the campaign and other modes) --
+    final critPct = _heroCritChancePct;
     final crit    = _rng.nextInt(100) < critPct;
     {
       final die = _heroWeaponBase > 0
           ? _heroWeaponBase + _rng.nextInt((_heroWeaponBase ~/ 3).clamp(1, 50))
           : _rng.nextInt(8) + 1;
-      var dmg = ((crit ? die * _heroCritDmgMult : die) + _heroDmgMod).clamp(1, 9999);
+      var dmg = ((crit ? die * _heroCritDmgMult : die) + _heroDmgMod).clamp(1, 1000000000000000);
       dmg = (dmg * (1 + _heroDmgAllPct / 100.0) * _heroPrestigeMult).round();
-      final res = (enemy.resistances[_heroDmgType] ?? 0).clamp(-200, 75);
+      // attackBonus ability is now a % damage buff (matches the campaign).
+      if (_tempAtkBonus > 0) dmg = (dmg * (1 + _tempAtkBonus / 100.0)).round();
+      final res = (enemy.resistances[_heroDmgType] ?? 0).clamp(-200, 90);
       if (res != 0) dmg = (dmg * (1 - res / 100.0)).round();
       if (_enemyVulnRem > 0) dmg = (dmg * 1.25).round();
-      dmg = dmg.clamp(1, 9999);
+      dmg = dmg.clamp(1, 1000000000000000);
       setState(() => _enemyHp -= dmg);
       _totalDealt += dmg; _hitCount++; if (dmg > _maxHit) _maxHit = dmg;
       _log.add('${crit ? 'CRIT! ' : 'Hit! '}$dmg dmg${_enemyVulnRem > 0 ? ' (vuln)' : ''}.');
@@ -338,6 +385,11 @@ class _GauntletScreenState extends State<GauntletScreen> {
       _arenaKey.currentState?.playHeroAttack(dmg,
           isCrit: crit, heroClass: game.hero.heroClass,
           damageType: _heroDmgType);
+      final ls = game.lifestealHealPerHit();
+      if (ls > 0 && _heroHp < _heroMaxHp) {
+        _heroHp = (_heroHp + ls).clamp(0, _heroMaxHp);
+        _log.add('🩸 Lifesteal: +$ls HP.');
+      }
     }
 
     if (_enemyHp <= 0) {
@@ -361,6 +413,7 @@ class _GauntletScreenState extends State<GauntletScreen> {
     }
 
     // -- Enemy attacks back ------------------------------------------------
+    _cc.tickRound();
     if (_enemyStunned) {
       _enemyStunned = false;
       _log.add('Enemy is stunned — skips attack!');
@@ -368,16 +421,30 @@ class _GauntletScreenState extends State<GauntletScreen> {
       return;
     }
 
-    // Enemy always lands (same as campaign); armor is flat damage reduction.
-    {
-      final armor  = _heroAc + _tempAcBonus;
+    // Passive Dodge Rating first (same diminishing-returns curve as the
+    // campaign); then armor DR (physical) or hero resistance (elemental) via the
+    // shared mitigation — the AC ability buff is a % boost to the rating.
+    if (game.effectiveDodgePct > 0 && _rng.nextDouble() * 100 < game.effectiveDodgePct) {
+      _log.add('You evade the attack! (dodge)');
+    } else {
       final atkMax = _enemyWeakenRem > 0 ? max(1, (enemy.attack * 0.7).round()) : enemy.attack;
       final rawDmg = atkMax > 0 ? _rng.nextInt(atkMax) + 1 : 1;
-      final dmg    = (rawDmg - armor).clamp(1, 9999);
-      setState(() => _heroHp -= dmg);
-      _log.add('Enemy hits! $dmg to you${_enemyWeakenRem > 0 ? ' (weakened)' : ''}.');
+      final dmg    = game.mitigateIncoming(rawDmg, enemy.attackType, _heroAc, tempAcPct: _tempAcBonus)
+          .clamp(1, 1000000000000000);
+      final through = _st.absorb(dmg); // barrier soaks first (absorbShield)
+      if (through < dmg) _log.add('🛡 Barrier absorbs ${dmg - through}.');
+      setState(() => _heroHp -= through);
+      _totalTaken += through;
+      if (_heroHp < _minHp) _minHp = _heroHp;
+      _log.add('Enemy hits! $through to you${_enemyWeakenRem > 0 ? ' (weakened)' : ''}.');
       game.audioService.playEnemyAttack(weaknessForEnemyId(enemy.id));
-      _arenaKey.currentState?.playEnemyAttack(dmg);
+      _arenaKey.currentState?.playEnemyAttack(through);
+      final thorn = ModeCombat.thornsReflect(game, dmg);
+      if (thorn > 0) {
+        _enemyHp -= thorn;
+        _totalDealt += thorn;
+        _log.add('🌵 Thorns reflect $thorn dmg!');
+      }
       if (_heroHp <= 0) {
         _heroHp = 0;
         if (mounted) setState(() {});
@@ -397,72 +464,20 @@ class _GauntletScreenState extends State<GauntletScreen> {
     _effectKey.currentState?.playEffect(ability.id);
     game.audioService.playAbilityFull(ability.effect, _heroDmgType);
     final sv = game.scaledAbilityValue(ability);
-    switch (ability.effect) {
-      case AbilityEffect.bonusDamage:
-        final dmg = (sv * 0.5).round().clamp(1, 9999);
+    ModeCombat.applyAbility(
+      game, ability, sv, _st,
+      enemyResistPct: (_currentEnemy?.resistances[_heroDmgType] ?? 0).clamp(-200, 90),
+      dealDamage: (dmg) {
         _enemyHp -= dmg;
         _totalDealt += dmg; _hitCount++; if (dmg > _maxHit) _maxHit = dmg;
-        _log.add('✦ ${ability.name}: $dmg ability damage!');
         _arenaKey.currentState?.addExtraFloat(dmg);
-
-      case AbilityEffect.heal:
-        final h = sv.clamp(1, 9999);
-        setState(() => _heroHp = (_heroHp + h).clamp(0, _heroMaxHp));
-        _log.add('⊕ ${ability.name}: healed $h HP.');
-        _arenaKey.currentState?.addExtraFloat(h, isHeal: true);
-
-      case AbilityEffect.attackBonus:
-        _tempAtkBonus  = sv;
-        _tempAtkRounds = ability.duration > 0 ? ability.duration : 3;
-        _log.add('⚡ ${ability.name}: +$sv DMG for $_tempAtkRounds rounds.');
-
-      case AbilityEffect.acBonus:
-        _tempAcBonus  = sv;
-        _tempAcRounds = ability.duration > 0 ? ability.duration : 3;
-        _log.add('◆ ${ability.name}: +$sv AC for $_tempAcRounds rounds.');
-
-      case AbilityEffect.stun:
-        _enemyStunned = true;
-        _log.add('◉ ${ability.name}: enemy stunned!');
-
-      case AbilityEffect.dot:
-        final dmg = (sv * 0.6).round().clamp(1, 9999);
-        _enemyHp -= dmg;
-        _totalDealt += dmg; _hitCount++; if (dmg > _maxHit) _maxHit = dmg;
-        _log.add('✸ ${ability.name}: $dmg DoT damage!');
-        _arenaKey.currentState?.addExtraFloat(dmg);
-
-      case AbilityEffect.dodge:
-        _tempAcBonus  = 6;
-        _tempAcRounds = 1;
-        _log.add('◆ ${ability.name}: dodge — +6 AC this round.');
-
-      case AbilityEffect.aura:
-        final h = (sv * 0.5).round().clamp(1, 9999);
-        setState(() => _heroHp = (_heroHp + h).clamp(0, _heroMaxHp));
-        _log.add('⊕ ${ability.name}: aura healed $h HP.');
-        _arenaKey.currentState?.addExtraFloat(h, isHeal: true);
-
-      case AbilityEffect.debuffWeaken:
-        _enemyWeakenRem = 3;
-        _log.add('✸ ${ability.name}: enemy weakened for 3 rounds!');
-
-      case AbilityEffect.debuffVulnerable:
-        _enemyVulnRem = 3;
-        _log.add('⚡ ${ability.name}: enemy vulnerable for 3 rounds!');
-
-      case AbilityEffect.silence:
-        _enemyStunned = true;
-        _log.add('◉ ${ability.name}: enemy silenced!');
-
-      case AbilityEffect.absorbShield:
-        setState(() => _heroHp = (_heroHp + sv).clamp(0, _heroMaxHp));
-        _log.add('+ ${ability.name}: +$sv HP barrier!');
-
-      case AbilityEffect.missChance:
-        _enemyWeakenRem = ability.duration > 0 ? ability.duration : 2;
-        _log.add('✸ ${ability.name}: enemy miss chance applied!');
-    }
+      },
+      healHero: (hp) {
+        setState(() => _heroHp = (_heroHp + hp).clamp(0, _heroMaxHp));
+        _arenaKey.currentState?.addExtraFloat(hp, isHeal: true);
+      },
+      log: _log.add,
+    );
   }
 
   void _endRun({required bool heroWon}) {
@@ -480,6 +495,17 @@ class _GauntletScreenState extends State<GauntletScreen> {
     );
     game.audioService.endBattleMusic();
 
+    final minHp = _minHp == (1 << 30) ? _heroMaxHp : _minHp;
+    ModeCombat.logBalance({
+      'mode': 'gauntlet', 'tier': _selectedTier, 'win': heroWon,
+      'rounds': _gAbilityRound, 'h_lvl': game.hero.level,
+      'h_hp': _heroMaxHp, 'h_hp_end': _heroHp.clamp(0, _heroMaxHp),
+      'h_hp_pct': _heroMaxHp > 0 ? (_heroHp.clamp(0, _heroMaxHp) * 100 / _heroMaxHp).round() : 0,
+      'h_hp_min_pct': _heroMaxHp > 0 ? (minHp.clamp(0, _heroMaxHp) * 100 / _heroMaxHp).round() : 100,
+      'h_dmg_taken': _totalTaken, 'kills': _kills,
+      'dmg': _totalDealt, 'maxhit': _maxHit, 'hits': _hitCount,
+    });
+
     // Score: kills × (1 + modifier count) × 100 × tier, +2000 for a clear
     final modCount = _selectedIds.length;
     final tierMult = 1.0 + (_selectedTier - 1) * 0.3;
@@ -487,9 +513,12 @@ class _GauntletScreenState extends State<GauntletScreen> {
     final clearBonus = heroWon ? (2000 * tierMult).round() : 0;
     final score = baseScore + clearBonus;
 
-    // Rewards: scale with tier and rebirth (essence tracks the +prestige difficulty)
-    final rebirthMult = 1.0 + game.prestigeLevel * 0.15;
-    final essence = (_kills * (5 + _essenceBonusPerKill) * tierMult * rebirthMult).round();
+    // Rewards: progressive tiers give a higher FLAT soul income per kill
+    // (5 × tierMult × rebirthMult); selected modifiers scale that up by their
+    // combined % essence bonus.
+    final rebirthMult = 1.0 + game.highestUnlockedTier * 0.15;
+    final flatSoulPerKill = 5 * tierMult * rebirthMult;
+    final essence = (_kills * flatSoulPerKill * (1 + _essencePctBonus / 100.0)).round();
     final zcoins = heroWon ? (10 + modCount * 5) * _selectedTier : 0;
     final echoMult = (1.0 + modCount * 0.25) * tierMult;
     final echoReward = ((_kills * 8 + (heroWon ? 40 + modCount * 20 : 0)) * echoMult).round();
@@ -513,7 +542,7 @@ class _GauntletScreenState extends State<GauntletScreen> {
       heroClass: game.hero.heroClass.displayName,
       subclass:  game.subclassName,
       spriteId:  game.heroBattleSpriteId,
-      rebirths:  game.prestigeLevel,
+      rebirths:  game.leaderboardRebirths,
       stage:     game.gauntletHighScore,
       title:       game.activeTitle,
       nameColorId: game.activeNameColor,
@@ -530,7 +559,6 @@ class _GauntletScreenState extends State<GauntletScreen> {
     if (_autoRepeat) {
       _autoRestartTimer = Timer(const Duration(seconds: 2), () {
         if (!mounted || !_autoRepeat) return;
-        _pickRandomModifiers();
         _startBattle();
       });
     }
@@ -678,14 +706,18 @@ class _GauntletScreenState extends State<GauntletScreen> {
 
   Widget _buildRewardPreview() {
     final modCount   = _selectedIds.length;
-    final essenceBonus = _selectedIds.isEmpty
+    final essencePct = _selectedIds.isEmpty
         ? 0
         : _selectedIds
             .map((id) => ChallengeModifier.all
                 .firstWhere((m) => m.id == id)
-                .rewardShardBonus)
+                .rewardPctBonus)
             .reduce((a, b) => a + b);
-    final essence   = _kGauntletEnemies * (5 + essenceBonus);
+    final game        = GameStateProvider.of(context);
+    final tierMult    = 1.0 + (_selectedTier - 1) * 0.3;
+    final rebirthMult = 1.0 + game.highestUnlockedTier * 0.15;
+    final essence     = (_kGauntletEnemies * 5 * tierMult * rebirthMult
+        * (1 + essencePct / 100.0)).round();
     final zcoins = 10 + modCount * 5;
     final scoreMult = 1 + modCount;
 
@@ -837,7 +869,7 @@ class _GauntletScreenState extends State<GauntletScreen> {
                 borderRadius: BorderRadius.circular(4),
               ),
               child: Center(
-                child: Text('AUTO — restarting with random modifiers—',
+                child: Text('AUTO — restarting with your modifiers—',
                     style: AppTheme.pixelHeading(
                         fontSize: 10, color: const Color(0xFF44dd88), letterSpacing: 1)),
               ),
@@ -850,7 +882,6 @@ class _GauntletScreenState extends State<GauntletScreen> {
                     _autoRepeat = !_autoRepeat;
                     if (_autoRepeat) {
                       _autoRestartTimer?.cancel();
-                      _pickRandomModifiers();
                       _startBattle();
                     } else {
                       _autoRestartTimer?.cancel();
@@ -1124,7 +1155,7 @@ class _ModifierPickCard extends StatelessWidget {
                               : AppTheme.textMuted.withValues(alpha: 0.5),
                           height: 1.3)),
                   const SizedBox(height: 6),
-                  Text('+${mod.rewardShardBonus} essence/kill',
+                  Text('+${mod.rewardPctBonus}% essence',
                       style: TextStyle(
                           fontSize: 10,
                           color: enabled

@@ -19,7 +19,7 @@ class BuffHud extends StatelessWidget {
       chips.add(_BuffChip(
         icon: Icons.add_circle,
         color: const Color(0xFFffcc00),
-        label: '+${game.buffAttackBonus} ATK',
+        label: '+${game.buffAttackBonus}% DMG',
         rounds: game.buffAttackRounds,
         isHeroBuff: true,
       ));
@@ -28,7 +28,7 @@ class BuffHud extends StatelessWidget {
       chips.add(_BuffChip(
         icon: Icons.shield,
         color: const Color(0xFF66aaff),
-        label: '+${game.buffAcBonus} AC',
+        label: '+${game.buffAcBonus}% Armor',
         rounds: game.buffAcRounds,
         isHeroBuff: true,
       ));

@@ -5,9 +5,11 @@ import '../models/dnd_class.dart';
 import '../models/hero_model.dart' show HeroGender;
 import '../models/hero_race.dart';
 import '../models/hero_trait.dart';
+import '../models/shop_catalog.dart';
 import '../services/game_state.dart';
 import '../services/save_service.dart';
 import '../theme/app_theme.dart';
+import '../widgets/battle_sprites.dart';
 import 'character_creation_screen.dart';
 
 class CharacterSelectScreen extends StatefulWidget {
@@ -60,13 +62,8 @@ class _CharacterSelectScreenState extends State<CharacterSelectScreen> {
     widget.onCharacterSelected(slot, result.name, result.heroClass, result.heroRace, result.trait, result.gender);
   }
 
-  Future<void> _onSlotLongPressed(int slot, CharacterSummary? existing) async {
-    await _confirmDelete(slot, existing);
-  }
-
-  Future<void> _confirmDelete(int slot, CharacterSummary? existing) async {
-    if (existing == null) return;
-    final game = GameStateProvider.of(context); // capture before async gap
+  /// Confirmation dialog only — returns whether the user chose to delete.
+  Future<bool> _confirmDeleteDialog(CharacterSummary existing) async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -91,12 +88,16 @@ class _CharacterSelectScreenState extends State<CharacterSelectScreen> {
         ],
       ),
     );
-    if (confirmed == true) {
-      // Delete locally AND in the cloud (single doc per account) so the
-      // character can't resurrect from cloud on the next load.
-      await game.deleteCharacterSlot(slot);
-      _refresh();
-    }
+    return confirmed == true;
+  }
+
+  /// Actually delete the slot (local + cloud) and refresh the list.
+  Future<void> _deleteSlot(int slot) async {
+    final game = GameStateProvider.of(context);
+    // Delete locally AND in the cloud (single doc per account) so the
+    // character can't resurrect from cloud on the next load.
+    await game.deleteCharacterSlot(slot);
+    _refresh();
   }
 
   @override
@@ -167,25 +168,44 @@ class _CharacterSelectScreenState extends State<CharacterSelectScreen> {
                       prestigeLevel: game.confirmedPrestigeLevel,
                       totalAscensionAp: game.totalAscensionAp,
                       gender: live.gender,
+                      heroRace: live.heroRace ?? game.heroRace,
+                      frameId: game.activeFrame,
+                      nameColorId: game.activeNameColor,
                     );
                   }
                 }
                 final showLock = data.extraSlots < SaveService.maxExtraSlots;
                 final itemCount = chars.length + (showLock ? 1 : 0);
                 return ListView.separated(
-                  padding: const EdgeInsets.symmetric(horizontal: 40),
+                  // Bottom padding keeps the last card (often the faint LOCKED
+                  // SLOT) from crowding the fixed "swipe to delete" footer.
+                  padding: const EdgeInsets.fromLTRB(40, 0, 40, 16),
                   itemCount: itemCount,
                   separatorBuilder: (_, __) => const SizedBox(height: 16),
                   itemBuilder: (ctx, i) {
-                    final Widget tile = i >= chars.length
-                        ? _LockedSlotTile(cost: 250 * (data.extraSlots + 1))
-                        : _SlotTile(
-                            index: i,
-                            summary: chars[i],
-                            onTap: () => _onSlotTapped(i, chars[i]),
-                            onLongPress: () => _onSlotLongPressed(i, chars[i]),
-                            onDelete: () => _confirmDelete(i, chars[i]),
-                          );
+                    Widget tile;
+                    if (i >= chars.length) {
+                      tile = _LockedSlotTile(cost: 250 * (data.extraSlots + 1));
+                    } else {
+                      final slotTile = _SlotTile(
+                        summary: chars[i],
+                        frameColor: CosmeticItem.frameColorFor(chars[i]?.frameId),
+                        nameColor: CosmeticItem.nameColorFor(chars[i]?.nameColorId),
+                        onTap: () => _onSlotTapped(i, chars[i]),
+                      );
+                      final existing = chars[i];
+                      // Occupied slots: swipe right-to-left to delete.
+                      tile = existing == null
+                          ? slotTile
+                          : Dismissible(
+                              key: ValueKey('slot_${i}_${existing.name}'),
+                              direction: DismissDirection.endToStart,
+                              background: const _DeleteSwipeBackground(),
+                              confirmDismiss: (_) => _confirmDeleteDialog(existing),
+                              onDismissed: (_) => _deleteSlot(i),
+                              child: slotTile,
+                            );
+                    }
                     return tile
                         .animate(delay: (150 + i * 100).ms)
                         .fadeIn(duration: 400.ms)
@@ -201,7 +221,7 @@ class _CharacterSelectScreenState extends State<CharacterSelectScreen> {
           Padding(
             padding: const EdgeInsets.only(bottom: 24),
             child: Text(
-              'Tap the trash icon to delete a character',
+              'Swipe a character left to delete',
               style: GoogleFonts.rajdhani(
                 fontSize: 11,
                 color: AppTheme.textMuted.withValues(alpha: 0.5),
@@ -217,86 +237,70 @@ class _CharacterSelectScreenState extends State<CharacterSelectScreen> {
 
 class _SlotTile extends StatelessWidget {
   const _SlotTile({
-    required this.index,
     required this.summary,
     required this.onTap,
-    required this.onLongPress,
-    required this.onDelete,
+    this.frameColor,
+    this.nameColor,
   });
 
-  final int index;
   final CharacterSummary? summary;
+  final Color? frameColor; // equipped premium portrait frame
+  final Color? nameColor;  // equipped premium name colour
   final VoidCallback onTap;
-  final VoidCallback onLongPress;
-  final VoidCallback onDelete;
 
   @override
   Widget build(BuildContext context) {
     final isEmpty = summary == null;
     return GestureDetector(
       onTap: onTap,
-      onLongPress: onLongPress,
       child: Container(
         height: 88,
         decoration: BoxDecoration(
           color: isEmpty ? AppTheme.darkBg : AppTheme.cardBg,
+          // Equipped premium frame recolours the whole card outline; otherwise
+          // the default gold border is used.
           border: Border.all(
             color: isEmpty
                 ? AppTheme.cardBorder
-                : AppTheme.accentGold.withValues(alpha: 0.6),
+                : (frameColor ?? AppTheme.accentGold.withValues(alpha: 0.6)),
             width: isEmpty ? 1 : 2,
           ),
+          boxShadow: (!isEmpty && frameColor != null)
+              ? [BoxShadow(color: frameColor!.withValues(alpha: 0.4), blurRadius: 7)]
+              : null,
         ),
         child: Stack(
           children: [
-            Positioned(
-              top: 8,
-              left: 12,
-              child: Text(
-                '${index + 1}',
-                style: GoogleFonts.rajdhani(
-                  fontSize: 12,
-                  color: AppTheme.textMuted.withValues(alpha: 0.5),
-                ),
-              ),
-            ),
-            Center(
-              child: isEmpty
-                  ? _buildEmpty()
-                  : _buildCharacter(summary!),
-            ),
-            if (!isEmpty) ...[
-              Positioned(
-                right: 16,
-                top: 0,
-                bottom: 0,
-                child: Center(
-                  child: Text(
-                    '>',
-                    style: GoogleFonts.rajdhani(
-                      fontSize: 19,
-                      color: AppTheme.accentGold.withValues(alpha: 0.7),
+            isEmpty
+                ? Center(child: _buildEmpty())
+                : Padding(
+                    padding: const EdgeInsets.only(left: 16, right: 18),
+                    child: Row(
+                      children: [
+                        // Hero sprite (class + gender + race), wrapped in the
+                        // equipped premium portrait frame when one is set.
+                        _framedSprite(),
+                        const SizedBox(width: 14),
+                        Expanded(child: _buildCharacter(summary!)),
+                      ],
                     ),
                   ),
-                ),
-              ),
-              Positioned(
-                top: 4,
-                right: 4,
-                child: GestureDetector(
-                  onTap: onDelete,
-                  child: Padding(
-                    padding: const EdgeInsets.all(6),
-                    child: Icon(
-                      Icons.delete_outline,
-                      size: 15,
-                      color: AppTheme.accentRed.withValues(alpha: 0.7),
-                    ),
-                  ),
-                ),
-              ),
-            ],
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _framedSprite() {
+    return SizedBox(
+      width: 50,
+      height: 74,
+      child: FittedBox(
+        fit: BoxFit.contain,
+        child: BattleSprite(
+          spriteId: summary!.heroClass?.spriteId ?? DndClass.fighter.spriteId,
+          gender: summary!.gender,
+          race: summary!.heroRace,
         ),
       ),
     );
@@ -322,8 +326,10 @@ class _SlotTile extends StatelessWidget {
 
   Widget _buildCharacter(CharacterSummary char) {
     final classLabel = char.heroClass?.displayName;
+    final race = char.heroRace?.info;
     return Column(
       mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
           mainAxisSize: MainAxisSize.min,
@@ -338,21 +344,47 @@ class _SlotTile extends StatelessWidget {
               ),
               const SizedBox(width: 6),
             ],
-            Text(
-              char.name,
-              style: GoogleFonts.rajdhani(
-                fontSize: 19,
-                fontWeight: FontWeight.bold,
-                color: AppTheme.textLight,
-                letterSpacing: 1,
+            Flexible(
+              child: Text(
+                char.name,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: GoogleFonts.rajdhani(
+                  fontSize: 19,
+                  fontWeight: FontWeight.bold,
+                  color: nameColor ?? AppTheme.textLight,
+                  letterSpacing: 1,
+                ),
               ),
             ),
+            // Race trait symbol.
+            if (race != null) ...[
+              const SizedBox(width: 8),
+              Text(race.icon, style: const TextStyle(fontSize: 15)),
+            ],
           ],
         ),
         const SizedBox(height: 6),
         Row(
           mainAxisSize: MainAxisSize.min,
           children: [
+            if (race != null) ...[
+              Text(
+                race.displayName,
+                style: GoogleFonts.rajdhani(
+                  fontSize: 12,
+                  color: race.color,
+                  letterSpacing: 1,
+                ),
+              ),
+              Text(
+                '  ·  ',
+                style: GoogleFonts.rajdhani(
+                  fontSize: 12,
+                  color: AppTheme.cardBorder,
+                ),
+              ),
+            ],
             if (classLabel != null) ...[
               Text(
                 classLabel,
@@ -375,23 +407,6 @@ class _SlotTile extends StatelessWidget {
               style: GoogleFonts.rajdhani(
                 fontSize: 13,
                 color: AppTheme.accentGold,
-                letterSpacing: 1,
-              ),
-            ),
-            Text(
-              '  ·  ',
-              style: GoogleFonts.rajdhani(
-                fontSize: 12,
-                color: AppTheme.cardBorder,
-              ),
-            ),
-            Text(
-              '✦ Rebirth ${char.prestigeLevel}',
-              style: GoogleFonts.rajdhani(
-                fontSize: 12,
-                color: char.prestigeLevel > 0
-                    ? const Color(0xFFcc88ff)
-                    : AppTheme.textMuted,
                 letterSpacing: 1,
               ),
             ),
@@ -424,6 +439,38 @@ class _SelectData {
   const _SelectData(this.characters, this.extraSlots);
   final List<CharacterSummary?> characters;
   final int extraSlots;
+}
+
+/// Red reveal shown behind a slot as you swipe it right-to-left to delete.
+class _DeleteSwipeBackground extends StatelessWidget {
+  const _DeleteSwipeBackground();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 88,
+      alignment: Alignment.centerRight,
+      padding: const EdgeInsets.symmetric(horizontal: 22),
+      decoration: BoxDecoration(
+        color: AppTheme.accentRed.withValues(alpha: 0.85),
+        border: Border.all(color: AppTheme.accentRed, width: 2),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text('DELETE',
+              style: GoogleFonts.rajdhani(
+                color: Colors.white,
+                fontSize: 13,
+                fontWeight: FontWeight.bold,
+                letterSpacing: 1.5,
+              )),
+          const SizedBox(width: 8),
+          const Icon(Icons.delete_outline, color: Colors.white, size: 20),
+        ],
+      ),
+    );
+  }
 }
 
 class _LockedSlotTile extends StatelessWidget {

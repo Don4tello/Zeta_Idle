@@ -337,6 +337,11 @@ class _LegendaryCard extends StatelessWidget {
       AbilityEffect.silence      => 'Silence $dur rounds',
       AbilityEffect.absorbShield => '$val HP barrier',
       AbilityEffect.missChance   => '$val% miss chance for $dur rounds',
+      AbilityEffect.frozen       => 'Freeze enemy for $dur rounds',
+      AbilityEffect.shocked      => 'Shock enemy for $dur rounds (+25% dmg)',
+      AbilityEffect.burning      => 'Burn $val% dmg/round for $dur rounds',
+      AbilityEffect.envenomed    => 'Poison $val% dmg/round (stacks) for $dur rounds',
+      AbilityEffect.withered     => 'Wither enemy ATK −$val% for $dur rounds',
     };
   }
 }

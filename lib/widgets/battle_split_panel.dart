@@ -78,13 +78,24 @@ class BattleSplitPanel extends StatelessWidget {
         lines.add('Creates a $sv HP barrier that absorbs incoming damage');
       case AbilityEffect.missChance:
         lines.add('Enemy has $sv% chance to miss each attack for ${a.duration} rounds');
+      case AbilityEffect.frozen:
+        lines.add('Freezes enemy for ${a.duration} rounds (skips its turn)');
+      case AbilityEffect.shocked:
+        lines.add('Shocks enemy for ${a.duration} rounds (skips its turn, +25% damage taken)');
+      case AbilityEffect.burning:
+        lines.add('${dmgType.emoji} Burns for ~$sv ${dmgType.label} dmg/round for ${a.duration} rounds');
+      case AbilityEffect.envenomed:
+        lines.add('${dmgType.emoji} Poisons for ~$sv ${dmgType.label} dmg/round (stacks) for ${a.duration} rounds');
+      case AbilityEffect.withered:
+        lines.add('Withers enemy ATK by ${sv.clamp(0, 60)}% for ${a.duration} rounds');
     }
 
     if (rank > 0) lines.add('Rank $rank');
-    if (abilityDmgPct > 0 && (a.effect == AbilityEffect.bonusDamage || a.effect == AbilityEffect.dot)) {
+    const dmgEffects = {AbilityEffect.bonusDamage, AbilityEffect.dot, AbilityEffect.burning, AbilityEffect.envenomed};
+    if (abilityDmgPct > 0 && dmgEffects.contains(a.effect)) {
       lines.add('+$abilityDmgPct% ability damage bonus');
     }
-    if (penPct > 0 && (a.effect == AbilityEffect.bonusDamage || a.effect == AbilityEffect.dot)) {
+    if (penPct > 0 && dmgEffects.contains(a.effect)) {
       lines.add('$penPct% resistance penetration');
     }
     lines.add('Cooldown: $totalCd rounds'
@@ -182,13 +193,13 @@ class BattleSplitPanel extends StatelessWidget {
     // Hero buffs
     if (game.buffAttackBonus > 0) {
       addStatus(Icons.add_circle, const Color(0xFFffcc00),
-          '+${game.buffAttackBonus} ATK', game.buffAttackRounds,
-          '+${game.buffAttackBonus} bonus critical damage.\nExpires in ${game.buffAttackRounds} round${game.buffAttackRounds != 1 ? "s" : ""}.');
+          '+${game.buffAttackBonus}% DMG', game.buffAttackRounds,
+          '+${game.buffAttackBonus}% damage dealt.\nExpires in ${game.buffAttackRounds} round${game.buffAttackRounds != 1 ? "s" : ""}.');
     }
     if (game.buffAcBonus > 0) {
       addStatus(Icons.shield, const Color(0xFF66aaff),
-          '+${game.buffAcBonus} AC', game.buffAcRounds,
-          '+${game.buffAcBonus} bonus Armor.\nExpires in ${game.buffAcRounds} round${game.buffAcRounds != 1 ? "s" : ""}.');
+          '+${game.buffAcBonus}% Armor', game.buffAcRounds,
+          '+${game.buffAcBonus}% Armor Class rating.\nExpires in ${game.buffAcRounds} round${game.buffAcRounds != 1 ? "s" : ""}.');
     }
     if (game.dodgeNextHit) {
       addStatus(Icons.directions_run, const Color(0xFF44ddcc), 'DODGE', 1,
@@ -505,13 +516,13 @@ class BattleIconBar extends StatelessWidget {
     final statuses = <({IconData icon, Color color, String label, String desc, int rounds})>[];
     if (game.buffAttackBonus > 0)
       statuses.add((icon: Icons.add_circle, color: const Color(0xFFffcc00),
-          label: '+${game.buffAttackBonus} ATK',
-          desc: 'Your hero deals +${game.buffAttackBonus} bonus damage per hit.',
+          label: '+${game.buffAttackBonus}% DMG',
+          desc: 'Your hero deals +${game.buffAttackBonus}% damage per hit.',
           rounds: game.buffAttackRounds));
     if (game.buffAcBonus > 0)
       statuses.add((icon: Icons.shield, color: const Color(0xFF66aaff),
-          label: '+${game.buffAcBonus} Armor',
-          desc: '+${game.buffAcBonus} armor — reduces incoming enemy damage.',
+          label: '+${game.buffAcBonus}% Armor',
+          desc: '+${game.buffAcBonus}% Armor Class rating — reduces incoming enemy damage.',
           rounds: game.buffAcRounds));
     if (game.dodgeNextHit)
       statuses.add((icon: Icons.directions_run, color: const Color(0xFF44ddcc),

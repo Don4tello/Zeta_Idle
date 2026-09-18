@@ -1,7 +1,10 @@
 ﻿import 'package:flutter/material.dart';
+import '../models/hero_race.dart';
 import '../models/login_streak.dart';
+import '../models/shop_catalog.dart';
 import '../services/game_state.dart';
 import '../theme/app_theme.dart';
+import '../widgets/battle_sprites.dart';
 
 class LoginStreakScreen extends StatelessWidget {
   const LoginStreakScreen({super.key});
@@ -29,6 +32,8 @@ class LoginStreakScreen extends StatelessWidget {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
+          _HeroBanner(game: game),
+          const SizedBox(height: 14),
           _InfoBanner(streak: streak, dayInCycle: dayInCycle, claimed: todayClaimed),
           const SizedBox(height: 16),
           GridView.count(
@@ -78,6 +83,123 @@ class LoginStreakScreen extends StatelessWidget {
           _CyclePreview(dayInCycle: dayInCycle, claimed: todayClaimed),
         ],
       ),
+    );
+  }
+}
+
+/// Personal touch on the login screen — the player's hero sprite plus a small
+/// race indicator chip and class/level line.
+class _HeroBanner extends StatelessWidget {
+  const _HeroBanner({required this.game});
+  final GameState game;
+
+  @override
+  Widget build(BuildContext context) {
+    final race = game.heroRace?.info;
+    final accent = race?.color ?? AppTheme.accentGold;
+    final hero = game.hero;
+
+    // Equipped premium cosmetics.
+    final frameColor = CosmeticItem.frameColorFor(game.activeFrame);
+    final nameColor  = game.nameColor;
+    final title      = game.activeTitle;
+
+    // Framed hero sprite (scaled down to fit the banner). The premium portrait
+    // frame recolours the border + glow when equipped.
+    Widget spriteBox = Container(
+      width: 76,
+      height: 84,
+      decoration: BoxDecoration(
+        color: const Color(0xFF17150E),
+        border: Border.all(
+            color: frameColor ?? AppTheme.accentGold.withValues(alpha: 0.4),
+            width: frameColor != null ? 2 : 1),
+        borderRadius: BorderRadius.circular(4),
+        boxShadow: frameColor != null
+            ? [BoxShadow(color: frameColor.withValues(alpha: 0.5), blurRadius: 8)]
+            : null,
+      ),
+      clipBehavior: Clip.hardEdge,
+      child: FittedBox(
+        fit: BoxFit.contain,
+        child: Padding(
+          padding: const EdgeInsets.all(6),
+          child: BattleSprite(
+            spriteId: game.heroBattleSpriteId,
+            gender: hero.gender,
+            race: game.heroRace,
+            auraColor: game.heroAuraColor,
+            auraIntensity: game.heroAuraIntensity,
+            colorFilter: game.heroSpriteFilter,
+          ),
+        ),
+      ),
+    );
+
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(colors: [
+          accent.withValues(alpha: 0.10),
+          const Color(0xFF231F1B),
+        ]),
+        border: Border.all(color: accent.withValues(alpha: 0.4)),
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Row(children: [
+        spriteBox,
+        const SizedBox(width: 14),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Equipped premium title (coloured to match).
+              if (title != null && title.isNotEmpty) ...[
+                Text(
+                  title.toUpperCase(),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppTheme.pixelHeading(
+                      fontSize: 9,
+                      letterSpacing: 1.2,
+                      color: CosmeticItem.titleColorForName(title)),
+                ),
+                const SizedBox(height: 3),
+              ],
+              Text(
+                hero.name.trim().isNotEmpty ? hero.name : hero.heroClass.displayName,
+                style: AppTheme.pixelHeading(fontSize: 15, letterSpacing: 1)
+                    .copyWith(color: nameColor),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+              const SizedBox(height: 4),
+              Text('Lv ${hero.level}  •  ${hero.heroClass.displayName}',
+                  style: const TextStyle(fontSize: 12, color: AppTheme.textMuted)),
+              const SizedBox(height: 8),
+              if (race != null)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: race.color.withValues(alpha: 0.15),
+                    border: Border.all(color: race.color.withValues(alpha: 0.6)),
+                    borderRadius: BorderRadius.circular(3),
+                  ),
+                  child: Row(mainAxisSize: MainAxisSize.min, children: [
+                    Text(race.icon, style: const TextStyle(fontSize: 12)),
+                    const SizedBox(width: 5),
+                    Text(race.displayName.toUpperCase(),
+                        style: TextStyle(
+                            fontSize: 10,
+                            color: race.color,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 1)),
+                  ]),
+                ),
+            ],
+          ),
+        ),
+      ]),
     );
   }
 }

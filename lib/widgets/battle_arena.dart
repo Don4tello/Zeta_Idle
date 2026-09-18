@@ -14,6 +14,7 @@ import 'ability_icon.dart';
 import 'battle_backgrounds.dart';
 import 'battle_sprites.dart';
 import 'pixel_health_bar.dart';
+import 'combat_objective_beacon.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // BattleArena — reusable visual arena widget used by BattleScreen, Gauntlet,
@@ -60,6 +61,7 @@ class BattleArena extends StatefulWidget {
     this.enemyAuraColor,
     this.heroDamageType = DamageType.physical,
     this.enemyAttackType = DamageType.physical,
+    this.enemyAbilityTypes = const [],
     this.enemyResistances = const {},
     this.heroBuffGlows = const [],
     this.enemyDebuffGlows = const [],
@@ -88,6 +90,7 @@ class BattleArena extends StatefulWidget {
   final Color?  enemyAuraColor;
   final DamageType heroDamageType;
   final DamageType enemyAttackType;
+  final List<DamageType> enemyAbilityTypes; // elemental threats from abilities
   final Map<DamageType, int> enemyResistances;
   final List<Color> heroBuffGlows;
   final List<Color> enemyDebuffGlows;
@@ -157,6 +160,11 @@ class BattleArenaState extends State<BattleArena> with TickerProviderStateMixin 
     AbilityEffect.silence          => const Color(0xFFffdd00),
     AbilityEffect.absorbShield     => const Color(0xFF66bbff),
     AbilityEffect.missChance       => const Color(0xFFaaaaff),
+    AbilityEffect.frozen           => const Color(0xFF66ddff),
+    AbilityEffect.shocked          => const Color(0xFFffee44),
+    AbilityEffect.burning          => const Color(0xFFff5522),
+    AbilityEffect.envenomed        => const Color(0xFF88dd33),
+    AbilityEffect.withered         => const Color(0xFF9944cc),
   };
 
   Future<void> fadeEnemyOut() async {
@@ -547,7 +555,9 @@ class BattleArenaState extends State<BattleArena> with TickerProviderStateMixin 
                             ),
                             nameColor: const Color(0xFFee4040),
                             alignRight: true,
-                            damageType: widget.enemyAttackType,
+                            // Basic attacks are physical (Armor-gated) — not shown.
+                            // Show the elemental threats its abilities deal instead.
+                            abilityTypes: widget.enemyAbilityTypes,
                             resistances: widget.enemyResistances,
                           ),
                         ),
@@ -777,6 +787,17 @@ class BattleArenaState extends State<BattleArena> with TickerProviderStateMixin 
                 ),
               // Floating damage numbers
               ..._floaters.map(_buildFloat),
+              // Objective beacon — bestiary + quest progress, top-right. Hidden
+              // until the current enemy's kills or the active quest tick up.
+              Positioned(
+                top: 8,
+                right: 8,
+                child: CombatObjectiveBeacon(
+                  game: GameStateProvider.of(context),
+                  enemyId: widget.enemyId,
+                  enemyName: widget.enemyName,
+                ),
+              ),
             ],
           );
         },
@@ -985,7 +1006,7 @@ class _CombatantPanel extends StatelessWidget {
     required this.nameColor,
     required this.alignRight,
     this.petWidget,
-    this.damageType,
+    this.abilityTypes = const [],
     this.resistances,
     this.critPct,
     this.armor,
@@ -1001,7 +1022,7 @@ class _CombatantPanel extends StatelessWidget {
   final Color?  frameColor; // equipped cosmetic frame (hero only)
   final bool    nameGlow;   // equipped name-colour glow (hero only)
   final Widget? petWidget;
-  final DamageType?           damageType;
+  final List<DamageType>      abilityTypes; // elemental ability threats (enemy)
   final Map<DamageType, int>? resistances;
   final int?    critPct;   // shown on hero panel
   final int?    armor;     // shown on hero panel
@@ -1083,9 +1104,14 @@ class _CombatantPanel extends StatelessWidget {
             children: [
               Text('LV.$level  HIT:${fmtNum(attack)}',
                   style: const TextStyle(fontSize: 12, color: AppTheme.textLight)),
-              if (damageType != null) ...[
+              // Elemental threats from this enemy's abilities (physical basic
+              // hits are Armor-gated and not shown).
+              if (abilityTypes.isNotEmpty) ...[
                 const SizedBox(width: 5),
-                GameIcon(_dmgIcon(damageType!), size: 13, color: damageType!.color),
+                ...abilityTypes.map((t) => Padding(
+                      padding: const EdgeInsets.only(left: 2),
+                      child: GameIcon(_dmgIcon(t), size: 13, color: t.color),
+                    )),
               ],
             ],
           ),
@@ -1117,26 +1143,6 @@ class _CombatantPanel extends StatelessWidget {
           const SizedBox(height: 2),
           Text('${fmtNum(currentHp)} / ${fmtNum(maxHp)}',
               style: const TextStyle(fontSize: 11, color: AppTheme.textLight)),
-          if (damageType != null && !alignRight) ...[
-            const SizedBox(height: 4),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-              decoration: BoxDecoration(
-                color: damageType!.color.withValues(alpha: 0.15),
-                border: Border.all(color: damageType!.color.withValues(alpha: 0.55), width: 1),
-                borderRadius: BorderRadius.circular(3),
-              ),
-              child: Text(
-                damageType!.label.toUpperCase(),
-                style: TextStyle(
-                  fontSize: 9,
-                  color: damageType!.color,
-                  fontWeight: FontWeight.bold,
-                  letterSpacing: 0.8,
-                ),
-              ),
-            ),
-          ],
         ],
       ),
     );

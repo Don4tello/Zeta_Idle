@@ -2,7 +2,7 @@
 import 'package:go_router/go_router.dart';
 import '../core/routing/app_router.dart';
 import '../data/enemy_data.dart';
-import 'rebirth_flow_screen.dart';
+import '../models/equipment.dart';
 import '../data/campaign_lore.dart';
 import '../data/world_zone_data.dart';
 import '../models/world_zone.dart';
@@ -40,8 +40,8 @@ class CampaignScreen extends StatelessWidget {
                   const SizedBox(height: 4),
                   const Text(
                     'Higher tiers = tougher enemies AND better loot (rarity, sets, '
-                    'artifacts). Switching down keeps every rebirth buff — it only '
-                    'scales what you fight and what drops.',
+                    'artifacts). Switching down keeps all your permanent power — it '
+                    'only scales what you fight and what drops.',
                     style: TextStyle(fontSize: 13, color: AppTheme.textMuted, height: 1.4),
                   ),
                   const SizedBox(height: 12),
@@ -69,6 +69,7 @@ class CampaignScreen extends StatelessWidget {
     final selected = game.activeTier == t;
     final hpPct  = (t * 15);
     final atkPct = (t * 8);
+    final mfPct  = (t * ItemLootTable.kMagicFindPerTier); // increased-rarity / magic find
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
       child: InkWell(
@@ -101,10 +102,16 @@ class CampaignScreen extends StatelessWidget {
                     const SizedBox(height: 2),
                     Text(
                       t == 0
-                          ? 'Base enemies · base loot'
-                          : 'Enemies +$hpPct% HP · +$atkPct% ATK · better loot & rarer sets',
+                          ? 'Base enemies · base loot · no Magic Find'
+                          : 'Enemies +$hpPct% HP · +$atkPct% ATK',
                       style: const TextStyle(fontSize: 12, color: AppTheme.textMuted),
                     ),
+                    if (t > 0) ...[
+                      const SizedBox(height: 2),
+                      Text('✦ +$mfPct% Magic Find (higher rarity, sets & artifacts)',
+                          style: const TextStyle(
+                              fontSize: 12, color: Color(0xFFcc88ff), fontWeight: FontWeight.w600)),
+                    ],
                   ],
                 ),
               ),
@@ -158,7 +165,8 @@ class CampaignScreen extends StatelessWidget {
             tutorialKey: 'campaign',
             game: game,
             text: 'Campaign advances stage by stage. Defeat each boss to unlock the next. '
-                'Reach stage 25, 50, 75, or 100 to Rebirth and earn permanent upgrades.',
+                'Clear the final boss to unlock the next difficulty Tier — the campaign '
+                'restarts harder with better loot, and your power carries over.',
           ),
 
           _StarProgressRow(game: game),
@@ -186,68 +194,87 @@ class CampaignScreen extends StatelessWidget {
               border: Border.all(color: const Color(0xFF44aaff).withValues(alpha: 0.4)),
               borderRadius: BorderRadius.circular(4),
             ),
-            child: Row(children: [
-              const Text('⚡', style: TextStyle(fontSize: 14)),
-              const SizedBox(width: 6),
-              Text('${game.energy}/${GameState.maxEnergy}',
-                  style: AppTheme.pixelHeading(fontSize: 12, color: const Color(0xFF44aaff))),
-              const SizedBox(width: 8),
-              Expanded(
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(2),
-                  child: LinearProgressIndicator(
-                    value: game.energy / GameState.maxEnergy,
-                    minHeight: 6,
-                    backgroundColor: const Color(0xFF2a2a3a),
-                    valueColor: const AlwaysStoppedAnimation(Color(0xFF44aaff)),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 8),
-              if (game.energy < GameState.maxEnergy) ...[
-                Builder(builder: (_) {
-                  final rem = game.energyRechargeRemaining;
-                  return Text('${rem.inMinutes}:${(rem.inSeconds % 60).toString().padLeft(2, '0')}',
-                      style: const TextStyle(fontSize: 9, color: AppTheme.textMuted));
-                }),
-                const SizedBox(width: 8),
-              ],
-              if (game.dailyEnergyRefillsUsed < GameState.maxDailyRefills)
-                GestureDetector(
-                  onTap: () { game.useEnergyRefill(); },
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF44aaff).withValues(alpha: 0.15),
-                      border: Border.all(color: const Color(0xFF44aaff)),
-                      borderRadius: BorderRadius.circular(3),
-                    ),
-                    child: Text('+${GameState.refillAmount}  (${GameState.maxDailyRefills - game.dailyEnergyRefillsUsed} left)',
-                        style: const TextStyle(fontSize: 8, color: Color(0xFF44aaff), fontWeight: FontWeight.bold)),
-                  ),
-                ),
-              if (game.energy < GameState.maxEnergy)
-                Padding(
-                  padding: const EdgeInsets.only(left: 6),
-                  child: GestureDetector(
-                    onTap: game.zcoins >= 50 ? () { game.buyEnergy(); } : null,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: game.zcoins >= 50 ? const Color(0xFFcc88ff).withValues(alpha: 0.15) : Colors.transparent,
-                        border: Border.all(color: game.zcoins >= 50 ? const Color(0xFFcc88ff) : AppTheme.cardBorder),
-                        borderRadius: BorderRadius.circular(3),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // Row 1: energy count + bar + "+1 in m:ss" recharge label.
+                Row(children: [
+                  const Text('⚡', style: TextStyle(fontSize: 14)),
+                  const SizedBox(width: 6),
+                  Text('${game.energy}/${GameState.maxEnergy}',
+                      style: AppTheme.pixelHeading(fontSize: 12, color: const Color(0xFF44aaff))),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(2),
+                      child: LinearProgressIndicator(
+                        value: game.energy / GameState.maxEnergy,
+                        minHeight: 6,
+                        backgroundColor: const Color(0xFF2a2a3a),
+                        valueColor: const AlwaysStoppedAnimation(Color(0xFF44aaff)),
                       ),
-                      child: Row(mainAxisSize: MainAxisSize.min, children: [
-                        ZCoinIcon(size: 10, animate: false),
-                        const SizedBox(width: 3),
-                        Text('50',
-                            style: TextStyle(fontSize: 8, color: game.zcoins >= 50 ? const Color(0xFFcc88ff) : AppTheme.cardBorder, fontWeight: FontWeight.bold)),
-                      ]),
                     ),
                   ),
-                ),
-            ]),
+                  if (game.energy < GameState.maxEnergy) ...[
+                    const SizedBox(width: 8),
+                    Builder(builder: (_) {
+                      final rem = game.energyRechargeRemaining;
+                      return Text(
+                          '+1 in ${rem.inMinutes}:${(rem.inSeconds % 60).toString().padLeft(2, '0')}',
+                          style: const TextStyle(fontSize: 9, color: AppTheme.textMuted));
+                    }),
+                  ],
+                ]),
+                // Row 2: refill / buy actions on their own line (only when not full).
+                if (game.energy < GameState.maxEnergy) ...[
+                  const SizedBox(height: 8),
+                  Row(children: [
+                    if (game.dailyEnergyRefillsUsed < GameState.maxDailyRefills)
+                      Expanded(
+                        child: GestureDetector(
+                          onTap: () { game.useEnergyRefill(); },
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(vertical: 7),
+                            alignment: Alignment.center,
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF44aaff).withValues(alpha: 0.15),
+                              border: Border.all(color: const Color(0xFF44aaff)),
+                              borderRadius: BorderRadius.circular(3),
+                            ),
+                            child: Text(
+                                'Refill +${GameState.refillAmount}  (${GameState.maxDailyRefills - game.dailyEnergyRefillsUsed} free left)',
+                                style: const TextStyle(fontSize: 10, color: Color(0xFF44aaff), fontWeight: FontWeight.bold)),
+                          ),
+                        ),
+                      ),
+                    if (game.dailyEnergyRefillsUsed < GameState.maxDailyRefills)
+                      const SizedBox(width: 8),
+                    Expanded(
+                      child: GestureDetector(
+                        onTap: game.zcoins >= 50 ? () { game.buyEnergy(); } : null,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(vertical: 7),
+                          alignment: Alignment.center,
+                          decoration: BoxDecoration(
+                            color: game.zcoins >= 50 ? const Color(0xFFcc88ff).withValues(alpha: 0.15) : Colors.transparent,
+                            border: Border.all(color: game.zcoins >= 50 ? const Color(0xFFcc88ff) : AppTheme.cardBorder),
+                            borderRadius: BorderRadius.circular(3),
+                          ),
+                          child: Row(mainAxisSize: MainAxisSize.min, children: [
+                            Text('Buy ',
+                                style: TextStyle(fontSize: 10, color: game.zcoins >= 50 ? const Color(0xFFcc88ff) : AppTheme.cardBorder, fontWeight: FontWeight.bold)),
+                            ZCoinIcon(size: 11, animate: false),
+                            const SizedBox(width: 3),
+                            Text('50',
+                                style: TextStyle(fontSize: 10, color: game.zcoins >= 50 ? const Color(0xFFcc88ff) : AppTheme.cardBorder, fontWeight: FontWeight.bold)),
+                          ]),
+                        ),
+                      ),
+                    ),
+                  ]),
+                ],
+              ],
+            ),
           ),
           const SizedBox(height: 14),
 
@@ -275,19 +302,6 @@ class CampaignScreen extends StatelessWidget {
           ),
           _CampaignMap(game: game),
 
-          // Prestige section
-          if (game.prestigeLevel > 0) ...[
-            const SizedBox(height: 14),
-            _PrestigeCard(game: game),
-          ],
-          if (game.canPrestige) ...[
-            if (game.prestigeLevel == 0) ...[
-              const SizedBox(height: 14),
-              _FirstRebirthTutorial(),
-            ],
-            const SizedBox(height: 10),
-            _PrestigeButton(game: game),
-          ],
 
         ],
       ),
@@ -779,24 +793,26 @@ class _ZoneRow extends StatelessWidget {
               Expanded(
                 child: Text(zone.name.toUpperCase(),
                     style: AppTheme.pixelHeading(
-                        fontSize: 9, letterSpacing: 1.5, color: zone.color),
+                        fontSize: 9, letterSpacing: 1.0, color: zone.color),
                     overflow: TextOverflow.ellipsis),
               ),
+              const SizedBox(width: 6),
               Text('${zone.firstStage}–${zone.lastStage}',
-                  style: TextStyle(fontSize: 9, color: zone.color.withValues(alpha: 0.75))),
+                  style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold,
+                      color: zone.color.withValues(alpha: 0.9))),
               if (zone.modifier != null) ...[
-                const SizedBox(width: 5),
+                const SizedBox(width: 6),
                 Tooltip(
                   message: zone.modifier!.description,
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                     decoration: BoxDecoration(
                       color: zone.color.withValues(alpha: 0.18),
-                      border: Border.all(color: zone.color.withValues(alpha: 0.45)),
+                      border: Border.all(color: zone.color.withValues(alpha: 0.55)),
                       borderRadius: BorderRadius.circular(3),
                     ),
                     child: Text('${zone.modifier!.icon} ${zone.modifier!.label}',
-                        style: TextStyle(fontSize: 8, color: zone.color)),
+                        style: TextStyle(fontSize: 9, color: zone.color, fontWeight: FontWeight.bold)),
                   ),
                 ),
               ],
@@ -1132,104 +1148,6 @@ class _StageCard extends StatelessWidget {
   }
 }
 
-// ── Prestige section ──────────────────────────────────────────────────────────
-
-class _PrestigeCard extends StatelessWidget {
-  const _PrestigeCard({required this.game});
-  final GameState game;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: const Color(0xFF1a0a2a),
-        border: Border.all(color: const Color(0xFFcc44ff).withValues(alpha: 0.4)),
-        borderRadius: BorderRadius.circular(4),
-      ),
-      child: Text(
-        'Rebirth Lv${game.prestigeLevel}  •  '
-        '+${((game.prestigeGoldMult - 1) * 100).round()}% gold  •  '
-        '+${((game.prestigeXpMult - 1) * 100).round()}% XP  •  '
-        '+${((game.prestigeIdleMult - 1) * 100).round()}% idle',
-        style: const TextStyle(
-            color: Color(0xFFcc88ff), fontSize: 13, fontWeight: FontWeight.bold),
-      ),
-    );
-  }
-}
-
-class _FirstRebirthTutorial extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: const Color(0xFF1a0a2a),
-        border: Border.all(color: const Color(0xFFcc44ff).withValues(alpha: 0.5)),
-        borderRadius: BorderRadius.circular(4),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Row(children: [
-            Text('✦', style: TextStyle(fontSize: 14, color: Color(0xFFffaaff))),
-            SizedBox(width: 8),
-            Text('REBIRTH UNLOCKED',
-                style: TextStyle(
-                    color: Color(0xFFffaaff),
-                    fontSize: 13,
-                    fontWeight: FontWeight.bold,
-                    letterSpacing: 1.5)),
-          ]),
-          const SizedBox(height: 8),
-          const Text(
-            'You have reached a Rebirth Gate. Resetting your run earns permanent '
-            'Rebirth Levels that boost gold, XP, and idle income for all future runs.\n\n'
-            'You keep: ability upgrades, shards, and newly earned souls.\n'
-            'You lose: hero level, gold, and endless perks.\n\n'
-            'Tap REBIRTH below when you are ready. The REBIRTH tab in your Hero screen '
-            'unlocks after your first reset for ongoing soul spending.',
-            style: TextStyle(
-                color: Colors.white60, fontSize: 12, height: 1.6),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _PrestigeButton extends StatelessWidget {
-  const _PrestigeButton({required this.game});
-  final GameState game;
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      width: double.infinity,
-      height: 48,
-      child: ElevatedButton(
-        style: ElevatedButton.styleFrom(
-          backgroundColor: const Color(0xFF4a1060),
-          foregroundColor: const Color(0xFFffaaff),
-          side: const BorderSide(color: Color(0xFFcc44ff), width: 2),
-          shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
-        ),
-        onPressed: () => _confirmPrestige(context, game),
-        child: Text('✦  REBIRTH  (Lv${game.prestigeLevel + 1})',
-            style: AppTheme.pixelHeading(
-                fontSize: 12, letterSpacing: 1, color: const Color(0xFFffaaff))),
-      ),
-    );
-  }
-
-  void _confirmPrestige(BuildContext context, GameState game) {
-    Navigator.of(context).push(MaterialPageRoute<void>(
-      fullscreenDialog: true,
-      builder: (_) => const RebirthFlowScreen(),
-    ));
-  }
-}
 
 // ── Zone intro card — shown once on first visit to each zone ──────────────────
 
@@ -1340,18 +1258,35 @@ class _StarProgressRow extends StatelessWidget {
               style: const TextStyle(fontSize: 11, color: AppTheme.textMuted),
             ),
           ),
-          // Mini milestone pip row
+          // Milestone pips — small pills: reached (filled gold), next (outlined
+          // highlight), future (faint). Clearer than bare low-contrast numbers.
           Row(
             children: _milestones.map((m) {
               final reached = total >= m;
+              final isNext  = m == next;
+              const gold = Color(0xFFFFD700);
               return Padding(
-                padding: const EdgeInsets.only(left: 4),
-                child: Text(
-                  '$m',
-                  style: TextStyle(
-                    fontSize: 9,
-                    fontWeight: FontWeight.bold,
-                    color: reached ? const Color(0xFFFFD700) : Colors.white24,
+                padding: const EdgeInsets.only(left: 5),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: reached
+                        ? gold.withValues(alpha: 0.18)
+                        : isNext ? gold.withValues(alpha: 0.08) : Colors.transparent,
+                    border: Border.all(
+                      color: reached
+                          ? gold
+                          : isNext ? gold.withValues(alpha: 0.6) : Colors.white24,
+                    ),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    '$m',
+                    style: TextStyle(
+                      fontSize: 9,
+                      fontWeight: FontWeight.bold,
+                      color: reached || isNext ? gold : Colors.white38,
+                    ),
                   ),
                 ),
               );

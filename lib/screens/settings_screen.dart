@@ -596,6 +596,68 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     fontSize: 10, color: const Color(0xFF6699aa))),
               ),
             ),
+            _SettingsTile(
+              title: 'Replay Tutorials',
+              subtitle: 'Re-show every guided tutorial from your current progress.',
+              trailing: TextButton(
+                onPressed: () {
+                  game.debugResetTutorials();
+                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                    content: Text('Tutorials reset — they\'ll re-trigger as you play.'),
+                    behavior: SnackBarBehavior.floating));
+                },
+                style: TextButton.styleFrom(
+                  foregroundColor: const Color(0xFF6699aa),
+                  side: const BorderSide(color: Color(0xFF445566)),
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  minimumSize: const Size(64, 44),
+                ),
+                child: Text('RESET', style: AppTheme.pixelHeading(
+                    fontSize: 10, color: const Color(0xFF6699aa))),
+              ),
+            ),
+            _SettingsTile(
+              title: 'Max Character',
+              subtitle: 'Tier 10, Lv 1000, all passives/paragon/gear/pets/mercs — '
+                  'for top-down difficulty testing.',
+              trailing: TextButton(
+                onPressed: () {
+                  game.debugMaxCharacter();
+                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                    content: Text('Character maxed — Tier 10, Lv 1000. Go fight the Tier 10 boss.'),
+                    behavior: SnackBarBehavior.floating));
+                },
+                style: TextButton.styleFrom(
+                  foregroundColor: const Color(0xFFcc7744),
+                  side: const BorderSide(color: Color(0xFF884422)),
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  minimumSize: const Size(64, 44),
+                ),
+                child: Text('MAX', style: AppTheme.pixelHeading(
+                    fontSize: 10, color: const Color(0xFFcc7744))),
+              ),
+            ),
+            _SettingsTile(
+              title: 'Level +100',
+              subtitle: 'Jump the current hero 100 levels — for XP-curve / pacing '
+                  'measurement.',
+              trailing: TextButton(
+                onPressed: () {
+                  game.debugAddLevels(100);
+                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                    content: Text('Level → ${game.hero.level}.'),
+                    behavior: SnackBarBehavior.floating));
+                },
+                style: TextButton.styleFrom(
+                  foregroundColor: const Color(0xFF6699aa),
+                  side: const BorderSide(color: Color(0xFF445566)),
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  minimumSize: const Size(64, 44),
+                ),
+                child: Text('+100', style: AppTheme.pixelHeading(
+                    fontSize: 10, color: const Color(0xFF6699aa))),
+              ),
+            ),
           ],
         ),
       ),

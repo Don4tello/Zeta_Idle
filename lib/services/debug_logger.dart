@@ -43,4 +43,25 @@ class DebugLogger {
 
   static void disable() => _enabled = false;
   static void enable()  => _enabled = true;
+
+  /// Machine-readable balance telemetry. One compact JSON line per fight, emitted
+  /// to Android logcat with the "ZBAL|" prefix so it can be captured off-device
+  /// with `adb logcat -d | grep ZBAL` (works in release builds — logcat, unlike
+  /// the temp file, is reachable without a debuggable APK). Also mirrored to the
+  /// debug file / Crashlytics trail.
+  static void balance(String jsonLine) {
+    // ignore: avoid_print
+    print('ZBAL|$jsonLine');
+    log('BALANCE', jsonLine);
+  }
+
+  /// Hero power-source breakdown telemetry — one JSON line itemising every
+  /// progression system's contribution to the hero's totals. Prefixed "ZPWR|"
+  /// (capture with `adb logcat -d | grep ZPWR`) so it's easy to see whether each
+  /// system is actually adding to the total.
+  static void power(String jsonLine) {
+    // ignore: avoid_print
+    print('ZPWR|$jsonLine');
+    log('POWER', jsonLine);
+  }
 }

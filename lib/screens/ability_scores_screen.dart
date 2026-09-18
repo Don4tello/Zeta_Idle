@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../services/game_state.dart';
 import '../theme/app_theme.dart';
+import '../widgets/currency_icon.dart';
 import '../widgets/hold_repeat_button.dart';
 import '../widgets/stat_emblem.dart';
 
@@ -12,18 +13,18 @@ class AbilityScoresScreen extends StatelessWidget {
   static const _accent = Color(0xFF66ccff);
 
   static const _stats = [
-    _StatDef('pwr',  'PWR', Icons.bolt,           Color(0xFFff6644), 'Power',
+    _StatDef('pwr',  'PWR', Icons.bolt,             Color(0xFFff6644), 'Power',
         '+2 flat attack damage per rank'),
-    _StatDef('agi',  'AGI', Icons.speed,           Color(0xFFffee44), 'Agility',
-        '+2% critical hit damage per rank'),
-    _StatDef('vit',  'VIT', Icons.favorite,        Color(0xFF44ee66), 'Vitality',
+    _StatDef('prc',  'WRA', Icons.whatshot,         Color(0xFFffaa22), 'Wrath',
+        '+0.5% all damage per rank'),
+    _StatDef('vit',  'VIT', Icons.favorite,         Color(0xFF44ee66), 'Vitality',
         '+30 max HP per rank'),
-    _StatDef('prc',  'PRC', Icons.gps_fixed,       Color(0xFFffaa22), 'Precision',
-        '+1% critical hit chance per rank'),
-    _StatDef('for_', 'FOR', Icons.shield,          Color(0xFF66aaff), 'Fortitude',
-        '+1 armor class per 2 ranks'),
-    _StatDef('lck',  'LCK', Icons.auto_awesome,    Color(0xFF88ff88), 'Luck',
-        '+1% gold income per rank'),
+    _StatDef('agi',  'END', Icons.health_and_safety, Color(0xFFffee44), 'Endurance',
+        '+2% max HP per rank'),
+    _StatDef('for_', 'FOR', Icons.shield,           Color(0xFF66aaff), 'Fortitude',
+        '+1 AC Rating per rank'),
+    _StatDef('lck',  'DUR', Icons.security,         Color(0xFF99bbdd), 'Durability',
+        '+0.5% AC Rating per rank'),
   ];
 
   Widget _body(GameState game) => ListView(
@@ -96,9 +97,9 @@ class _GoldBadge extends StatelessWidget {
         borderRadius: BorderRadius.circular(3),
       ),
       child: Row(mainAxisSize: MainAxisSize.min, children: [
-        const Icon(Icons.monetization_on, size: 13, color: Color(0xFFffcc44)),
+        const CurrencyIcon(id: 'gold', size: 14),
         const SizedBox(width: 4),
-        Text('$gold',
+        Text(AppTheme.fmtNumber(gold),
             style: AppTheme.pixelHeading(fontSize: 11, color: const Color(0xFFffcc44))),
       ]),
     );
@@ -133,11 +134,11 @@ class _StatCard extends StatelessWidget {
     final rank = g.abilityScoreRank(stat.key);
     return switch (stat.key) {
       'pwr'  => '+${rank * 2} dmg',
-      'agi'  => '+${rank * 2}% crit dmg',
+      'agi'  => '+${rank * 2}% HP',
       'vit'  => '+${rank * 30} HP',
-      'prc'  => '+$rank% crit',
-      'for_' => '+${rank ~/ 2} AC',
-      'lck'  => '+$rank% gold',
+      'prc'  => '+${(rank * 0.5).toStringAsFixed(1)}% dmg',
+      'for_' => '+$rank AC Rating',
+      'lck'  => '+${(rank * 0.5).toStringAsFixed(1)}% AC Rating',
       _      => 'Rank $rank',
     };
   }
@@ -180,7 +181,7 @@ class _StatCard extends StatelessWidget {
                       color: stat.color.withValues(alpha: gateMet ? 0.7 : 0.3),
                       fontSize: 12)),
               const Spacer(),
-              Text(atCap ? 'MAX' : 'Rank $rank / 1000',
+              Text(atCap ? 'MAX' : 'Rank $rank / ${GameState.kAbilityScoreMaxRank}',
                   style: TextStyle(
                       color: atCap
                           ? const Color(0xFFffdd44)
@@ -204,7 +205,7 @@ class _StatCard extends StatelessWidget {
                 _TierChip(label: 'MAXED', color: const Color(0xFFffdd44))
               else if (!gateMet)
                 _TierChip(
-                  label: '$tierLabel  •  Rebirth $rebirthNeeded required',
+                  label: '$tierLabel  •  Tier $rebirthNeeded required',
                   color: const Color(0xFFff6644),
                   icon: Icons.lock_outline,
                 )
@@ -213,7 +214,7 @@ class _StatCard extends StatelessWidget {
             ]),
             if (!atCap && gateMet) ...[
               const SizedBox(height: 4),
-              Text('Next: ${cost.toString()} gold',
+              Text('Next: ${AppTheme.fmtNumber(cost)} gold',
                   style: TextStyle(
                       color: canAfford
                           ? const Color(0xFFffcc88)

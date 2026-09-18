@@ -49,10 +49,10 @@ class TierLoot {
     ItemRarity.mythic: 0.2,
   });
 
-  /// Artifacts — their own 3-rarity scale (common / magic / rare).
+  /// Artifacts — their own rarity scale (common / uncommon / rare).
   static const TierWeightedTable<ArtifactRarity> artifacts = TierWeightedTable({
     ArtifactRarity.common: 65,
-    ArtifactRarity.magic: 28,
+    ArtifactRarity.uncommon: 28,
     ArtifactRarity.rare: 7,
   });
 }

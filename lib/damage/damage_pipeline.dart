@@ -57,7 +57,11 @@ DmgMap _applyCrit(DmgMap dmg, CritStats crit, bool wasCrit) {
 
 // ── Stage 5: Resistance / penetration ────────────────────────────────────────
 
-double _clampRes(double v) => v.clamp(-1.0, 0.75);
+// Effective resistance (enemy resist − hero penetration) is capped at 90% so an
+// enemy is never fully immune — you always deal at least 10% (mirrors the hero's
+// 90% damage-reduction cap). Tier-10 resistances reach the high end; late-game
+// penetration is meant to claw most of it back.
+double _clampRes(double v) => v.clamp(-1.0, 0.90);
 
 DmgMap _applyResistance(DmgMap dmg, EnemyProfile enemy) {
   return dmg.map((type, amount) {

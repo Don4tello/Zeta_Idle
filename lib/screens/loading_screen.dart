@@ -124,6 +124,42 @@ class _LoadingScreenState extends State<LoadingScreen>
             final progress = _progressCtrl.value;
             return Stack(
               children: [
+                // Painted tavern-hearth background. Falls back to the dark base
+                // colour if the asset is ever missing, so loading never breaks.
+                Positioned.fill(
+                  child: Image.asset(
+                    'assets/images/loading_bg.jpg',
+                    fit: BoxFit.cover,
+                    alignment: Alignment.center,
+                    // Cap the decoded/GPU texture size — an oversized image
+                    // fails to upload on the raster thread (which errorBuilder
+                    // can't catch) and blacks out the whole screen.
+                    cacheWidth: 1080,
+                    filterQuality: FilterQuality.medium,
+                    errorBuilder: (_, __, ___) =>
+                        const ColoredBox(color: Color(0xFF1B1A17)),
+                  ),
+                ),
+                // Readability scrim — darkens the top (title) and bottom
+                // (progress bar + flavor text) while keeping the hearth glow
+                // visible through the calm centre band.
+                Positioned.fill(
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [
+                          Colors.black.withValues(alpha: 0.60),
+                          Colors.black.withValues(alpha: 0.15),
+                          Colors.black.withValues(alpha: 0.30),
+                          Colors.black.withValues(alpha: 0.82),
+                        ],
+                        stops: const [0.0, 0.34, 0.60, 1.0],
+                      ),
+                    ),
+                  ),
+                ),
                 _Vignette(),
                 SafeArea(
                   child: Column(

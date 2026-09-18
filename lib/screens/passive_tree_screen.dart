@@ -19,6 +19,7 @@ class PassiveTreeScreen extends StatelessWidget {
     PassiveBranch.merchant:     Color(0xFF44cc66),
     PassiveBranch.mystic:       Color(0xFFcc44ff),
     PassiveBranch.elementalist: Color(0xFFff8844),
+    PassiveBranch.vitalist:     Color(0xFF33dd99),
     PassiveBranch.ascendant:    Color(0xFFffcc33),
   };
 
@@ -28,6 +29,7 @@ class PassiveTreeScreen extends StatelessWidget {
     PassiveBranch.merchant:     'MERCHANT',
     PassiveBranch.mystic:       'MYSTIC',
     PassiveBranch.elementalist: 'ELEMENTALIST',
+    PassiveBranch.vitalist:     'VITALIST',
     PassiveBranch.ascendant:    'ASCENDANT',
   };
 
@@ -37,6 +39,7 @@ class PassiveTreeScreen extends StatelessWidget {
     PassiveBranch.merchant:     '💰',
     PassiveBranch.mystic:       '✨',
     PassiveBranch.elementalist: '🜂',
+    PassiveBranch.vitalist:     '✚',
     PassiveBranch.ascendant:    '⭐',
   };
 
@@ -80,10 +83,20 @@ class PassiveTreeScreen extends StatelessWidget {
             tutorialKey: 'passives',
             game: game,
             text: 'You\'ve earned Shards ◆ — spend them here on permanent passive '
-                'nodes that survive every rebirth. Your class branch is at the top. '
+                'nodes that never reset. Your class branch is at the top. '
                 'Each node ranks up to 5 for bigger bonuses.',
           ),
-        ...[PassiveBranch.elementalist, ...PassiveBranch.values.where((b) => b != PassiveBranch.elementalist)].map((branch) {
+        // Display order: class branch (elementalist) on top, then Vitalist right
+        // below Guardian. Explicit list so it doesn't depend on enum order.
+        ...const [
+          PassiveBranch.elementalist,
+          PassiveBranch.slayer,
+          PassiveBranch.guardian,
+          PassiveBranch.vitalist,
+          PassiveBranch.merchant,
+          PassiveBranch.mystic,
+          PassiveBranch.ascendant,
+        ].map((branch) {
         final className = game.hero.heroClass.name;
         final classInfo = game.hero.heroClass.info;
         List<PassiveNode> nodes;
@@ -193,9 +206,11 @@ class PassiveTreeScreen extends StatelessWidget {
                 ]),
               ),
               const SizedBox(height: 6),
-              // Node row with connectors — horizontally scrollable
+              // Node row with connectors — horizontally scrollable.
+              // Height hugs the card content (~100px) with a little breathing
+              // room, instead of leaving ~50px of dead space under each card.
               SizedBox(
-                height: 155,
+                height: 120,
                 child: ScrollConfiguration(
                   behavior: ScrollConfiguration.of(context).copyWith(
                     dragDevices: {
@@ -422,7 +437,8 @@ class _NodeCard extends StatelessWidget {
     PassiveEffect.idleFlat        => 'Idle Rate',
     PassiveEffect.cooldownReduce  => 'Cooldown Reduction',
     PassiveEffect.abilityDamage   => 'Ability Damage',
-    PassiveEffect.healBoost       => 'Heal Boost',
+    PassiveEffect.healBoost       => 'Heal Rating %',
+    PassiveEffect.healRatingFlat  => 'Heal Rating',
     PassiveEffect.essenceGain     => 'Shard Gain',
     PassiveEffect.allPenetration  => 'Elemental Penetration',
     PassiveEffect.fireDamage      => 'Fire Damage',

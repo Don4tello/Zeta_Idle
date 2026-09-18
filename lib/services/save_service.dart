@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/dnd_class.dart';
 import '../models/hero_model.dart' show HeroGender;
+import '../models/hero_race.dart';
 
 class CharacterSummary {
   const CharacterSummary({
@@ -12,6 +13,9 @@ class CharacterSummary {
     this.prestigeLevel = 0,
     this.totalAscensionAp = 0,
     this.gender,
+    this.heroRace,
+    this.frameId,
+    this.nameColorId,
   });
   final int slot;
   final String name;
@@ -20,6 +24,9 @@ class CharacterSummary {
   final int prestigeLevel;
   final int totalAscensionAp; // cumulative Ascension Points ever earned (endgame reach)
   final HeroGender? gender;
+  final HeroRace? heroRace;
+  final String? frameId;      // equipped premium portrait frame cosmetic id
+  final String? nameColorId;  // equipped premium name colour cosmetic id
 }
 
 class SaveService {
@@ -118,6 +125,11 @@ class SaveService {
           prestigeLevel: jsonPl > directPl ? jsonPl : directPl,
           totalAscensionAp: (data['totalAscensionAp'] as int?) ?? 0,
           gender: HeroGender.tryParse(hero['gender'] as String?),
+          heroRace: HeroRace.values
+              .where((r) => r.name == data['heroRaceId'])
+              .firstOrNull,
+          frameId: data['activeFrame'] as String?,
+          nameColorId: data['activeNameColor'] as String?,
         );
       } catch (_) {
         return null;

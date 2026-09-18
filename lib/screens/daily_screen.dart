@@ -13,6 +13,7 @@ class DailyScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final game = GameStateProvider.of(context);
     return DefaultTabController(
       length: 3,
       child: Scaffold(
@@ -21,15 +22,15 @@ class DailyScreen extends StatelessWidget {
           backgroundColor: const Color(0xFF2A2623),
           title: Text('CHALLENGES',
               style: AppTheme.pixelHeading(fontSize: 14, letterSpacing: 2)),
-          bottom: const TabBar(
+          bottom: TabBar(
             indicatorColor: AppTheme.accentGold,
             labelColor: AppTheme.accentGold,
             unselectedLabelColor: AppTheme.textMuted,
-            labelStyle: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, letterSpacing: 1.5),
+            labelStyle: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, letterSpacing: 1.5),
             tabs: [
-              Tab(text: 'DAILY'),
-              Tab(text: 'WEEKLY'),
-              Tab(text: 'BOUNTIES'),
+              _DotTab(label: 'DAILY', showDot: game.hasClaimableDaily),
+              _DotTab(label: 'WEEKLY', showDot: game.hasClaimableWeekly),
+              _DotTab(label: 'BOUNTIES', showDot: game.bossHuntsClaimable > 0),
             ],
           ),
         ),
@@ -40,6 +41,41 @@ class DailyScreen extends StatelessWidget {
             BountyBoardBody(),
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// A tab label with an optional amber "claimable" dot in the top-right corner.
+class _DotTab extends StatelessWidget {
+  const _DotTab({required this.label, required this.showDot});
+  final String label;
+  final bool showDot;
+
+  @override
+  Widget build(BuildContext context) {
+    return Tab(
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 2),
+            child: Text(label),
+          ),
+          if (showDot)
+            Positioned(
+              top: -2,
+              right: -8,
+              child: Container(
+                width: 8,
+                height: 8,
+                decoration: const BoxDecoration(
+                  color: Color(0xFFff5566),
+                  shape: BoxShape.circle,
+                ),
+              ),
+            ),
+        ],
       ),
     );
   }

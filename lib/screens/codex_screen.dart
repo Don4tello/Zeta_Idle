@@ -243,13 +243,13 @@ class _GameModesContent extends StatelessWidget {
           title: 'Campaign',
           color: Color(0xFFcc9944),
           body: '100 stages across 20 zones. Every 5th stage is a boss.\n'
-              'Difficulty Tiers: each Rebirth unlocks a tier (up to 10). Switch tiers '
-              'freely from the campaign header — higher tiers hit harder but drop '
-              'better loot; switching down keeps all your rebirth buffs.\n'
+              'Difficulty Tiers: clear the campaign (defeat the final boss) to unlock '
+              'the next tier, up to 10. The campaign then restarts harder with better '
+              'loot and your power carries over. Switch tiers freely from the campaign '
+              'header — switching down keeps all your permanent power.\n'
               '3-star system per stage: ★ Win, ★★ >50% HP, ★★★ Under 10 turns.\n'
               'Auto-Campaign: toggle in battle or settings to fight in the background.\n'
-              'Battle Speed: 1×/1.5×/2× toggle available.\n'
-              'Rebirth gates at stages 25, 50, 75, 100.',
+              'Battle Speed: 1×/1.5×/2× toggle available.',
         ),
         _Entry(
           icon: '♾',
@@ -369,31 +369,21 @@ class _ProgressionContent extends StatelessWidget {
         ),
         _Entry(
           icon: '☠',
-          title: 'Rebirth (Prestige)',
+          title: 'Difficulty Tiers',
           color: Color(0xFFcc88ff),
-          body: 'A voluntary reset available at Rebirth Gates (stages 25 / 50 / 75 / 100).\n'
-              'You KEEP: shards, echoes, souls, ability upgrades, prestige shop unlocks.\n'
-              'You LOSE: hero level, gold, general upgrades, idle/endless perks.\n'
-              'Rewards: Souls (based on stage reached) + permanent multipliers:\n'
-              '  • +10% gold income per rebirth\n'
-              '  • +5% XP gain per rebirth\n'
-              '  • +5% idle gold per rebirth',
-        ),
-        _Entry(
-          icon: '✦',
-          title: 'Ascension',
-          color: Color(0xFFaaddff),
-          body: 'A deeper reset beyond Rebirth, requiring significant Prestige progress.\n'
-              'Awards Ascension Points used in the Ascension shop for powerful permanent upgrades.\n'
-              'Ascension resets more — but the bonuses are proportionally stronger.',
+          body: 'The core meta-progression. Clear the campaign at your highest tier '
+              'to unlock the next one, up to Tier 10. The campaign restarts at the '
+              'harder tier — enemies scale up (and their level tracks yours), loot '
+              'gets rarer, and NOTHING resets: your Level, Paragon, gear and '
+              'currencies all carry over. Switch tiers freely from the campaign header.',
         ),
         _Entry(
           icon: '💀',
-          title: 'Souls & Prestige Shop',
+          title: 'Paragon Points & Board',
           color: Color(0xFFcc8844),
-          body: 'Souls are earned by Prestiging and spent in the Prestige Shop.\n'
-              'Notable unlocks: Master Forger (fewer items to combine), expanded forge options,\n'
-              'bonus combat perks, and quality-of-life improvements.',
+          body: 'You earn 1 Paragon Point every time you level up (there is no level '
+              'cap). Spend them on the Paragon board for permanent boosts to damage, '
+              'HP, gold, XP, crit and more — they persist forever.',
         ),
         _Entry(
           icon: '🤝',
@@ -551,8 +541,8 @@ class _StatsContent extends StatelessWidget {
         'CON no longer scales HP — boost Max HP via passive nodes, traits, or gear.'),
     ('XP Multiplier',
         '= 1.0 (base)\n'
-        'Increased by Prestige multipliers (+5% per rebirth), passive nodes, and ally bonuses.\n'
-        'CHA no longer multiplies XP — invest in Prestige or passive nodes for XP gains.'),
+        'Increased by Paragon (Wisdom), passive nodes, and ally bonuses.\n'
+        'CHA no longer multiplies XP — invest in Paragon or passive nodes for XP gains.'),
     ('Boss Abilities',
         'Every named boss has 2 unique abilities that fire on cooldown during their turn.\n'
         'Effect types: Bonus Damage (instant hit), DoT (damage per round), Stun (skip your turn).\n'
@@ -566,11 +556,11 @@ class _StatsContent extends StatelessWidget {
   ];
 
   static const _economy = [
-    ('Idle Rate', '5/tick (flat base) while not in battle. Boosted by Prestige shop, passive nodes, and WIS-stat equipment.'),
-    ('Gold Rate',  '1× bonus gold per kill (flat base). Boosted by Prestige multipliers, passive nodes, and gear.'),
+    ('Idle Rate', '5/tick (flat base) while not in battle. Boosted by the Paragon board, passive nodes, and WIS-stat equipment.'),
+    ('Gold Rate',  '1× bonus gold per kill (flat base). Boosted by Paragon, passive nodes, and gear.'),
     ('Shards (◆)',  'From kills, Dungeons, and Expeditions. Spent on ability upgrades, item upgrades, and the Passive Tree.'),
     ('Echoes (🔊)', 'From Gauntlet and Boss Rush. Spent on Upgrades.'),
-    ('Souls (☠)',  'From Prestige. Spent in the Prestige Shop.'),
+    ('Paragon Points (☠)',  'Earned by levelling up (1 per level). Spent on the Paragon board.'),
     ('Arcane Dust 🌀', 'From PvP, Guild rewards, and disenchanting gems, runes, and gear. Used to craft Gems and ability Runes.'),
   ];
 }
@@ -930,7 +920,7 @@ class _EventsEconomyContent extends StatelessWidget {
           icon: '⚜',
           title: 'Medieval Power',
           color: Color(0xFFdaa520),
-          body: 'A combined score of all your upgrades, gear, passives, prestige,\n'
+          body: 'A combined score of all your upgrades, gear, passives, Paragon,\n'
               'artifacts, allies, PvP rating, and more.\n'
               'Tiers: Novice → Apprentice → Seasoned → Veteran → Epic → Legendary → Mythic.\n'
               'Displayed on the hero dashboard.',

@@ -585,8 +585,8 @@ class _BagGrid extends StatelessWidget {
             : game.hero.level < item.levelRequired
                 ? 'Requires Level ${item.levelRequired}'
                 : item.rebirthRequired > 0 &&
-                        game.prestigeLevel < item.rebirthRequired
-                    ? 'Requires Rebirth ${item.rebirthRequired}'
+                        game.highestUnlockedTier < item.rebirthRequired
+                    ? 'Requires Tier ${item.rebirthRequired}'
                     : null;
 
     showModalBottomSheet(
@@ -724,6 +724,8 @@ class _ItemTile extends StatelessWidget {
         return 'PEN';
       case ItemStat.damagePercent:
         return 'DMG%';
+      case ItemStat.healRating:
+        return 'HEAL';
     }
   }
 }
@@ -902,8 +904,8 @@ class _ItemDetailSheetState extends State<_ItemDetailSheet> {
                 modParts.add(switch (xe) {
                   AbilityEffect.stun => 'Stun ${xd}r',
                   AbilityEffect.dot => 'DoT $xv%/r for ${xd}r',
-                  AbilityEffect.attackBonus => '+$xv DMG for ${xd}r',
-                  AbilityEffect.acBonus => '+$xv AC for ${xd}r',
+                  AbilityEffect.attackBonus => '+$xv% DMG for ${xd}r',
+                  AbilityEffect.acBonus => '+$xv% AC for ${xd}r',
                   AbilityEffect.aura => 'Aura $xv% HP/r for ${xd}r',
                   AbilityEffect.debuffWeaken => 'Weaken $xv% for ${xd}r',
                   AbilityEffect.debuffVulnerable => 'Vuln $xv% for ${xd}r',
@@ -913,6 +915,11 @@ class _ItemDetailSheetState extends State<_ItemDetailSheet> {
                   AbilityEffect.silence => 'Silence ${xd}r',
                   AbilityEffect.absorbShield => '$xv HP barrier',
                   AbilityEffect.missChance => '$xv% miss for ${xd}r',
+                  AbilityEffect.frozen => 'Freeze ${xd}r',
+                  AbilityEffect.shocked => 'Shock ${xd}r',
+                  AbilityEffect.burning => 'Burn $xv%/r for ${xd}r',
+                  AbilityEffect.envenomed => 'Poison $xv%/r for ${xd}r',
+                  AbilityEffect.withered => 'Wither −$xv% ATK for ${xd}r',
                 });
               }
               return Container(
@@ -1174,6 +1181,7 @@ class _ItemDetailSheetState extends State<_ItemDetailSheet> {
         ItemStat.xpPct => 'XP%',
         ItemStat.elemPenetration => 'PEN%',
         ItemStat.damagePercent => 'DMG%',
+        ItemStat.healRating => 'HEAL',
       };
 }
 

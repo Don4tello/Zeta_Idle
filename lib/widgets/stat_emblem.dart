@@ -32,7 +32,7 @@ class _StatEmblemPainter extends CustomPainter {
       case 'vit':  _heart(cv, cx, cy, s);
       case 'prc':  _target(cv, cx, cy, s);
       case 'for_': _shield(cv, cx, cy, s);
-      case 'lck':  _clover(cv, cx, cy, s);
+      case 'lck':  _shield(cv, cx, cy, s); // DUR (Durability) — defensive shield
       default:     _target(cv, cx, cy, s);
     }
   }

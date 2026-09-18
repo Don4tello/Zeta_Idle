@@ -40,7 +40,7 @@ enum DamageType {
     DamageType.fire      => const Color(0xFFFF6B35),
     DamageType.cold      => const Color(0xFF6CB4E4),
     DamageType.lightning => const Color(0xFFFFE14D),
-    DamageType.poison    => const Color(0xFF7DCF6A),
+    DamageType.poison    => const Color(0xFF4E8B2C), // dark toxic green — distinct from the bright heal green
     DamageType.void_     => const Color(0xFF9966FF),
   };
 

@@ -1,5 +1,6 @@
 ﻿import 'dart:async';
 import 'package:flutter/material.dart';
+import '../models/damage_type.dart';
 import 'package:flutter/services.dart' show HapticFeedback;
 import 'package:google_fonts/google_fonts.dart';
 import '../data/campaign_data.dart';
@@ -991,6 +992,10 @@ class _EndlessScreenState extends State<EndlessScreen> {
                 enemyAuraColor:   BattleSprite.auraColorFor(game.activeAffixes),
                 heroDamageType:   game.hero.activeDamageType,
                 enemyAttackType:  enemy.attackType,
+                enemyAbilityTypes: <DamageType>{
+                  for (final a in enemy.abilities)
+                    if (a.damageType != DamageType.physical) a.damageType,
+                }.toList(),
                 enemyResistances: enemy.resistances,
                 heroBuffGlows:    _heroBuffGlows(game),
                 enemyDebuffGlows: _enemyDebuffGlows(game),

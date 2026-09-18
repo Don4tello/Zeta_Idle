@@ -49,7 +49,7 @@ class ClassQuestData {
       ClassQuest(
         id: 'barb_q6', classRequired: DndClass.barbarian, questIndex: 6,
         title: 'Legend of Blood',
-        description: 'Die and be reborn. Achieve your first Prestige and prove rage is eternal.',
+        description: 'Rise ever stronger. Unlock your first difficulty Tier and prove rage is eternal.',
         condition: QuestCondition.prestigeReach, target: 1,
         reward: QuestReward(title: 'Immortal Berserker', permanentDamageBonus: 1),
       ),
@@ -153,7 +153,7 @@ class ClassQuestData {
       ClassQuest(
         id: 'cler_q6', classRequired: DndClass.cleric, questIndex: 6,
         title: 'Saint',
-        description: 'Achieve your first Prestige — death only strengthens your faith.',
+        description: 'Unlock your first difficulty Tier — death only strengthens your faith.',
         condition: QuestCondition.prestigeReach, target: 1,
         reward: QuestReward(title: 'Saint', permanentDamageBonus: 1),
       ),
@@ -257,7 +257,7 @@ class ClassQuestData {
       ClassQuest(
         id: 'fght_q6', classRequired: DndClass.fighter, questIndex: 6,
         title: 'Eternal Soldier',
-        description: 'Achieve your first Prestige. A true fighter never stops fighting.',
+        description: 'Unlock your first difficulty Tier. A true fighter never stops fighting.',
         condition: QuestCondition.prestigeReach, target: 1,
         reward: QuestReward(title: 'Eternal Soldier', permanentACBonus: 1),
       ),
@@ -361,7 +361,7 @@ class ClassQuestData {
       ClassQuest(
         id: 'pala_q6', classRequired: DndClass.paladin, questIndex: 6,
         title: "God's Champion",
-        description: 'Achieve your first Prestige. Even death answers to your sworn oath.',
+        description: 'Unlock your first difficulty Tier. Even death answers to your sworn oath.',
         condition: QuestCondition.prestigeReach, target: 1,
         reward: QuestReward(title: "God's Champion", permanentAttackBonus: 1),
       ),
@@ -465,7 +465,7 @@ class ClassQuestData {
       ClassQuest(
         id: 'rogu_q6', classRequired: DndClass.rogue, questIndex: 6,
         title: 'Ghost',
-        description: 'Achieve your first Prestige. Death cannot track what leaves no footprints.',
+        description: 'Unlock your first difficulty Tier. Death cannot track what leaves no footprints.',
         condition: QuestCondition.prestigeReach, target: 1,
         reward: QuestReward(title: 'Ghost', permanentAttackBonus: 1),
       ),
@@ -569,7 +569,7 @@ class ClassQuestData {
       ClassQuest(
         id: 'wrlk_q6', classRequired: DndClass.warlock, questIndex: 6,
         title: 'Eternal Pact',
-        description: 'Achieve your first Prestige. The pact has no expiration clause.',
+        description: 'Unlock your first difficulty Tier. The pact has no expiration clause.',
         condition: QuestCondition.prestigeReach, target: 1,
         reward: QuestReward(title: 'Pact Eternal', permanentACBonus: 1),
       ),

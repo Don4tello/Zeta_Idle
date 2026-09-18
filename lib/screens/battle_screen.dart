@@ -1,5 +1,6 @@
 ﻿import 'dart:async';
 import 'package:flutter/foundation.dart' show kDebugMode;
+import '../models/damage_type.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show HapticFeedback;
 import 'package:go_router/go_router.dart';
@@ -48,6 +49,7 @@ class _BattleScreenState extends State<BattleScreen>
   Artifact?      _rewardArtifact;
   Completer<void>? _rewardCompleter;
   bool _exitRequested = false;
+  bool _poppedForTutorial = false; // popped this battle so the coach can show
 
   // Step 7 — victory stagger
   late final AnimationController _victoryCtrl = AnimationController(
@@ -161,9 +163,8 @@ class _BattleScreenState extends State<BattleScreen>
         break;
       }
 
-      if (game.endlessTutorialPending && mounted) {
-        await _showEndlessTutorial(game);
-      }
+      // First-victory intro modal removed — the guided tutorials cover onboarding.
+      if (game.endlessTutorialPending) game.dismissEndlessTutorial();
 
       // Start next battle BEFORE hiding the overlay so there is no
       // gap where currentEnemy == null renders "NO ACTIVE BATTLE".
@@ -191,91 +192,6 @@ class _BattleScreenState extends State<BattleScreen>
     if (mounted) setState(() => _countdown = null);
   }
 
-  Future<void> _showEndlessTutorial(GameState game) async {
-    if (!mounted) return;
-    await showDialog<void>(
-      context: context,
-      barrierDismissible: false,
-      barrierColor: Colors.black.withValues(alpha: 0.80),
-      builder: (ctx) => Dialog(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        child: Container(
-          constraints: const BoxConstraints(maxWidth: 320),
-          padding: const EdgeInsets.all(24),
-          decoration: BoxDecoration(
-            color: const Color(0xFF0e1a10),
-            border: Border.all(color: const Color(0xFF55ee88), width: 2),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              GameIcon(GameIconType.swords, size: 36, color: const Color(0xFF55ee88)),
-              const SizedBox(height: 10),
-              const Text(
-                'FIRST VICTORY',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: Color(0xFF55ee88),
-                  letterSpacing: 2,
-                ),
-              ),
-              const SizedBox(height: 16),
-              const Text(
-                'The campaign is now underway. Defeat enemies to earn gold, XP, and gear as you push through every stage.',
-                textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 14, color: AppTheme.textLight, height: 1.5),
-              ),
-              const SizedBox(height: 10),
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Colors.black.withValues(alpha: 0.35),
-                  border: Border.all(color: const Color(0xFF55ee88).withValues(alpha: 0.3)),
-                ),
-                child: const Text(
-                  'Beating bosses unlocks new modes — Daily Quests, Dungeons, Boss Rush, Tower Ascension, and more. Check the PLAY tab as you progress.',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 13, color: AppTheme.textMuted, height: 1.6),
-                ),
-              ),
-              const SizedBox(height: 20),
-              const Text(
-                'New content unlocks automatically as you clear stages',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 11,
-                  color: Color(0xFF55ee88),
-                  letterSpacing: 1,
-                ),
-              ),
-              const SizedBox(height: 20),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: () {
-                    game.dismissEndlessTutorial();
-                    Navigator.of(ctx).pop();
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF55ee88),
-                    foregroundColor: Colors.black,
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                  ),
-                  child: const Text(
-                    'GOT IT — KEEP FIGHTING',
-                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, letterSpacing: 1),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
 
   Future<void> _showDefeatDialog(GameState game) async {
     if (!mounted) return;
@@ -339,6 +255,10 @@ class _BattleScreenState extends State<BattleScreen>
 
   Future<void> _showRebirthUnlockedDialog() async {
     if (!mounted) return;
+    final game = GameStateProvider.of(context);
+    final tier = game.lastTierUnlocked; // 0 when already at max tier
+    game.lastTierUnlocked = 0;
+    final unlocked = tier > 0;
     await showDialog<void>(
       context: context,
       barrierDismissible: false,
@@ -361,22 +281,26 @@ class _BattleScreenState extends State<BattleScreen>
             children: [
               const Text('✦', style: TextStyle(fontSize: 40, color: Color(0xFFcc44ff))),
               const SizedBox(height: 10),
-              const Text('REBIRTH UNLOCKED',
+              Text(unlocked ? 'TIER $tier UNLOCKED' : 'CAMPAIGN CLEARED',
                   textAlign: TextAlign.center,
-                  style: TextStyle(
+                  style: const TextStyle(
                       fontSize: 18, fontWeight: FontWeight.bold,
                       color: Color(0xFFcc44ff), letterSpacing: 2.5)),
               const SizedBox(height: 14),
-              const Text(
-                'The Omega has fallen. The curse is ended.\n\n'
-                'You may now Rebirth — resetting your campaign '
-                'in exchange for permanent power.',
+              Text(
+                unlocked
+                    ? 'The Omega has fallen. The campaign restarts at Tier $tier — '
+                        'tougher enemies and better loot.\n\n'
+                        'Your level, Paragon, gear and currencies all carry over. '
+                        'Nothing resets.'
+                    : 'The Omega has fallen at the highest tier. You\'ve reached '
+                        'the summit — keep farming for loot and Paragon Points.',
                 textAlign: TextAlign.center,
-                style: TextStyle(color: AppTheme.textLight, fontSize: 13, height: 1.5),
+                style: const TextStyle(color: AppTheme.textLight, fontSize: 13, height: 1.5),
               ),
               const SizedBox(height: 6),
               const Text(
-                'Find the Rebirth option in the Hero Hub.',
+                'Switch tiers anytime from the Campaign header.',
                 textAlign: TextAlign.center,
                 style: TextStyle(color: AppTheme.textMuted, fontSize: 12),
               ),
@@ -515,6 +439,20 @@ class _BattleScreenState extends State<BattleScreen>
   @override
   Widget build(BuildContext context) {
     final game  = GameStateProvider.of(context);
+    // A guided tutorial fired mid-battle. Its coach + navigation live in the
+    // main shell, but this battle is a route pushed on top of it — so pop back
+    // to reveal them. Auto-campaign is already paused by the tutorial; it (and
+    // the battle) resume once the player taps "Got it".
+    if (game.pendingTutorial != null) {
+      if (!_poppedForTutorial) {
+        _poppedForTutorial = true;
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted && Navigator.canPop(context)) Navigator.pop(context);
+        });
+      }
+    } else {
+      _poppedForTutorial = false;
+    }
     final enemy = game.currentEnemy;
     if (enemy != null) _lastEnemy = enemy;
     final displayEnemy = enemy ?? _lastEnemy;
@@ -686,12 +624,12 @@ class _BattleScreenState extends State<BattleScreen>
     }
     if (game.buffAttackBonus > 0) {
       list.add(_StatusInfo('DMG+', 'Damage Buff',
-          'DMG increased by ${game.buffAttackBonus}.',
+          'Damage increased by ${game.buffAttackBonus}%.',
           game.buffAttackRounds, const Color(0xFFffcc00)));
     }
     if (game.buffAcBonus > 0) {
-      list.add(_StatusInfo('AC+', 'AC Bonus',
-          'AC increased by ${game.buffAcBonus}.',
+      list.add(_StatusInfo('AC+', 'Armor Class',
+          'Armor Class rating increased by ${game.buffAcBonus}%.',
           game.buffAcRounds, const Color(0xFF66aaff)));
     }
     if (game.dodgeNextHit) {
@@ -830,6 +768,10 @@ class _BattleScreenState extends State<BattleScreen>
             enemyAuraColor: BattleSprite.auraColorFor(game.activeAffixes),
             heroDamageType: game.hero.activeDamageType,
             enemyAttackType: enemy.attackType,
+            enemyAbilityTypes: <DamageType>{
+              for (final a in enemy.abilities)
+                if (a.damageType != DamageType.physical) a.damageType,
+            }.toList(),
             enemyResistances: enemy.resistances,
             heroBuffGlows: _heroBuffGlows(game),
             enemyDebuffGlows: _enemyDebuffGlows(game),

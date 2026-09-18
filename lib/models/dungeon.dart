@@ -1,6 +1,9 @@
 import 'dart:math';
 import '../data/enemy_data.dart';
+import '../models/damage_type.dart';
 import '../models/hero_ability.dart';
+import '../models/cc_tracker.dart';
+import '../services/game_state.dart';
 import '../services/remote_config_service.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -271,6 +274,8 @@ class DungeonRoom {
     this.enemyMaxHp,
     this.enemyAtk,
     this.enemyAc,
+    this.enemyAttackType = DamageType.physical,
+    this.enemyResistances,
     this.trapName,
     this.trapDamage,
     this.treasureGold,
@@ -299,6 +304,8 @@ class DungeonRoom {
   int? enemyMaxHp;
   int? enemyAtk;
   int? enemyAc;
+  DamageType enemyAttackType;          // element of the enemy's attacks
+  Map<DamageType, int>? enemyResistances; // enemy's resistances vs hero damage
   bool isAmbush; // enemy gets free strike before round 1
 
   /// Elite rooms roll one random trait: frenzied | shielded | vampiric |
@@ -535,14 +542,18 @@ class DungeonRun {
 
   DungeonRoom _makeGoblinRoom(Random rng) {
     final stageIdx = (floor - 1).clamp(0, 50);
-    final e = EnemyData.enemyForStage(stageIdx, prestigeLevel: prestigeLevel);
+    // Dungeons scale by their OWN tier (_tierMult) and floor — do NOT also layer
+    // the global campaign tier on enemy stats, or bosses double-scale and spike.
+    final e = EnemyData.enemyForStage(stageIdx, prestigeLevel: 0);
     return DungeonRoom(
       floor: floor, type: DungeonRoomType.combat,
       enemyId: 'treasure_goblin',
       enemyName: 'Treasure Goblin',
       enemyMaxHp: (e.maxHealth * 1.2 * _hpScale).round(),
-      enemyAtk: (e.attack * 0.5 * _atkScale).round().clamp(1, 9999),
+      enemyAtk: (e.attack * 0.5 * _atkScale).round().clamp(1, 1000000000000000),
       enemyAc: e.armorClass + 3 + (floor ~/ 5).clamp(0, 6),
+      enemyAttackType: e.attackType,
+      enemyResistances: e.resistances,
       isGoblin: true,
     );
   }
@@ -592,7 +603,7 @@ class DungeonRun {
 
   DungeonRoom _makeCombatRoom(Random rng) {
     final stageIdx = (floor - 1).clamp(0, 50);
-    final e = EnemyData.enemyForStage(stageIdx, prestigeLevel: prestigeLevel);
+    final e = EnemyData.enemyForStage(stageIdx, prestigeLevel: 0);
     return DungeonRoom(
       floor: floor, type: DungeonRoomType.combat,
       enemyId: EnemyData.spriteIdForStage(stageIdx),
@@ -600,12 +611,14 @@ class DungeonRun {
       enemyMaxHp: (e.maxHealth * 1.3 * _hpScale).round(),
       enemyAtk: (e.attack * 1.3 * _atkScale).round(),
       enemyAc: e.armorClass + (floor ~/ 5).clamp(0, 6),
+      enemyAttackType: e.attackType,
+      enemyResistances: e.resistances,
     );
   }
 
   DungeonRoom _makeEliteRoom(Random rng) {
     final stageIdx = (floor - 1).clamp(0, 50);
-    final e = EnemyData.enemyForStage(stageIdx, prestigeLevel: prestigeLevel);
+    final e = EnemyData.enemyForStage(stageIdx, prestigeLevel: 0);
     const traits = ['frenzied', 'shielded', 'vampiric', 'armored', 'swift'];
     final trait = traits[rng.nextInt(traits.length)];
     return DungeonRoom(
@@ -615,13 +628,15 @@ class DungeonRun {
       enemyMaxHp: (e.maxHealth * 1.5 * _hpScale).round(),
       enemyAtk: (e.attack * 1.4 * _atkScale).round(),
       enemyAc: e.armorClass + 1 + (floor ~/ 5).clamp(0, 6) + (trait == 'armored' ? 4 : 0),
+      enemyAttackType: e.attackType,
+      enemyResistances: e.resistances,
       eliteTrait: trait,
     );
   }
 
   DungeonRoom _makeAmbushRoom(Random rng) {
     final stageIdx = (floor - 1).clamp(0, 50);
-    final e = EnemyData.enemyForStage(stageIdx, prestigeLevel: prestigeLevel);
+    final e = EnemyData.enemyForStage(stageIdx, prestigeLevel: 0);
     return DungeonRoom(
       floor: floor, type: DungeonRoomType.ambush,
       enemyId: EnemyData.spriteIdForStage(stageIdx),
@@ -629,6 +644,8 @@ class DungeonRun {
       enemyMaxHp: (e.maxHealth * 1.3 * _hpScale).round(),
       enemyAtk: (e.attack * 1.3 * _atkScale).round(),
       enemyAc: e.armorClass + (floor ~/ 5).clamp(0, 6),
+      enemyAttackType: e.attackType,
+      enemyResistances: e.resistances,
       isAmbush: true,
     );
   }
@@ -698,7 +715,8 @@ class DungeonRun {
 
   DungeonRoom _makeBossRoom(Random rng) {
     final stageIdx = ((floor - 1) * 2).clamp(0, 60);
-    final e = EnemyData.enemyForStage(stageIdx, prestigeLevel: prestigeLevel);
+    // Own-tier scaling only (see _makeGoblinRoom) — no global campaign-tier layer.
+    final e = EnemyData.enemyForStage(stageIdx, prestigeLevel: 0);
     // Floor 20 is the dungeon's final boss — beefier and clearly labelled.
     final isFinal = floor >= clearFloor;
     final finalMult = isFinal ? 1.5 : 1.0;
@@ -712,6 +730,8 @@ class DungeonRun {
       enemyMaxHp: (e.maxHealth * 1.9 * finalMult * _hpScale * 0.8).round(),
       enemyAtk: (e.attack * (1.1 + (floor - 1) * 0.02).clamp(1.1, 1.4) * (isFinal ? 1.2 : 1.0) * _atkScale * 0.8).round(),
       enemyAc: e.armorClass + 2 + (floor ~/ 5).clamp(0, 8) + (isFinal ? 2 : 0),
+      enemyAttackType: e.attackType,
+      enemyResistances: e.resistances,
     );
   }
 
@@ -773,6 +793,9 @@ class DungeonRun {
     double extHealMult = 1.0,
     int burnPerRound = 0,
     int enemyShield = 0,
+    double heroDodgePct = 0,
+    DamageType heroDamageType = DamageType.physical,
+    Map<DamageType, int> heroResistances = const {},
   }) {
     int heroHpLocal  = heroHp;
     int enemyHpLocal = ((room.enemyMaxHp ?? 10) * enemyHpMult).round();
@@ -787,6 +810,7 @@ class DungeonRun {
     bool enemyStunned      = false;
     int  enemyWeakenRounds = 0; // enemy ATK -30%
     int  enemyVulnRounds   = 0; // hero deals +25% damage
+    final cc = CcTracker();     // shared hard-CC diminishing returns
 
     lastAbilityLog = [];
     int heroDmg  = 0;
@@ -796,7 +820,7 @@ class DungeonRun {
 
     // Ambush: enemy gets a free attack before the fight begins
     if (room.isAmbush) {
-      final pre = (rng.nextInt(eAtk ~/ 3 + 1) + 1).clamp(1, 9999);
+      final pre = (rng.nextInt(eAtk ~/ 3 + 1) + 1).clamp(1, 1000000000000000);
       heroHpLocal -= pre;
       enemyDmg    += pre;
       ambushPreHit = pre;
@@ -806,6 +830,7 @@ class DungeonRun {
     while (heroHpLocal > 0 && enemyHpLocal > 0 && rounds < 60) {
       rounds++;
       abilityRound++;
+      cc.tickRound();
 
       // ── Fire ready abilities ────────────────────────────────────────────────
       for (final ability in abilities) {
@@ -819,43 +844,43 @@ class DungeonRun {
         switch (ability.effect) {
           case AbilityEffect.bonusDamage:
             final dmg = ((sv * 0.5).round() * (enemyVulnRounds > 0 ? 1.25 : 1.0))
-                .round().clamp(1, 9999);
+                .round().clamp(1, 1000000000000000);
             enemyHpLocal -= dmg;
             heroDmg      += dmg;
             lastAbilityLog.add('✦ ${ability.name}: $dmg bonus damage!');
 
           case AbilityEffect.heal:
-            final h = (sv * totalHealMult).round().clamp(1, 9999);
+            final h = (sv * totalHealMult).round().clamp(1, 1000000000000000);
             heroHpLocal = (heroHpLocal + h).clamp(0, heroMaxHp);
             lastAbilityLog.add('✦ ${ability.name}: healed $h HP.');
 
           case AbilityEffect.attackBonus:
             tempAtkBonus  = sv;
             tempAtkRounds = ability.duration > 0 ? ability.duration : 3;
-            lastAbilityLog.add('✦ ${ability.name}: +$sv ATK for $tempAtkRounds rounds.');
+            lastAbilityLog.add('✦ ${ability.name}: +$sv% DMG for $tempAtkRounds rounds.');
 
           case AbilityEffect.acBonus:
             tempAcBonus  = sv;
             tempAcRounds = ability.duration > 0 ? ability.duration : 3;
-            lastAbilityLog.add('✦ ${ability.name}: +$sv AC for $tempAcRounds rounds.');
+            lastAbilityLog.add('✦ ${ability.name}: +$sv% AC for $tempAcRounds rounds.');
 
           case AbilityEffect.stun:
-            enemyStunned = true;
-            lastAbilityLog.add('✦ ${ability.name}: enemy stunned!');
+            enemyStunned = cc.applyBool();
+            lastAbilityLog.add(enemyStunned ? '✦ ${ability.name}: enemy stunned!' : '${ability.name}: enemy resists the stun! (DR)');
 
           case AbilityEffect.dot:
             final dmg = ((sv * 0.6).round() * (enemyVulnRounds > 0 ? 1.25 : 1.0))
-                .round().clamp(1, 9999);
+                .round().clamp(1, 1000000000000000);
             enemyHpLocal -= dmg;
             heroDmg      += dmg;
             lastAbilityLog.add('✦ ${ability.name}: $dmg DoT damage!');
 
           case AbilityEffect.dodge:
             if (tempAcBonus < 6) { tempAcBonus = 6; tempAcRounds = 1; }
-            lastAbilityLog.add('✦ ${ability.name}: dodge — +6 AC this round.');
+            lastAbilityLog.add('✦ ${ability.name}: dodge — +6% AC this round.');
 
           case AbilityEffect.aura:
-            final h = (sv * 0.5 * totalHealMult).round().clamp(1, 9999);
+            final h = (sv * 0.5 * totalHealMult).round().clamp(1, 1000000000000000);
             heroHpLocal = (heroHpLocal + h).clamp(0, heroMaxHp);
             lastAbilityLog.add('✦ ${ability.name}: aura healed $h HP.');
 
@@ -867,14 +892,36 @@ class DungeonRun {
             enemyVulnRounds = 3;
             lastAbilityLog.add('✦ ${ability.name}: enemy vulnerable for 3 rounds!');
           case AbilityEffect.silence:
-            enemyStunned = true;
-            lastAbilityLog.add('✦ ${ability.name}: enemy silenced!');
+            enemyStunned = cc.applyBool();
+            lastAbilityLog.add(enemyStunned ? '✦ ${ability.name}: enemy silenced!' : '${ability.name}: enemy resists the silence! (DR)');
           case AbilityEffect.absorbShield:
             heroHpLocal = (heroHpLocal + sv).clamp(0, heroMaxHp);
             lastAbilityLog.add('✦ ${ability.name}: +$sv HP barrier!');
           case AbilityEffect.missChance:
             enemyWeakenRounds = ability.duration > 0 ? ability.duration : 2;
             lastAbilityLog.add('✦ ${ability.name}: enemy miss chance applied!');
+          case AbilityEffect.frozen:
+            enemyStunned = cc.applyBool();
+            lastAbilityLog.add(enemyStunned ? '❄ ${ability.name}: enemy frozen!' : '${ability.name}: enemy resists the freeze! (DR)');
+          case AbilityEffect.shocked:
+            enemyStunned = cc.applyBool();
+            if (enemyStunned) enemyVulnRounds = 3;
+            lastAbilityLog.add(enemyStunned ? '⚡ ${ability.name}: enemy shocked!' : '${ability.name}: enemy resists the shock! (DR)');
+          case AbilityEffect.burning:
+            final dmg = ((sv * 0.6).round() * (enemyVulnRounds > 0 ? 1.25 : 1.0))
+                .round().clamp(1, 1000000000000000);
+            enemyHpLocal -= dmg;
+            heroDmg      += dmg;
+            lastAbilityLog.add('🔥 ${ability.name}: $dmg burn damage!');
+          case AbilityEffect.envenomed:
+            final dmg = ((sv * 0.6).round() * (enemyVulnRounds > 0 ? 1.25 : 1.0))
+                .round().clamp(1, 1000000000000000);
+            enemyHpLocal -= dmg;
+            heroDmg      += dmg;
+            lastAbilityLog.add('☠ ${ability.name}: $dmg poison damage!');
+          case AbilityEffect.withered:
+            enemyWeakenRounds = 3;
+            lastAbilityLog.add('🟣 ${ability.name}: enemy withered (ATK down) for 3 rounds!');
         }
         if (enemyHpLocal <= 0) break;
       }
@@ -887,9 +934,14 @@ class DungeonRun {
         final die = weaponBase > 0
             ? weaponBase + rng.nextInt((weaponBase ~/ 3).clamp(1, 50))
             : rng.nextInt(8) + 1;
-        var dmg = die + heroStrMod + blessingDmg + tempAtkBonus;
+        var dmg = die + heroStrMod + blessingDmg;
+        // attackBonus ability is now a % damage buff (matches the campaign).
+        if (tempAtkBonus > 0) dmg = (dmg * (1 + tempAtkBonus / 100.0)).round();
         if (enemyVulnRounds > 0) dmg = (dmg * 1.25).round();
-        dmg = (dmg * dmgMult * damageDealtMult).round().clamp(1, 9999);
+        dmg = (dmg * dmgMult * damageDealtMult).round().clamp(1, 1000000000000000);
+        // Enemy resistance vs the hero's damage type (capped ±90%).
+        final eRes = (room.enemyResistances?[heroDamageType] ?? 0).clamp(-200, 90);
+        if (eRes != 0) dmg = (dmg * (1 - eRes / 100.0)).round().clamp(1, 1000000000000000);
         if (shieldLeft > 0) {
           final absorbed = dmg < shieldLeft ? dmg : shieldLeft;
           shieldLeft -= absorbed;
@@ -903,15 +955,24 @@ class DungeonRun {
       if (enemyHpLocal <= 0) break;
 
       // ── Enemy attacks ───────────────────────────────────────────────────────
-      // Always lands (same as the campaign); armor is flat damage reduction
-      // (min 1 so bosses always connect). Matches the animated combat formula.
+      // Passive Dodge Rating negates the hit; otherwise armor DR (physical) or
+      // hero resistance (elemental) via the same maths as the campaign. Min 1 so
+      // bosses always connect. Matches the animated combat formula.
       if (enemyStunned) {
         enemyStunned = false;
+      } else if (heroDodgePct > 0 && rng.nextDouble() * 100 < heroDodgePct) {
+        lastAbilityLog.add('You evade the attack! (dodge)');
       } else {
-        final effAc   = baseAc + tempAcBonus;
         final effEAtk = enemyWeakenRounds > 0 ? (eAtk * 0.7).round() : eAtk;
         final raw = rng.nextInt(effEAtk > 0 ? effEAtk : 1) + 1;
-        final dmg = ((raw - effAc).clamp(1, 9999) * damageTakenMult).round().clamp(1, 9999);
+        final int mitigated;
+        if (room.enemyAttackType == DamageType.physical) {
+          mitigated = GameState.physicalAfterArmor(raw, baseAc, tempAcPct: tempAcBonus);
+        } else {
+          final resPct = heroResistances[room.enemyAttackType] ?? 0;
+          mitigated = max(0, (raw * (1 - resPct / 100.0)).round());
+        }
+        final dmg = (mitigated * damageTakenMult).round().clamp(1, 1000000000000000);
         heroHpLocal -= dmg;
         enemyDmg    += dmg;
       }

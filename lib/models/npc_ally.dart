@@ -1,4 +1,4 @@
-﻿enum AllyMilestone {
+enum AllyMilestone {
   killCount,
   campaignStage,
   prestigeLevel,
@@ -28,8 +28,7 @@ class AllyTalentOption {
     required this.name,
     required this.icon,
     required this.description,
-    this.atkBonus      = 0,
-    this.dmgBonus      = 0,
+    this.dmgPctBonus   = 0,
     this.acBonus       = 0,
     this.goldPctBonus  = 0.0,
     this.xpPctBonus    = 0.0,
@@ -41,8 +40,7 @@ class AllyTalentOption {
   final String name;
   final String icon;
   final String description;
-  final int    atkBonus;
-  final int    dmgBonus;
+  final int    dmgPctBonus; // % increased damage (single unified damage stat)
   final int    acBonus;
   final double goldPctBonus;
   final double xpPctBonus;
@@ -52,9 +50,8 @@ class AllyTalentOption {
 
   String get statSummary {
     final parts = <String>[];
-    if (atkBonus      > 0) parts.add('+$atkBonus ATK');
-    if (dmgBonus      > 0) parts.add('+$dmgBonus DMG');
-    if (acBonus       > 0) parts.add('+$acBonus AC');
+    if (dmgPctBonus   > 0) parts.add('+$dmgPctBonus% Damage');
+    if (acBonus       > 0) parts.add('+$acBonus% AC');
     if (goldPctBonus  > 0) parts.add('+${(goldPctBonus  * 100).round()}% Gold');
     if (xpPctBonus    > 0) parts.add('+${(xpPctBonus    * 100).round()}% XP');
     if (shardPctBonus > 0) parts.add('+${(shardPctBonus * 100).round()}% Shards');
@@ -86,8 +83,7 @@ class NpcAllyDef {
     required this.milestoneTarget,
     required this.milestoneLabel,
     required this.bonusDescription,
-    this.atkBonus       = 0,
-    this.dmgBonus       = 0,
+    this.dmgPctBonus    = 0,
     this.acBonus        = 0,
     this.goldPctBonus   = 0.0,
     this.xpPctBonus     = 0.0,
@@ -110,8 +106,7 @@ class NpcAllyDef {
   final String bonusDescription;
 
   // Per-level base values — multiply by ally level to get effective bonus
-  final int    atkBonus;
-  final int    dmgBonus;
+  final int    dmgPctBonus; // % increased damage per level
   final int    acBonus;
   final double goldPctBonus;
   final double xpPctBonus;
@@ -145,8 +140,8 @@ class NpcAllyDef {
       milestone:       AllyMilestone.killCount,
       milestoneTarget: 100,
       milestoneLabel:  '100 total kills',
-      bonusDescription: '+3 ATK / level',
-      atkBonus:        3,
+      bonusDescription: '+3% Damage / level',
+      dmgPctBonus:     3,
       activeAbility: AllyAbility(
         name: 'War Cry',
         icon: '📣',
@@ -154,13 +149,13 @@ class NpcAllyDef {
       ),
       talent3: AllyTalentDef(
         unlocksAtLevel: 3,
-        optionA: AllyTalentOption(id: 'a', name: 'Iron Resolve', icon: '🗡', description: 'Pure offensive discipline.', atkBonus: 6),
-        optionB: AllyTalentOption(id: 'b', name: 'Tactical Mind', icon: '🛡', description: 'Balance of offence and defence.', atkBonus: 3, acBonus: 3),
+        optionA: AllyTalentOption(id: 'a', name: 'Iron Resolve', icon: '🗡', description: 'Pure offensive discipline.', dmgPctBonus: 6),
+        optionB: AllyTalentOption(id: 'b', name: 'Tactical Mind', icon: '🛡', description: 'Balance of offence and defence.', dmgPctBonus: 3, acBonus: 3),
       ),
       talent5: AllyTalentDef(
         unlocksAtLevel: 5,
-        optionA: AllyTalentOption(id: 'a', name: "Warlord's Edge", icon: '⚔', description: 'Mastery of raw attack power.', atkBonus: 12),
-        optionB: AllyTalentOption(id: 'b', name: 'Battle Master', icon: '🏆', description: 'Focused on raw damage.', dmgBonus: 10),
+        optionA: AllyTalentOption(id: 'a', name: "Warlord's Edge", icon: '⚔', description: 'All-in on raw attack power.', dmgPctBonus: 12),
+        optionB: AllyTalentOption(id: 'b', name: 'Battle Master', icon: '🏆', description: 'A hardened bruiser — damage and armour.', dmgPctBonus: 8, acBonus: 5),
       ),
     ),
     NpcAllyDef(
@@ -225,7 +220,7 @@ class NpcAllyDef {
       lore:            'Ancient knowledge pours from this tower-dwelling sage. His presence accelerates all learning.',
       milestone:       AllyMilestone.prestigeLevel,
       milestoneTarget: 1,
-      milestoneLabel:  'Reach Prestige 1',
+      milestoneLabel:  'Unlock Tier 1',
       bonusDescription: '+20% XP / level',
       xpPctBonus:      0.20,
       activeAbility: AllyAbility(
@@ -253,7 +248,7 @@ class NpcAllyDef {
       milestone:       AllyMilestone.dungeonClears,
       milestoneTarget: 5,
       milestoneLabel:  'Clear 5 dungeons',
-      bonusDescription: '+3 AC / level',
+      bonusDescription: '+3% AC Rating / level',
       acBonus:         3,
       activeAbility: AllyAbility(
         name: 'Shield Wall',
@@ -268,7 +263,7 @@ class NpcAllyDef {
       talent5: AllyTalentDef(
         unlocksAtLevel: 5,
         optionA: AllyTalentOption(id: 'a', name: 'Bulwark', icon: '🛡', description: 'An impenetrable wall of steel.', acBonus: 8),
-        optionB: AllyTalentOption(id: 'b', name: 'Diamond Plating', icon: '💎', description: 'Defensive mastery plus offence.', acBonus: 5, dmgBonus: 4),
+        optionB: AllyTalentOption(id: 'b', name: 'Diamond Plating', icon: '💎', description: 'Defensive mastery plus offence.', acBonus: 5, dmgPctBonus: 4),
       ),
     ),
     NpcAllyDef(
@@ -290,12 +285,12 @@ class NpcAllyDef {
       talent3: AllyTalentDef(
         unlocksAtLevel: 3,
         optionA: AllyTalentOption(id: 'a', name: 'Shadow Step', icon: '👤', description: 'Vanish deeper into shadows for shards.', shardPctBonus: 0.15),
-        optionB: AllyTalentOption(id: 'b', name: 'Knife Collector', icon: '🗡', description: 'Shards and precision strikes.', shardPctBonus: 0.08, atkBonus: 3),
+        optionB: AllyTalentOption(id: 'b', name: 'Knife Collector', icon: '🗡', description: 'Shards and precision strikes.', shardPctBonus: 0.08, dmgPctBonus: 3),
       ),
       talent5: AllyTalentDef(
         unlocksAtLevel: 5,
         optionA: AllyTalentOption(id: 'a', name: 'Master Thief', icon: '🎭', description: 'The ultimate shard harvester.', shardPctBonus: 0.25),
-        optionB: AllyTalentOption(id: 'b', name: 'Shadow Arts', icon: '🌑', description: 'Shards and lethal strikes.', shardPctBonus: 0.15, dmgBonus: 4),
+        optionB: AllyTalentOption(id: 'b', name: 'Shadow Arts', icon: '🌑', description: 'Shards and lethal strikes.', shardPctBonus: 0.15, dmgPctBonus: 4),
       ),
     ),
     NpcAllyDef(
@@ -322,7 +317,7 @@ class NpcAllyDef {
       talent5: AllyTalentDef(
         unlocksAtLevel: 5,
         optionA: AllyTalentOption(id: 'a', name: 'Mountain King', icon: '⛰', description: 'Legendary idle mastery.', idlePctBonus: 0.50),
-        optionB: AllyTalentOption(id: 'b', name: 'Primordial Might', icon: '🌋', description: 'Idle and raw attack power.', idlePctBonus: 0.30, atkBonus: 4),
+        optionB: AllyTalentOption(id: 'b', name: 'Primordial Might', icon: '🌋', description: 'Idle and raw attack power.', idlePctBonus: 0.30, dmgPctBonus: 4),
       ),
     ),
     NpcAllyDef(
@@ -334,8 +329,8 @@ class NpcAllyDef {
       milestone:       AllyMilestone.gauntletScore,
       milestoneTarget: 1000,
       milestoneLabel:  'Score 1000 in a Gauntlet run',
-      bonusDescription: '+5 DMG / level',
-      dmgBonus:        5,
+      bonusDescription: '+5% Damage / level',
+      dmgPctBonus:     5,
       activeAbility: AllyAbility(
         name: "Warmaster's Strike",
         icon: '⚡',
@@ -343,13 +338,13 @@ class NpcAllyDef {
       ),
       talent3: AllyTalentDef(
         unlocksAtLevel: 3,
-        optionA: AllyTalentOption(id: 'a', name: 'Brutal Strikes', icon: '💥', description: 'Raw damage above all else.', dmgBonus: 6),
-        optionB: AllyTalentOption(id: 'b', name: 'War Veteran', icon: '🎖', description: 'Focused on raw damage.', dmgBonus: 7),
+        optionA: AllyTalentOption(id: 'a', name: 'Brutal Strikes', icon: '💥', description: 'Raw damage above all else.', dmgPctBonus: 7),
+        optionB: AllyTalentOption(id: 'b', name: 'War Veteran', icon: '🎖', description: 'Battle-hardened — damage plus staying power.', dmgPctBonus: 4, hpPctBonus: 0.10),
       ),
       talent5: AllyTalentDef(
         unlocksAtLevel: 5,
-        optionA: AllyTalentOption(id: 'a', name: 'Conqueror', icon: '⚔', description: 'Overwhelming destructive power.', dmgBonus: 12),
-        optionB: AllyTalentOption(id: 'b', name: "Champion's Aura", icon: '🌟', description: 'Damage plus defensive presence.', dmgBonus: 7, acBonus: 4),
+        optionA: AllyTalentOption(id: 'a', name: 'Conqueror', icon: '⚔', description: 'Overwhelming destructive power.', dmgPctBonus: 12),
+        optionB: AllyTalentOption(id: 'b', name: "Champion's Aura", icon: '🌟', description: 'Damage plus defensive presence.', dmgPctBonus: 7, acBonus: 4),
       ),
     ),
   ];
@@ -365,8 +360,7 @@ class SynergyDef {
     required this.ally1Id,
     required this.ally2Id,
     required this.minLevel,
-    this.atkBonus       = 0,
-    this.dmgBonus       = 0,
+    this.dmgPctBonus    = 0,
     this.acBonus        = 0,
     this.goldPctBonus   = 0.0,
     this.xpPctBonus     = 0.0,
@@ -382,8 +376,7 @@ class SynergyDef {
   final String ally2Id;
   final int minLevel;
 
-  final int    atkBonus;
-  final int    dmgBonus;
+  final int    dmgPctBonus;
   final int    acBonus;
   final double goldPctBonus;
   final double xpPctBonus;
@@ -393,9 +386,8 @@ class SynergyDef {
 
   String get bonusSummary {
     final parts = <String>[];
-    if (atkBonus > 0)      parts.add('+$atkBonus ATK');
-    if (dmgBonus > 0)      parts.add('+$dmgBonus DMG');
-    if (acBonus > 0)       parts.add('+$acBonus AC');
+    if (dmgPctBonus > 0)   parts.add('+$dmgPctBonus% Damage');
+    if (acBonus > 0)       parts.add('+$acBonus% AC');
     if (goldPctBonus > 0)  parts.add('+${(goldPctBonus * 100).round()}% Gold');
     if (xpPctBonus > 0)    parts.add('+${(xpPctBonus * 100).round()}% XP');
     if (shardPctBonus > 0) parts.add('+${(shardPctBonus * 100).round()}% Shards');
@@ -412,8 +404,7 @@ class SynergyDef {
       ally1Id:     'greybeard',
       ally2Id:     'warmaster_cael',
       minLevel:    2,
-      atkBonus:    3,
-      dmgBonus:    3,
+      dmgPctBonus: 6,
     ),
     SynergyDef(
       id:          'iron_bulwark',
@@ -452,7 +443,7 @@ class SynergyDef {
       ally1Id:     'greybeard',
       ally2Id:     'ironhide',
       minLevel:    3,
-      atkBonus:    2,
+      dmgPctBonus: 2,
       acBonus:     2,
     ),
     SynergyDef(
@@ -472,7 +463,7 @@ class SynergyDef {
       ally1Id:     'shadow_lena',
       ally2Id:     'warmaster_cael',
       minLevel:    3,
-      dmgBonus:    5,
+      dmgPctBonus:   5,
       shardPctBonus: 0.10,
     ),
   ];

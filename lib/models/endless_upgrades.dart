@@ -78,7 +78,7 @@ enum EndlessNode {
   String get effectLabel {
     switch (this) {
       case EndlessNode.str:          return '+0.8% attack damage per level';
-      case EndlessNode.dex:          return '+1 critical damage per 2 levels';
+      case EndlessNode.dex:          return '+1% all damage per 2 levels';
       case EndlessNode.con:          return '+1 flat damage reduction per level';
       case EndlessNode.intelligence: return '+1.2% gold earned per level';
       case EndlessNode.wis:          return '+0.8% Echoes per level';
@@ -111,8 +111,8 @@ enum EndlessNode {
   List<MilestonePerk> get milestones {
     switch (this) {
       case EndlessNode.str: return const [
-        MilestonePerk(levelRequired: 5,  name: 'Iron Grip',       description: '+12% critical hit chance'),
-        MilestonePerk(levelRequired: 10, name: 'Keen Edge',       description: '+20% critical hit chance'),
+        MilestonePerk(levelRequired: 5,  name: 'Iron Grip',       description: '+10% all damage'),
+        MilestonePerk(levelRequired: 10, name: 'Keen Edge',       description: '+12% all damage'),
         MilestonePerk(levelRequired: 25, name: 'Savage Momentum', description: 'Guaranteed advantage on your next hit after each kill'),
       ];
       case EndlessNode.dex: return const [
@@ -156,6 +156,14 @@ class EndlessUpgrades {
   // ── Queries ────────────────────────────────────────────────
 
   int levelOf(EndlessNode node) => _levels[node]!;
+
+  /// Dev tool: set every node to [level] (high enough to unlock all milestone
+  /// perks and synergies and give large multipliers), bypassing cost.
+  void debugMaxAll([int level = 300]) {
+    for (final n in EndlessNode.values) {
+      _levels[n] = level;
+    }
+  }
 
   /// Cost to upgrade node from its current level to the next.
   /// Silver Tongue (CHA Lv5) applies a 15% discount.

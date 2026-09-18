@@ -67,8 +67,9 @@ class HeroModel {
   // ── Elemental damage system ────────────────────────────────────────────────
   // classElement unlocks at level 5 (auto).
   // secondaryElement unlocks via the Dual Mastery upgrade.
-  // activeDamageTypeIndex: 0 = physical, 1 = classElement, 2 = secondaryElement
-  int activeDamageTypeIndex = 1;
+  // activeDamageTypeIndex indexes availableDamageTypes: 0 = classElement,
+  // 1 = secondaryElement (once Dual Mastery is unlocked). Physical was removed.
+  int activeDamageTypeIndex = 0;
   bool dualMasteryUnlocked  = false;
 
   // ── Modern display aliases ─────────────────────────────────────
@@ -102,9 +103,18 @@ class HeroModel {
 
   // Max HP: level-based + Vitality (CON) scaling
   int get maxHealth {
-    final base = 100 + (level - 1) * 20;
+    // Per-level base now grows SUPER-LINEARLY (linear + a quadratic term) so max
+    // HP keeps pace with the exponential damage curve instead of falling 5 orders
+    // of magnitude behind. Everything (gear/CON/paragon %HP) multiplies this base.
+    //   L1 ≈ 100 · L100 ≈ 3.1K · L500 ≈ 57K · L1000 ≈ 214K base
+    // → with endgame %HP that's a multi-million pool, and each level noticeably
+    // adds HP (the "I'm getting tankier" feel). Early game is barely changed, so
+    // onboarding squishiness is preserved. Bumped (+~60% at endgame) alongside a
+    // global HP-recovery cut so the pool is a real, slowly-drained resource.
+    final base = 100 + (level - 1) * 14 + (level * level) ~/ 5;
     final vitalityBonus = constitution; // +1% max HP per point of CON
-    return ((base * (100 + extraHpPct + vitalityBonus) / 100) + flatHpBonus).round().clamp(1, 99999);
+    return ((base * (100 + extraHpPct + vitalityBonus) / 100) + flatHpBonus)
+        .round().clamp(1, 1000000000000000);
   }
 
   // Armor class = 2 base; grows through items, passives, and STR bonuses on gear
@@ -142,21 +152,18 @@ class HeroModel {
   bool get classElementUnlocked => true;
 
   DamageType get activeDamageType {
-    if (activeDamageTypeIndex == 2 && dualMasteryUnlocked) {
-      return heroClass.info.secondaryElement;
-    }
-    if (activeDamageTypeIndex >= 1) {
-      return heroClass.info.classElement;
-    }
-    return heroClass.info.classElement;
+    final types = availableDamageTypes;
+    return types[activeDamageTypeIndex.clamp(0, types.length - 1)];
   }
 
   List<DamageType> get availableDamageTypes {
-    final types = [DamageType.physical];
+    // Physical is no longer a hero damage type (Armor is the physical DEFENCE,
+    // not an offence). Heroes deal their class element, plus the secondary once
+    // Dual Mastery is unlocked.
     final ce = heroClass.info.classElement;
     final se = heroClass.info.secondaryElement;
-    if (classElementUnlocked && !types.contains(ce)) types.add(ce);
-    if (dualMasteryUnlocked && !types.contains(se)) types.add(se);
+    final types = [ce];
+    if (dualMasteryUnlocked && se != ce && !types.contains(se)) types.add(se);
     return types;
   }
 
@@ -181,48 +188,31 @@ class HeroModel {
     }
   }
 
-  // Per-class primary/secondary stat gains on level-up.
-  // Primary stat: +1 every level. Secondary stat: +1 every 2 levels.
-  // Vitality gets +1 every 3 levels for all classes (health always scales).
-  static const _primaryStat = <DndClass, String>{
-    DndClass.barbarian: 'strength',   DndClass.fighter:  'strength',
-    DndClass.paladin:   'strength',   DndClass.monk:     'dexterity',
-    DndClass.ranger:    'dexterity',  DndClass.rogue:    'dexterity',
-    DndClass.cleric:    'wisdom',     DndClass.druid:    'wisdom',
-    DndClass.wizard:    'intelligence', DndClass.sorcerer: 'charisma',
-    DndClass.warlock:   'charisma',   DndClass.bard:     'charisma',
-  };
-  static const _secondaryStat = <DndClass, String>{
-    DndClass.barbarian: 'constitution', DndClass.fighter:  'constitution',
-    DndClass.paladin:   'charisma',     DndClass.monk:     'wisdom',
-    DndClass.ranger:    'wisdom',       DndClass.rogue:    'intelligence',
-    DndClass.cleric:    'constitution', DndClass.druid:    'constitution',
-    DndClass.wizard:    'wisdom',       DndClass.sorcerer: 'intelligence',
-    DndClass.warlock:   'intelligence', DndClass.bard:     'dexterity',
-  };
+
+  // XP required to advance FROM [level] to level+1. QUADRATIC curve: the old
+  // linear curve (50 + 45·level) was too shallow versus the (uncapped) per-fight
+  // XP, so high levels came ~40 at a time. Level 1000 is meant to be a ~6-month
+  // grind at ~30 min/day, so the cost per level ramps hard with level. The kXpQuad
+  // coefficient is the master pacing knob — calibrated from telemetry
+  // (levels-per-fight) toward Level 1000 ≈ 180 days. Existing saves keep their
+  // level; only the next-level threshold changes. (Dart int is 64-bit — at L1000
+  // this is ~2M, no overflow.)
+  // Calibrated from telemetry: at kXpQuad 2.0 the pace held ~2.7 fights/level in
+  // natural tier-0 play (L18–40), extrapolating to ~3.4 months to L1000 at ~26
+  // fights/day — too fast. Raised ×1.75 → 3.5 to target ~6 months (tier-up XP
+  // boosts still nudge it faster, so this may need another small bump).
+  static const double kXpQuad = 3.5; // per-level² XP cost — the 6-month pacing knob
+  static int expToNextForLevel(int level) =>
+      (50 + 45 * level + kXpQuad * level * level).round();
 
   void levelUp() {
     level += 1;
-    experienceToNextLevel = (experienceToNextLevel * 1.27).round();
-
-    // Grant automatic stat growth on every level-up
-    _applyStat(_primaryStat[heroClass] ?? 'strength', 1);
-    if (level % 2 == 0) _applyStat(_secondaryStat[heroClass] ?? 'constitution', 1);
-    if (level % 3 == 0) constitution = (constitution + 1).clamp(0, kStatCap);
-
-    if (level % 10 == 0) levelBonusDamagePct += 10;
-    currentHealth = maxHealth; // full heal on level-up
-  }
-
-  void _applyStat(String stat, int amount) {
-    switch (stat) {
-      case 'strength':     strength     = (strength     + amount).clamp(0, kStatCap);
-      case 'dexterity':    dexterity    = (dexterity    + amount).clamp(0, kStatCap);
-      case 'constitution': constitution = (constitution + amount).clamp(0, kStatCap);
-      case 'intelligence': intelligence = (intelligence + amount).clamp(0, kStatCap);
-      case 'wisdom':       wisdom       = (wisdom       + amount).clamp(0, kStatCap);
-      case 'charisma':     charisma     = (charisma     + amount).clamp(0, kStatCap);
-    }
+    experienceToNextLevel = expToNextForLevel(level);
+    // Automatic stat growth removed — a level-up now grants ONLY a Paragon Point
+    // (see GameState._syncParagonLevels) plus energy. Stats come from gear,
+    // Paragon and passives instead. (The old +1%/level damage bonus and the
+    // full-heal on level-up were removed; per-level HP was halved — see
+    // maxHealth.)
   }
 
   void takeDamage(int amount) {
@@ -276,7 +266,7 @@ class HeroModel {
     wisdom       = (json['wisdom']       as int?) ?? 10;
     charisma     = (json['charisma']     as int?) ?? 10;
     extraHpPct             = (json['extraHpPct']             as int?)  ?? 0;
-    levelBonusDamagePct    = (json['levelBonusDamagePct']    as int?)  ?? 0;
+    levelBonusDamagePct    = 0; // retired — existing characters lose the old free bonus
     activeDamageTypeIndex  = (json['activeDamageTypeIndex']  as int?)  ?? 0;
     dualMasteryUnlocked    = (json['dualMasteryUnlocked']    as bool?) ?? false;
     currentHealth = (json['currentHealth'] as int?) ?? maxHealth;

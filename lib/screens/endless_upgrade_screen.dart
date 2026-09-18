@@ -52,7 +52,7 @@ class EndlessUpgradeScreen extends StatelessWidget {
           tutorialKey: 'upgrade',
           game: game,
           text: 'Gauntlet runs earn Echoes 🔊 — spend them here on permanent '
-              'combat upgrades that stack across every rebirth. '
+              'combat upgrades that never reset. '
               'These are some of the most powerful bonuses in the game.',
         ),
         Container(

@@ -22,6 +22,7 @@ Color passiveEffectColor(PassiveEffect e) => switch (e) {
   PassiveEffect.maxHp          => const Color(0xFFff6666),
   PassiveEffect.regenFlat      => const Color(0xFF44cc88),
   PassiveEffect.healBoost      => const Color(0xFF55dd99),
+  PassiveEffect.healRatingFlat => const Color(0xFF33dd99),
   PassiveEffect.armorFlat      => const Color(0xFF66aaff),
   PassiveEffect.dodgeChance    => const Color(0xFF88ffcc),
   PassiveEffect.goldFlat       => const Color(0xFFe8a832),

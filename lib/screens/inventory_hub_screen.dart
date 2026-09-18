@@ -26,16 +26,17 @@ class _InventoryHubScreenState extends State<InventoryHubScreen>
   int _visibleCount = 0;
 
   // Returns which tab indices (0=GEAR, 1=GEMS, 2=FORGE, 3=RUNES, 4=ARTIFACTS) are unlocked.
-  // Once a tab is unlocked it stays visible permanently.
+  // Strictly staged by campaign progress — a tab stays hidden until its stage
+  // even if you've already picked up the relevant drop (no early-open clauses).
   List<int> _unlockedIndices(GameState game) {
     final stage = game.effectiveUnlockStage;
     return [
-      0, // GEAR always visible
-      if (stage >= 50 || game.gemShards > 0 || game.gemBag.isNotEmpty) 1, // GEMS — aligns with PvP unlock
-      if (stage >= 5 || game.inventory.bag.length >= 2) 2, // FORGE
-      if (game.ownedRunes.isNotEmpty || game.runeDust > 0) 3, // RUNES — only after finding one
-      if (stage >= 22 || game.ownedArtifacts.isNotEmpty) 4, // ARTIFACTS
-      if (stage >= 28) 5, // ARMORY — legendary/set catalogue (reference)
+      0,                     // GEAR   — always visible
+      if (stage >= 50) 1,    // GEMS — aligns with PvP unlock
+      if (stage >= 5)  2,    // FORGE
+      if (stage >= 30) 3,    // RUNES
+      if (game.artifactsUnlocked) 4, // ARTIFACTS — unlocks when your first artifact drops (fires its tutorial)
+      if (stage >= 28) 5,    // ARMORY
     ];
   }
 
@@ -112,6 +113,17 @@ class _InventoryHubScreenState extends State<InventoryHubScreen>
   Widget build(BuildContext context) {
     final game    = GameStateProvider.of(context);
     final indices = _unlockedIndices(game);
+
+    // Guided-tutorial deep link: select the requested sub-tab if it lives here.
+    final want = game.consumeNavRequestFor([for (final i in indices) _labels[i]]);
+    if (want != null) {
+      final pos = indices.indexWhere((i) => _labels[i] == want);
+      if (pos >= 0) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted && pos < _ctrl.length && _ctrl.index != pos) _ctrl.animateTo(pos);
+        });
+      }
+    }
 
     if (indices.isEmpty) {
       return Scaffold(
@@ -282,7 +294,8 @@ class _GemCraftingTabState extends State<_GemCraftingTab> {
           // Gem list — one per line, showing element + full DMG/RES effect
           Text('CRAFT GEM', style: AppTheme.pixelHeading(fontSize: 10, letterSpacing: 2, color: AppTheme.textMuted)),
           const SizedBox(height: 8),
-          ...GemType.values.map((type) {
+          // Onyx (physical) removed — physical is defended by Armor, not gems.
+          ...GemType.values.where((type) => type != GemType.onyx).map((type) {
             final gem = Gem(type: type, tier: _tier);
             final canAfford = game.gemShards >= _tier.shardCost && game.gemBag.length < GameState.gemBagMax;
             final isSelected = _selectedType == type;

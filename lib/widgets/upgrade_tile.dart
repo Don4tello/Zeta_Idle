@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../models/upgrade.dart';
 import '../theme/app_theme.dart';
 import '../utils/format_number.dart';
+import 'currency_icon.dart';
 
 class UpgradeTile extends StatefulWidget {
   const UpgradeTile({
@@ -186,12 +187,9 @@ class _UpgradeTileState extends State<UpgradeTile>
                             if (!maxed)
                               Row(
                                 children: [
-                                  Icon(
-                                    Icons.monetization_on_outlined,
-                                    size: 13,
-                                    color: affordable
-                                        ? AppTheme.accentGold
-                                        : AppTheme.textMuted,
+                                  Opacity(
+                                    opacity: affordable ? 1.0 : 0.4,
+                                    child: const CurrencyIcon(id: 'gold', size: 14),
                                   ),
                                   const SizedBox(width: 5),
                                   Text(

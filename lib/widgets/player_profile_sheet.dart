@@ -42,7 +42,7 @@ class _PlayerProfileSheet extends StatelessWidget {
   final bool isMe;
 
   String get _boardResult {
-    final rb = entry.rebirths > 0 ? 'Rebirth ${entry.rebirths} · ' : '';
+    final rb = entry.rebirths > 0 ? 'Legacy ${entry.rebirths} · ' : '';
     return switch (board) {
       LeaderboardBoard.campaign => '${rb}Stage ${entry.stage}',
       LeaderboardBoard.dungeon  => '${rb}Tier ${entry.stage}',
@@ -157,7 +157,7 @@ class _PlayerProfileSheet extends StatelessWidget {
           const SizedBox(height: 8),
           Row(
             children: [
-              _stat('REBIRTHS', '${entry.rebirths}', const Color(0xFFcc88ff)),
+              _stat('LEGACY', '${entry.rebirths}', const Color(0xFFcc88ff)),
               if (entry.level > 0)
                 _stat('LEVEL', '${entry.level}', const Color(0xFF66aaff))
               else

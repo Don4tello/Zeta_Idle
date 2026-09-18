@@ -13,6 +13,7 @@ enum PassiveBranch {
   merchant,     // 💰  economy
   mystic,       // ✨  abilities & essence
   elementalist, // 🜂  elemental damage & resistances
+  vitalist,     // ✚  healing — builds Heal Rating (all healing scales off it)
   ascendant,    // ⭐  cross-branch mastery (unlocks late)
 }
 
@@ -32,7 +33,8 @@ enum PassiveEffect {
   idleFlat,      // +N to idle rate
   cooldownReduce,// -N rounds to all ability cooldowns
   abilityDamage, // +N% to ability damage
-  healBoost,     // +N% to heal abilities
+  healBoost,     // +N% to Heal Rating (all healing scales off Heal Rating)
+  healRatingFlat,// +N flat Heal Rating
   essenceGain,   // +N% essence from kills
   allPenetration,// +N% elemental resistance penetration
   // ── Elemental damage ──
@@ -112,16 +114,16 @@ const kPassiveNodes = <PassiveNode>[
   // ── ⚔ SLAYER — Offense ───────────────────────────────────────────────────
   PassiveNode(id: 'slayer_0', name: 'Keen Edge',      emoji: '🎯',
     branch: PassiveBranch.slayer,   tier: 0, essenceCost: 8,
-    effect: PassiveEffect.critChance,    value: 2,
-    description: '+2% crit chance per rank'),
+    effect: PassiveEffect.allDamage,     value: 3,
+    description: '+3% all damage per rank'),
   PassiveNode(id: 'slayer_1', name: 'Brute Force',    emoji: '⚡',
     branch: PassiveBranch.slayer,   tier: 1, essenceCost: 18,
     effect: PassiveEffect.damageFlat,    value: 2,
     description: '+2 flat damage per rank'),
   PassiveNode(id: 'slayer_2', name: 'Sure Strike',    emoji: '🗡',
     branch: PassiveBranch.slayer,   tier: 2, essenceCost: 35,
-    effect: PassiveEffect.attackFlat,    value: 2,
-    description: '+2 critical damage per rank'),
+    effect: PassiveEffect.allDamage,     value: 4,
+    description: '+4% all damage per rank'),
   PassiveNode(id: 'slayer_3', name: 'Executioner',    emoji: '💀',
     branch: PassiveBranch.slayer,   tier: 3, essenceCost: 70,
     effect: PassiveEffect.abilityDamage, value: 12,
@@ -265,6 +267,41 @@ const kPassiveNodes = <PassiveNode>[
     keystoneDesc: 'Survive a lethal hit once per battle (1 HP)',
     description: 'Survive lethal hit once + 20% max HP'),
 
+  // ── ✚ VITALIST — Healing (builds Heal Rating) ─────────────────────────────
+  // All healing in the game scales off Heal Rating. This branch is the primary
+  // way to build it: flat rating → % rating → bigger flat → % → keystone.
+  PassiveNode(id: 'vitalist_0', name: 'Mend',          emoji: '✚',
+    branch: PassiveBranch.vitalist, tier: 0, essenceCost: 10,
+    effect: PassiveEffect.healRatingFlat, value: 30,
+    description: '+30 Heal Rating per rank'),
+  PassiveNode(id: 'vitalist_1', name: 'Restoration',   emoji: '💗',
+    branch: PassiveBranch.vitalist, tier: 1, essenceCost: 22,
+    effect: PassiveEffect.healBoost,      value: 2,
+    description: '+2% Heal Rating per rank'),
+  PassiveNode(id: 'vitalist_2', name: 'Lifebloom',     emoji: '🌸',
+    branch: PassiveBranch.vitalist, tier: 2, essenceCost: 45,
+    effect: PassiveEffect.healRatingFlat, value: 120,
+    description: '+120 Heal Rating per rank'),
+  PassiveNode(id: 'vitalist_3', name: 'Sanctify',      emoji: '🕊',
+    branch: PassiveBranch.vitalist, tier: 3, essenceCost: 90,
+    effect: PassiveEffect.healBoost,      value: 3,
+    description: '+3% Heal Rating per rank'),
+  PassiveNode(id: 'vitalist_4', name: 'Wellspring',    emoji: '⛲',
+    branch: PassiveBranch.vitalist, tier: 4, essenceCost: 160,
+    effect: PassiveEffect.healRatingFlat, value: 400,
+    description: '+400 Heal Rating per rank'),
+  PassiveNode(id: 'vitalist_5', name: 'Vital Surge',   emoji: '💞',
+    branch: PassiveBranch.vitalist, tier: 5, essenceCost: 260,
+    effect: PassiveEffect.healBoost,      value: 3,
+    description: '+3% Heal Rating per rank'),
+
+  // ── ✚ KEYSTONE — VITALIST ─────────────────────────────────────────────────
+  PassiveNode(id: 'vitalist_key', name: 'Eternal Font', emoji: '💠',
+    branch: PassiveBranch.vitalist, tier: 6, essenceCost: 800, maxRank: 1,
+    effect: PassiveEffect.healRatingFlat, value: 2000, isKeystone: true,
+    keystoneDesc: 'Doubles your Base Heal Rating',
+    description: 'Doubles Base Heal Rating + 2000 flat'),
+
   // ── 💰 KEYSTONE — MERCHANT ────────────────────────────────────────────────
   PassiveNode(id: 'merchant_key', name: 'Midas', emoji: '✦',
     branch: PassiveBranch.merchant, tier: 6, essenceCost: 800, maxRank: 1,
@@ -332,8 +369,8 @@ const kPassiveNodes = <PassiveNode>[
     description: '+5% damage per kill this battle, per rank'),
   PassiveNode(id: 'class_fighter', name: 'Weapon Master', emoji: '⚔',
     branch: PassiveBranch.slayer, tier: 0, essenceCost: 150, maxRank: 3,
-    effect: PassiveEffect.critChance, value: 4, classOnly: 'fighter',
-    description: '+4% crit chance per rank'),
+    effect: PassiveEffect.allDamage, value: 6, classOnly: 'fighter',
+    description: '+6% all damage per rank'),
   PassiveNode(id: 'class_rogue', name: 'Shadow Step', emoji: '🗡',
     branch: PassiveBranch.slayer, tier: 0, essenceCost: 150, maxRank: 3,
     effect: PassiveEffect.dodgeChance, value: 5, classOnly: 'rogue',
@@ -488,6 +525,14 @@ class PassiveTree {
 
   void upgrade(String id) {
     _ranks[id] = rankOf(id) + 1;
+  }
+
+  /// Dev tool: set every node (all branches, keystones, connectors, ascendant)
+  /// to its max rank, bypassing costs/prerequisites.
+  void debugMaxAll() {
+    for (final n in allNodes) {
+      _ranks[n.id] = n.maxRank;
+    }
   }
 
   // Legacy alias kept for achievement checks

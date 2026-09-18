@@ -10,6 +10,7 @@ enum ItemStat {
   strength, dexterity, constitution, intelligence, wisdom, charisma,
   attackBonus, damageBonus, armorClass, maxHpPct, goldPct, xpPct,
   elemPenetration, damagePercent,
+  healRating, // flat Heal Rating — all healing scales off this (see game_state)
 }
 
 extension ItemStatInfo on ItemStat {
@@ -28,6 +29,7 @@ extension ItemStatInfo on ItemStat {
     ItemStat.xpPct           => '%XP',
     ItemStat.elemPenetration => 'PEN',
     ItemStat.damagePercent   => '%DMG',
+    ItemStat.healRating      => 'HEAL',
   };
 
   /// Full readable name, e.g. 'Focus (Wisdom)'. Used in tooltips so the cryptic
@@ -47,6 +49,7 @@ extension ItemStatInfo on ItemStat {
     ItemStat.xpPct           => 'XP Gain %',
     ItemStat.elemPenetration => 'Elemental Penetration',
     ItemStat.damagePercent   => 'All Damage %',
+    ItemStat.healRating      => 'Heal Rating',
   };
 
   /// One-line explanation of what the stat does in combat. Used in tooltips.
@@ -65,6 +68,7 @@ extension ItemStatInfo on ItemStat {
     ItemStat.xpPct        => 'Increases experience earned.',
     ItemStat.elemPenetration => 'Ignores a % of enemy elemental resistance.',
     ItemStat.damagePercent   => 'Multiplies your final damage output.',
+    ItemStat.healRating      => 'Increases all healing you receive.',
   };
 }
 
@@ -532,6 +536,11 @@ class EquipmentItem {
 // ─────────────────────────────────────────────────────────────────────────────
 
 class ItemLootTable {
+  /// Magic Find: each difficulty tier shifts a combat drop's rarity roll up by
+  /// this many points (i.e. +this% chance to land in a higher rarity band).
+  /// Surfaced in the tier picker so players see the payoff of climbing.
+  static const int kMagicFindPerTier = 3;
+
   // ── Name pools ────────────────────────────────────────────────────────────
   static const _weaponNames  = ['Iron Blade', 'Bone Axe', 'Shadow Dagger', 'Cursed Mace', 'Runic Sword', 'Void Glaive', 'Hex Wand', 'Death Scythe'];
   static const _offHandNames = ['Targe Shield', 'Bone Buckler', 'Shadow Guard', 'Cursed Barrier', 'Rune Shield', 'Void Ward', 'Iron Bulwark', 'Death Aegis'];
@@ -547,13 +556,13 @@ class ItemLootTable {
   // ── Stat pools per slot ────────────────────────────────────────────────────
   static const _weaponStats   = [ItemStat.attackBonus, ItemStat.damageBonus, ItemStat.strength, ItemStat.elemPenetration, ItemStat.damagePercent];
   static const _offHandStats  = [ItemStat.armorClass, ItemStat.attackBonus, ItemStat.constitution];
-  static const _helmetStats   = [ItemStat.armorClass, ItemStat.constitution, ItemStat.wisdom];
+  static const _helmetStats   = [ItemStat.armorClass, ItemStat.constitution, ItemStat.wisdom, ItemStat.healRating];
   static const _armorStats    = [ItemStat.armorClass, ItemStat.constitution, ItemStat.maxHpPct];
   static const _glovesStats   = [ItemStat.attackBonus, ItemStat.damageBonus, ItemStat.dexterity];
   static const _pantsStats    = [ItemStat.armorClass, ItemStat.constitution, ItemStat.dexterity];
   static const _bootsStats    = [ItemStat.dexterity, ItemStat.armorClass, ItemStat.wisdom];
-  static const _accessoryStats = [ItemStat.goldPct, ItemStat.xpPct, ItemStat.wisdom, ItemStat.intelligence, ItemStat.charisma, ItemStat.dexterity, ItemStat.attackBonus, ItemStat.elemPenetration, ItemStat.damagePercent];
-  static const _relicStats    = [ItemStat.goldPct, ItemStat.xpPct, ItemStat.wisdom, ItemStat.intelligence, ItemStat.charisma, ItemStat.elemPenetration];
+  static const _accessoryStats = [ItemStat.goldPct, ItemStat.xpPct, ItemStat.wisdom, ItemStat.intelligence, ItemStat.charisma, ItemStat.dexterity, ItemStat.attackBonus, ItemStat.elemPenetration, ItemStat.damagePercent, ItemStat.healRating];
+  static const _relicStats    = [ItemStat.goldPct, ItemStat.xpPct, ItemStat.wisdom, ItemStat.intelligence, ItemStat.charisma, ItemStat.elemPenetration, ItemStat.healRating];
 
   // ── Affix prefix/suffix tables (common, rare, epic) ───────────────────────
   static const _prefixCommon = {
@@ -677,7 +686,7 @@ class ItemLootTable {
     if (rng.nextDouble() * 100 >= dropChance) return null;
 
     // Higher difficulty tiers bias the rarity roll upward (better loot).
-    final rarityRoll = max(0, rng.nextInt(100) - tier * 3);
+    final rarityRoll = max(0, rng.nextInt(100) - tier * kMagicFindPerTier);
     final rarity = rarityRoll < 3  ? ItemRarity.epic
                  : rarityRoll < 12 ? ItemRarity.rare
                  : rarityRoll < 37 ? ItemRarity.uncommon
@@ -842,6 +851,14 @@ class ItemLootTable {
     };
     // Level scaling: stats grow with item level
     final lvScale = 1.0 + (level - 1) * 0.08;
+    // Heal Rating is its own animal: it must scale to a meaningful fraction of
+    // the (multiplier-inflated) HP pool, so it is NOT clamped to 999 like other
+    // flats. Grows generously with item level; a full support build should reach
+    // a rating worth a partial (not full) heal at endgame. Tunable here.
+    if (stat == ItemStat.healRating) {
+      final base = 25 + m * 20;
+      return (base * lvScale).round().clamp(1, 1000000000);
+    }
     final isPct = stat == ItemStat.maxHpPct || stat == ItemStat.goldPct ||
         stat == ItemStat.xpPct || stat == ItemStat.elemPenetration ||
         stat == ItemStat.damagePercent;

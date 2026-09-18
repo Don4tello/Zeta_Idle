@@ -13,7 +13,6 @@ import 'gauntlet_screen.dart';
 import 'boss_rush_screen.dart';
 import 'world_event_screen.dart';
 import 'expedition_screen.dart';
-import 'quest_screen.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // ModesScreen
@@ -40,7 +39,7 @@ class _ModesScreenState extends State<ModesScreen>
     ('GAUNTLET',          '🛡️', 45),  // boss 9
     // ── Secondary ─────────────────────────────────────────────────────────────
     ('CHALLENGES',        '🎯',  5),   // boss 1 — daily / weekly / bounties
-    ('QUESTS',            '📜', 10),   // boss 2
+    // QUESTS moved to the HERO tab.
     ('EVENTS',            '🌐', 30),   // boss 6
     ('EXPEDITION',        '🗺️', 40),  // boss 8
     ('PVP',               '⚔️', 50),  // boss 10
@@ -118,10 +117,9 @@ class _ModesScreenState extends State<ModesScreen>
     4  => const GauntletScreen(),        // GAUNTLET
     // Secondary
     5  => const DailyScreen(),           // CHALLENGES (daily / weekly / bounties)
-    6  => const QuestScreen(),           // QUESTS
-    7  => const WorldEventScreen(),      // EVENTS
-    8  => const ExpeditionScreen(),      // EXPEDITION
-    9  => const PvpScreen(),             // PVP
+    6  => const WorldEventScreen(),      // EVENTS
+    7  => const ExpeditionScreen(),      // EXPEDITION
+    8  => const PvpScreen(),             // PVP
     _  => const SizedBox.shrink(),
   };
 
@@ -130,6 +128,17 @@ class _ModesScreenState extends State<ModesScreen>
     final game    = GameStateProvider.of(context);
     final cleared = max(game.campaignStageIndex, game.campaignAllTimeHigh);
     final indices = _unlockedIndices(cleared);
+
+    // Guided-tutorial deep link: select the requested mode tab if it lives here.
+    final want = game.consumeNavRequestFor([for (final i in indices) _tabData[i].$1]);
+    if (want != null) {
+      final pos = indices.indexWhere((i) => _tabData[i].$1 == want);
+      if (pos >= 0) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted && pos < _tabs.length && _tabs.index != pos) _tabs.animateTo(pos);
+        });
+      }
+    }
 
     // Mark current all-data index as loaded.
     final allIdx = indices[_index.clamp(0, indices.length - 1)];
@@ -172,8 +181,9 @@ class _ModesScreenState extends State<ModesScreen>
                 final isNew = !game.visitedModeTabs.contains(label);
                 final hasClaimable = switch (label) {
                   'DAILY'      => game.hasClaimableDaily,
+                  'CHALLENGES' => game.hasClaimableDaily || game.hasClaimableWeekly || game.bossHuntsClaimable > 0,
                   'EXPEDITION' => game.activeExpeditions.any((e) => e.isComplete),
-                  'BOUNTIES'   => false,
+                  'BOUNTIES'   => game.bossHuntsClaimable > 0,
                   'QUESTS'     => game.questsClaimable > 0 || game.adventureQuestsClaimable > 0,
                   _            => false,
                 };

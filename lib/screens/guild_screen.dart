@@ -3,13 +3,13 @@ import 'package:flutter/material.dart';
 import '../widgets/game_icons.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../data/bestiary_data.dart';
+import '../models/cc_tracker.dart';
+import '../models/mode_combat.dart';
 import '../models/damage_type.dart';
 import '../models/dnd_class.dart';
-import '../models/equipment.dart';
 import '../models/guild.dart';
 import '../models/guild_castle.dart';
 import '../models/hero_ability.dart';
-import '../models/passive_tree.dart';
 import '../models/pvp.dart';
 import '../services/auth_service.dart';
 import '../services/game_state.dart';
@@ -1285,6 +1285,8 @@ class _GuildBossBattleState extends State<_GuildBossBattle> {
   final _effectKey = GlobalKey<ArenaAbilityEffectState>();
   late int _heroHp, _heroMaxHp, _bossHp, _bossMaxHp;
   int _totalDamage = 0;
+  int _minHp       = 1 << 30; // lowest HP reached (telemetry)
+  int _totalTaken  = 0;       // total damage taken (telemetry)
   bool _fighting = true;
   bool _won = false;
   final _rng = Random();
@@ -1299,10 +1301,24 @@ class _GuildBossBattleState extends State<_GuildBossBattle> {
   // Ability state (same as the other arena modes)
   int _gAbilityRound = 0;
   final Map<String, int> _gCooldownUntil = {};
-  int _tempAtkBonus = 0, _tempAtkRounds = 0;
-  int _tempAcBonus  = 0, _tempAcRounds  = 0;
-  bool _enemyStunned  = false;
-  int _enemyWeakenRem = 0, _enemyVulnRem = 0;
+  // Shared cross-mode combat status; the old per-screen fields proxy onto it so
+  // the attack maths is unchanged while ability resolution routes through ModeCombat.
+  final _st = ModeStatus();
+  int  get _tempAtkBonus => _st.tempAtkPct;
+  set  _tempAtkBonus(int v) => _st.tempAtkPct = v;
+  int  get _tempAtkRounds => _st.tempAtkRounds;
+  set  _tempAtkRounds(int v) => _st.tempAtkRounds = v;
+  int  get _tempAcBonus => _st.tempAcPct;
+  set  _tempAcBonus(int v) => _st.tempAcPct = v;
+  int  get _tempAcRounds => _st.tempAcRounds;
+  set  _tempAcRounds(int v) => _st.tempAcRounds = v;
+  bool get _enemyStunned => _st.enemyStunnedThisRound;
+  set  _enemyStunned(bool v) => _st.enemyStunnedThisRound = v;
+  CcTracker get _cc => _st.cc;
+  int  get _enemyWeakenRem => _st.enemyWeakenRounds;
+  set  _enemyWeakenRem(int v) => _st.enemyWeakenRounds = v;
+  int  get _enemyVulnRem => _st.enemyVulnRounds;
+  set  _enemyVulnRem(int v) => _st.enemyVulnRounds = v;
 
   @override
   void initState() {
@@ -1317,13 +1333,12 @@ class _GuildBossBattleState extends State<_GuildBossBattle> {
 
     _heroDmgMod     = game.heroFlatDmgBonus;
     _heroWeaponBase = game.inventory.equippedWeaponDamage;
-    _heroAc = hero.armorClass
-        + game.passiveTree.totalOf(PassiveEffect.armorFlat)
-        + game.inventory.totalOf(ItemStat.armorClass)
-        + game.petArmor + game.skinArmor + game.questACBonus;
+    // Full hero armor RATING (same source as the campaign, incl. STR/sets/gems/
+    // artifacts/auras/mastery and the merc + subclass % boosts).
+    _heroAc = game.heroArmorValue;
     _heroDmgType      = hero.activeDamageType;
     _heroDmgAllPct    = game.heroAllDamagePctFor(_heroDmgType);
-    _heroPrestigeMult = game.prestigeLevel > 0 ? game.prestigeDamageMult : 1.0;
+    _heroPrestigeMult = game.prestigeDamageMult; // tier + Paragon damage (1.0 when none)
     _heroCritChancePct = game.totalCritChancePct;
     _heroCritDmgMult   = game.totalCritDamageMult.round();
 
@@ -1340,12 +1355,24 @@ class _GuildBossBattleState extends State<_GuildBossBattle> {
 
   Future<void> _startFight() async {
     if (!mounted) return;
+    _cc.reset();
     final game = widget.game;
     await Future.delayed(const Duration(milliseconds: 500));
 
     while (mounted && _fighting && _heroHp > 0 && _bossHp > 0) {
-      // ── Fire ready abilities (banner + effect overlay + sound) ────────
       _gAbilityRound++;
+
+      // ── Enemy damage-over-time tick (Fire/Poison/DoT abilities) ────────
+      final dotTick = _st.tickDot();
+      if (dotTick > 0) {
+        _bossHp = (_bossHp - dotTick).clamp(0, _bossMaxHp);
+        _totalDamage += dotTick;
+        _log.add('✸ Ongoing damage: $dotTick.');
+        _arenaKey.currentState?.addExtraFloat(dotTick);
+        if (_bossHp <= 0) { await _bossDefeated(game); break; }
+      }
+
+      // ── Fire ready abilities (banner + effect overlay + sound) ────────
       for (final ability in game.unlockedAbilities) {
         final readyAt = _gCooldownUntil[ability.id] ?? 0;
         if (_gAbilityRound >= readyAt) {
@@ -1357,40 +1384,62 @@ class _GuildBossBattleState extends State<_GuildBossBattle> {
       }
       if (_bossHp <= 0) { await _bossDefeated(game); break; }
 
-      // ── Hero attacks (temp ATK buff → crit; vulnerable → +25% damage) ─
-      final critPct = _heroCritChancePct + _tempAtkBonus * 2;
+      // ── Hero attacks (temp ATK buff → % damage; vulnerable → +25% damage) ─
+      final critPct = _heroCritChancePct;
       final crit = _rng.nextInt(100) < critPct;
       final die = _heroWeaponBase > 0
           ? _heroWeaponBase + _rng.nextInt((_heroWeaponBase ~/ 3).clamp(1, 50))
           : _rng.nextInt(8) + 1;
-      var dmg = ((crit ? die * _heroCritDmgMult : die) + _heroDmgMod).clamp(1, 9999);
+      var dmg = ((crit ? die * _heroCritDmgMult : die) + _heroDmgMod).clamp(1, 1000000000000000);
       dmg = (dmg * (1 + _heroDmgAllPct / 100) * _heroPrestigeMult).round();
+      // attackBonus ability is now a % damage buff (matches the campaign).
+      if (_tempAtkBonus > 0) dmg = (dmg * (1 + _tempAtkBonus / 100.0)).round();
       if (_enemyVulnRem > 0) dmg = (dmg * 1.25).round();
-      dmg = dmg.clamp(1, 9999);
+      dmg = dmg.clamp(1, 1000000000000000);
       _bossHp = (_bossHp - dmg).clamp(0, _bossMaxHp);
       _totalDamage += dmg;
       setState(() => _log.add('${crit ? 'CRIT! ' : 'Hit! '}$dmg dmg (Boss: $_bossHp/$_bossMaxHp)'));
       game.audioService.playHitWithType(_heroDmgType);
       _arenaKey.currentState?.playHeroAttack(dmg,
           isCrit: crit, heroClass: game.hero.heroClass, damageType: _heroDmgType);
+      final ls = game.lifestealHealPerHit();
+      if (ls > 0 && _heroHp < _heroMaxHp) {
+        _heroHp = (_heroHp + ls).clamp(0, _heroMaxHp);
+        _log.add('🩸 Lifesteal: +$ls HP.');
+      }
 
       if (_bossHp <= 0) { await _bossDefeated(game); break; }
 
       await Future.delayed(Duration(milliseconds: game.scaledInterval(1200)));
       if (!mounted || !_fighting) break;
 
-      // ── Boss attacks (stun skips; weaken -30% atk; armor flat DR) ─────
+      // ── Boss attacks (stun skips; dodge negates; weaken -30% atk; armor =
+      //    rating DR). Guild bosses are untyped, so incoming is physical. ──
+      _cc.tickRound();
       if (_enemyStunned) {
         _enemyStunned = false;
         setState(() => _log.add('${widget.boss.name} is stunned — skips attack!'));
+      } else if (game.effectiveDodgePct > 0 && _rng.nextDouble() * 100 < game.effectiveDodgePct) {
+        setState(() => _log.add('You evade ${widget.boss.name}\'s attack! (dodge)'));
       } else {
         final atk = _enemyWeakenRem > 0 ? max(1, (_bossAtk * 0.7).round()) : _bossAtk;
         final raw = _rng.nextInt(atk > 0 ? atk : 1) + 1;
-        final bossDmg = (raw - (_heroAc + _tempAcBonus)).clamp(1, 9999);
-        _heroHp = (_heroHp - bossDmg).clamp(0, _heroMaxHp);
-        setState(() => _log.add('${widget.boss.name} hits $bossDmg dmg (You: $_heroHp/$_heroMaxHp)'));
+        final bossDmg = GameState.physicalAfterArmor(raw, _heroAc, tempAcPct: _tempAcBonus)
+            .clamp(1, 1000000000000000);
+        final through = _st.absorb(bossDmg); // barrier soaks first (absorbShield)
+        if (through < bossDmg) _log.add('🛡 Barrier absorbs ${bossDmg - through}.');
+        _heroHp = (_heroHp - through).clamp(0, _heroMaxHp);
+        _totalTaken += through;
+        if (_heroHp < _minHp) _minHp = _heroHp;
+        setState(() => _log.add('${widget.boss.name} hits $through dmg (You: $_heroHp/$_heroMaxHp)'));
         game.audioService.playEnemyAttack(weaknessForEnemyId(widget.boss.spriteId));
-        _arenaKey.currentState?.playEnemyAttack(bossDmg);
+        _arenaKey.currentState?.playEnemyAttack(through);
+        final thorn = ModeCombat.thornsReflect(game, bossDmg);
+        if (thorn > 0) {
+          _bossHp = (_bossHp - thorn).clamp(0, _bossMaxHp);
+          _totalDamage += thorn;
+          _log.add('🌵 Thorns reflect $thorn dmg!');
+        }
       }
 
       if (_heroHp <= 0) {
@@ -1409,6 +1458,17 @@ class _GuildBossBattleState extends State<_GuildBossBattle> {
 
       await Future.delayed(Duration(milliseconds: game.scaledInterval(1200)));
     }
+
+    final minHp = _minHp == (1 << 30) ? _heroMaxHp : _minHp;
+    ModeCombat.logBalance({
+      'mode': 'guild', 'tier': 0, 'win': _won,
+      'rounds': _gAbilityRound, 'h_lvl': game.hero.level,
+      'h_hp': _heroMaxHp, 'h_hp_end': _heroHp.clamp(0, _heroMaxHp),
+      'h_hp_pct': _heroMaxHp > 0 ? (_heroHp.clamp(0, _heroMaxHp) * 100 / _heroMaxHp).round() : 0,
+      'h_hp_min_pct': _heroMaxHp > 0 ? (minHp.clamp(0, _heroMaxHp) * 100 / _heroMaxHp).round() : 100,
+      'h_dmg_taken': _totalTaken, 'e_name': widget.boss.name,
+      'e_hp': _bossMaxHp, 'dmg': _totalDamage,
+    });
   }
 
   Future<void> _bossDefeated(GameState game) async {
@@ -1430,57 +1490,19 @@ class _GuildBossBattleState extends State<_GuildBossBattle> {
     _effectKey.currentState?.playEffect(ability.id);
     game.audioService.playAbilityFull(ability.effect, _heroDmgType);
     final sv = game.scaledAbilityValue(ability);
-    switch (ability.effect) {
-      case AbilityEffect.bonusDamage:
-        final d = (sv * 0.5).round().clamp(1, 9999);
+    ModeCombat.applyAbility(
+      game, ability, sv, _st,
+      dealDamage: (d) {
         _bossHp = (_bossHp - d).clamp(0, _bossMaxHp);
         _totalDamage += d;
-        _log.add('✦ ${ability.name}: $d ability damage!');
         _arenaKey.currentState?.addExtraFloat(d);
-      case AbilityEffect.dot:
-        final d = (sv * 0.6).round().clamp(1, 9999);
-        _bossHp = (_bossHp - d).clamp(0, _bossMaxHp);
-        _totalDamage += d;
-        _log.add('✸ ${ability.name}: $d DoT damage!');
-        _arenaKey.currentState?.addExtraFloat(d);
-      case AbilityEffect.heal:
-        final h = sv.clamp(1, 9999);
-        setState(() => _heroHp = (_heroHp + h).clamp(0, _heroMaxHp));
-        _log.add('⊕ ${ability.name}: healed $h HP.');
-        _arenaKey.currentState?.addExtraFloat(h, isHeal: true);
-      case AbilityEffect.aura:
-        final h = (sv * 0.5).round().clamp(1, 9999);
-        setState(() => _heroHp = (_heroHp + h).clamp(0, _heroMaxHp));
-        _log.add('⊕ ${ability.name}: aura healed $h HP.');
-        _arenaKey.currentState?.addExtraFloat(h, isHeal: true);
-      case AbilityEffect.absorbShield:
-        setState(() => _heroHp = (_heroHp + sv).clamp(0, _heroMaxHp));
-        _log.add('+ ${ability.name}: +$sv HP barrier!');
-        _arenaKey.currentState?.addExtraFloat(sv, isHeal: true);
-      case AbilityEffect.attackBonus:
-        _tempAtkBonus  = sv;
-        _tempAtkRounds = ability.duration > 0 ? ability.duration : 3;
-        _log.add('⚡ ${ability.name}: +$sv ATK for $_tempAtkRounds rounds.');
-      case AbilityEffect.acBonus:
-        _tempAcBonus  = sv;
-        _tempAcRounds = ability.duration > 0 ? ability.duration : 3;
-        _log.add('◆ ${ability.name}: +$sv AC for $_tempAcRounds rounds.');
-      case AbilityEffect.dodge:
-        _tempAcBonus  = 6;
-        _tempAcRounds = 1;
-        _log.add('◆ ${ability.name}: dodge — +6 AC this round.');
-      case AbilityEffect.stun:
-      case AbilityEffect.silence:
-        _enemyStunned = true;
-        _log.add('◉ ${ability.name}: boss stunned!');
-      case AbilityEffect.debuffWeaken:
-      case AbilityEffect.missChance:
-        _enemyWeakenRem = ability.duration > 0 ? ability.duration : 3;
-        _log.add('✸ ${ability.name}: boss weakened!');
-      case AbilityEffect.debuffVulnerable:
-        _enemyVulnRem = 3;
-        _log.add('⚡ ${ability.name}: boss vulnerable for 3 rounds!');
-    }
+      },
+      healHero: (hp) {
+        setState(() => _heroHp = (_heroHp + hp).clamp(0, _heroMaxHp));
+        _arenaKey.currentState?.addExtraFloat(hp, isHeal: true);
+      },
+      log: _log.add,
+    );
   }
 
   @override
@@ -1552,11 +1574,12 @@ class _GuildBossBattleState extends State<_GuildBossBattle> {
                 },
               ),
             ),
-          BattleLogBox(log: _log, height: 108),
-
-          // Result + back button
+          // Result + back button. SafeArea(bottom) keeps RETURN TO GUILD clear of
+          // the system navigation bar so it's always tappable.
           if (!_fighting)
-            Container(
+            SafeArea(
+              top: false,
+              child: Container(
               padding: const EdgeInsets.all(14),
               color: _won ? const Color(0xFF0a2a0a) : const Color(0xFF2a0a0a),
               child: Column(children: [
@@ -1582,6 +1605,7 @@ class _GuildBossBattleState extends State<_GuildBossBattle> {
                   ),
                 ),
               ]),
+            ),
             ),
         ],
       ),

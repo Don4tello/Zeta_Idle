@@ -1,4 +1,5 @@
 import 'dart:math';
+import 'cc_tracker.dart';
 import 'dnd_class.dart';
 import 'hero_ability.dart';
 import 'hero_trait.dart';
@@ -499,6 +500,9 @@ class _SimState {
   int vulnPct   = 0, vulnRem   = 0;
   int dotDmg    = 0, dotRem    = 0;
   int stunRem   = 0;
+  // Shared hard-CC diminishing returns (stun/silence/frozen/shocked) so a
+  // CC-stacking build can't perma-lock its opponent in the match sim.
+  final CcTracker ccDr = CcTracker();
 }
 
 void _simTakeTurn(_SimState self, _SimState foe, int round, Random rng) {
@@ -513,6 +517,8 @@ void _simTakeTurn(_SimState self, _SimState foe, int round, Random rng) {
     self.hp = min(self.maxHp, self.hp + self.auraHp);
     if (--self.auraRem == 0) self.auraHp = 0;
   }
+  // Advance the CC diminishing-returns window.
+  self.ccDr.tickRound();
   // Decay buffs/debuffs
   if (self.atkBonusRem > 0 && --self.atkBonusRem == 0) self.atkBonus  = 0;
   if (self.acBonusRem  > 0 && --self.acBonusRem  == 0) self.acBonus   = 0;
@@ -594,7 +600,7 @@ void _simApply(
       self.acBonus   += val;
       self.acBonusRem = max(self.acBonusRem, dur);
     case AbilityEffect.stun:
-      foe.stunRem += dur;
+      foe.stunRem += foe.ccDr.apply(dur);
     case AbilityEffect.dot:
       if (val > foe.dotDmg) { foe.dotDmg = val; foe.dotRem = dur; }
     case AbilityEffect.aura:
@@ -607,11 +613,24 @@ void _simApply(
     case AbilityEffect.dodge:
       self.dodgeNext = true;
     case AbilityEffect.silence:
-      foe.stunRem = max(foe.stunRem, 1);
+      foe.stunRem = max(foe.stunRem, foe.ccDr.apply(1));
     case AbilityEffect.absorbShield:
       self.hp = min(self.maxHp, self.hp + val);
     case AbilityEffect.missChance:
       if (val > foe.weakenPct) { foe.weakenPct = val ~/ 2; foe.weakenRem = dur; }
+    case AbilityEffect.frozen:
+      foe.stunRem += foe.ccDr.apply(dur);
+    case AbilityEffect.shocked:
+      foe.stunRem += foe.ccDr.apply(dur);
+      if (25 > foe.vulnPct) { foe.vulnPct = 25; foe.vulnRem = dur; }
+    case AbilityEffect.burning:
+      if (val > foe.dotDmg) { foe.dotDmg = val; foe.dotRem = dur; }
+    case AbilityEffect.envenomed:
+      // Poison stacks additively (capped at ~5×), refreshing its duration.
+      foe.dotDmg = (foe.dotDmg + val).clamp(1, val * 5);
+      foe.dotRem = max(foe.dotRem, dur);
+    case AbilityEffect.withered:
+      if (val > foe.weakenPct) { foe.weakenPct = val.clamp(0, 60); foe.weakenRem = dur; }
   }
 }
 

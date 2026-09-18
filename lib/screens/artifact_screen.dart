@@ -49,6 +49,43 @@ class _ArtifactScreenState extends State<ArtifactScreen> {
     }
   }
 
+  Future<void> _confirmSalvageAll(BuildContext context, GameState game) async {
+    final count = game.unequippedArtifactCount;
+    final mythril = game.salvageAllMythrilValue;
+    if (count == 0) return;
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF2A2623),
+        title: Text('Salvage $count artifact${count == 1 ? '' : 's'}?',
+            style: AppTheme.pixelHeading(fontSize: 13)),
+        content: Text(
+          'Permanently destroy all $count unequipped artifact${count == 1 ? '' : 's'} '
+          'for ◆ $mythril mythril? Equipped artifacts are kept.',
+          style: const TextStyle(color: AppTheme.textMuted, fontSize: 13, height: 1.4),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('CANCEL', style: TextStyle(color: AppTheme.textMuted)),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('SALVAGE', style: TextStyle(color: Color(0xFFcc99ff))),
+          ),
+        ],
+      ),
+    );
+    if (ok != true || !mounted) return;
+    final (n, gained) = game.salvageUnequippedArtifacts();
+    setState(() { _selectedArtifactId = null; _highlightedCell = null; });
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Text('Salvaged $n artifact${n == 1 ? '' : 's'} for ◆ $gained mythril.'),
+      behavior: SnackBarBehavior.floating,
+      duration: const Duration(milliseconds: 1400)));
+  }
+
   @override
   Widget build(BuildContext context) {
     final game = GameStateProvider.of(context);
@@ -59,38 +96,72 @@ class _ArtifactScreenState extends State<ArtifactScreen> {
     final header = Container(
       color: const Color(0xFF2A2623),
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      child: Row(children: [
-        Text('ARTIFACT TABLE',
-            style: AppTheme.pixelHeading(fontSize: 12, letterSpacing: 2)),
-        const Spacer(),
-        // Auto-equip the best artifacts by rarity into every slot.
-        GestureDetector(
-          onTap: game.ownedArtifacts.isEmpty ? null : () {
-            final n = game.autoEquipArtifacts();
-            setState(() { _selectedArtifactId = null; _highlightedCell = null; });
-            ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-              content: Text(n > 0 ? 'Auto-equipped $n best artifacts.' : 'No artifacts to equip.'),
-              behavior: SnackBarBehavior.floating,
-              duration: const Duration(milliseconds: 1200)));
-          },
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-            decoration: BoxDecoration(
-              color: game.ownedArtifacts.isEmpty ? Colors.transparent : AppTheme.accentGold.withValues(alpha: 0.12),
-              border: Border.all(color: game.ownedArtifacts.isEmpty ? AppTheme.cardBorder : AppTheme.accentGold),
-              borderRadius: BorderRadius.circular(3),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // Row 1: title + slot count + mythril
+          Row(children: [
+            Text('ARTIFACT TABLE',
+                style: AppTheme.pixelHeading(fontSize: 12, letterSpacing: 2)),
+            const Spacer(),
+            Text('${game.unlockedArtifactCells.clamp(0, _maxCells)}/$_maxCells slots',
+                style: const TextStyle(color: AppTheme.textMuted, fontSize: 11)),
+            const SizedBox(width: 10),
+            _MythrilBadge(mythril: game.mythril),
+          ]),
+          const SizedBox(height: 8),
+          // Row 2: action buttons
+          Row(children: [
+            // Auto-equip the best artifacts by rarity into every slot.
+            GestureDetector(
+              onTap: game.ownedArtifacts.isEmpty ? null : () {
+                final n = game.autoEquipArtifacts();
+                setState(() { _selectedArtifactId = null; _highlightedCell = null; });
+                ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                  content: Text(n > 0 ? 'Auto-equipped $n best artifacts.' : 'No artifacts to equip.'),
+                  behavior: SnackBarBehavior.floating,
+                  duration: const Duration(milliseconds: 1200)));
+              },
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                decoration: BoxDecoration(
+                  color: game.ownedArtifacts.isEmpty ? Colors.transparent : AppTheme.accentGold.withValues(alpha: 0.12),
+                  border: Border.all(color: game.ownedArtifacts.isEmpty ? AppTheme.cardBorder : AppTheme.accentGold),
+                  borderRadius: BorderRadius.circular(3),
+                ),
+                child: Text('⚡ AUTO-EQUIP',
+                    style: AppTheme.pixelHeading(fontSize: 10,
+                        color: game.ownedArtifacts.isEmpty ? AppTheme.textMuted : AppTheme.accentGold)),
+              ),
             ),
-            child: Text('⚡ AUTO',
-                style: AppTheme.pixelHeading(fontSize: 10,
-                    color: game.ownedArtifacts.isEmpty ? AppTheme.textMuted : AppTheme.accentGold)),
-          ),
-        ),
-        const SizedBox(width: 10),
-        Text('${game.unlockedArtifactCells.clamp(0, _maxCells)}/$_maxCells slots',
-            style: const TextStyle(color: AppTheme.textMuted, fontSize: 11)),
-        const SizedBox(width: 10),
-        _MythrilBadge(mythril: game.mythril),
-      ]),
+            const SizedBox(width: 8),
+            // Salvage every unequipped artifact for mythril.
+            GestureDetector(
+              onTap: game.unequippedArtifactCount == 0
+                  ? null
+                  : () => _confirmSalvageAll(context, game),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                decoration: BoxDecoration(
+                  color: game.unequippedArtifactCount == 0
+                      ? Colors.transparent
+                      : const Color(0xFF9966ff).withValues(alpha: 0.14),
+                  border: Border.all(color: game.unequippedArtifactCount == 0
+                      ? AppTheme.cardBorder
+                      : const Color(0xFF9966ff)),
+                  borderRadius: BorderRadius.circular(3),
+                ),
+                child: Text('♻ SALVAGE',
+                    style: AppTheme.pixelHeading(fontSize: 10,
+                        color: game.unequippedArtifactCount == 0
+                            ? AppTheme.textMuted
+                            : const Color(0xFFcc99ff))),
+              ),
+            ),
+            const Spacer(),
+          ]),
+        ],
+      ),
     );
 
     final body = Column(children: [
@@ -255,7 +326,7 @@ class _ArtifactScreenState extends State<ArtifactScreen> {
             style: const TextStyle(fontSize: 10, color: AppTheme.textMuted),
           ),
           const SizedBox(height: 8),
-          ...owned.map((art) => _ArtifactRow(
+          ...game.artifactsRankedBest.map((art) => _ArtifactRow(
             artifact: art,
             equipped: game.isArtifactEquipped(art.uid),
             selected: _selectedArtifactId == art.uid,

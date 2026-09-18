@@ -10,6 +10,14 @@ enum AbilityEffect {
   silence,          // enemy cannot use abilities for duration rounds
   absorbShield,     // hero gains a barrier that absorbs X flat damage
   missChance,       // enemy has X% chance to miss per round for duration rounds
+  // ── Elemental crowd control (all share the stun diminishing-returns pool) ──
+  frozen,           // Cold: enemy is frozen solid — skips its turn like a stun
+  shocked,          // Lightning: enemy is paralysed AND conductive — skips its turn
+                    // and takes bonus damage while shocked
+  // ── Elemental damage-over-time / debuff ailments (no hard-CC DR) ──
+  burning,          // Fire: strong damage-over-time (torches the enemy each round)
+  envenomed,        // Poison: STACKING damage-over-time — ramps as it's re-applied
+  withered,         // Void: enemy ATK is sapped (soft −ATK debuff, no CC / no DR)
 }
 
 // ── Milestone choice (replaces AbilityBranch) ─────────────────────────────────

@@ -9,6 +9,7 @@ import '../models/hero_race.dart';
 import '../models/hero_trait.dart';
 import '../models/shop_catalog.dart';
 import '../widgets/battle_sprites.dart';
+import '../widgets/currency_icon.dart';
 import '../widgets/progress_ring.dart';
 import '../widgets/race_gender_sprite.dart';
 
@@ -297,7 +298,7 @@ class _DashboardHeaderState extends State<DashboardHeader>
                             letterSpacing: 2,
                           ),
                         ),
-                        if (game.prestigeLevel > 0) ...[
+                        if (game.highestUnlockedTier > 0) ...[
                           const SizedBox(width: 8),
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
@@ -308,7 +309,7 @@ class _DashboardHeaderState extends State<DashboardHeader>
                               borderRadius: BorderRadius.circular(2),
                             ),
                             child: Text(
-                              '✦ REBIRTH LV.${game.prestigeLevel}',
+                              '✦ TIER ${game.highestUnlockedTier}',
                               style: AppTheme.pixelHeading(
                                 fontSize: 9,
                                 color: const Color(0xFFcc8844),
@@ -370,7 +371,7 @@ class _DashboardHeaderState extends State<DashboardHeader>
                           children: [
                             Text('⚜', style: TextStyle(fontSize: 10, color: game.medievalPowerColor)),
                             const SizedBox(width: 4),
-                            Text('${game.medievalPower}',
+                            Text(AppTheme.fmtNumber(game.medievalPower),
                                 style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: game.medievalPowerColor)),
                             const SizedBox(width: 4),
                             Text(game.medievalPowerLabel,
@@ -794,13 +795,14 @@ class _IdleProgressPanelState extends State<_IdleProgressPanel>
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  _RewardChip('💰', '${AppTheme.fmtNumber(goldMin)}g', AppTheme.accentGold),
+                  _RewardChip('💰', AppTheme.fmtNumber(goldMin), AppTheme.accentGold,
+                      iconWidget: const CurrencyIcon(id: 'gold', size: 11)),
                   if (essMin > 0) ...[
                     const SizedBox(width: 8),
-                    _RewardChip('✦', '+$essMin', const Color(0xFF44dd88)),
+                    _RewardChip('✦', '+${AppTheme.fmtNumber(essMin)}', const Color(0xFF44dd88)),
                   ],
                   const SizedBox(width: 8),
-                  _RewardChip('✨', '+$xpMin XP', const Color(0xFF88aaff)),
+                  _RewardChip('✨', '+${AppTheme.fmtNumber(xpMin)} XP', const Color(0xFF88aaff)),
                 ],
               ),
             ),
@@ -812,15 +814,16 @@ class _IdleProgressPanelState extends State<_IdleProgressPanel>
 }
 
 class _RewardChip extends StatelessWidget {
-  const _RewardChip(this.icon, this.value, this.color);
+  const _RewardChip(this.icon, this.value, this.color, {this.iconWidget});
   final String icon;
   final String value;
   final Color  color;
+  final Widget? iconWidget; // optional custom icon (e.g. the gold coin)
 
   @override
   Widget build(BuildContext context) {
     return Row(mainAxisSize: MainAxisSize.min, children: [
-      Text(icon, style: TextStyle(fontSize: 10, color: color)),
+      iconWidget ?? Text(icon, style: TextStyle(fontSize: 10, color: color)),
       const SizedBox(width: 3),
       Text(value,
           style: GoogleFonts.rajdhani(

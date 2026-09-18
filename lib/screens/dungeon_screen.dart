@@ -1,11 +1,10 @@
 ﻿import 'dart:async';
 import 'dart:math';
 import 'package:flutter/material.dart';
+import '../models/cc_tracker.dart';
 import '../models/damage_type.dart';
 import '../models/dungeon.dart';
-import '../models/equipment.dart';
 import '../models/hero_ability.dart';
-import '../models/passive_tree.dart';
 import '../screens/leaderboard_screen.dart';
 import '../widgets/fight_summary_sheet.dart';
 import '../screens/main_shell.dart';
@@ -41,6 +40,7 @@ class _DungeonScreenState extends State<DungeonScreen> {
   int _selectedTier = 1;
   bool _autoRun = false;
   Timer? _autoTimer;
+  final Random _rng = Random();
 
   @override
   void dispose() {
@@ -59,8 +59,6 @@ class _DungeonScreenState extends State<DungeonScreen> {
                              selectedTier: _selectedTier,
                              onTierChange: (t) => setState(() => _selectedTier = t),
                              onStart: () => setState(() => game.startDungeon(tier: _selectedTier)),
-                             autoRun: _autoRun,
-                             onToggleAuto: _toggleAuto,
                            ),
       _ when run.isOver => _DungeonSummary(
                              run: run, game: game,
@@ -112,6 +110,18 @@ class _DungeonScreenState extends State<DungeonScreen> {
           ),
           if (run == null || run.isOver)
             IconButton(
+              icon: Icon(
+                game.hasPremium ? Icons.autorenew : Icons.lock,
+                color: _autoRun ? const Color(0xFF44cc88) : AppTheme.textMuted,
+                size: 20,
+              ),
+              tooltip: game.hasPremium
+                  ? (_autoRun ? 'Auto Run: ON' : 'Auto Run: OFF')
+                  : 'Auto Run (Premium)',
+              onPressed: _toggleAuto,
+            ),
+          if (run == null || run.isOver)
+            IconButton(
               icon: const Icon(Icons.leaderboard, color: AppTheme.accentGold, size: 20),
               tooltip: 'Dungeon Leaderboard',
               onPressed: () => Navigator.of(context).push(MaterialPageRoute(
@@ -160,6 +170,14 @@ class _DungeonScreenState extends State<DungeonScreen> {
   }
 
   void _toggleAuto() {
+    // Auto-run is a Premium subscriber perk.
+    if (!_autoRun && !GameStateProvider.of(context).hasPremium) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        content: Text('Auto Run is a Premium subscriber feature.'),
+        duration: Duration(seconds: 2),
+      ));
+      return;
+    }
     setState(() => _autoRun = !_autoRun);
     if (_autoRun) _scheduleAutoAction();
   }
@@ -173,6 +191,12 @@ class _DungeonScreenState extends State<DungeonScreen> {
     final run  = game.activeDungeon;
 
     if (run == null || run.isOver) {
+      // Stop auto-run once the hero is defeated (or the run was abandoned) — it
+      // only keeps going by starting a fresh dungeon after a successful clear.
+      if (run != null && (run.isDead || run.isAbandoned)) {
+        setState(() => _autoRun = false);
+        return;
+      }
       _autoTimer = Timer(const Duration(milliseconds: 2500), () {
         if (!mounted || !_autoRun) return;
         setState(() {
@@ -187,28 +211,13 @@ class _DungeonScreenState extends State<DungeonScreen> {
     final room = run.currentRoom;
     if (room == null) {
       if (run.roomChoices.isEmpty) return;
-      // Auto-run picks a door: rest when hurt, avoid traps, favour loot.
+      // Auto-run picks a random door at each junction.
       _autoTimer = Timer(const Duration(milliseconds: 700), () {
         if (!mounted || !_autoRun) return;
         final g = GameStateProvider.of(context);
         final r = g.activeDungeon;
         if (r == null || r.currentRoom != null || r.roomChoices.isEmpty) return;
-        final hurt = r.heroHp < r.heroMaxHp * 0.5;
-        int score(DungeonRoom d) => switch (d.type) {
-          DungeonRoomType.restSite    => hurt ? 100 : 20,
-          DungeonRoomType.treasure    => 60,
-          DungeonRoomType.shrine      => 50,
-          DungeonRoomType.lockedChest => 40,
-          DungeonRoomType.combat      => 35,
-          DungeonRoomType.elite       => 30,
-          DungeonRoomType.ambush      => 25,
-          DungeonRoomType.trap        => 10,
-          DungeonRoomType.boss        => 90,
-        };
-        var pick = r.roomChoices.first;
-        for (final d in r.roomChoices) {
-          if (score(d) > score(pick)) pick = d;
-        }
+        final pick = r.roomChoices[_rng.nextInt(r.roomChoices.length)];
         g.chooseDungeonRoom(pick);
         setState(() {});
         _scheduleAutoAction();
@@ -227,7 +236,7 @@ class _DungeonScreenState extends State<DungeonScreen> {
         final g = GameStateProvider.of(context);
         final r = g.activeDungeon;
         if (r != null && r.relicChoices.isNotEmpty) {
-          g.chooseDungeonRelic(r.relicChoices.first);
+          g.chooseDungeonRelic(r.relicChoices[_rng.nextInt(r.relicChoices.length)]);
           setState(() {});
           _scheduleAutoAction();
           return;
@@ -253,7 +262,7 @@ class _DungeonScreenState extends State<DungeonScreen> {
       case DungeonRoomType.shrine:
         final choices = room.blessingChoices ?? [];
         if (choices.isNotEmpty) {
-          game.chooseDungeonBlessing(choices.first);
+          game.chooseDungeonBlessing(choices[_rng.nextInt(choices.length)]);
         } else {
           room.resolved = true;
         }
@@ -274,15 +283,11 @@ class _DungeonLobby extends StatelessWidget {
     required this.selectedTier,
     required this.onTierChange,
     required this.onStart,
-    required this.autoRun,
-    required this.onToggleAuto,
   });
   final GameState game;
   final int selectedTier;
   final void Function(int) onTierChange;
   final VoidCallback onStart;
-  final bool autoRun;
-  final VoidCallback onToggleAuto;
 
   static const int _kMaxTiers = 10;
 
@@ -351,92 +356,7 @@ class _DungeonLobby extends StatelessWidget {
             onTierChange: onTierChange,
           ),
           const SizedBox(height: 10),
-          // Daily dungeon affix
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            decoration: BoxDecoration(
-              color: const Color(0xAA0d0c14),
-              border: Border.all(color: const Color(0xFF9966ff).withValues(alpha: 0.5)),
-              borderRadius: BorderRadius.circular(4),
-            ),
-            child: Row(children: [
-              const Text('✦', style: TextStyle(fontSize: 14)),
-              const SizedBox(width: 8),
-              Expanded(child: Text(
-                'AFFIX: ${game.dungeonAffixLabel}',
-                style: const TextStyle(fontSize: 10, color: Color(0xFF9966ff), fontWeight: FontWeight.bold),
-              )),
-              GestureDetector(
-                onTap: game.canRerollDungeonAffix ? game.rerollDungeonAffix : null,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: game.canRerollDungeonAffix
-                        ? const Color(0xFF1a0a3a)
-                        : Colors.transparent,
-                    border: Border.all(
-                      color: game.canRerollDungeonAffix
-                          ? const Color(0xFF9966ff).withValues(alpha: 0.7)
-                          : Colors.white12,
-                    ),
-                    borderRadius: BorderRadius.circular(3),
-                  ),
-                  child: Text(
-                    '↻ 5 ◆',
-                    style: TextStyle(
-                      fontSize: 9,
-                      color: game.canRerollDungeonAffix
-                          ? const Color(0xFFcc99ff)
-                          : Colors.white24,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-              ),
-            ]),
-          ),
-          const SizedBox(height: 10),
           _DungeonEnterSection(game: game, tier: selectedTier, onStart: onStart),
-          if (game.dungeonHighestTier >= selectedTier) ...[
-            const SizedBox(height: 8),
-            GestureDetector(
-              onTap: onToggleAuto,
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                decoration: BoxDecoration(
-                  color: autoRun
-                      ? const Color(0xFF44cc88).withValues(alpha: 0.10)
-                      : const Color(0xFF231F1B),
-                  border: Border.all(
-                    color: autoRun
-                        ? const Color(0xFF44cc88)
-                        : AppTheme.cardBorder,
-                  ),
-                  borderRadius: BorderRadius.circular(4),
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(
-                      autoRun ? Icons.autorenew : Icons.autorenew,
-                      color: autoRun ? const Color(0xFF44cc88) : AppTheme.textMuted,
-                      size: 16,
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      autoRun ? 'AUTO RUN: ON' : 'AUTO RUN: OFF',
-                      style: AppTheme.pixelHeading(
-                        fontSize: 11,
-                        letterSpacing: 1,
-                        color: autoRun ? const Color(0xFF44cc88) : AppTheme.textMuted,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ],
           const SizedBox(height: 16),
           _InfoCard(),
           const SizedBox(height: 16),
@@ -1326,6 +1246,7 @@ class _AnimatedCombatRoomState extends State<_AnimatedCombatRoom> {
   int _bonusAc  = 0;
   bool _dodgeThisRound        = false;
   bool _enemyStunnedThisRound = false;
+  final _cc = CcTracker(); // shared hard-CC diminishing returns
 
   // Run-wide modifiers (blessings, shrine effects, allies, consumables)
   double _dmgDealtMult  = 1.0;
@@ -1335,6 +1256,7 @@ class _AnimatedCombatRoomState extends State<_AnimatedCombatRoom> {
   int _ambushPreHit     = 0;
   double _allyGoldMult  = 1.0;
   int _enemyShield      = 0;   // arcane affix: absorbs first N damage
+  int _heroBarrier      = 0;   // absorbShield ability: hero damage barrier
   int _burnTick         = 0;   // burning affix: hero DoT per round
   int _eliteBlockHits   = 0;   // shielded elite: blocks first N hits
 
@@ -1349,10 +1271,9 @@ class _AnimatedCombatRoomState extends State<_AnimatedCombatRoom> {
     _enemyMaxHp = _enemyHp;
     _enemyShield = g.dungeonAffixEnemyShield;
     _burnTick    = g.dungeonAffixBurnTick(_heroMaxHp);
-    _heroAc = g.hero.armorClass
-        + g.passiveTree.totalOf(PassiveEffect.armorFlat)
-        + g.inventory.totalOf(ItemStat.armorClass)
-        + g.petArmor + g.skinArmor + g.questACBonus;
+    // Full hero armor RATING (matches the campaign + the authoritative dungeon
+    // resolve); the diminishing-returns curve is applied per hit in combat.
+    _heroAc = g.heroArmorValue;
     _heroDmgMod      = g.heroFlatDmgBonus;
     _heroWeaponBase  = g.inventory.equippedWeaponDamage;
     _heroDmgType     = g.hero.activeDamageType;
@@ -1379,7 +1300,7 @@ class _AnimatedCombatRoomState extends State<_AnimatedCombatRoom> {
     // Ambush: enemy lands a free hit before round 1
     if (widget.isAmbush) {
       final eAtk = widget.room.enemyAtk ?? 5;
-      final pre = ((_rng.nextInt(eAtk ~/ 3 + 1) + 1) * _dmgTakenMult).round().clamp(1, 9999);
+      final pre = ((_rng.nextInt(eAtk ~/ 3 + 1) + 1) * _dmgTakenMult).round().clamp(1, 1000000000000000);
       _heroHp = (_heroHp - pre).clamp(1, _heroMaxHp); // can't die to the pre-hit
       _totalTaken += pre;
       _ambushPreHit = pre;
@@ -1432,28 +1353,28 @@ class _AnimatedCombatRoomState extends State<_AnimatedCombatRoom> {
     final fx = <({String name, String icon, Color color})>[];
     if (g.allyUnlocked('greybeard') && _allyUsed.add('greybeard')) {
       _bonusAtk += 5;
-      _log.add('⚔ Greybeard: War Cry! +5 ATK for this fight.');
+      _log.add('⚔ Greybeard: War Cry! +5% DMG for this fight.');
       fx.add((name: 'Greybeard', icon: '📣', color: const Color(0xFFffaa44)));
     }
     if (g.allyUnlocked('elder_voss') && _allyUsed.add('elder_voss')) {
-      final burst = (_enemyMaxHp * 0.10).round().clamp(1, 9999);
+      final burst = (_enemyMaxHp * 0.10).round().clamp(1, 1000000000000000);
       _enemyHp = (_enemyHp - burst).clamp(0, _enemyMaxHp);
       _log.add('⚡ Voss: Arcane Surge! $enemyName takes $burst arcane damage!');
       fx.add((name: 'Voss', icon: '🔮', color: const Color(0xFF66aaff)));
     }
     if (g.allyUnlocked('coin_felix') && _allyUsed.add('coin_felix')) {
       _bonusAc += 6;
-      _log.add('💨 Felix: Smoke Screen! Harder to hit (+6 AC) this fight.');
+      _log.add('💨 Felix: Smoke Screen! Harder to hit (+6% AC) this fight.');
       fx.add((name: 'Felix', icon: '💨', color: const Color(0xFFffd700)));
     }
     if (g.allyUnlocked('shadow_lena') && _allyUsed.add('shadow_lena')) {
       _bonusAtk += 8;
-      _log.add('⚔ Lena: Backstab! +8 ATK for first strike.');
+      _log.add('⚔ Lena: Backstab! +8% DMG for first strike.');
       fx.add((name: 'Lena', icon: '🌑', color: const Color(0xFF44cc88)));
     }
     if (g.allyUnlocked('golem_ruk') && _allyUsed.add('golem_ruk')) {
       _bonusAc += 4;
-      _log.add('◆ Ruk: Stone Skin! +4 AC for this fight.');
+      _log.add('◆ Ruk: Stone Skin! +4% AC for this fight.');
       fx.add((name: 'Ruk', icon: '🪨', color: const Color(0xFF99aabb)));
     }
     _playMercFx(fx);
@@ -1488,12 +1409,13 @@ class _AnimatedCombatRoomState extends State<_AnimatedCombatRoom> {
     if (_abilityRound > 1) _log.add('— Round $_abilityRound —');
     // Aura HP regen — heal a % of max HP each turn (sustain).
     if (widget.game.auraHpRegen > 0 && _heroHp > 0 && _heroHp < _heroMaxHp) {
-      final r = (_heroMaxHp * widget.game.auraHpRegen / 100).round().clamp(1, 999999);
+      final r = (_heroMaxHp * widget.game.auraHpRegen / 100).round().clamp(1, 1000000000000000);
       _heroHp = (_heroHp + r).clamp(0, _heroMaxHp);
       _log.add('✚ Aura regen: +$r HP.');
     }
     _dodgeThisRound        = false;
     _enemyStunnedThisRound = false;
+    _cc.tickRound();
 
     // Treasure goblin flees after 5 rounds
     if (widget.room.isGoblin && _abilityRound > 5 && _enemyHp > 0) {
@@ -1527,16 +1449,21 @@ class _AnimatedCombatRoomState extends State<_AnimatedCombatRoom> {
     // Hero strikes (Swiftness blessing: two strikes on round 1).
     // Hero always lands (same as the campaign); crit is purely chance-based.
     final strikes = (_abilityRound == 1 && _swiftness) ? 2 : 1;
-    // Ally ATK buffs (Greybeard/Lena) convert to crit chance, like the campaign.
-    final critPct = _heroCritChancePct + _bonusAtk * 2;
+    final critPct = _heroCritChancePct;
     for (var s = 0; s < strikes && _enemyHp > 0; s++) {
       final crit = _rng.nextInt(100) < critPct;
       final die = _heroWeaponBase > 0
           ? _heroWeaponBase + _rng.nextInt((_heroWeaponBase ~/ 3).clamp(1, 50))
           : _rng.nextInt(8) + 1;
-      var dmg = ((crit ? die * _heroCritDmgMult : die) + _heroDmgMod).clamp(1, 9999);
+      var dmg = ((crit ? die * _heroCritDmgMult : die) + _heroDmgMod).clamp(1, 1000000000000000);
       dmg = (dmg * (1 + _heroDmgAllPct / 100) * _heroPrestigeMult * _dmgDealtMult)
-          .round().clamp(1, 9999);
+          .round().clamp(1, 1000000000000000);
+      // ATK buffs (Greybeard/Lena procs + attackBonus ability) are now % damage,
+      // matching the campaign.
+      if (_bonusAtk > 0) dmg = (dmg * (1 + _bonusAtk / 100.0)).round();
+      // Enemy resistance vs the hero's damage type (capped ±90%).
+      final eRes = (widget.room.enemyResistances?[_heroDmgType] ?? 0).clamp(-200, 90);
+      if (eRes != 0) dmg = (dmg * (1 - eRes / 100.0)).round().clamp(1, 1000000000000000);
       if (_eliteBlockHits > 0) {
         _eliteBlockHits--;
         setState(() => _log.add('★ $enemyName blocks the hit! ($_eliteBlockHits blocks left)'));
@@ -1545,7 +1472,7 @@ class _AnimatedCombatRoomState extends State<_AnimatedCombatRoom> {
       if (_enemyShield > 0) {
         final absorbed = dmg < _enemyShield ? dmg : _enemyShield;
         _enemyShield -= absorbed;
-        dmg = (dmg - absorbed).clamp(0, 9999);
+        dmg = (dmg - absorbed).clamp(0, 1000000000000000);
         _log.add('✦ Arcane ward absorbs $absorbed damage!');
         if (dmg == 0) { setState(() {}); continue; }
       }
@@ -1560,6 +1487,13 @@ class _AnimatedCombatRoomState extends State<_AnimatedCombatRoom> {
       });
       _effectKey.currentState?.playEffect(widget.game.autoAttackEffectId);
       _arenaKey.currentState?.playHeroAttack(dmg, isCrit: crit, heroClass: widget.game.hero.heroClass);
+      final ls = (widget.game.lifestealHealPerHit() * _healMult).round();
+      if (ls > 0 && _heroHp < _heroMaxHp) {
+        setState(() {
+          _heroHp = (_heroHp + ls).clamp(0, _heroMaxHp);
+          _log.add('🩸 Lifesteal: +$ls HP.');
+        });
+      }
     }
 
     if (_enemyHp <= 0) {
@@ -1579,25 +1513,47 @@ class _AnimatedCombatRoomState extends State<_AnimatedCombatRoom> {
         effAtk = (eAtk * 1.4).round();
       }
       final attacks = trait == 'swift' ? 2 : 1;
-      final armor = _heroAc + _bonusAc;
       for (var a = 0; a < attacks && _heroHp > 0; a++) {
-        // Attacks always land now (same model as the campaign). Ability-dodge
-        // fully negates; Iron Ward blocks one hit; otherwise armor is flat
-        // damage reduction (min 1 so bosses always connect).
+        // Ability-dodge fully negates; then the passive Dodge Rating; then
+        // Iron Ward blocks one hit; otherwise armor DR (physical) or hero
+        // resistance (elemental) via the shared maths, with the AC buff as a %
+        // boost (min 1 so bosses always connect) — full campaign parity.
         if (_dodgeThisRound) {
           setState(() => _log.add('$heroName dodges!'));
           continue;
         }
+        if (widget.game.effectiveDodgePct > 0 &&
+            _rng.nextDouble() * 100 < widget.game.effectiveDodgePct) {
+          setState(() => _log.add('$heroName evades the blow! (dodge)'));
+          continue;
+        }
         final raw = _rng.nextInt(effAtk > 0 ? effAtk : 1) + 1;
-        final dmg = ((raw - armor).clamp(1, 9999) * _dmgTakenMult).round().clamp(1, 9999);
+        final dmg = (widget.game.mitigateIncoming(raw, widget.room.enemyAttackType, _heroAc, tempAcPct: _bonusAc) * _dmgTakenMult)
+            .round().clamp(1, 1000000000000000);
+        var through = dmg;
+        if (_heroBarrier > 0) {
+          final soak = through < _heroBarrier ? through : _heroBarrier;
+          _heroBarrier -= soak;
+          through -= soak;
+          if (soak > 0) _log.add('🛡 Barrier absorbs $soak.');
+        }
         setState(() {
-          _heroHp = (_heroHp - dmg).clamp(0, _heroMaxHp);
-          _totalTaken += dmg;
-          _log.add('$enemyName hits $dmg dmg (You: $_heroHp/$_heroMaxHp)');
+          _heroHp = (_heroHp - through).clamp(0, _heroMaxHp);
+          _totalTaken += through;
+          _log.add('$enemyName hits $through dmg (You: $_heroHp/$_heroMaxHp)');
         });
-        _arenaKey.currentState?.playEnemyAttack(dmg);
+        _arenaKey.currentState?.playEnemyAttack(through);
+        final thornPct = widget.game.heroThornsPct;
+        if (thornPct > 0) {
+          final thorn = (dmg * thornPct / 100).round().clamp(1, 1000000000000000);
+          setState(() {
+            _enemyHp = (_enemyHp - thorn).clamp(0, _enemyMaxHp);
+            _totalDealt += thorn;
+            _log.add('🌵 Thorns reflect $thorn dmg!');
+          });
+        }
         if (trait == 'vampiric') {
-          final drain = (dmg * 0.3).round().clamp(1, 9999);
+          final drain = (dmg * 0.3).round().clamp(1, 1000000000000000);
           setState(() {
             _enemyHp = (_enemyHp + drain).clamp(0, _enemyMaxHp);
             _log.add('★ $enemyName drains $drain HP!');
@@ -1682,11 +1638,12 @@ class _AnimatedCombatRoomState extends State<_AnimatedCombatRoom> {
   }
 
   void _applyAbilityInAnimation(HeroAbility ability, int sv, String enemyName) {
+    final game = GameStateProvider.of(context);
     _arenaKey.currentState?.playAbilityBanner(ability.name, ability.effect, id: ability.id);
     _effectKey.currentState?.playEffect(ability.id);
     switch (ability.effect) {
       case AbilityEffect.bonusDamage:
-        final dmg = (sv * 0.5 * _dmgDealtMult).round().clamp(1, 9999);
+        final dmg = (sv * 0.5 * _dmgDealtMult).round().clamp(1, 1000000000000000);
         setState(() {
           _enemyHp = (_enemyHp - dmg).clamp(0, _enemyMaxHp);
           _totalDealt += dmg;
@@ -1694,7 +1651,7 @@ class _AnimatedCombatRoomState extends State<_AnimatedCombatRoom> {
         });
         _arenaKey.currentState?.addExtraFloat(dmg);
       case AbilityEffect.dot:
-        final dmg = (sv * 0.6 * _dmgDealtMult).round().clamp(1, 9999);
+        final dmg = (sv * 0.6 * _dmgDealtMult).round().clamp(1, 1000000000000000);
         setState(() {
           _enemyHp = (_enemyHp - dmg).clamp(0, _enemyMaxHp);
           _totalDealt += dmg;
@@ -1702,14 +1659,14 @@ class _AnimatedCombatRoomState extends State<_AnimatedCombatRoom> {
         });
         _arenaKey.currentState?.addExtraFloat(dmg);
       case AbilityEffect.heal:
-        final h = (sv * _healMult).round().clamp(1, 9999);
+        final h = (game.healFor(sv) * _healMult).round().clamp(1, 1000000000000000);
         setState(() {
           _heroHp = (_heroHp + h).clamp(0, _heroMaxHp);
           _log.add('⊕ ${ability.name}: +$h HP (You: $_heroHp/$_heroMaxHp)');
         });
         _arenaKey.currentState?.addExtraFloat(h, isHeal: true);
       case AbilityEffect.aura:
-        final h = (sv * 0.5 * _healMult).round().clamp(1, 9999);
+        final h = (game.healFor(sv, factor: 0.5) * _healMult).round().clamp(1, 1000000000000000);
         setState(() {
           _heroHp = (_heroHp + h).clamp(0, _heroMaxHp);
           _log.add('⊕ ${ability.name}: +$h HP (You: $_heroHp/$_heroMaxHp)');
@@ -1717,13 +1674,13 @@ class _AnimatedCombatRoomState extends State<_AnimatedCombatRoom> {
         _arenaKey.currentState?.addExtraFloat(h, isHeal: true);
       case AbilityEffect.attackBonus:
         _bonusAtk += sv;
-        setState(() => _log.add('⚡ ${ability.name}: +$sv ATK!'));
+        setState(() => _log.add('⚡ ${ability.name}: +$sv% DMG!'));
       case AbilityEffect.acBonus:
         _bonusAc += sv;
-        setState(() => _log.add('◆ ${ability.name}: +$sv AC!'));
+        setState(() => _log.add('◆ ${ability.name}: +$sv% AC!'));
       case AbilityEffect.stun:
-        _enemyStunnedThisRound = true;
-        setState(() => _log.add('◉ ${ability.name}: enemy stunned!'));
+        _enemyStunnedThisRound = _cc.applyBool();
+        setState(() => _log.add(_enemyStunnedThisRound ? '◉ ${ability.name}: enemy stunned!' : '${ability.name}: enemy resists the stun! (DR)'));
       case AbilityEffect.dodge:
         _dodgeThisRound = true;
         setState(() => _log.add('◆ ${ability.name}: dodge!'));
@@ -1732,16 +1689,92 @@ class _AnimatedCombatRoomState extends State<_AnimatedCombatRoom> {
       case AbilityEffect.debuffVulnerable:
         setState(() => _log.add('⚡ ${ability.name}: enemy vulnerable!'));
       case AbilityEffect.silence:
-        _enemyStunnedThisRound = true;
-        setState(() => _log.add('◉ ${ability.name}: enemy silenced!'));
+        _enemyStunnedThisRound = _cc.applyBool();
+        setState(() => _log.add(_enemyStunnedThisRound ? '◉ ${ability.name}: enemy silenced!' : '${ability.name}: enemy resists the silence! (DR)'));
+      case AbilityEffect.frozen:
+        _enemyStunnedThisRound = _cc.applyBool();
+        setState(() => _log.add(_enemyStunnedThisRound ? '❄ ${ability.name}: enemy frozen!' : '${ability.name}: enemy resists the freeze! (DR)'));
+      case AbilityEffect.shocked:
+        _enemyStunnedThisRound = _cc.applyBool();
+        setState(() => _log.add(_enemyStunnedThisRound ? '⚡ ${ability.name}: enemy shocked!' : '${ability.name}: enemy resists the shock! (DR)'));
       case AbilityEffect.absorbShield:
+        // A real damage barrier (matches the campaign), not a flat heal.
         setState(() {
-          _heroHp = (_heroHp + sv).clamp(0, _heroMaxHp);
-          _log.add('+ ${ability.name}: +$sv HP barrier!');
+          _heroBarrier = sv;
+          _log.add('+ ${ability.name}: $sv HP barrier!');
         });
         _arenaKey.currentState?.addExtraFloat(sv, isHeal: true);
       case AbilityEffect.missChance:
         setState(() => _log.add('✸ ${ability.name}: enemy miss chance applied!'));
+      case AbilityEffect.burning:
+        final dmg = (sv * 0.6 * _dmgDealtMult).round().clamp(1, 1000000000000000);
+        setState(() {
+          _enemyHp = (_enemyHp - dmg).clamp(0, _enemyMaxHp);
+          _totalDealt += dmg;
+          _log.add('🔥 ${ability.name}: $dmg burn ($enemyName: $_enemyHp/$_enemyMaxHp)');
+        });
+        _arenaKey.currentState?.addExtraFloat(dmg);
+      case AbilityEffect.envenomed:
+        final dmg = (sv * 0.6 * _dmgDealtMult).round().clamp(1, 1000000000000000);
+        setState(() {
+          _enemyHp = (_enemyHp - dmg).clamp(0, _enemyMaxHp);
+          _totalDealt += dmg;
+          _log.add('☠ ${ability.name}: $dmg poison ($enemyName: $_enemyHp/$_enemyMaxHp)');
+        });
+        _arenaKey.currentState?.addExtraFloat(dmg);
+      case AbilityEffect.withered:
+        setState(() => _log.add('🟣 ${ability.name}: enemy withered (ATK down)!'));
+    }
+
+    // ── Active milestone rider (previously ignored in the Dungeon). Handles the
+    //    impactful cases using this mode's own conventions (permanent buffs,
+    //    per-round dodge, barrier). ───────────────────────────────────────────
+    final rider = game.activeMilestoneRider(ability);
+    final rEff = rider.effect;
+    if (rEff != null) {
+      switch (rEff) {
+        case AbilityEffect.dot:
+        case AbilityEffect.burning:
+        case AbilityEffect.envenomed:
+        case AbilityEffect.bonusDamage:
+          final d = (sv * rider.value / 100 * _dmgDealtMult).round().clamp(1, 1000000000000000);
+          setState(() {
+            _enemyHp = (_enemyHp - d).clamp(0, _enemyMaxHp);
+            _totalDealt += d;
+            _log.add('  ↳ rider: $d extra dmg');
+          });
+          _arenaKey.currentState?.addExtraFloat(d);
+        case AbilityEffect.stun:
+        case AbilityEffect.frozen:
+        case AbilityEffect.shocked:
+        case AbilityEffect.silence:
+          final landed = _cc.applyBool();
+          if (landed) _enemyStunnedThisRound = true;
+          setState(() => _log.add(landed ? '  ↳ rider: enemy controlled!' : '  ↳ rider: resisted (DR)'));
+        case AbilityEffect.heal:
+          final h = (game.healFor(rider.value) * _healMult).round().clamp(1, 1000000000000000);
+          setState(() => _heroHp = (_heroHp + h).clamp(0, _heroMaxHp));
+          _arenaKey.currentState?.addExtraFloat(h, isHeal: true);
+        case AbilityEffect.aura:
+          final h = (game.healFor(rider.value, factor: 0.5) * _healMult).round().clamp(1, 1000000000000000);
+          setState(() => _heroHp = (_heroHp + h).clamp(0, _heroMaxHp));
+          _arenaKey.currentState?.addExtraFloat(h, isHeal: true);
+        case AbilityEffect.absorbShield:
+          setState(() => _heroBarrier = rider.value);
+        case AbilityEffect.attackBonus:
+          setState(() => _bonusAtk += rider.value);
+        case AbilityEffect.acBonus:
+          setState(() => _bonusAc += rider.value);
+        case AbilityEffect.dodge:
+          _dodgeThisRound = true;
+        // Vuln/weaken/miss aren't modelled in the Dungeon's simplified maths
+        // (neither for primaries), so their riders are no-ops here too.
+        case AbilityEffect.debuffVulnerable:
+        case AbilityEffect.debuffWeaken:
+        case AbilityEffect.withered:
+        case AbilityEffect.missChance:
+          break;
+      }
     }
   }
 
@@ -3075,8 +3108,11 @@ class _DungeonSummary extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isRecord    = run.floor >= game.deepestDungeonFloor;
-    final tierCleared = run.bossesDefeated >= 1;
-    final autoUnlocked = run.tier <= game.dungeonHighestTier || tierCleared;
+    // "Cleared" means you actually finished the dungeon (Dungeon Lord down) —
+    // NOT merely killing a mini-boss and then dying. This matches the real tier
+    // unlock in game_state (which requires run.isCleared).
+    final tierCleared = run.isCleared;
+    final autoUnlocked = run.tier <= game.dungeonHighestTier || run.isCleared;
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
       child: Column(
@@ -3193,7 +3229,7 @@ class _DungeonSummary extends StatelessWidget {
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
                   ),
                   child: Text(
-                    autoRun ? '◉ STOP' : '✦ AUTO',
+                    !game.hasPremium ? '🔒 AUTO' : autoRun ? '◉ STOP' : '✦ AUTO',
                     style: AppTheme.pixelHeading(
                       fontSize: 13, letterSpacing: 1,
                       color: autoRun ? const Color(0xFF44cc88) : AppTheme.textMuted,

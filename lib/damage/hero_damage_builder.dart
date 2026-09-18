@@ -11,6 +11,21 @@ SkillTag damageTypeToTag(DamageType dt) => switch (dt) {
   DamageType.void_     => SkillTag.voidDmg,
 };
 
+// Diminishing-returns soft cap: values ≤ [soft] pass through unchanged; above
+// [soft] each extra point is worth progressively less, asymptoting to soft+k.
+// Applied to the two runaway damage stacks (the additive "increased" bucket and
+// the endless multiplier) so damage across EVERY class's skills/passives/upgrades
+// stays reasonable instead of scaling to billions. Tunable.
+double _softCapPct(double raw, double soft, double k) =>
+    raw <= soft ? raw : soft + (raw - soft) * k / (k + (raw - soft));
+double _softCapMore(double mult, double soft, double k) =>
+    mult <= 1.0 ? mult : 1.0 + _softCapPct((mult - 1) * 100, soft, k) / 100;
+
+// Tuning knobs for the global damage tame (see helpers above).
+const double _kIncSoft = 800, _kIncK = 1600;   // additive damage% soft cap
+const double _kMoreSoft = 300, _kMoreK = 600;   // endless multiplier soft cap
+const double _kAbilSoft = 200, _kAbilK = 400;   // ability-damage / subclass bucket soft cap
+
 // ── Weapon attack context ─────────────────────────────────────────────────────
 //
 // baseDmg is passed in already crit-adjusted (die×critMult + flat bonuses).
@@ -46,12 +61,12 @@ DamageContext buildWeaponAttackContext({
     added: const [],
     increased: [
       if (allDamagePct != 0)
-        IncreasedModifier(allDamagePct / 100, const []),
+        IncreasedModifier(_softCapPct(allDamagePct, _kIncSoft, _kIncK) / 100, const []),
     ],
     more: [
-      if (endlessDmgMult != 1.0)  MoreModifier(endlessDmgMult,   const []),
+      if (endlessDmgMult != 1.0)  MoreModifier(_softCapMore(endlessDmgMult, _kMoreSoft, _kMoreK), const []),
       if (exploitMult    != 1.0)  MoreModifier(exploitMult,       const []),
-      if (subclassDmgMult!= 1.0)  MoreModifier(subclassDmgMult,  const []),
+      if (subclassDmgMult!= 1.0)  MoreModifier(_softCapMore(subclassDmgMult, _kMoreSoft, _kMoreK),  const []),
       if (traitDmgMult   != 1.0)  MoreModifier(traitDmgMult,     const []),
       if (comboStacks > 0)         MoreModifier(1.0 + comboStacks * 0.05, const []),
       if (bestiaryWeakMult > 1.0)  MoreModifier(bestiaryWeakMult, const []),
@@ -99,12 +114,12 @@ DamageContext buildAbilityAttackContext({
     ),
     added: const [],
     increased: [
-      if (allDamagePct        != 0) IncreasedModifier(allDamagePct / 100,        const []),
-      if (abilityDamagePct    != 0) IncreasedModifier(abilityDamagePct / 100,    [SkillTag.ability]),
-      if (subclassAbilityBonus!= 0) IncreasedModifier(subclassAbilityBonus,      [SkillTag.ability]),
+      if (allDamagePct        != 0) IncreasedModifier(_softCapPct(allDamagePct, _kIncSoft, _kIncK) / 100, const []),
+      if (abilityDamagePct    != 0) IncreasedModifier(_softCapPct(abilityDamagePct, _kAbilSoft, _kAbilK) / 100, [SkillTag.ability]),
+      if (subclassAbilityBonus!= 0) IncreasedModifier(_softCapPct(subclassAbilityBonus * 100, _kAbilSoft, _kAbilK) / 100, [SkillTag.ability]),
     ],
     more: [
-      if (endlessDmgMult   != 1.0) MoreModifier(endlessDmgMult,          const []),
+      if (endlessDmgMult   != 1.0) MoreModifier(_softCapMore(endlessDmgMult, _kMoreSoft, _kMoreK), const []),
       if (exploitMult      != 1.0) MoreModifier(exploitMult,             const []),
       if (comboStacks > 0)          MoreModifier(1.0 + comboStacks * 0.05, const []),
       if (bestiaryWeakMult > 1.0)   MoreModifier(bestiaryWeakMult,        const []),

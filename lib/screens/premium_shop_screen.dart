@@ -51,7 +51,7 @@ class _PremiumShopScreenState extends State<PremiumShopScreen>
             child: Row(mainAxisSize: MainAxisSize.min, children: [
               const ZCoinIcon(size: 14),
               const SizedBox(width: 4),
-              Text('${game.zcoins}',
+              Text(AppTheme.fmtNumber(game.zcoins),
                   style: AppTheme.pixelHeading(fontSize: 13, color: const Color(0xFFffcc44))),
             ]),
           ),
@@ -1120,7 +1120,7 @@ class _DebugGrantPanelState extends State<_DebugGrantPanel> {
         const Divider(color: Color(0xFF44cc88), height: 16),
 
         _section('CAMPAIGN  (Stage ${g.campaignStageIndex + 1})', const Color(0xFFff6644), [
-          ('UNLOCK REBIRTH', () => g.debugSkipToFinalBoss()),
+          ('SKIP TO FINAL BOSS', () => g.debugSkipToFinalBoss()),
         ]),
 
         _section('HERO LEVEL  (Lv ${g.hero.level})', const Color(0xFF44cc88), [

@@ -40,7 +40,8 @@ class ElementalMasteryScreen extends StatelessWidget {
         ],
         _InfoBanner(locked: locked, level: game.hero.level),
         const SizedBox(height: 14),
-        ...DamageType.values.map((type) => Padding(
+        // Physical is not an element (it's covered by Armor), so no physical mastery.
+        ...DamageType.values.where((t) => t != DamageType.physical).map((type) => Padding(
               padding: const EdgeInsets.only(bottom: 10),
               child: _ElementCard(game: game, type: type, locked: locked),
             )),

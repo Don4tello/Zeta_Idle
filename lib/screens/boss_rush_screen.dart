@@ -6,6 +6,8 @@ import 'package:google_fonts/google_fonts.dart';
 import '../data/bestiary_data.dart';
 import '../data/enemy_data.dart';
 import '../models/boss_rush.dart';
+import '../models/cc_tracker.dart';
+import '../models/mode_combat.dart';
 import '../models/damage_type.dart';
 import '../models/enemy.dart';
 import '../models/equipment.dart';
@@ -63,6 +65,8 @@ class _BossRushScreenState extends State<BossRushScreen> {
   int _totalDealt = 0;
   int _maxHit = 0;
   int _hitCount = 0;
+  int _minHp      = 1 << 30; // lowest HP reached (telemetry)
+  int _totalTaken = 0;       // total damage taken (telemetry)
   final Map<String, int> _fightAbilities = {};
 
   final List<String> _log = [];
@@ -86,6 +90,7 @@ class _BossRushScreenState extends State<BossRushScreen> {
   int _heroCritChancePct = 0;
   int _heroCritDmgMult   = 2;
   Map<DamageType, int> _bossResistances = {};
+  DamageType _bossAttackType = DamageType.physical;
   bool _busyRound = false;
 
   GameState? _game;
@@ -94,13 +99,24 @@ class _BossRushScreenState extends State<BossRushScreen> {
   final _rng = Random();
   int _gAbilityRound = 0;
   final Map<String, int> _gCooldownUntil = {};
-  int _tempAtkBonus   = 0;
-  int _tempAtkRounds  = 0;
-  int _tempAcBonus    = 0;
-  int _tempAcRounds   = 0;
-  bool _enemyStunned  = false;
-  int _enemyWeakenRem = 0;
-  int _enemyVulnRem   = 0;
+  // Shared cross-mode combat status; the old per-screen fields proxy onto it so
+  // the attack maths is unchanged while ability resolution routes through ModeCombat.
+  final _st = ModeStatus();
+  int  get _tempAtkBonus => _st.tempAtkPct;
+  set  _tempAtkBonus(int v) => _st.tempAtkPct = v;
+  int  get _tempAtkRounds => _st.tempAtkRounds;
+  set  _tempAtkRounds(int v) => _st.tempAtkRounds = v;
+  int  get _tempAcBonus => _st.tempAcPct;
+  set  _tempAcBonus(int v) => _st.tempAcPct = v;
+  int  get _tempAcRounds => _st.tempAcRounds;
+  set  _tempAcRounds(int v) => _st.tempAcRounds = v;
+  bool get _enemyStunned => _st.enemyStunnedThisRound;
+  set  _enemyStunned(bool v) => _st.enemyStunnedThisRound = v;
+  CcTracker get _cc => _st.cc;
+  int  get _enemyWeakenRem => _st.enemyWeakenRounds;
+  set  _enemyWeakenRem(int v) => _st.enemyWeakenRounds = v;
+  int  get _enemyVulnRem => _st.enemyVulnRounds;
+  set  _enemyVulnRem(int v) => _st.enemyVulnRounds = v;
 
   @override
   void dispose() {
@@ -136,24 +152,21 @@ class _BossRushScreenState extends State<BossRushScreen> {
     _stages = _bossStagesForTier(_selectedTier); // lock boss stages for this tier
     // Order the 5 bosses by HP so difficulty ramps smoothly (some source stages
     // are campaign bosses with ~2× the HP of adjacent regular stages).
-    _stages.sort((a, b) => EnemyData.enemyForStage(a, prestigeLevel: game.prestigeLevel).maxHealth
-        .compareTo(EnemyData.enemyForStage(b, prestigeLevel: game.prestigeLevel).maxHealth));
+    _stages.sort((a, b) => EnemyData.enemyForStage(a).maxHealth
+        .compareTo(EnemyData.enemyForStage(b).maxHealth));
     _heroDmgMod  = game.hero.baseDmg
         + game.passiveTree.totalOf(PassiveEffect.damageFlat)
         + game.inventory.totalOf(ItemStat.damageBonus)
         + game.questDamageBonus;
     _heroDmgType      = game.hero.activeDamageType;
     _heroDmgAllPct    = game.heroAllDamagePctFor(_heroDmgType);
-    _heroPrestigeMult = game.prestigeLevel > 0 ? game.prestigeDamageMult : 1.0;
-    _rebirthLvl        = game.prestigeLevel;
+    _heroPrestigeMult = game.prestigeDamageMult; // tier + Paragon damage (1.0 when none)
+    _rebirthLvl        = 0; // Boss Rush scales by its own tier, not the global tier
     _heroCritChancePct = game.totalCritChancePct;
     _heroCritDmgMult   = game.totalCritDamageMult.round();
-    _heroAc      = game.hero.armorClass
-        + game.passiveTree.totalOf(PassiveEffect.armorFlat)
-        + game.inventory.totalOf(ItemStat.armorClass)
-        + game.petArmor
-        + game.skinArmor
-        + game.questACBonus;
+    // Full hero armor RATING (same source as the campaign, incl. STR/sets/gems/
+    // artifacts/auras/mastery and the merc + subclass % boosts).
+    _heroAc      = game.heroArmorValue;
     _heroMaxHpBase = game.hero.maxHealth;
 
     _gAbilityRound  = 0;
@@ -163,6 +176,7 @@ class _BossRushScreenState extends State<BossRushScreen> {
     _tempAcBonus    = 0;
     _tempAcRounds   = 0;
     _enemyStunned   = false;
+    _cc.reset();
     _enemyWeakenRem = 0;
     _enemyVulnRem   = 0;
 
@@ -194,8 +208,9 @@ class _BossRushScreenState extends State<BossRushScreen> {
 
   void _spawnBoss() {
     final stageIdx    = _stages[_bossIndex];
-    final base        = EnemyData.enemyForStage(stageIdx, prestigeLevel: _rebirthLvl);
     final t           = _selectedTier - 1;
+    final base        = EnemyData.enemyForStage(stageIdx, prestigeLevel: _rebirthLvl,
+        resistanceTier: t);
     // Tier 1 sits at ~campaign parity (a fair back-to-back re-fight of bosses
     // you've already cleared), and each tier ramps up meaningfully. Previously a
     // flat ×2 HP / ×1.25 ATK made even tier 1 double the campaign version.
@@ -214,6 +229,7 @@ class _BossRushScreenState extends State<BossRushScreen> {
       armorClass:  base.armorClass + 2 + tierAcBonus,
     );
     _bossResistances = base.resistances;
+    _bossAttackType  = base.attackType;
     _bossEnraged    = false;
     _enemyWeakenRem = 0;
     _enemyVulnRem   = 0;
@@ -236,7 +252,7 @@ class _BossRushScreenState extends State<BossRushScreen> {
     if (_gAbilityRound > 1) _log.add('— Round $_gAbilityRound —');
     // Aura HP regen — heal a % of max HP each turn (sustain).
     if (game.auraHpRegen > 0 && _heroHp > 0 && _heroHp < _heroMaxHp) {
-      final r = (_heroMaxHp * game.auraHpRegen / 100).round().clamp(1, 999999);
+      final r = (_heroMaxHp * game.auraHpRegen / 100).round().clamp(1, 1000000000000000);
       _heroHp = (_heroHp + r).clamp(0, _heroMaxHp);
       _log.add('✚ Aura regen: +$r HP.');
     }
@@ -269,19 +285,29 @@ class _BossRushScreenState extends State<BossRushScreen> {
     if (_tempAtkRounds > 0) { _tempAtkRounds--; if (_tempAtkRounds == 0) _tempAtkBonus = 0; }
     if (_tempAcRounds  > 0) { _tempAcRounds--;  if (_tempAcRounds  == 0) _tempAcBonus  = 0; }
 
+    // -- Enemy damage-over-time tick (Fire/Poison/DoT abilities) ------------
+    final dotTick = _st.tickDot();
+    if (dotTick > 0) {
+      _enemyHp -= dotTick;
+      _totalDealt += dotTick;
+      _log.add('✸ Ongoing damage: $dotTick.');
+      _arenaKey.currentState?.addExtraFloat(dotTick);
+    }
+
     // -- Hero attacks (always lands, same as campaign; crit is chance-based;
-    //    ability ATK buff converts to crit chance) -------------------------
-    final critPct = _heroCritChancePct + _tempAtkBonus * 2;
+    //    the ability ATK buff is a % damage buff, matching the campaign) -----
+    final critPct = _heroCritChancePct;
     final crit    = _rng.nextInt(100) < critPct;
     {
       final dmgDie = _rng.nextInt(8) + 1;
       var dmg = (crit ? dmgDie * _heroCritDmgMult : dmgDie) + _heroDmgMod;
       dmg = (dmg * (1 + _heroDmgAllPct / 100.0)).round();
-      final res = (_bossResistances[_heroDmgType] ?? 0).clamp(-200, 75);
+      if (_tempAtkBonus > 0) dmg = (dmg * (1 + _tempAtkBonus / 100.0)).round();
+      final res = (_bossResistances[_heroDmgType] ?? 0).clamp(-200, 90);
       if (res != 0) dmg = (dmg * (1 - res / 100.0)).round();
       dmg = (dmg * _heroPrestigeMult).round();
       if (_enemyVulnRem > 0) dmg = (dmg * 1.25).round();
-      dmg = dmg.clamp(1, 9999);
+      dmg = dmg.clamp(1, 1000000000000000);
       _enemyHp -= dmg;
       _totalDealt += dmg; _hitCount++; if (dmg > _maxHit) _maxHit = dmg;
       _log.add('${crit ? 'CRIT! ' : 'Hit! '}$dmg dmg${_enemyVulnRem > 0 ? ' (vuln)' : ''}.');
@@ -290,6 +316,11 @@ class _BossRushScreenState extends State<BossRushScreen> {
       _arenaKey.currentState?.playHeroAttack(dmg,
           isCrit: crit, heroClass: game.hero.heroClass,
           damageType: _heroDmgType);
+      final ls = game.lifestealHealPerHit();
+      if (ls > 0 && _heroHp < _heroMaxHp) {
+        _heroHp = (_heroHp + ls).clamp(0, _heroMaxHp);
+        _log.add('🩸 Lifesteal: +$ls HP.');
+      }
     }
 
     if (_enemyHp <= 0) {
@@ -315,27 +346,41 @@ class _BossRushScreenState extends State<BossRushScreen> {
     }
 
     // -- Enemy attacks back ------------------------------------------------
+    _cc.tickRound();
     if (_enemyStunned) {
       _enemyStunned = false;
       _log.add('${boss.name} is stunned — skips attack!');
       if (mounted) setState(() {});
       return;
     }
-    // Enemy always lands (same as campaign); armor is flat damage reduction
-    // (min 1 so bosses always connect).
-    {
-      final armor  = _heroAc + _tempAcBonus;
+    // Passive Dodge Rating first, then armor DR (physical) or hero resistance
+    // (elemental) via the shared mitigation; the AC buff is a % boost. Min 1 so
+    // bosses always connect.
+    if (game.effectiveDodgePct > 0 && _rng.nextDouble() * 100 < game.effectiveDodgePct) {
+      _log.add('You evade ${boss.name}\'s attack! (dodge)');
+    } else {
       final atkMax = _enemyWeakenRem > 0
           ? max(1, (boss.attack * 0.7).round())
           : boss.attack;
       var rawDmg = atkMax > 0 ? _rng.nextInt(atkMax) + 1 : 1;
-      if (_bossEnraged) rawDmg = (rawDmg * 2.0).round().clamp(1, 9999);
-      final dmg = (rawDmg - armor).clamp(1, 9999);
-      _heroHp -= dmg;
-      _log.add('${boss.name} hits! $dmg dmg'
+      if (_bossEnraged) rawDmg = (rawDmg * 2.0).round().clamp(1, 1000000000000000);
+      final dmg = game.mitigateIncoming(rawDmg, _bossAttackType, _heroAc, tempAcPct: _tempAcBonus)
+          .clamp(1, 1000000000000000);
+      final through = _st.absorb(dmg); // barrier soaks first (absorbShield)
+      if (through < dmg) _log.add('🛡 Barrier absorbs ${dmg - through}.');
+      _heroHp -= through;
+      _totalTaken += through;
+      if (_heroHp < _minHp) _minHp = _heroHp;
+      _log.add('${boss.name} hits! $through dmg'
           '${_bossEnraged ? ' ⚡' : ''}${_enemyWeakenRem > 0 ? ' (weakened)' : ''}.');
       game.audioService.playEnemyAttack(weaknessForEnemyId(boss.id));
-      _arenaKey.currentState?.playEnemyAttack(dmg);
+      _arenaKey.currentState?.playEnemyAttack(through);
+      final thorn = ModeCombat.thornsReflect(game, dmg);
+      if (thorn > 0) {
+        _enemyHp -= thorn;
+        _totalDealt += thorn;
+        _log.add('🌵 Thorns reflect $thorn dmg!');
+      }
     }
 
     if (_heroHp <= 0) {
@@ -357,79 +402,38 @@ class _BossRushScreenState extends State<BossRushScreen> {
     _effectKey.currentState?.playEffect(ability.id);
     game.audioService.playAbilityFull(ability.effect, _heroDmgType);
     final sv = game.scaledAbilityValue(ability);
-    switch (ability.effect) {
-      case AbilityEffect.bonusDamage:
-        final dmg = (sv * 0.5).round().clamp(1, 9999);
+    ModeCombat.applyAbility(
+      game, ability, sv, _st,
+      enemyResistPct: (_bossResistances[_heroDmgType] ?? 0).clamp(-200, 90),
+      dealDamage: (dmg) {
         _enemyHp -= dmg;
         _totalDealt += dmg; _hitCount++; if (dmg > _maxHit) _maxHit = dmg;
-        _log.add('✦ ${ability.name}: $dmg ability damage!');
         _arenaKey.currentState?.addExtraFloat(dmg);
-
-      case AbilityEffect.heal:
-        final h = sv.clamp(1, 9999);
-        setState(() => _heroHp = (_heroHp + h).clamp(0, _heroMaxHp));
-        _log.add('+ ${ability.name}: healed $h HP.');
-        _arenaKey.currentState?.addExtraFloat(h, isHeal: true);
-
-      case AbilityEffect.attackBonus:
-        _tempAtkBonus  = sv;
-        _tempAtkRounds = ability.duration > 0 ? ability.duration : 3;
-        _log.add('⚡ ${ability.name}: +$sv DMG for $_tempAtkRounds rounds.');
-
-      case AbilityEffect.acBonus:
-        _tempAcBonus  = sv;
-        _tempAcRounds = ability.duration > 0 ? ability.duration : 3;
-        _log.add('◆ ${ability.name}: +$sv AC for $_tempAcRounds rounds.');
-
-      case AbilityEffect.stun:
-        _enemyStunned = true;
-        _log.add('◉ ${ability.name}: boss stunned!');
-
-      case AbilityEffect.dot:
-        final dmg = (sv * 0.6).round().clamp(1, 9999);
-        _enemyHp -= dmg;
-        _totalDealt += dmg; _hitCount++; if (dmg > _maxHit) _maxHit = dmg;
-        _log.add('✸ ${ability.name}: $dmg DoT damage!');
-        _arenaKey.currentState?.addExtraFloat(dmg);
-
-      case AbilityEffect.dodge:
-        _tempAcBonus  = 6;
-        _tempAcRounds = 1;
-        _log.add('◆ ${ability.name}: dodge — +6 AC this round.');
-
-
-      case AbilityEffect.aura:
-        final h = (sv * 0.5).round().clamp(1, 9999);
-        setState(() => _heroHp = (_heroHp + h).clamp(0, _heroMaxHp));
-        _log.add('+ ${ability.name}: aura healed $h HP.');
-        _arenaKey.currentState?.addExtraFloat(h, isHeal: true);
-
-      case AbilityEffect.debuffWeaken:
-        _enemyWeakenRem = 3;
-        _log.add('✸ ${ability.name}: boss weakened for 3 rounds!');
-
-      case AbilityEffect.debuffVulnerable:
-        _enemyVulnRem = 3;
-        _log.add('⚡ ${ability.name}: boss vulnerable for 3 rounds!');
-
-      case AbilityEffect.silence:
-        _enemyStunned = true;
-        _log.add('◉ ${ability.name}: boss silenced!');
-
-      case AbilityEffect.absorbShield:
-        setState(() => _heroHp = (_heroHp + sv).clamp(0, _heroMaxHp));
-        _log.add('+ ${ability.name}: +$sv HP barrier!');
-
-      case AbilityEffect.missChance:
-        _enemyWeakenRem = ability.duration > 0 ? ability.duration : 2;
-        _log.add('✸ ${ability.name}: boss miss chance applied!');
-    }
+      },
+      healHero: (hp) {
+        setState(() => _heroHp = (_heroHp + hp).clamp(0, _heroMaxHp));
+        _arenaKey.currentState?.addExtraFloat(hp, isHeal: true);
+      },
+      log: _log.add,
+    );
   }
 
   void _endRun({required bool cleared}) {
     _timer?.cancel();
     _autoAttackTimer?.cancel();
     _game?.audioService.endBattleMusic();
+
+    final minHp = _minHp == (1 << 30) ? _heroMaxHp : _minHp;
+    ModeCombat.logBalance({
+      'mode': 'boss_rush', 'tier': _selectedTier, 'win': cleared,
+      'rounds': _gAbilityRound, 'h_lvl': _game?.hero.level ?? 0,
+      'h_hp': _heroMaxHp, 'h_hp_end': _heroHp.clamp(0, _heroMaxHp),
+      'h_hp_pct': _heroMaxHp > 0 ? (_heroHp.clamp(0, _heroMaxHp) * 100 / _heroMaxHp).round() : 0,
+      'h_hp_min_pct': _heroMaxHp > 0 ? (minHp.clamp(0, _heroMaxHp) * 100 / _heroMaxHp).round() : 100,
+      'h_dmg_taken': _totalTaken, 'bosses': _bossIndex,
+      'dmg': _totalDealt, 'maxhit': _maxHit, 'hits': _hitCount,
+    });
+
     final result = BossRushResult(
       bossesDefeated: cleared ? _stages.length : _bossIndex,
       totalBosses:    _stages.length,
@@ -451,8 +455,8 @@ class _BossRushScreenState extends State<BossRushScreen> {
       log: List<String>.from(_log),
     );
     // Rewards: shards proportional to bosses defeated, extra if cleared.
-    // Soft rewards scale with rebirth to match the +prestige boss difficulty.
-    final rebirthMult = 1.0 + game.prestigeLevel * 0.15;
+    // Soft rewards scale with your highest unlocked Tier (permanent progression).
+    final rebirthMult = 1.0 + game.highestUnlockedTier * 0.15;
     final shardReward = ((result.bossesDefeated * 10 + (cleared ? 30 : 0)) * rebirthMult).round();
     final echoReward = ((result.bossesDefeated * 6 + (cleared ? 25 : 0)) * rebirthMult).round();
     final crystalReward = cleared ? 15 : 0;
@@ -473,7 +477,7 @@ class _BossRushScreenState extends State<BossRushScreen> {
       heroClass: game.hero.heroClass.displayName,
       subclass:  game.subclassName,
       spriteId:  game.heroBattleSpriteId,
-      rebirths:  game.prestigeLevel,
+      rebirths:  game.leaderboardRebirths,
       stage:     game.bossRushBestScore,
       title:       game.activeTitle,
       nameColorId: game.activeNameColor,

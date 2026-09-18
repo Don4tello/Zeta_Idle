@@ -25,6 +25,142 @@ import 'enemy_naming.dart';
 const kR = <DamageType, int>{}; // shorthand for "no resistances"
 
 class EnemyData {
+  /// Levels added to a PvE enemy per difficulty tier. Enemy level drives XP /
+  /// gold / loot-level / the displayed level (NOT HP-ATK, which use the tier
+  /// stat multipliers), so this keeps enemy level tracking the hero's ever-
+  /// growing level as they climb tiers (~68/tier ≈ the hero's per-tier gain).
+  static const int kTierLevelStep = 68;
+
+  /// Per-tier enemy stat scaling. Hero DAMAGE grows ~quadratically with level
+  /// (base × the +1%/level bonus) and gains ~68 levels/tier, so the quadratic
+  /// base keeps pace with hero power — and the extra `(1 + K·tier)` "challenge
+  /// ramp" makes enemies OUTPACE the hero as you climb, so each higher tier is a
+  /// genuinely harder wall (Tier 1 approachable → Tier 10 demands a real build).
+  /// HP carries most of the challenge (longer fights); ATK ramps gently to avoid
+  /// one-shots.
+  // Calibrated for hero damage WITHOUT the old +1%/level bonus (~29x by tier 10):
+  // the quadratic base tracks hero power, the (1+0.25*tier) ramp makes enemies
+  // outpace it so higher tiers are progressively harder (Tier 10 ≈ 2.8x the
+  // effort of Tier 1). ATK tracks hero HP growth with a gentle ramp.
+  // The quadratic base tracks hero power; the (1 + ramp·tier) term makes enemies
+  // OUTPACE it so each tier is a real step up (~2× tankier, ~1.8× harder-hitting
+  // per tier). Steepened so the tier ladder actually feels progressive.
+  static double tierHpMult(int tier)  =>
+      tier <= 0 ? 1.0 : pow(1 + 0.45 * tier, 2).toDouble() * (1 + 0.45 * tier);
+  static double tierAtkMult(int tier) =>
+      tier <= 0 ? 1.0 : pow(1 + 0.45 * tier, 2).toDouble() * (1 + 0.30 * tier);
+
+  // ── Endgame tier scaling (campaign) ─────────────────────────────────────────
+  // On top of the continuous depth curve below, tiers 1-10 get an ADDITIONAL
+  // ramp so the frontier stays a real fight for a near-maxed hero. Balance
+  // telemetry showed the fully-maxed anchor one-rounding the tier-10 final boss
+  // at 95% HP, so the top of the ladder was badly under-tuned relative to the
+  // power a L1000+ character brings. The ramp is exponential (accelerating), so
+  // low tiers barely change (T1 ×1.37 HP) while the endgame climbs steeply
+  // (T10 ≈ ×24 HP), and tier 0 is left EXACTLY as-is (onboarding). HP ramps hard
+  // (fights get long/climactic); ATK ramps gently (threatening over a long
+  // fight, but must NOT one-shot — see the kAtkGrowth note). Rewards key off
+  // enemy.level, so this adds no gold/XP/loot inflation. Endgame tuning knobs.
+  // HP 1.37 → 1.48 (T10 ≈ ×23 → ×51, ~2.2×). Build 245 telemetry: with healing
+  // finally bounded (rating 2.36M→1.0M) AND boss ATK bumped, a maxed hero STILL
+  // ended at 100% — because the fight was only 2 ROUNDS (24.6B DPS vs 62.7B HP),
+  // so the boss barely got to swing. Fatter boss HP lengthens the finale to ~5-6
+  // rounds so its per-round damage actually accumulates. Tier 0 untouched.
+  static double endgameTierHpMult(int tier)  => tier <= 0 ? 1.0 : pow(1.48, tier).toDouble();
+  // ATK 1.09 → 1.20 (T10 ≈ ×2.37 → ×6.2). Telemetry (build 230): with healing +
+  // lifesteal now BOUNDED, a maxed hero STILL ended the tier-10 boss at 100% HP —
+  // so the sustain wasn't the whole story, the boss ATK is genuinely too low. The
+  // healing ceiling (~lifesteal 12% + capped ability heals per round) needs to be
+  // clearly out-paced, hence the ~2.6× bump. Watch for one-shots on low-resist
+  // heroes — iterate from the next log.
+  // ATK 1.20 → 1.33 (T10 ≈ ×6.2 → ×17.3, ~2.8×). Build 239 telemetry: with heals
+  // now Heal-Rating-based (bounded) AND overheal fixed, a maxed hero still barely
+  // lost HP because boss ATK (~1.3M) is trivial vs a ~12M pool over a 2-round
+  // fight. This lifts tier-10 ATK to ~3.7M (net ~2.4M/round after Armor) so the
+  // finale actually drains the pool. Scales per prestige tier; tier 0 untouched.
+  static double endgameTierAtkMult(int tier) => tier <= 0 ? 1.0 : pow(1.33, tier).toDouble();
+
+  // ── Continuous global difficulty (campaign) ────────────────────────────────
+  // Campaign enemy HP/ATK follow ONE smooth curve across every tier instead of
+  // (per-stage archetype base × discrete tier multiplier). Difficulty = ref ×
+  // growth^depth, where depth = tiers completed + fraction through the current
+  // campaign (stage / kCampaignLength). Because depth is continuous, the last
+  // stage of a tier lines up with the first stage of the next — no reset/dip —
+  // and it keeps rising into every following tier.
+  //
+  // Why a single exponential (and not the old 250×-within-a-tier ramp): to reuse
+  // the campaign's steep archetype ramp across tiers it would have to ~250× per
+  // tier, which explodes past the hero damage cap by ~tier 3. So the curve is a
+  // gentler, continuous exponential; HP and ATK grow at their OWN rates — HP
+  // stays killable under the damage cap, ATK is paced to keep threatening the
+  // scaling hero. These four constants are THE difficulty knobs (tune from play).
+  static const double kHpGrowth  = 3.4;   // enemy HP  × per tier / per campaign
+  // ATK growth was 6.0 — grotesquely too steep: at Tier 10 it produced ~42B ATK
+  // (clamped to 1B), one-shotting even a maxed hero. Hero HP scales ~2.3×/tier,
+  // so ATK is retuned to track that instead of exploding. Top-down calibrated
+  // against the maxed anchor (~200K ATK at Tier 10 → ~6% of hero HP per hit).
+  static const double kAtkGrowth = 2.0;   // enemy ATK × per tier / per campaign
+  static const double kRefHp     = 160.0; // tier 0, stage 0 baseline HP
+  static const double kRefAtk    = 7.0;   // tier 0, stage 0 baseline ATK
+
+  // ── Difficulty steepeners: unlocked progression systems ────────────────────
+  // Each progression system the player unlocks is a power spike (Abilities,
+  // Passives, Pets, Mercs, Artifacts, …). They unlock at these campaign stages
+  // (mirrors GameState._unlockStageNames), so enemies get a matching step harder
+  // as each comes online — challenge keeps pace with the growing hero. Past
+  // tier 0 every system is unlocked, so the steepeners are MAXED across the whole
+  // tier (and continuous across the boundary, since they also max out by stage 55
+  // within tier 0). This is the "late game" region — a level-20+ hero with the
+  // full progression stack — so both HP and ATK ramp here to keep fights lethal
+  // and long enough that the hero's stacked DPS doesn't trivialise them.
+  //
+  //   ATK step (lethality):  +22%/system → up to ×4.74 at 17 systems.
+  //   HP  step (durability): +19.5%/system → up to ×4.32 at 17 systems.
+  //
+  // Live testing (a level-77 hero in tier 1) showed the earlier ×2.87 steepeners
+  // were far too soft: enemies hit for ~3% of the hero's HP pool and died in a
+  // hit or two, so fights were trivial. Lethality is the bigger gap for an
+  // over-levelled hero — a tankier enemy that can't hurt you is just tedious — so
+  // ATK is pushed harder than HP here. The hero's abilities/mercs still shred and
+  // debuff enemy ATK (e.g. -40% from Dissonant Chord), which cushions bosses at
+  // the frontier. Both key off enemy.level for rewards, so tankier/deadlier
+  // enemies do NOT inflate gold/XP/loot. Dial these two knobs to taste.
+  static const double kSystemAtkStep = 0.22;  // +22% enemy ATK per unlocked system
+  static const double kSystemHpStep  = 0.195; // +19.5% enemy HP per unlocked system
+
+  // ── Tier-scaled resistances ────────────────────────────────────────────────
+  // Enemy elemental resistances scale with tier: ~10% of the designed value at
+  // tier 0, ramping to 100% by tier 10 (clamped). This stops a fresh single-
+  // element hero from being hard-countered early (a Tier-0 "poison 75%" enemy now
+  // resists ~7-8%), while late-game resistances are meant to be offset by the
+  // hero's growing resistance penetration.
+  static double tierResistanceScale(int tier) => (0.1 + 0.09 * tier).clamp(0.1, 1.0);
+  static Map<DamageType, int> _scaleResistances(Map<DamageType, int> base, int tier) {
+    if (base.isEmpty || tier >= 10) return base; // tier 10+ uses full designed value
+    final s = tierResistanceScale(tier);
+    return base.map((k, v) => MapEntry(k, (v * s).round()));
+  }
+
+  // ── Over-level catch-up ────────────────────────────────────────────────────
+  // The steepeners above are stage/tier based, so a hero who OUT-LEVELS the curve
+  // (e.g. a LV 125 hero grinding LV 90 frontier enemies) still facerolls — their
+  // stats dwarf same-stage enemies no matter how the curve is tuned. This term
+  // scales enemy HP/ATK up in proportion to how many levels the hero is above the
+  // enemy, so over-levelling is self-correcting. A hero playing ON level (gap ≈ 0)
+  // is unaffected — this only bites when you're ahead of the curve. Capped so it
+  // can't run away. Tunable.
+  static const double kOverLevelStep = 0.03; // +3% enemy HP per level over
+  static const int    kOverLevelCap  = 50;   // …counted up to a 50-level gap
+  static const List<int> _systemUnlockStages =
+      [2, 5, 8, 10, 12, 15, 18, 20, 22, 25, 28, 30, 35, 40, 45, 50, 55];
+  static int systemsUnlockedBy(int tier, int stage) => tier > 0
+      ? _systemUnlockStages.length
+      : _systemUnlockStages.where((s) => stage >= s).length;
+  static double systemAtkSteepener(int tier, int stage) =>
+      1.0 + kSystemAtkStep * systemsUnlockedBy(tier, stage);
+  static double systemHpSteepener(int tier, int stage) =>
+      1.0 + kSystemHpStep * systemsUnlockedBy(tier, stage);
+
   static final enemies = <Enemy>[
     // ── Undead ──────────────────────────────────────────────────────────────
     Enemy(
@@ -35,13 +171,13 @@ class EnemyData {
     ),
     Enemy(
       id: 'ghoul', name: 'Ghoul', level: 3, maxHealth: 140, attack: 8, armorClass: 0,
-      attackType: DamageType.poison,
+      attackType: DamageType.physical,
       resistances: {DamageType.cold: 25, DamageType.poison: 50, DamageType.fire: -25},
       description: 'A ravenous undead predator fuelled by insatiable hunger.',
     ),
     Enemy(
       id: 'banshee', name: 'Banshee', level: 6, maxHealth: 250, attack: 24, armorClass: 3,
-      attackType: DamageType.cold,
+      attackType: DamageType.physical,
       resistances: {DamageType.cold: 75, DamageType.poison: 75, DamageType.fire: -50, DamageType.physical: 25},
       description: 'A wailing spirit whose scream can shatter bone and courage alike.',
     ),
@@ -53,7 +189,7 @@ class EnemyData {
     ),
     Enemy(
       id: 'lich', name: 'Lich', level: 12, maxHealth: 550, attack: 48, armorClass: 6,
-      attackType: DamageType.void_,
+      attackType: DamageType.physical,
       resistances: {DamageType.cold: 50, DamageType.poison: 75, DamageType.physical: 25, DamageType.fire: -25},
       description: 'An immortal sorcerer-king whose death is merely an inconvenience.',
     ),
@@ -117,7 +253,7 @@ class EnemyData {
     ),
     Enemy(
       id: 'chimera', name: 'Chimera', level: 11, maxHealth: 600, attack: 41, armorClass: 7,
-      attackType: DamageType.fire,
+      attackType: DamageType.physical,
       resistances: {DamageType.fire: 75, DamageType.cold: -50},
       description: 'A three-headed nightmare fusing lion, goat, and serpent into one horror.',
     ),
@@ -125,31 +261,31 @@ class EnemyData {
     // ── Demonic & Aberrant ───────────────────────────────────────────────────
     Enemy(
       id: 'imp', name: 'Imp', level: 2, maxHealth: 110, attack: 7, armorClass: 2,
-      attackType: DamageType.fire,
+      attackType: DamageType.physical,
       resistances: {DamageType.fire: 50, DamageType.cold: -25},
       description: 'A minor fiend of mischief whose claws carry a sting beyond their size.',
     ),
     Enemy(
       id: 'cultist', name: 'Cultist', level: 5, maxHealth: 175, attack: 18, armorClass: 2,
-      attackType: DamageType.void_,
+      attackType: DamageType.physical,
       resistances: {DamageType.fire: 25, DamageType.void_: 25},
       description: 'A zealot who channels forbidden energies with glass-cannon ferocity.',
     ),
     Enemy(
       id: 'succubus', name: 'Succubus', level: 9, maxHealth: 300, attack: 24, armorClass: 3,
-      attackType: DamageType.void_,
+      attackType: DamageType.physical,
       resistances: {DamageType.void_: 50, DamageType.fire: 25},
       description: 'A demonic seductress who drains life as easily as she takes it.',
     ),
     Enemy(
       id: 'eyeball_watcher', name: 'Eyeball Watcher', level: 10, maxHealth: 350, attack: 25, armorClass: 2,
-      attackType: DamageType.void_,
+      attackType: DamageType.physical,
       resistances: {DamageType.void_: 50, DamageType.cold: -25},
       description: 'A floating mass of eyes that fires eldritch beams in every direction.',
     ),
     Enemy(
       id: 'mind_flayer', name: 'Mind-Flayer', level: 11, maxHealth: 500, attack: 40, armorClass: 7,
-      attackType: DamageType.void_,
+      attackType: DamageType.physical,
       resistances: {DamageType.void_: 75, DamageType.cold: 25, DamageType.lightning: -25},
       description: 'A psionic predator that strips the mind bare before consuming it.',
     ),
@@ -163,7 +299,7 @@ class EnemyData {
     ),
     Enemy(
       id: 'prism_wraith', name: 'Prism Wraith', level: 13, maxHealth: 650, attack: 56, armorClass: 4,
-      attackType: DamageType.void_,
+      attackType: DamageType.physical,
       resistances: {DamageType.void_: 50, DamageType.physical: 50, DamageType.fire: -25},
       description: 'A ghost refracted through a thousand facets, attacking from angles that should not exist.',
     ),
@@ -181,7 +317,7 @@ class EnemyData {
     ),
     Enemy(
       id: 'arcane_colossus', name: 'Arcane Colossus', level: 15, maxHealth: 870, attack: 68, armorClass: 8,
-      attackType: DamageType.lightning,
+      attackType: DamageType.physical,
       resistances: {DamageType.lightning: 75, DamageType.void_: 25, DamageType.physical: 25, DamageType.fire: -25},
       description: 'A golem of pure crystallised magic, ancient beyond memory. It was built to end wars. It has never lost one.',
     ),
@@ -207,13 +343,13 @@ class EnemyData {
     ),
     Enemy(
       id: 'dark_phantom', name: 'Dark Phantom', level: 16, maxHealth: 620, attack: 80, armorClass: 5,
-      attackType: DamageType.void_,
+      attackType: DamageType.physical,
       resistances: {DamageType.void_: 75, DamageType.physical: 75, DamageType.fire: -50},
       description: 'An incorporeal horror whose touch drains warmth and will in equal measure.',
     ),
     Enemy(
       id: 'shade_sovereign', name: 'Shade Sovereign', level: 17, maxHealth: 1050, attack: 92, armorClass: 8,
-      attackType: DamageType.void_,
+      attackType: DamageType.physical,
       resistances: {DamageType.void_: 75, DamageType.physical: 50, DamageType.cold: 25, DamageType.fire: -50},
       description: 'The ruler of all shadow given physical form. Strike it in light — but the light here is not yours to control.',
     ),
@@ -221,13 +357,13 @@ class EnemyData {
     // ── Ice & Cold ───────────────────────────────────────────────────────────
     Enemy(
       id: 'frost_sprite', name: 'Frost Sprite', level: 17, maxHealth: 630, attack: 94, armorClass: 5,
-      attackType: DamageType.cold,
+      attackType: DamageType.physical,
       resistances: {DamageType.cold: 75, DamageType.fire: -50},
       description: 'A malicious winter spirit that flash-freezes the air around its victims.',
     ),
     Enemy(
       id: 'ice_wraith', name: 'Ice Wraith', level: 17, maxHealth: 580, attack: 100, armorClass: 4,
-      attackType: DamageType.cold,
+      attackType: DamageType.physical,
       resistances: {DamageType.cold: 75, DamageType.physical: 50, DamageType.fire: -50},
       description: 'The frozen ghost of a warrior lost in a blizzard, still fighting a battle long ended.',
     ),
@@ -239,13 +375,13 @@ class EnemyData {
     ),
     Enemy(
       id: 'winter_wolf', name: 'Winter Wolf', level: 18, maxHealth: 780, attack: 103, armorClass: 6,
-      attackType: DamageType.cold,
+      attackType: DamageType.physical,
       resistances: {DamageType.cold: 75, DamageType.poison: 25, DamageType.fire: -50},
       description: 'A dire wolf whose breath is a blizzard and whose howl drops temperature by thirty degrees.',
     ),
     Enemy(
       id: 'frost_dragon', name: 'Frost Dragon', level: 19, maxHealth: 1300, attack: 118, armorClass: 9,
-      attackType: DamageType.cold,
+      attackType: DamageType.physical,
       resistances: {DamageType.cold: 75, DamageType.physical: 25, DamageType.fire: -75},
       description: 'An ancient dragon whose breath does not burn — it freezes time itself.',
     ),
@@ -253,19 +389,19 @@ class EnemyData {
     // ── Storm & Lightning ────────────────────────────────────────────────────
     Enemy(
       id: 'storm_hawk', name: 'Storm Hawk', level: 19, maxHealth: 750, attack: 120, armorClass: 6,
-      attackType: DamageType.lightning,
+      attackType: DamageType.physical,
       resistances: {DamageType.lightning: 50, DamageType.physical: 15, DamageType.cold: -25},
       description: 'A raptor that nests in the eye of permanent storms, diving at lethal speed.',
     ),
     Enemy(
       id: 'thunder_elemental', name: 'Thunder Elemental', level: 19, maxHealth: 820, attack: 125, armorClass: 5,
-      attackType: DamageType.lightning,
+      attackType: DamageType.physical,
       resistances: {DamageType.lightning: 75, DamageType.physical: -25, DamageType.cold: -25},
       description: 'A roiling mass of storm-energy given sentience and an appetite for metal armour.',
     ),
     Enemy(
       id: 'lightning_drake', name: 'Lightning Drake', level: 20, maxHealth: 1050, attack: 122, armorClass: 7,
-      attackType: DamageType.lightning,
+      attackType: DamageType.physical,
       resistances: {DamageType.lightning: 75, DamageType.physical: 25, DamageType.cold: -25},
       description: 'A wingless draconic predator that generates lethal voltages along its spine.',
     ),
@@ -277,7 +413,7 @@ class EnemyData {
     ),
     Enemy(
       id: 'storm_titan', name: 'Storm Titan', level: 21, maxHealth: 1650, attack: 144, armorClass: 9,
-      attackType: DamageType.lightning,
+      attackType: DamageType.physical,
       resistances: {DamageType.lightning: 75, DamageType.physical: 25, DamageType.void_: 25, DamageType.cold: -50},
       description: 'A colossus of condensed lightning and hurricane wind. The storm does not follow it — it is the storm.',
     ),
@@ -291,7 +427,7 @@ class EnemyData {
     ),
     Enemy(
       id: 'tide_wraith', name: 'Tide Wraith', level: 21, maxHealth: 960, attack: 153, armorClass: 5,
-      attackType: DamageType.cold,
+      attackType: DamageType.physical,
       resistances: {DamageType.cold: 75, DamageType.physical: 50, DamageType.lightning: -50},
       description: 'The spirit of a drowned fleet given form, dragging the living to join the sunken.',
     ),
@@ -309,7 +445,7 @@ class EnemyData {
     ),
     Enemy(
       id: 'krakentide', name: 'Krakentide', level: 23, maxHealth: 2100, attack: 170, armorClass: 9,
-      attackType: DamageType.cold,
+      attackType: DamageType.physical,
       resistances: {DamageType.cold: 75, DamageType.physical: 25, DamageType.lightning: -50},
       description: 'The apex predator of the deep given intelligence and ancient malice. The ocean bends to its will.',
     ),
@@ -317,31 +453,31 @@ class EnemyData {
     // ── Dream & Illusion ─────────────────────────────────────────────────────
     Enemy(
       id: 'mirror_shade', name: 'Mirror Shade', level: 23, maxHealth: 1250, attack: 172, armorClass: 6,
-      attackType: DamageType.void_,
+      attackType: DamageType.physical,
       resistances: {DamageType.void_: 50, DamageType.physical: 50, DamageType.fire: -25},
       description: 'Your own reflection turned hostile, mimicking your every move with lethal precision.',
     ),
     Enemy(
       id: 'echo_phantom', name: 'Echo Phantom', level: 23, maxHealth: 1150, attack: 180, armorClass: 5,
-      attackType: DamageType.void_,
+      attackType: DamageType.physical,
       resistances: {DamageType.void_: 75, DamageType.physical: 50, DamageType.lightning: -25},
       description: 'A phantom born of echoes that multiplies with every sound, attacking from all directions at once.',
     ),
     Enemy(
       id: 'dream_stalker', name: 'Dream Stalker', level: 24, maxHealth: 1450, attack: 177, armorClass: 7,
-      attackType: DamageType.void_,
+      attackType: DamageType.physical,
       resistances: {DamageType.void_: 50, DamageType.cold: 25, DamageType.fire: -25},
       description: 'A predator that crosses between the waking world and the dreaming one at will.',
     ),
     Enemy(
       id: 'nightmare_weaver', name: 'Nightmare Weaver', level: 24, maxHealth: 1350, attack: 188, armorClass: 6,
-      attackType: DamageType.void_,
+      attackType: DamageType.physical,
       resistances: {DamageType.void_: 75, DamageType.physical: 25, DamageType.cold: -25},
       description: 'An arachnid horror that spins webs from crystallised nightmares to trap and devour the mind.',
     ),
     Enemy(
       id: 'labyrinth_warden', name: 'Labyrinth Warden', level: 25, maxHealth: 2500, attack: 210, armorClass: 10,
-      attackType: DamageType.void_,
+      attackType: DamageType.physical,
       resistances: {DamageType.void_: 75, DamageType.physical: 50, DamageType.cold: 25, DamageType.fire: -25},
       description: 'The intelligence that designed and inhabits the maze. It has never had a visitor it could not keep.',
     ),
@@ -349,7 +485,7 @@ class EnemyData {
     // ── Ancient Constructs ───────────────────────────────────────────────────
     Enemy(
       id: 'archive_scribe', name: 'Archive Scribe', level: 25, maxHealth: 1550, attack: 212, armorClass: 7,
-      attackType: DamageType.lightning,
+      attackType: DamageType.physical,
       resistances: {DamageType.lightning: 50, DamageType.poison: 75, DamageType.physical: 25, DamageType.void_: -25},
       description: 'A construct librarian recording everything it encounters — including the precise moment to strike.',
     ),
@@ -367,13 +503,13 @@ class EnemyData {
     ),
     Enemy(
       id: 'protocol_enforcer', name: 'Protocol Enforcer', level: 26, maxHealth: 1900, attack: 225, armorClass: 8,
-      attackType: DamageType.lightning,
+      attackType: DamageType.physical,
       resistances: {DamageType.lightning: 75, DamageType.poison: 75, DamageType.physical: 25, DamageType.void_: -25},
       description: 'The empire\'s last failsafe activated when every other defence has failed — it was never supposed to be necessary.',
     ),
     Enemy(
       id: 'eternal_sentinel', name: 'Eternal Sentinel', level: 27, maxHealth: 3000, attack: 248, armorClass: 12,
-      attackType: DamageType.lightning,
+      attackType: DamageType.physical,
       resistances: {DamageType.lightning: 75, DamageType.physical: 50, DamageType.poison: 75, DamageType.void_: -25},
       description: 'A construct built to outlast its empire, its world, and perhaps time itself. Its mission log still shows tasks pending.',
     ),
@@ -381,31 +517,31 @@ class EnemyData {
     // ── Plague & Corruption ──────────────────────────────────────────────────
     Enemy(
       id: 'plague_rat', name: 'Plague Rat', level: 27, maxHealth: 1800, attack: 250, armorClass: 6,
-      attackType: DamageType.poison,
+      attackType: DamageType.physical,
       resistances: {DamageType.poison: 75, DamageType.cold: -25},
       description: 'A rat swollen with magical pestilence whose very bite warps flesh into something unrecognisable.',
     ),
     Enemy(
       id: 'infected_soldier', name: 'Infected Soldier', level: 27, maxHealth: 2100, attack: 246, armorClass: 8,
-      attackType: DamageType.poison,
+      attackType: DamageType.physical,
       resistances: {DamageType.poison: 75, DamageType.physical: 25, DamageType.fire: -25},
       description: 'A former warrior consumed by plague, still fighting with the muscle memory of a soldier but the will of the corruption.',
     ),
     Enemy(
       id: 'rot_priest', name: 'Rot Priest', level: 28, maxHealth: 2000, attack: 262, armorClass: 6,
-      attackType: DamageType.poison,
+      attackType: DamageType.physical,
       resistances: {DamageType.poison: 75, DamageType.void_: 25, DamageType.fire: -25},
       description: 'A zealot who believes the plague is divine will — and spreads it with religious fervour.',
     ),
     Enemy(
       id: 'corruption_beast', name: 'Corruption Beast', level: 28, maxHealth: 2700, attack: 258, armorClass: 9,
-      attackType: DamageType.poison,
+      attackType: DamageType.physical,
       resistances: {DamageType.poison: 75, DamageType.physical: 25, DamageType.fire: -50},
       description: 'A creature so thoroughly consumed by magical rot that it has become something new and terrible entirely.',
     ),
     Enemy(
       id: 'plague_mother', name: 'Plague Mother', level: 29, maxHealth: 3800, attack: 285, armorClass: 9,
-      attackType: DamageType.poison,
+      attackType: DamageType.physical,
       resistances: {DamageType.poison: 75, DamageType.void_: 50, DamageType.physical: 25, DamageType.fire: -50},
       description: 'The original host. The first infected. The being that welcomed the corruption and made it part of herself — willingly.',
     ),
@@ -413,31 +549,31 @@ class EnemyData {
     // ── Fallen Divine ────────────────────────────────────────────────────────
     Enemy(
       id: 'broken_seraph', name: 'Broken Seraph', level: 29, maxHealth: 2400, attack: 288, armorClass: 8,
-      attackType: DamageType.fire,
+      attackType: DamageType.physical,
       resistances: {DamageType.fire: 75, DamageType.void_: -25, DamageType.cold: -25},
       description: 'A shattered angel still radiating dangerous levels of corrupted celestial energy.',
     ),
     Enemy(
       id: 'divine_wraith', name: 'Divine Wraith', level: 29, maxHealth: 2200, attack: 298, armorClass: 7,
-      attackType: DamageType.fire,
+      attackType: DamageType.physical,
       resistances: {DamageType.fire: 75, DamageType.physical: 50, DamageType.void_: -50},
       description: 'The ghost of a god that refuses to accept its own death, radiating lethal holy fire.',
     ),
     Enemy(
       id: 'fallen_cherub', name: 'Fallen Cherub', level: 30, maxHealth: 2600, attack: 294, armorClass: 8,
-      attackType: DamageType.fire,
+      attackType: DamageType.physical,
       resistances: {DamageType.fire: 75, DamageType.lightning: 25, DamageType.void_: -25},
       description: 'A cherub whose divine purpose has curdled into pure malice after eons in the dark.',
     ),
     Enemy(
       id: 'halo_specter', name: 'Halo Specter', level: 30, maxHealth: 2450, attack: 308, armorClass: 7,
-      attackType: DamageType.fire,
+      attackType: DamageType.physical,
       resistances: {DamageType.fire: 75, DamageType.physical: 50, DamageType.cold: -25, DamageType.void_: -25},
       description: 'A crown of a fallen god, broken into blades that orbit the site of its death and judge the living.',
     ),
     Enemy(
       id: 'fallen_archangel', name: 'Fallen Archangel', level: 31, maxHealth: 4500, attack: 335, armorClass: 10,
-      attackType: DamageType.fire,
+      attackType: DamageType.physical,
       resistances: {DamageType.fire: 75, DamageType.lightning: 50, DamageType.physical: 25, DamageType.void_: -50},
       description: 'The first angel to fall — not cast out but choosing to descend. What it has become in the dark is worse than what it left behind.',
     ),
@@ -445,31 +581,31 @@ class EnemyData {
     // ── Void & Null ──────────────────────────────────────────────────────────
     Enemy(
       id: 'null_sprite', name: 'Null Sprite', level: 31, maxHealth: 2800, attack: 338, armorClass: 7,
-      attackType: DamageType.void_,
+      attackType: DamageType.physical,
       resistances: {DamageType.void_: 75, DamageType.physical: -25},
       description: 'A mote of null-energy given will, erasing whatever it touches from existence.',
     ),
     Enemy(
       id: 'void_crawler', name: 'Void Crawler', level: 31, maxHealth: 3100, attack: 332, armorClass: 8,
-      attackType: DamageType.void_,
+      attackType: DamageType.physical,
       resistances: {DamageType.void_: 75, DamageType.physical: 25, DamageType.fire: -25},
       description: 'A spider-like entity from outside reality that weaves webs of pure nothing between dimensions.',
     ),
     Enemy(
       id: 'antimatter_construct', name: 'Anti-Matter Construct', level: 32, maxHealth: 3600, attack: 340, armorClass: 10,
-      attackType: DamageType.void_,
+      attackType: DamageType.physical,
       resistances: {DamageType.void_: 75, DamageType.physical: 50, DamageType.poison: 75, DamageType.fire: -25},
       description: 'A weapon made from anti-matter that unmakes whatever it strikes at a molecular level.',
     ),
     Enemy(
       id: 'entropy_fiend', name: 'Entropy Fiend', level: 32, maxHealth: 3300, attack: 355, armorClass: 8,
-      attackType: DamageType.void_,
+      attackType: DamageType.physical,
       resistances: {DamageType.void_: 75, DamageType.cold: 25, DamageType.fire: -25},
       description: 'A demon whose very existence accelerates decay in everything around it — armour rusts, flesh rots, hope fades.',
     ),
     Enemy(
       id: 'null_emperor', name: 'Null Emperor', level: 33, maxHealth: 5500, attack: 385, armorClass: 12,
-      attackType: DamageType.void_,
+      attackType: DamageType.physical,
       resistances: {DamageType.void_: 75, DamageType.physical: 50, DamageType.cold: 25, DamageType.fire: -50},
       description: 'A being that has consumed so much null-energy it exists as an absence given will. It wants to share that absence with everything.',
     ),
@@ -483,7 +619,7 @@ class EnemyData {
     ),
     Enemy(
       id: 'omega_warden', name: 'Omega Warden', level: 33, maxHealth: 4600, attack: 382, armorClass: 12,
-      attackType: DamageType.lightning,
+      attackType: DamageType.physical,
       resistances: {DamageType.lightning: 75, DamageType.physical: 50, DamageType.poison: 75, DamageType.void_: -25},
       description: 'The administrative mind of the prison, running this place since before the current era. It has never had a successful escape.',
     ),
@@ -501,7 +637,7 @@ class EnemyData {
     ),
     Enemy(
       id: 'the_unbound', name: 'The Unbound', level: 35, maxHealth: 7000, attack: 435, armorClass: 14,
-      attackType: DamageType.void_,
+      attackType: DamageType.physical,
       resistances: {DamageType.void_: 75, DamageType.physical: 50, DamageType.fire: 25, DamageType.cold: -25},
       description: 'The original prisoner — the being the prison was built to contain. The walls have held for an age. They will not hold today.',
     ),
@@ -509,19 +645,19 @@ class EnemyData {
     // ── Abyss Guardians ──────────────────────────────────────────────────────
     Enemy(
       id: 'gate_crawler', name: 'Gate Crawler', level: 35, maxHealth: 5200, attack: 438, armorClass: 9,
-      attackType: DamageType.void_,
+      attackType: DamageType.physical,
       resistances: {DamageType.void_: 75, DamageType.physical: 25, DamageType.fire: -25},
       description: 'A thing from beyond the mapped world that squeezes through gaps between realities.',
     ),
     Enemy(
       id: 'sentinel_wraith', name: 'Sentinel Wraith', level: 35, maxHealth: 4800, attack: 448, armorClass: 8,
-      attackType: DamageType.void_,
+      attackType: DamageType.physical,
       resistances: {DamageType.void_: 75, DamageType.physical: 75, DamageType.fire: -50},
       description: 'A guardian that has never received a stand-down order and has been at its post longer than most civilisations.',
     ),
     Enemy(
       id: 'watcher_construct', name: 'Watcher Construct', level: 36, maxHealth: 6000, attack: 445, armorClass: 12,
-      attackType: DamageType.lightning,
+      attackType: DamageType.physical,
       resistances: {DamageType.lightning: 75, DamageType.poison: 75, DamageType.physical: 25, DamageType.void_: -25},
       description: 'An automated watchtower that overlooks the nothing beyond the gate. It never looks away.',
     ),
@@ -541,31 +677,31 @@ class EnemyData {
     // ── Divine Carrion ───────────────────────────────────────────────────────
     Enemy(
       id: 'carrion_crawler', name: 'Carrion Crawler', level: 37, maxHealth: 6500, attack: 483, armorClass: 9,
-      attackType: DamageType.poison,
+      attackType: DamageType.physical,
       resistances: {DamageType.poison: 75, DamageType.physical: 25, DamageType.fire: -25},
       description: 'A parasite the size of a house that has fed on divine carrion so long it has absorbed traces of godhood.',
     ),
     Enemy(
       id: 'god_shard_elemental', name: 'God-Shard Elemental', level: 37, maxHealth: 7200, attack: 478, armorClass: 10,
-      attackType: DamageType.fire,
+      attackType: DamageType.physical,
       resistances: {DamageType.fire: 75, DamageType.physical: 25, DamageType.void_: -25},
       description: 'A fragment of divinity extracted from a god-corpse, still remembering being divine and reacting with divine fury.',
     ),
     Enemy(
       id: 'necrotic_abomination', name: 'Necrotic Abomination', level: 38, maxHealth: 8500, attack: 486, armorClass: 10,
-      attackType: DamageType.poison,
+      attackType: DamageType.physical,
       resistances: {DamageType.poison: 75, DamageType.cold: 25, DamageType.fire: -25, DamageType.physical: 25},
       description: 'A mass of divine flesh that has rotted and merged into something the gods would not recognise as their own.',
     ),
     Enemy(
       id: 'scar_feeder', name: 'Scar Feeder', level: 38, maxHealth: 7800, attack: 498, armorClass: 9,
-      attackType: DamageType.void_,
+      attackType: DamageType.physical,
       resistances: {DamageType.void_: 75, DamageType.poison: 50, DamageType.fire: -25},
       description: 'A creature that has found the wound in reality left by the god\'s death and feeds from the tear, growing ever stronger.',
     ),
     Enemy(
       id: 'the_devourer', name: 'The Devourer', level: 39, maxHealth: 12000, attack: 530, armorClass: 14,
-      attackType: DamageType.void_,
+      attackType: DamageType.physical,
       resistances: {DamageType.void_: 75, DamageType.poison: 75, DamageType.physical: 25, DamageType.fire: -25},
       description: 'The apex predator that has fed on the god-corpse for an age. It is no longer merely hungry — it has become hunger.',
     ),
@@ -573,31 +709,31 @@ class EnemyData {
     // ── Edge of Existence ────────────────────────────────────────────────────
     Enemy(
       id: 'boundary_wraith', name: 'Boundary Wraith', level: 39, maxHealth: 8500, attack: 533, armorClass: 10,
-      attackType: DamageType.void_,
+      attackType: DamageType.physical,
       resistances: {DamageType.void_: 75, DamageType.physical: 50, DamageType.fire: -25},
       description: 'A guardian of the membrane between this world and the void — thin enough here that it can reach through.',
     ),
     Enemy(
       id: 'no_return_specter', name: 'No-Return Specter', level: 39, maxHealth: 9000, attack: 528, armorClass: 9,
-      attackType: DamageType.void_,
+      attackType: DamageType.physical,
       resistances: {DamageType.void_: 75, DamageType.physical: 75, DamageType.fire: -50},
       description: 'The collective echo of every explorer who reached this far and stopped sending letters.',
     ),
     Enemy(
       id: 'void_membrane', name: 'Void Membrane', level: 40, maxHealth: 11000, attack: 540, armorClass: 12,
-      attackType: DamageType.void_,
+      attackType: DamageType.physical,
       resistances: {DamageType.void_: 75, DamageType.physical: 50, DamageType.cold: 25, DamageType.fire: -25},
       description: 'A living barrier between existence and non-existence that does not want you to pass. It is very persuasive.',
     ),
     Enemy(
       id: 'last_light_seraph', name: 'Last Light Seraph', level: 40, maxHealth: 10000, attack: 555, armorClass: 10,
-      attackType: DamageType.fire,
+      attackType: DamageType.physical,
       resistances: {DamageType.fire: 75, DamageType.lightning: 50, DamageType.void_: -50},
       description: 'The final point where any light from your world reaches. It burns to keep the darkness from winning — at any cost.',
     ),
     Enemy(
       id: 'frontier_guardian', name: 'Frontier Guardian', level: 41, maxHealth: 15000, attack: 590, armorClass: 16,
-      attackType: DamageType.void_,
+      attackType: DamageType.physical,
       resistances: {DamageType.void_: 75, DamageType.physical: 50, DamageType.fire: 25, DamageType.cold: -25},
       description: 'A being that has stood at the edge of everything for longer than memory. It was put here to ensure no one reached what lies beyond.',
     ),
@@ -605,31 +741,31 @@ class EnemyData {
     // ── Omega Throne ─────────────────────────────────────────────────────────
     Enemy(
       id: 'omega_herald', name: 'Omega Herald', level: 41, maxHealth: 11000, attack: 593, armorClass: 12,
-      attackType: DamageType.void_,
+      attackType: DamageType.physical,
       resistances: {DamageType.void_: 75, DamageType.physical: 50, DamageType.fire: 25, DamageType.cold: -25},
       description: 'A servant of the Omega preparing for your arrival since the beginning, its welcome ready and lethal.',
     ),
     Enemy(
       id: 'memory_shade', name: 'Memory Shade', level: 41, maxHealth: 10500, attack: 605, armorClass: 10,
-      attackType: DamageType.void_,
+      attackType: DamageType.physical,
       resistances: {DamageType.void_: 75, DamageType.physical: 75, DamageType.fire: -50},
       description: 'A shade formed from the memories of every hero who tried and failed — wearing their faces and wielding their skills.',
     ),
     Enemy(
       id: 'dark_hour_titan', name: 'Dark Hour Titan', level: 42, maxHealth: 14000, attack: 615, armorClass: 14,
-      attackType: DamageType.void_,
+      attackType: DamageType.physical,
       resistances: {DamageType.void_: 75, DamageType.physical: 50, DamageType.cold: 25, DamageType.fire: -25},
       description: 'A colossus born at the darkest moment before the end, when the Omega believes it has already won.',
     ),
     Enemy(
       id: 'throne_sentinel', name: 'Throne Sentinel', level: 42, maxHealth: 16000, attack: 620, armorClass: 16,
-      attackType: DamageType.void_,
+      attackType: DamageType.physical,
       resistances: {DamageType.void_: 75, DamageType.physical: 50, DamageType.lightning: 50, DamageType.fire: -25},
       description: 'The final guardian of the approach, observed by the Omega itself, deciding whether you are worthy of a proper ending.',
     ),
     Enemy(
       id: 'the_omega', name: 'The Omega', level: 43, maxHealth: 25000, attack: 660, armorClass: 18,
-      attackType: DamageType.void_,
+      attackType: DamageType.physical,
       resistances: {DamageType.void_: 75, DamageType.physical: 50, DamageType.fire: 50, DamageType.cold: 50, DamageType.lightning: -25},
       description: 'The original darkness. The first and the last. Every curse, every enemy, every shadow you have faced was its fingerprint.',
     ),
@@ -637,19 +773,19 @@ class EnemyData {
     // ── Elemental & Mythical ─────────────────────────────────────────────────
     Enemy(
       id: 'pixie', name: 'Pixie', level: 3, maxHealth: 65, attack: 9, armorClass: 5,
-      attackType: DamageType.void_,
+      attackType: DamageType.physical,
       resistances: {DamageType.void_: 25},
       description: 'A deceptive forest spirit whose beauty belies its vicious bite.',
     ),
     Enemy(
       id: 'wyvern', name: 'Wyvern', level: 8, maxHealth: 220, attack: 20, armorClass: 4,
-      attackType: DamageType.poison,
+      attackType: DamageType.physical,
       resistances: {DamageType.physical: 25, DamageType.cold: -25},
       description: 'A two-legged dragon whose barbed tail delivers devastating poison.',
     ),
     Enemy(
       id: 'hydra', name: 'Hydra', level: 12, maxHealth: 550, attack: 44, armorClass: 7,
-      attackType: DamageType.poison,
+      attackType: DamageType.physical,
       resistances: {DamageType.poison: 75, DamageType.cold: -25},
       description: 'Cut off one head and two grow back — only fire can stop the tide.',
     ),
@@ -661,7 +797,7 @@ class EnemyData {
     ),
     Enemy(
       id: 'phoenix', name: 'Phoenix', level: 13, maxHealth: 515, attack: 48, armorClass: 7,
-      attackType: DamageType.fire,
+      attackType: DamageType.physical,
       resistances: {DamageType.fire: 75, DamageType.cold: -50},
       description: 'The undying flame given form; its death is only the beginning.',
     ),
@@ -678,7 +814,7 @@ class EnemyData {
     ),
     Enemy(
       id: 'necromancer_vael', name: 'Necromancer Vael', level: 7, maxHealth: 520, attack: 42, armorClass: 5,
-      namedBoss: true, attackType: DamageType.void_,
+      namedBoss: true, attackType: DamageType.physical,
       resistances: {DamageType.void_: 25, DamageType.cold: 25, DamageType.poison: 50, DamageType.fire: -25},
       description: 'A warlock who stitched himself together from the fallen of a dozen battles. He considers himself both general and soldier.',
       abilities: [
@@ -698,7 +834,7 @@ class EnemyData {
     ),
     Enemy(
       id: 'the_tyrant_eye', name: 'The Tyrant Eye', level: 12, maxHealth: 1200, attack: 75, armorClass: 7,
-      namedBoss: true, attackType: DamageType.void_,
+      namedBoss: true, attackType: DamageType.physical,
       resistances: {DamageType.void_: 75, DamageType.cold: -25},
       description: 'A floating sphere of ancient malice with a gaze that sees through every illusion, barrier, and intention you possess.',
       abilities: [
@@ -708,17 +844,17 @@ class EnemyData {
     ),
     Enemy(
       id: 'lich_emperor', name: 'Lich Emperor', level: 14, maxHealth: 2000, attack: 115, armorClass: 9,
-      namedBoss: true, attackType: DamageType.void_,
+      namedBoss: true, attackType: DamageType.physical,
       resistances: {DamageType.void_: 75, DamageType.cold: 50, DamageType.poison: 75, DamageType.physical: 25, DamageType.fire: -25},
       description: 'The original undead sorcerer-king from whom all lich kind descends. His death is not a setback - it is a tradition he has long since made routine.',
       abilities: [
         BossAbility(id: 'lich_drain',       name: 'Life Drain',      emoji: '✦',   damageType: DamageType.void_,    effect: BossAbilityEffect.dot,         value: 40, dotRounds: 3, cooldownRounds: 4),
-        BossAbility(id: 'lich_nova',        name: 'Death Nova',      emoji: '✦',   damageType: DamageType.void_,    effect: BossAbilityEffect.bonusDamage, value: 110, cooldownRounds: 6),
+        BossAbility(id: 'lich_nova',        name: 'Death Nova',      emoji: '✦',   damageType: DamageType.fire,     effect: BossAbilityEffect.bonusDamage, value: 110, cooldownRounds: 6),
       ],
     ),
     Enemy(
       id: 'prism_lord', name: 'Prism Lord', level: 16, maxHealth: 3200, attack: 160, armorClass: 14,
-      namedBoss: true, attackType: DamageType.lightning,
+      namedBoss: true, attackType: DamageType.physical,
       resistances: {DamageType.lightning: 75, DamageType.physical: 40, DamageType.void_: 25, DamageType.fire: -50},
       description: 'The apex crystalline intelligence, refracting all energy into weapons. Its mind is a lattice of pure arcane mathematics that has solved the equation for your death.',
       abilities: [
@@ -728,7 +864,7 @@ class EnemyData {
     ),
     Enemy(
       id: 'shadow_king', name: 'Shadow King', level: 18, maxHealth: 4200, attack: 210, armorClass: 16,
-      namedBoss: true, attackType: DamageType.void_,
+      namedBoss: true, attackType: DamageType.physical,
       resistances: {DamageType.void_: 75, DamageType.physical: 75, DamageType.cold: 25, DamageType.fire: -75},
       description: 'The absolute ruler of the Shadow Realm. Where you see darkness, he sees a throne room. Every shadow you have ever cast belongs to him.',
       abilities: [
@@ -738,7 +874,7 @@ class EnemyData {
     ),
     Enemy(
       id: 'glacier_wyrm', name: 'Glacier Wyrm', level: 20, maxHealth: 5500, attack: 265, armorClass: 16,
-      namedBoss: true, attackType: DamageType.cold,
+      namedBoss: true, attackType: DamageType.physical,
       resistances: {DamageType.cold: 75, DamageType.physical: 25, DamageType.lightning: 25, DamageType.fire: -75},
       description: 'An ancient wyrm whose body has calcified into living glacier over millennia of slumber. It breathes winter itself.',
       abilities: [
@@ -748,7 +884,7 @@ class EnemyData {
     ),
     Enemy(
       id: 'king_of_storms', name: 'King of Storms', level: 22, maxHealth: 7000, attack: 320, armorClass: 18,
-      namedBoss: true, attackType: DamageType.lightning,
+      namedBoss: true, attackType: DamageType.physical,
       resistances: {DamageType.lightning: 75, DamageType.physical: 25, DamageType.void_: 25, DamageType.cold: -50},
       description: 'The primordial storm given a crown and a grudge. The sky does not contain it - it contains the sky.',
       abilities: [
@@ -758,7 +894,7 @@ class EnemyData {
     ),
     Enemy(
       id: 'leviathan', name: 'Leviathan', level: 24, maxHealth: 8500, attack: 380, armorClass: 16,
-      namedBoss: true, attackType: DamageType.cold,
+      namedBoss: true, attackType: DamageType.physical,
       resistances: {DamageType.cold: 75, DamageType.physical: 25, DamageType.poison: 25, DamageType.lightning: -50},
       description: 'The original sea-beast from the age before the ocean had a floor. It is not a creature of the abyss - the abyss is a creature of it.',
       abilities: [
@@ -768,7 +904,7 @@ class EnemyData {
     ),
     Enemy(
       id: 'the_dreaming_god', name: 'The Dreaming God', level: 26, maxHealth: 10500, attack: 460, armorClass: 18,
-      namedBoss: true, attackType: DamageType.void_,
+      namedBoss: true, attackType: DamageType.physical,
       resistances: {DamageType.void_: 75, DamageType.physical: 50, DamageType.cold: 25, DamageType.fire: -50},
       description: 'A sleeping deity whose dream constructed the labyrinth. Every corridor is a thought. Every dead end is a forgotten memory. You are a nightmare it is about to wake up from.',
       abilities: [
@@ -778,7 +914,7 @@ class EnemyData {
     ),
     Enemy(
       id: 'prime_emperor', name: 'Prime Emperor', level: 28, maxHealth: 12500, attack: 545, armorClass: 20,
-      namedBoss: true, attackType: DamageType.lightning,
+      namedBoss: true, attackType: DamageType.physical,
       resistances: {DamageType.lightning: 75, DamageType.physical: 50, DamageType.poison: 75, DamageType.void_: -25},
       description: 'The last ruler of the Forgotten Empire, preserved in stasis awaiting a war that ended ten thousand years ago. He has been briefed on current events and is furious.',
       abilities: [
@@ -788,7 +924,7 @@ class EnemyData {
     ),
     Enemy(
       id: 'god_of_rot', name: 'God of Rot', level: 30, maxHealth: 15000, attack: 635, armorClass: 18,
-      namedBoss: true, attackType: DamageType.poison,
+      namedBoss: true, attackType: DamageType.physical,
       resistances: {DamageType.poison: 75, DamageType.void_: 50, DamageType.physical: 25, DamageType.fire: -50},
       description: 'Not the plague mother - the thing she prays to. The divine wellspring of all corruption, whose presence alone warps the laws of life and death.',
       abilities: [
@@ -798,7 +934,7 @@ class EnemyData {
     ),
     Enemy(
       id: 'the_void_god', name: 'The Void God', level: 32, maxHealth: 18500, attack: 730, armorClass: 20,
-      namedBoss: true, attackType: DamageType.void_,
+      namedBoss: true, attackType: DamageType.physical,
       resistances: {DamageType.void_: 75, DamageType.fire: 75, DamageType.lightning: 25, DamageType.cold: -50},
       description: 'The deity that corrupted the celestial order from within. Not fallen - it jumped. What the angels became after it whispered to them was your fault for listening.',
       abilities: [
@@ -808,7 +944,7 @@ class EnemyData {
     ),
     Enemy(
       id: 'null_sovereign', name: 'Null Sovereign', level: 34, maxHealth: 22000, attack: 840, armorClass: 22,
-      namedBoss: true, attackType: DamageType.void_,
+      namedBoss: true, attackType: DamageType.physical,
       resistances: {DamageType.void_: 75, DamageType.physical: 50, DamageType.cold: 25, DamageType.lightning: 25, DamageType.fire: -50},
       description: 'The absolute ruler of unmatter. To look at it is to understand that existence is optional. To fight it is to disagree.',
       abilities: [
@@ -818,17 +954,17 @@ class EnemyData {
     ),
     Enemy(
       id: 'the_first_prisoner', name: 'The First Prisoner', level: 36, maxHealth: 28000, attack: 960, armorClass: 22,
-      namedBoss: true, attackType: DamageType.void_,
+      namedBoss: true, attackType: DamageType.physical,
       resistances: {DamageType.void_: 75, DamageType.physical: 50, DamageType.fire: 25, DamageType.cold: -25},
       description: 'The being who necessitated the invention of prisons. Every chain ever forged was designed with it in mind. The door opened.',
       abilities: [
         BossAbility(id: 'prisoner_rage',    name: 'Eons of Rage',    emoji: '??',  damageType: DamageType.void_,    effect: BossAbilityEffect.bonusDamage, value: 130, cooldownRounds: 4),
-        BossAbility(id: 'prisoner_crush',   name: 'Soul Crush',      emoji: '??',  damageType: DamageType.void_,    effect: BossAbilityEffect.dot,         value: 50, dotRounds: 3, cooldownRounds: 5),
+        BossAbility(id: 'prisoner_crush',   name: 'Soul Crush',      emoji: '??',  damageType: DamageType.cold,     effect: BossAbilityEffect.dot,         value: 50, dotRounds: 3, cooldownRounds: 5),
       ],
     ),
     Enemy(
       id: 'gate_titan', name: 'Gate Titan', level: 38, maxHealth: 36000, attack: 1080, armorClass: 24,
-      namedBoss: true, attackType: DamageType.void_,
+      namedBoss: true, attackType: DamageType.physical,
       resistances: {DamageType.void_: 75, DamageType.physical: 50, DamageType.lightning: 25, DamageType.fire: -25},
       description: 'Built from the gate itself when the gate realized something had reached it. Its body is the threshold between this world and whatever comes next.',
       abilities: [
@@ -838,32 +974,32 @@ class EnemyData {
     ),
     Enemy(
       id: 'god_eater', name: 'The God Eater', level: 40, maxHealth: 46000, attack: 1200, armorClass: 24,
-      namedBoss: true, attackType: DamageType.void_,
+      namedBoss: true, attackType: DamageType.physical,
       resistances: {DamageType.void_: 75, DamageType.poison: 75, DamageType.physical: 25, DamageType.fire: -25},
       description: 'An entity old enough to have eaten gods before they died of old age. The shattered realm is the archaeological evidence of its last meal.',
       abilities: [
         BossAbility(id: 'eater_consume',    name: 'Divine Consumption', emoji: '??', damageType: DamageType.void_, effect: BossAbilityEffect.dot,         value: 55, dotRounds: 3, cooldownRounds: 4),
-        BossAbility(id: 'eater_break',      name: 'Godbreaker',      emoji: '??',  damageType: DamageType.void_,    effect: BossAbilityEffect.bonusDamage, value: 150, cooldownRounds: 5),
+        BossAbility(id: 'eater_break',      name: 'Godbreaker',      emoji: '??',  damageType: DamageType.poison,   effect: BossAbilityEffect.bonusDamage, value: 150, cooldownRounds: 5),
       ],
     ),
     Enemy(
       id: 'world_ender', name: 'World Ender', level: 42, maxHealth: 30000, attack: 1350, armorClass: 26,
-      namedBoss: true, attackType: DamageType.void_,
+      namedBoss: true, attackType: DamageType.physical,
       resistances: {DamageType.void_: 75, DamageType.physical: 50, DamageType.fire: 25, DamageType.cold: 25, DamageType.lightning: -25},
       description: 'The entity assigned to end this particular universe when the time comes. You have reached the edge. The time appears to have come.',
       abilities: [
         BossAbility(id: 'ender_apocalypse', name: 'Apocalypse',      emoji: '??',  damageType: DamageType.void_,    effect: BossAbilityEffect.bonusDamage, value: 150, cooldownRounds: 4),
-        BossAbility(id: 'ender_days',       name: 'End of Days',     emoji: '??',  damageType: DamageType.void_,    effect: BossAbilityEffect.dot,         value: 55, dotRounds: 3, cooldownRounds: 5),
+        BossAbility(id: 'ender_days',       name: 'End of Days',     emoji: '??',  damageType: DamageType.cold,     effect: BossAbilityEffect.dot,         value: 55, dotRounds: 3, cooldownRounds: 5),
       ],
     ),
     Enemy(
       id: 'omega_absolute', name: 'Zeta Absolute', level: 44, maxHealth: 28000, attack: 800, armorClass: 20,
-      namedBoss: true, attackType: DamageType.void_,
+      namedBoss: true, attackType: DamageType.physical,
       resistances: {DamageType.void_: 75, DamageType.physical: 25, DamageType.fire: 20, DamageType.cold: 20, DamageType.lightning: -25},
       description: "Not the Omega's herald or fragment. The Omega itself, fully manifested, having decided your persistence warrants personal attention. You made it here. You shouldn't have.",
       abilities: [
         BossAbility(id: 'omega_annihilate', name: 'Absolute Annihilation', emoji: '?', damageType: DamageType.void_, effect: BossAbilityEffect.bonusDamage, value: 120, cooldownRounds: 5),
-        BossAbility(id: 'omega_pulse',      name: 'Omega Pulse',     emoji: '??',  damageType: DamageType.void_,    effect: BossAbilityEffect.dot,         value: 45, dotRounds: 3, cooldownRounds: 6),
+        BossAbility(id: 'omega_pulse',      name: 'Omega Pulse',     emoji: '??',  damageType: DamageType.lightning, effect: BossAbilityEffect.dot,       value: 45, dotRounds: 3, cooldownRounds: 6),
       ],
     ),
 
@@ -1031,9 +1167,22 @@ class EnemyData {
     return _campaignOrder[stage.clamp(0, _campaignOrder.length - 1)];
   }
 
-  static Enemy enemyForStage(int stage, {List<ZoneAffix> affixes = const [], int prestigeLevel = 0}) {
+  static Enemy enemyForStage(int stage,
+      {List<ZoneAffix> affixes = const [], int prestigeLevel = 0, int heroLevel = 0,
+      int? resistanceTier}) {
+    // Alternate modes (Gauntlet/Boss Rush) scale HP/ATK by their own tier mults
+    // but still want resistances scaled by the *mode* tier, not prestigeLevel.
+    final resTier = resistanceTier ?? prestigeLevel;
     // Live-tunable difficulty dials (default 1.0 / current curve when unset).
     final rc = RemoteConfigService.instance;
+
+    // Over-level catch-up factor: how much tougher this enemy is because the hero
+    // has out-levelled it. 1.0 when the hero is on-level (or heroLevel unset).
+    double overLevelMult(int enemyLevel) {
+      if (heroLevel <= 0) return 1.0;
+      final gap = (heroLevel - enemyLevel).clamp(0, kOverLevelCap);
+      return 1.0 + gap * kOverLevelStep;
+    }
     if (stage < kCampaignLength) {
       final bossId = _bossOrder[stage];
       final isBoss = bossId != null;
@@ -1057,23 +1206,47 @@ class EnemyData {
       // HP/ATK), so this adds difficulty without inflating gold/XP/loot.
       final rampStep  = (stage / max(1.0, rc.campaignRampPhaseIn)).clamp(0.0, 1.0)
           * rc.campaignRampStep; // 0 → step by the phase-in stage
+      // Small within-cycle sawtooth toward each boss. Resets to 1.0 at every
+      // boss (stage % 5 == 4) AND at stage 0, so it stays continuous across the
+      // tier boundary (both ends are 1.0).
       final intraRamp = isBoss ? 1.0 : 1.0 + (stage % 5) * rampStep;
 
-      final hpMult  = 2.0 * intraRamp * (1.0 + prestigeLevel * 0.20) * rc.enemyHpMult;
-      // Enemy attack ramps +2%/stage past stage 5 so mid/late campaign keeps
-      // pressure on heal-sustain builds (stage 25 ≈ +40% ATK).
-      final lateRamp = 1.0 + ((stage - 5).clamp(0, 40)) * 0.02;
-      final atkMult = 1.5 * intraRamp * lateRamp * (1.0 + prestigeLevel * 0.12) * rc.enemyAtkMult;
+      // Continuous global difficulty — no reset/dip between tiers.
+      final depth = prestigeLevel + stage / kCampaignLength;
+      // Bosses are the cycle wall, but the premium PHASES IN with depth so the
+      // very first boss (stage 4) is a gentle mini-boss (~1.4× HP / 1.6× ATK)
+      // rather than a brick wall, ramping to the full 2.5× / 3.5× by ~stage 25.
+      // (Simulation showed a flat premium walled every class at the first boss
+      // around level 3, needing ~level 11 to clear.)
+      final bossPhase   = isBoss ? ((stage - 4) / 21.0).clamp(0.0, 1.0) : 0.0;
+      final bossHpMult  = isBoss ? 1.4 + 1.1 * bossPhase : 1.0; // 1.4 → 2.5
+      final bossAtkMult = isBoss ? 1.6 + 1.9 * bossPhase : 1.0; // 1.6 → 3.5
+      final enemyLevel = base.level + prestigeLevel * kTierLevelStep;
+      // Over-level catch-up hits HP only — "flying through" is a fight-LENGTH
+      // problem. Enemy ATK already stacks bossAtkMult × the system steepener, so
+      // multiplying it here too would make frontier bosses one-shot the hero.
+      final overMult = overLevelMult(enemyLevel);
+      final hpValue  = kRefHp  * pow(kHpGrowth,  depth).toDouble()
+          * intraRamp * bossHpMult
+          * systemHpSteepener(prestigeLevel, stage) * overMult
+          * endgameTierHpMult(prestigeLevel) * rc.enemyHpMult;
+      final atkValue = kRefAtk * pow(kAtkGrowth, depth).toDouble()
+          * intraRamp * bossAtkMult
+          * systemAtkSteepener(prestigeLevel, stage)
+          * endgameTierAtkMult(prestigeLevel) * rc.enemyAtkMult;
       return Enemy(
         id:          base.id,
         name:        base.name,
         description: base.description,
-        maxHealth:   (base.maxHealth * hpMult).round().clamp(base.maxHealth, 99999999),
-        attack:      (base.attack    * atkMult).round().clamp(base.attack,   99999),
-        level:       base.level,
+        maxHealth:   hpValue.round().clamp(1, 1000000000000000),
+        attack:      atkValue.round().clamp(1, 1000000000000000),
+        // Enemy level scales with the tier so it tracks the hero's level (drives
+        // XP / gold / loot-level / display only — combat difficulty is the
+        // continuous HP/ATK curve above).
+        level:       enemyLevel,
         armorClass:  base.armorClass,
         attackType:  base.attackType,
-        resistances: base.resistances,
+        resistances: _scaleResistances(base.resistances, resTier),
         namedBoss:   base.namedBoss,
         dodge:       base.dodge,
         abilities:   base.abilities,
@@ -1094,13 +1267,14 @@ class EnemyData {
     const baseAC  = 18;
     const baseLvl = 13;
 
-    final prestigeHpMult  = 1.0 + prestigeLevel * 0.20;
-    final prestigeAtkMult = 1.0 + prestigeLevel * 0.12;
+    final prestigeHpMult  = tierHpMult(prestigeLevel);
+    final prestigeAtkMult = tierAtkMult(prestigeLevel);
 
-    final hp      = (baseHP  * growth * prestigeHpMult  * rc.enemyHpMult ).round().clamp(baseHP,  999999999);
-    final atk     = (baseAtk * sqrt(growth) * prestigeAtkMult * rc.enemyAtkMult).round().clamp(baseAtk, 999999);
+    final level   = baseLvl + a ~/ 5 + prestigeLevel * kTierLevelStep;
+    final overMult = overLevelMult(level); // HP only (see campaign branch)
+    final hp      = (baseHP  * growth * prestigeHpMult  * overMult * rc.enemyHpMult ).round().clamp(baseHP,  1000000000000000);
+    final atk     = (baseAtk * sqrt(growth) * prestigeAtkMult * rc.enemyAtkMult).round().clamp(baseAtk, 1000000000000000);
     final acBonus = min((log(a + 1) / log(2) * 1.5).floor(), 12);
-    final level   = baseLvl + a ~/ 5;
 
     final name = EnemyNamingEngine.buildName(
       baseName:    base.name,
@@ -1118,7 +1292,7 @@ class EnemyData {
       level:        level,
       armorClass:   baseAC + acBonus,
       attackType:   base.attackType,
-      resistances:  base.resistances,
+      resistances:  _scaleResistances(base.resistances, resTier),
     );
   }
 }

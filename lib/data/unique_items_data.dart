@@ -403,8 +403,8 @@ class UniqueItemsData {
     switch (xe) {
       AbilityEffect.stun            => 'Stun ${xd}r',
       AbilityEffect.dot             => 'DoT $xv%/r for ${xd}r',
-      AbilityEffect.attackBonus     => '+$xv ATK for ${xd}r',
-      AbilityEffect.acBonus         => '+$xv AC for ${xd}r',
+      AbilityEffect.attackBonus     => '+$xv% DMG for ${xd}r',
+      AbilityEffect.acBonus         => '+$xv% AC for ${xd}r',
       AbilityEffect.aura            => 'Aura $xv% HP/r for ${xd}r',
       AbilityEffect.debuffWeaken    => 'Weaken $xv% for ${xd}r',
       AbilityEffect.debuffVulnerable=> 'Vuln $xv% for ${xd}r',
@@ -414,5 +414,10 @@ class UniqueItemsData {
       AbilityEffect.silence         => 'Silence ${xd}r',
       AbilityEffect.absorbShield    => '$xv HP barrier',
       AbilityEffect.missChance      => '$xv% miss for ${xd}r',
+      AbilityEffect.frozen          => 'Freeze ${xd}r',
+      AbilityEffect.shocked         => 'Shock ${xd}r',
+      AbilityEffect.burning         => 'Burn $xv%/r for ${xd}r',
+      AbilityEffect.envenomed       => 'Poison $xv%/r for ${xd}r',
+      AbilityEffect.withered        => 'Wither −$xv% ATK for ${xd}r',
     };
 }

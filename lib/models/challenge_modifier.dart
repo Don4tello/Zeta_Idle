@@ -7,7 +7,7 @@ class ChallengeModifier {
     required this.enemyHpMult,
     required this.enemyAtkMult,
     required this.heroHpMult,
-    required this.rewardShardBonus,
+    required this.rewardPctBonus,
   });
 
   final String id;
@@ -20,8 +20,9 @@ class ChallengeModifier {
   final double enemyAtkMult;
   final double heroHpMult;
 
-  // Flat shard bonus per kill (stacks additively)
-  final int rewardShardBonus;
+  // % increase to essence earned (stacks additively). The flat soul income comes
+  // from the Gauntlet tier; modifiers scale it up by this percentage.
+  final int rewardPctBonus;
 
   static const all = [
     ChallengeModifier(
@@ -32,7 +33,7 @@ class ChallengeModifier {
       enemyHpMult: 1.25,
       enemyAtkMult: 1.0,
       heroHpMult: 1.0,
-      rewardShardBonus: 2,
+      rewardPctBonus: 15,
     ),
     ChallengeModifier(
       id: 'berserker_enemies',
@@ -42,7 +43,7 @@ class ChallengeModifier {
       enemyHpMult: 1.0,
       enemyAtkMult: 1.3,
       heroHpMult: 1.0,
-      rewardShardBonus: 3,
+      rewardPctBonus: 20,
     ),
     ChallengeModifier(
       id: 'glass_hero',
@@ -52,27 +53,27 @@ class ChallengeModifier {
       enemyHpMult: 1.0,
       enemyAtkMult: 1.0,
       heroHpMult: 0.5,
-      rewardShardBonus: 4,
+      rewardPctBonus: 25,
     ),
     ChallengeModifier(
       id: 'ironclad',
       name: 'Ironclad',
-      description: 'Enemies have +25% HP and +20% damage. More shards.',
+      description: 'Enemies have +25% HP and +20% damage. +30% essence.',
       icon: '🛡',
       enemyHpMult: 1.25,
       enemyAtkMult: 1.2,
       heroHpMult: 1.0,
-      rewardShardBonus: 5,
+      rewardPctBonus: 30,
     ),
     ChallengeModifier(
       id: 'nightmare',
       name: 'Nightmare',
-      description: 'All enemy stats +40%. Your HP halved. Max shards.',
+      description: 'All enemy stats +40%. Your HP halved. +50% essence.',
       icon: '💀',
       enemyHpMult: 1.4,
       enemyAtkMult: 1.4,
       heroHpMult: 0.5,
-      rewardShardBonus: 8,
+      rewardPctBonus: 50,
     ),
   ];
 }

@@ -23,6 +23,7 @@ class PrestigeNode {
     required this.soulCost,
     required this.category,
     this.prerequisiteId,
+    this.paragonGate = 0,
   });
 
   final String id;
@@ -31,6 +32,9 @@ class PrestigeNode {
   final int soulCost;
   final PrestigeCategory category;
   final String? prerequisiteId;
+  // Total paragon points that must be SPENT on the paragon board before this
+  // perk can be unlocked (0 = no gate). Encourages board investment first.
+  final int paragonGate;
 }
 
 const kPrestigeNodes = <PrestigeNode>[
@@ -41,14 +45,16 @@ const kPrestigeNodes = <PrestigeNode>[
     description: '+30% maximum HP. Survive longer every run.',
     soulCost: 3,
     category: PrestigeCategory.combat,
+    paragonGate: 50,
   ),
   PrestigeNode(
     id: 'blood_drinker',
     name: 'Blood Drinker',
-    description: 'Restore 5% max HP on every kill.',
+    description: 'Lifesteal: heal 6% of the damage you deal (up to 12% max HP per round).',
     soulCost: 5,
     category: PrestigeCategory.combat,
     prerequisiteId: 'iron_resolve',
+    paragonGate: 200,
   ),
   PrestigeNode(
     id: 'killing_blow',
@@ -56,22 +62,25 @@ const kPrestigeNodes = <PrestigeNode>[
     description: '+8% critical hit chance on all attacks.',
     soulCost: 4,
     category: PrestigeCategory.combat,
+    paragonGate: 100,
   ),
   PrestigeNode(
     id: 'deaths_edge',
     name: "Death's Edge",
-    description: 'Critical hits deal +80% bonus damage.',
+    description: 'Critical hits deal +5% bonus damage.',
     soulCost: 8,
     category: PrestigeCategory.combat,
     prerequisiteId: 'killing_blow',
+    paragonGate: 350,
   ),
   PrestigeNode(
     id: 'destroyer',
     name: 'Destroyer',
-    description: '+20% damage on all attacks permanently.',
+    description: '+5% damage on all attacks permanently.',
     soulCost: 10,
     category: PrestigeCategory.combat,
     prerequisiteId: 'deaths_edge',
+    paragonGate: 500,
   ),
   // ── ECONOMY ─────────────────────────────────────────────────────────────────
   PrestigeNode(
@@ -80,6 +89,7 @@ const kPrestigeNodes = <PrestigeNode>[
     description: '+20% gold income from all sources in every run.',
     soulCost: 3,
     category: PrestigeCategory.economy,
+    paragonGate: 50,
   ),
   PrestigeNode(
     id: 'war_spoils',
@@ -88,6 +98,7 @@ const kPrestigeNodes = <PrestigeNode>[
     soulCost: 5,
     category: PrestigeCategory.economy,
     prerequisiteId: 'start_gold',
+    paragonGate: 500,
   ),
   PrestigeNode(
     id: 'carrion_picker',
@@ -95,6 +106,7 @@ const kPrestigeNodes = <PrestigeNode>[
     description: '+50% shard drops from all kills.',
     soulCost: 3,
     category: PrestigeCategory.economy,
+    paragonGate: 100,
   ),
   PrestigeNode(
     id: 'essence_bonus',
@@ -102,6 +114,7 @@ const kPrestigeNodes = <PrestigeNode>[
     description: '+50% essence from all kills.',
     soulCost: 3,
     category: PrestigeCategory.economy,
+    paragonGate: 200,
   ),
   PrestigeNode(
     id: 'treasure_sense',
@@ -109,15 +122,9 @@ const kPrestigeNodes = <PrestigeNode>[
     description: '+35% gold earned from all battles.',
     soulCost: 4,
     category: PrestigeCategory.economy,
+    paragonGate: 350,
   ),
-  PrestigeNode(
-    id: 'mythril_memory',
-    name: 'Mythril Memory',
-    description: 'Keep 50% of your Mythril after each Rebirth.',
-    soulCost: 5,
-    category: PrestigeCategory.economy,
-    prerequisiteId: 'treasure_sense',
-  ),
+  // (Mythril Memory removed — Mythril is never lost now, so it was redundant.)
   // ── PROGRESSION ─────────────────────────────────────────────────────────────
   PrestigeNode(
     id: 'swift_learner',
@@ -125,28 +132,17 @@ const kPrestigeNodes = <PrestigeNode>[
     description: '+30% XP from all sources.',
     soulCost: 3,
     category: PrestigeCategory.progression,
+    paragonGate: 50,
   ),
-  PrestigeNode(
-    id: 'head_start',
-    name: "Veteran's Path",
-    description: 'After rebirth, campaign begins at Stage 11.',
-    soulCost: 3,
-    category: PrestigeCategory.progression,
-  ),
-  PrestigeNode(
-    id: 'head_start_2',
-    name: 'Battle-Hardened',
-    description: 'After rebirth, campaign begins at Stage 21.',
-    soulCost: 6,
-    category: PrestigeCategory.progression,
-    prerequisiteId: 'head_start',
-  ),
+  // ("Veteran's Path" / "Battle-Hardened" head-start nodes removed — they were
+  // worded around the deprecated Rebirth mechanic.)
   PrestigeNode(
     id: 'ability_disc',
     name: 'Arcane Economy',
     description: 'Ability upgrades cost 35% fewer shards.',
     soulCost: 3,
     category: PrestigeCategory.progression,
+    paragonGate: 100,
   ),
   PrestigeNode(
     id: 'instant_recall',
@@ -154,7 +150,7 @@ const kPrestigeNodes = <PrestigeNode>[
     description: 'Begin each run with 1,500 gold (stacks with other bonuses).',
     soulCost: 4,
     category: PrestigeCategory.progression,
-    prerequisiteId: 'head_start',
+    paragonGate: 200,
   ),
   // ── MASTERY ─────────────────────────────────────────────────────────────────
   PrestigeNode(
@@ -163,6 +159,44 @@ const kPrestigeNodes = <PrestigeNode>[
     description: '+30 idle income rate permanently.',
     soulCost: 3,
     category: PrestigeCategory.mastery,
+    paragonGate: 50,
+  ),
+  // Idle-cap extenders — base offline accumulation is 24h; each of these adds
+  // +6h (up to +24h → a 48h maximum). Chained so you invest in order.
+  PrestigeNode(
+    id: 'idle_reserve_1',
+    name: 'Deep Reserves I',
+    description: 'Idle rewards keep building for +6h while you\'re away (30h total).',
+    soulCost: 5,
+    category: PrestigeCategory.mastery,
+    paragonGate: 100,
+  ),
+  PrestigeNode(
+    id: 'idle_reserve_2',
+    name: 'Deep Reserves II',
+    description: '+6h more idle accumulation while away (36h total).',
+    soulCost: 8,
+    category: PrestigeCategory.mastery,
+    prerequisiteId: 'idle_reserve_1',
+    paragonGate: 200,
+  ),
+  PrestigeNode(
+    id: 'idle_reserve_3',
+    name: 'Deep Reserves III',
+    description: '+6h more idle accumulation while away (42h total).',
+    soulCost: 12,
+    category: PrestigeCategory.mastery,
+    prerequisiteId: 'idle_reserve_2',
+    paragonGate: 350,
+  ),
+  PrestigeNode(
+    id: 'idle_reserve_4',
+    name: 'Deep Reserves IV',
+    description: '+6h more idle accumulation while away (48h total — the max).',
+    soulCost: 16,
+    category: PrestigeCategory.mastery,
+    prerequisiteId: 'idle_reserve_3',
+    paragonGate: 500,
   ),
   PrestigeNode(
     id: 'forge_bonus',
@@ -170,37 +204,33 @@ const kPrestigeNodes = <PrestigeNode>[
     description: 'Forge common→rare requires only 2 items instead of 3.',
     soulCost: 3,
     category: PrestigeCategory.mastery,
+    paragonGate: 100,
   ),
   PrestigeNode(
     id: 'soul_conduit',
     name: 'Soul Conduit',
-    description: 'Earn +5 extra Paragon Points with every Rebirth.',
+    description: 'Earn +5 bonus Paragon Points.',
     soulCost: 6,
     category: PrestigeCategory.mastery,
+    paragonGate: 200,
   ),
-  PrestigeNode(
-    id: 'artifact_vault',
-    name: 'Artifact Vault',
-    description: 'Artifacts and their upgrades survive each Rebirth.',
-    soulCost: 8,
-    category: PrestigeCategory.mastery,
-    prerequisiteId: 'forge_bonus',
-  ),
+  // (Artifact Vault removed — artifacts are always kept now, so it was redundant.)
   PrestigeNode(
     id: 'soul_overdrive',
     name: 'Soul Overdrive',
-    description: 'After Rebirth, campaign begins at Stage 41.',
+    description: 'The campaign begins at Stage 41.',
     soulCost: 7,
     category: PrestigeCategory.progression,
-    prerequisiteId: 'head_start_2',
+    paragonGate: 350,
   ),
   PrestigeNode(
     id: 'paragon_dominance',
     name: 'Paragon Dominance',
-    description: 'Each Rebirth level grants +1% to all stats permanently (stacks with level scaling).',
+    description: 'Grants +1% to all stats for each Tier you\'ve unlocked (stacks with level scaling).',
     soulCost: 15,
     category: PrestigeCategory.mastery,
     prerequisiteId: 'soul_conduit',
+    paragonGate: 500,
   ),
 ];
 
@@ -208,7 +238,7 @@ const kPrestigeNodes = <PrestigeNode>[
 // The one-time nodes above dry up after a few rebirths. These are repeatable:
 // each rank adds a bonus and costs more, so points always have a direction to
 // pour into (Diablo-style paragon investment by category).
-enum ParagonEffect { damage, hp, gold, xp, crit, critDmg, idle }
+enum ParagonEffect { damage, hp, gold, xp, crit, critDmg, idle, healRating }
 
 class ParagonStat {
   const ParagonStat({
@@ -232,11 +262,10 @@ class ParagonStat {
 const kParagonStats = <ParagonStat>[
   ParagonStat(id: 'p_might',    name: 'Might',        icon: '⚔',  category: PrestigeCategory.combat,      effect: ParagonEffect.damage,  perRank: 1.0, costBase: 2),
   ParagonStat(id: 'p_vitality', name: 'Vitality',     icon: '❤', category: PrestigeCategory.combat,      effect: ParagonEffect.hp,      perRank: 1.0, costBase: 2),
-  ParagonStat(id: 'p_precision',name: 'Precision',    icon: '🎯', category: PrestigeCategory.combat,      effect: ParagonEffect.crit,    perRank: 0.3, costBase: 3),
-  ParagonStat(id: 'p_ferocity', name: 'Ferocity',     icon: '🔥', category: PrestigeCategory.combat,      effect: ParagonEffect.critDmg, perRank: 2.0, costBase: 3),
   ParagonStat(id: 'p_fortune',  name: 'Fortune',      icon: '💰', category: PrestigeCategory.economy,     effect: ParagonEffect.gold,    perRank: 1.5, costBase: 2),
   ParagonStat(id: 'p_wisdom',   name: 'Wisdom',       icon: '📖', category: PrestigeCategory.progression, effect: ParagonEffect.xp,      perRank: 1.5, costBase: 2),
   ParagonStat(id: 'p_eternal',  name: 'Eternal Flame',icon: '✦',  category: PrestigeCategory.mastery,     effect: ParagonEffect.idle,    perRank: 3.0, costBase: 2),
+  ParagonStat(id: 'p_vitalist', name: 'Vitalist',     icon: '✚',  category: PrestigeCategory.combat,      effect: ParagonEffect.healRating, perRank: 0.25, costBase: 3),
 ];
 
 ParagonStat? paragonStatById(String id) {
@@ -254,7 +283,8 @@ class PrestigeShop {
   final Map<String, int> _paragonRanks = {};
 
   int paragonRank(String id) => _paragonRanks[id] ?? 0;
-  int paragonCost(ParagonStat s) => s.costBase * (paragonRank(s.id) + 1);
+  // Flat cost: every rank on the board costs exactly 1 Paragon Point.
+  int paragonCost(ParagonStat s) => 1;
   bool canRankUp(ParagonStat s, int souls) => souls >= paragonCost(s);
   void rankUpParagon(String id) => _paragonRanks[id] = paragonRank(id) + 1;
 
@@ -267,11 +297,10 @@ class PrestigeShop {
     return sum;
   }
   int get paragonPointsSpent {
+    // Each rank costs 1 point, so total spent = total ranks across the board.
     var total = 0;
     for (final s in kParagonStats) {
-      final r = paragonRank(s.id);
-      // sum of costs 1..r = costBase * r(r+1)/2
-      total += s.costBase * r * (r + 1) ~/ 2;
+      total += paragonRank(s.id);
     }
     return total;
   }
@@ -281,6 +310,7 @@ class PrestigeShop {
   bool canUnlock(PrestigeNode node, int souls) {
     if (_unlocked.contains(node.id)) return false;
     if (souls < node.soulCost) return false;
+    if (paragonPointsSpent < node.paragonGate) return false;
     if (node.prerequisiteId != null && !_unlocked.contains(node.prerequisiteId!)) {
       return false;
     }

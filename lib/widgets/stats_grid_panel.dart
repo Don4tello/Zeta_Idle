@@ -536,7 +536,7 @@ class CombatStatsPanel extends StatelessWidget {
         + inv.totalOf(ItemStat.strength)
         + game.petAttackBonus + game.skinAttackBonus + game.auraAttackBonus
         + game.questAttackBonus + game.artifactPowerBonus
-        + game.ascAtkBonus + game.runeAtkBonus + game.allyAtkBonus;
+        + game.ascAtkBonus + game.runeAtkBonus;
 
     final dmgFlat   = h.damageMod
         + pt.totalOf(PassiveEffect.damageFlat)
@@ -544,12 +544,12 @@ class CombatStatsPanel extends StatelessWidget {
         + inv.totalOf(ItemStat.strength)
         + game.petDamage + game.skinDamage + game.auraDamage
         + game.questDamageBonus + game.artifactPowerBonus
-        + game.ascDmgBonus + game.runeDmgBonus + game.allyDmgBonus;
+        + game.ascDmgBonus + game.runeDmgBonus;
 
     final dmgPct    = pt.totalOf(PassiveEffect.allDamage)
         + inv.totalOf(ItemStat.damagePercent)
-        + h.levelBonusDamagePct
         + h.damagePctFor(h.activeDamageType)
+        + game.allyDmgPctBonus
         + game.ascAllDamagePct.round();
 
     final acTotal   = h.armorClass
@@ -565,7 +565,6 @@ class CombatStatsPanel extends StatelessWidget {
     final regen     = pt.totalOf(PassiveEffect.regenFlat)
         + inv.totalOf(ItemStat.constitution) * 3
         + game.petHpRegen + game.skinHpRegen;
-    final dodge     = pt.totalOf(PassiveEffect.dodgeChance) + game.petDodgeChance;
     final xpMult    = h.xpMultiplier;
 
     final power = atkTotal + dmgFlat;
@@ -579,7 +578,7 @@ class CombatStatsPanel extends StatelessWidget {
       _CS('Est. DPS',   '$dps / hit',                      const Color(0xFFff4488)),
       _CS('Power',      '+$power',                        const Color(0xFFff6644)),
       _CS('DMG Mult',   '+$dmgPct%',                      const Color(0xFFff6633)),
-      _CS('Armor',      '$acTotal',                        const Color(0xFF66aaff)),
+      _CS('Armor',      '$acTotal (${game.armorDrPctFor(acTotal).round()}%)', const Color(0xFF66aaff)),
       _CS('Max HP',     '${h.maxHealth}',                  const Color(0xFFff6666)),
       _CS('HP Regen',   '+$regen / round',                 const Color(0xFF44cc88)),
       _CS('Crit Chance',
@@ -591,9 +590,8 @@ class CombatStatsPanel extends StatelessWidget {
                        : '×${critDmg.toStringAsFixed(2)}',
           const Color(0xFFffaa22)),
       _CS('Pierce',     pierce > 0 ? '$pierce AC ignored' : '—', const Color(0xFFffaa44)),
-      _CS('Dodge',      dodge > 0 ? '+$dodge%' : '—',     const Color(0xFF88ffcc)),
+      _CS('Dodge',      '${game.heroDodgeRating.round()} (${game.effectiveDodgePct.round()}%)', const Color(0xFF88ffcc)),
       _CS('XP Mult',    '×${xpMult.toStringAsFixed(2)}',  const Color(0xFF88ddff)),
-      _CS('Lv Milestone', '+${h.levelBonusDamagePct}% DMG', const Color(0xFFaa88ff)),
     ];
 
     return Column(

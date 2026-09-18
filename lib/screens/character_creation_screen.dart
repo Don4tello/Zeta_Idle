@@ -257,7 +257,8 @@ class _NameStep extends StatelessWidget {
           TextField(
             controller: controller,
             autofocus: true,
-            maxLength: 20,
+            // Kept short so names fit the character-select tiles without truncation.
+            maxLength: 14,
             textAlign: TextAlign.center,
             style: GoogleFonts.rajdhani(
                 color: AppTheme.textLight, fontSize: 23),

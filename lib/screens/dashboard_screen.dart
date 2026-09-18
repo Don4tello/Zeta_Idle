@@ -6,6 +6,7 @@ import '../models/expedition.dart';
 import '../models/npc_ally.dart';
 import '../services/game_state.dart';
 import '../theme/app_theme.dart';
+import '../widgets/currency_icon.dart';
 import '../widgets/currency_info.dart';
 import '../widgets/dashboard_header.dart';
 import '../widgets/hero_tab_controller.dart';
@@ -141,19 +142,17 @@ class _SmartNextActionPanel extends StatelessWidget {
           '${ready.length} expedition${ready.length > 1 ? 's' : ''} ready to collect!',
           const Color(0xFF55cc88), null, null, Routes.expedition);
     }
-    if (game.canPrestige) {
-      return ('✨', 'Prestige available — reset for power!',
-          const Color(0xFFcc88ff), 10, null, null);
-    }
-    if (game.hasAffordableAbilityUpgrade) {
+    // Only suggest a hero-hub tab once it's actually unlocked/reachable —
+    // otherwise switchTo() has no tab to navigate to and the tap does nothing.
+    if (game.hasAffordableAbilityUpgrade && game.effectiveUnlockStage >= 2) {
       return ('⚔', 'Ability upgrade affordable — visit ABILITIES',
           const Color(0xFF66aaff), 2, null, null);
     }
-    if (game.hasAffordablePassiveNode) {
+    if (game.hasAffordablePassiveNode && game.effectiveUnlockStage >= 8) {
       return ('🌿', 'Passive upgrade affordable — visit PASSIVES',
           const Color(0xFF55ee88), 4, null, null);
     }
-    if (game.hasAffordableEndlessUpgrade) {
+    if (game.hasAffordableEndlessUpgrade && game.upgradesTabUnlocked) {
       return ('🔮', 'Endless upgrade affordable — visit UPGRADES',
           const Color(0xFF8866ff), 11, null, null);
     }
@@ -164,12 +163,6 @@ class _SmartNextActionPanel extends StatelessWidget {
       return ('🧙',
           '${idleMercs.length} merc${idleMercs.length > 1 ? 's' : ''} idle — dispatch on an expedition',
           const Color(0xFFffaa44), null, null, Routes.expedition);
-    }
-    if (game.campaignStageIndex >= 18 && game.campaignStageIndex % 25 >= 18) {
-      final remaining = 25 - (game.campaignStageIndex % 25);
-      return ('🏆',
-          '$remaining campaign stage${remaining > 1 ? 's' : ''} until Prestige gate',
-          const Color(0xFFaaddff), null, null, null);
     }
     return null;
   }
@@ -274,15 +267,16 @@ class _IncomePanel extends StatelessWidget {
           ]),
           const SizedBox(height: 10),
           Row(children: [
-            _IncomeRow('💰', 'Idle gold', hourlyLabel, const Color(0xFFffd700)),
+            _IncomeRow('💰', 'Idle gold', hourlyLabel, const Color(0xFFffd700),
+                iconWidget: const CurrencyIcon(id: 'gold', size: 12)),
             const SizedBox(width: 16),
             _IncomeRow('⚔', 'Battle/kill',
-                '${(game.hero.level * 50 + 100).toString()}g avg',
+                '${AppTheme.fmtNumber(game.hero.level * 50 + 100)}g avg',
                 const Color(0xFFff8866)),
             if (expRewards > 0) ...[
               const SizedBox(width: 16),
               _IncomeRow('🗺️', 'Expeditions',
-                  '${expRewards >= 1000 ? '${(expRewards / 1000).toStringAsFixed(1)}K' : expRewards}g pending',
+                  '${AppTheme.fmtNumber(expRewards)}g pending',
                   const Color(0xFF55cc88)),
             ],
           ]),
@@ -293,10 +287,10 @@ class _IncomePanel extends StatelessWidget {
             Wrap(spacing: 16, runSpacing: 6, children: [
               if (game.shards > 0)
                 Tooltip(message: CurrencyInfo.shards,
-                    child: _IncomeRow('◆', 'Shards', '${game.shards}', const Color(0xFF44ccff))),
+                    child: _IncomeRow('◆', 'Shards', AppTheme.fmtNumber(game.shards), const Color(0xFF44ccff))),
               if (game.echoes > 0)
                 Tooltip(message: CurrencyInfo.echoes,
-                    child: _IncomeRow('🔊', 'Echoes', '${game.echoes}', const Color(0xFFcc88ff))),
+                    child: _IncomeRow('🔊', 'Echoes', AppTheme.fmtNumber(game.echoes), const Color(0xFFcc88ff))),
             ]),
           ],
         ],
@@ -306,9 +300,10 @@ class _IncomePanel extends StatelessWidget {
 }
 
 class _IncomeRow extends StatelessWidget {
-  const _IncomeRow(this.icon, this.label, this.value, this.color);
+  const _IncomeRow(this.icon, this.label, this.value, this.color, {this.iconWidget});
   final String icon, label, value;
   final Color color;
+  final Widget? iconWidget; // optional custom icon (e.g. the gold coin)
 
   @override
   Widget build(BuildContext context) {
@@ -317,7 +312,7 @@ class _IncomeRow extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         Row(mainAxisSize: MainAxisSize.min, children: [
-          Text(icon, style: const TextStyle(fontSize: 11)),
+          iconWidget ?? Text(icon, style: const TextStyle(fontSize: 11)),
           const SizedBox(width: 4),
           Text(label,
               style: const TextStyle(
@@ -440,7 +435,7 @@ class _LoginRewardBanner extends StatelessWidget {
   Widget build(BuildContext context) {
     final game = GameStateProvider.of(context);
     if (game.loginTodayClaimed) return const SizedBox.shrink();
-    final day = ((game.loginStreak) % LoginReward.cycle.length) + 1;
+    final day = game.loginRewardDay;
     final reward = LoginReward.forDay(day);
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),

@@ -66,7 +66,7 @@ class PetDefinition {
     return switch (bonusType) {
       PetBonusType.goldPct     => '+$v% gold per kill',
       PetBonusType.xpPct       => '+$v% XP per kill',
-      PetBonusType.hpRegen     => '+$v HP after each victory',
+      PetBonusType.hpRegen     => '+${v * 10} HP regen per turn',
       PetBonusType.idleRate    => '+$v idle rate',
       PetBonusType.attackBonus => '+$v critical damage',
       PetBonusType.armor       => '+$v AC',

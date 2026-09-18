@@ -3,6 +3,7 @@ import '../models/prestige_shop.dart';
 import '../services/game_state.dart';
 import '../theme/app_theme.dart';
 import '../widgets/currency_info.dart';
+import '../widgets/paragon_icon.dart';
 import 'main_shell.dart' show TutorialTip;
 
 class PrestigeScreen extends StatelessWidget {
@@ -22,12 +23,12 @@ class PrestigeScreen extends StatelessWidget {
             TutorialTip(
               tutorialKey: 'prestige',
               game: game,
-              text: 'You can now Rebirth! ✦ Prestige your hero to reset progress '
-                  'but earn permanent Paragon Points ✦ and multipliers that stack forever. '
-                  'Each rebirth makes every future run significantly stronger.',
+              text: '✦ Paragon Points are earned by levelling up — 1 per level. '
+                  'Spend them on the Paragon Board and Shop below for permanent '
+                  'power that never resets.',
             ),
-          _RebirthPanel(game: game),
-          const SizedBox(height: 20),
+          // Rebirth is retired — tiers now drive progression (clear the campaign
+          // to unlock the next tier). Panel hidden; Paragon board kept.
           _BonusPanel(game: game),
           const SizedBox(height: 20),
           _ParagonBoard(game: game),
@@ -60,7 +61,7 @@ class PrestigeScreen extends StatelessWidget {
       backgroundColor: const Color(0xFF1B1A17),
       appBar: AppBar(
         backgroundColor: const Color(0xFF2A2623),
-        title: Text('REBIRTH', style: AppTheme.pixelHeading(fontSize: 14, letterSpacing: 2)),
+        title: Text('PARAGON', style: AppTheme.pixelHeading(fontSize: 14, letterSpacing: 2)),
         actions: [
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -108,8 +109,9 @@ class _CategorySection extends StatelessWidget {
   }
 }
 
-// ── Rebirth panel ─────────────────────────────────────────────────────────────
-
+// ── Rebirth panel (retired in the tier rework — kept for a possible Phase-2
+// restore; hidden from the Paragon screen) ────────────────────────────────────
+// ignore: unused_element
 class _RebirthPanel extends StatelessWidget {
   const _RebirthPanel({required this.game});
   final GameState game;
@@ -368,25 +370,23 @@ class _BonusPanel extends StatelessWidget {
     if (s.isUnlocked('iron_resolve'))        chips.add('+30% Max HP');
     if (s.isUnlocked('blood_drinker'))       chips.add('5% HP on kill');
     if (s.isUnlocked('killing_blow'))        chips.add('+8% Crit');
-    if (s.isUnlocked('deaths_edge'))         chips.add('+80% Crit DMG');
-    if (s.isUnlocked('destroyer'))           chips.add('+20% Damage');
+    if (s.isUnlocked('deaths_edge'))         chips.add('+5% Crit DMG');
+    if (s.isUnlocked('destroyer'))           chips.add('+5% Damage');
     if (s.isUnlocked('start_gold'))          chips.add('+20% Gold Income');
     if (s.isUnlocked('war_spoils'))          chips.add('+35% More Gold');
     if (s.isUnlocked('carrion_picker'))      chips.add('+50% Shards');
     if (s.isUnlocked('essence_bonus'))       chips.add('+50% Shard Gain');
     if (s.isUnlocked('treasure_sense'))      chips.add('+35% Battle Gold');
     if (s.isUnlocked('swift_learner'))       chips.add('+30% XP');
-    if (s.isUnlocked('head_start'))          chips.add('Start Stage 11');
-    if (s.isUnlocked('head_start_2'))        chips.add('Start Stage 21');
     if (s.isUnlocked('ability_disc'))        chips.add('-35% Ability Cost');
     if (s.isUnlocked('instant_recall'))      chips.add('+1,500 Start Gold');
     if (s.isUnlocked('idle_bonus'))          chips.add('+30 Idle Rate');
     if (s.isUnlocked('forge_bonus'))         chips.add('Forge: 2 items');
-    if (s.isUnlocked('soul_conduit'))        chips.add('+5 PP/Rebirth');
+    if (s.isUnlocked('soul_conduit'))        chips.add('+5 PP bonus');
     if (s.isUnlocked('artifact_vault'))      chips.add('Artifacts persist');
     if (s.isUnlocked('mythril_memory'))      chips.add('Keep 50% Mythril');
     if (s.isUnlocked('soul_overdrive'))      chips.add('Start at Stage 41');
-    if (s.isUnlocked('paragon_dominance'))   chips.add('+${game.prestigeLevel}% All Stats');
+    if (s.isUnlocked('paragon_dominance'))   chips.add('+${game.highestUnlockedTier}% All Stats');
 
     if (chips.isEmpty) return const SizedBox.shrink();
 
@@ -543,11 +543,13 @@ class _ShopNode extends StatelessWidget {
     final owned      = game.prestigeShop.isUnlocked(node.id);
     final prereqMet  = node.prerequisiteId == null ||
         game.prestigeShop.isUnlocked(node.prerequisiteId!);
+    final pointsSpent = game.prestigeShop.paragonPointsSpent;
+    final gateMet    = pointsSpent >= node.paragonGate;
     final canAfford  = game.prestigeSouls >= node.soulCost;
-    final canBuy     = !owned && prereqMet && canAfford;
+    final canBuy     = !owned && prereqMet && gateMet && canAfford;
     final borderColor = owned
         ? const Color(0xFFcc8844)
-        : (!prereqMet || !canAfford)
+        : (!prereqMet || !gateMet || !canAfford)
             ? AppTheme.cardBorder.withValues(alpha: 0.4)
             : AppTheme.cardBorder;
 
@@ -597,6 +599,13 @@ class _ShopNode extends StatelessWidget {
                   Text(
                     'Requires: ${kPrestigeNodes.firstWhere((n) => n.id == node.prerequisiteId, orElse: () => node).name}',
                     style: const TextStyle(fontSize: 11, color: Color(0xFFcc4444)),
+                  ),
+                ],
+                if (!owned && node.paragonGate > 0 && !gateMet) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    'Locked: spend ${node.paragonGate} Paragon points on the board ($pointsSpent/${node.paragonGate})',
+                    style: const TextStyle(fontSize: 11, color: Color(0xFFcc8844)),
                   ),
                 ],
               ],
@@ -745,6 +754,7 @@ class _ParagonRow extends StatelessWidget {
         ParagonEffect.crit => 'crit chance',
         ParagonEffect.critDmg => 'crit damage',
         ParagonEffect.idle => 'idle income',
+        ParagonEffect.healRating => 'Heal Rating',
       };
 
   @override
@@ -759,7 +769,7 @@ class _ParagonRow extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(children: [
-        Text(stat.icon, style: const TextStyle(fontSize: 18)),
+        ParagonIcon(id: stat.id, size: 22),
         const SizedBox(width: 8),
         Expanded(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [

@@ -331,7 +331,8 @@ class HomeScreen extends StatelessWidget {
               btn('DAILY CHALLENGES',   5,  () => context.push(Routes.daily),
                   badge: game.hasClaimableDaily),
               stage >= 8 ? _LoginStreakButton() : null,
-              btn('BOUNTY BOARD',       8,  () => context.push(Routes.bounties)),
+              btn('BOUNTY BOARD',       8,  () => context.push(Routes.bounties),
+                  badge: game.bossHuntsClaimable > 0),
             ]),
 
             // ── Hero Hub ──────────────────────────────────────────────────────
@@ -345,9 +346,9 @@ class HomeScreen extends StatelessWidget {
                   badge: game.seasonUnclaimedCount > 0),
               btn('ACHIEVEMENTS', 5,  () => context.push(Routes.achievements),
                   badge: game.achievementsClaimable > 0),
-              btn('PRESTIGE',      20, () => context.push(Routes.prestige)),
+              btn('PARAGON',       20, () => context.push(Routes.prestige)),
               btn('WORLD EVENT',   16, () => context.push(Routes.worldEvent)),
-              btn('ASCENSION',     45, () => context.push(Routes.ascension)),
+              // ASCENSION hidden during the tier rework (a new path is coming).
             ]),
 
             // ── Social ───────────────────────────────────────────────────────

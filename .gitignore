@@ -22,3 +22,6 @@ ios/Pods/
 
 # Patch-notes poster secrets (never commit)
 /tools/post_config.json
+
+# Local debug screenshots
+_*.png

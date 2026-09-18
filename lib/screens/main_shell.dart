@@ -1,4 +1,5 @@
 ﻿import 'package:flutter/material.dart';
+import '../widgets/currency_icon.dart';
 import '../widgets/game_icons.dart';
 import '../screens/premium_shop_screen.dart';
 import '../utils/format_number.dart';
@@ -8,6 +9,7 @@ import '../screens/guild_screen.dart';
 import '../screens/modes_screen.dart';
 import '../services/game_state.dart';
 import '../services/save_service.dart';
+import '../data/system_tutorials.dart';
 import '../theme/app_theme.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -37,6 +39,7 @@ class MainShell extends StatefulWidget {
 
 class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
   int _tab = 0;
+  bool _tutorialNavDone = false; // guards the one-time tutorial navigation
   bool _comebackMerged = false;
 
   @override
@@ -167,8 +170,9 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
     final secs = game.offlineSecondsAway;
     final String awayLine;
     if (game.offlineWasCapped) {
-      // Real time away exceeded the 8h idle cap — don't imply an exact figure.
-      awayLine = 'You were away for more than 8h — showing the maximum idle rewards.';
+      // Real time away exceeded the idle cap (24h + Deep Reserves) — don't imply
+      // an exact figure, just the capped maximum.
+      awayLine = 'You were away for more than ${game.idleCapHours}h — showing the maximum idle rewards.';
     } else {
       final String timeLabel;
       if (secs >= 3600) {
@@ -201,18 +205,22 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
             Text(awayLine,
                 style: const TextStyle(fontSize: 13, color: AppTheme.textMuted)),
             const SizedBox(height: 12),
-            _offlineRow(GameIconType.coin, '+$goldLabel gold', AppTheme.accentGold),
+            _offlineRow(const CurrencyIcon(id: 'gold', size: 16), '+$goldLabel gold', AppTheme.accentGold),
             if (xp > 0) ...[
               const SizedBox(height: 6),
-              _offlineRow(GameIconType.star, '+${fmtNum(xp)} XP', const Color(0xFF88aaff)),
+              _offlineRow(const GameIcon(GameIconType.star, size: 16, color: Color(0xFF88aaff)),
+                  '+${fmtNum(xp)} XP', const Color(0xFF88aaff)),
             ],
             if (ess > 0) ...[
               const SizedBox(height: 6),
-              _offlineRow(GameIconType.starburst, '+$ess essence', const Color(0xFF44dd88)),
+              // "essence" is an alias for Shards — use the real Shards icon/label.
+              _offlineRow(const CurrencyIcon(id: 'shards', size: 16),
+                  '+${fmtNum(ess)} shards', const Color(0xFF44ccff)),
             ],
             if (exps > 0) ...[
               const SizedBox(height: 6),
-              _offlineRow(GameIconType.compass, '$exps expedition${exps > 1 ? "s" : ""} ready!', const Color(0xFF55cc88)),
+              _offlineRow(const GameIcon(GameIconType.compass, size: 16, color: Color(0xFF55cc88)),
+                  '$exps expedition${exps > 1 ? "s" : ""} ready!', const Color(0xFF55cc88)),
             ],
             if (comeback != null) ...[
               const SizedBox(height: 10),
@@ -222,29 +230,42 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
                   style: TextStyle(fontSize: 11, color: Color(0xFF44aaff), letterSpacing: 1)),
               const SizedBox(height: 6),
               ...comeback.entries.map((e) =>
-                _offlineRow(GameIconType.gift, '+${e.value} ${e.key}', const Color(0xFF44aaff))),
+                _offlineRow(const GameIcon(GameIconType.gift, size: 16, color: Color(0xFF44aaff)),
+                    '+${e.value} ${e.key}', const Color(0xFF44aaff))),
             ],
             const SizedBox(height: 8),
             const Text('Idle income collected while you rested.',
                 style: TextStyle(fontSize: 12, color: AppTheme.textMuted,
                     fontStyle: FontStyle.italic)),
+            const SizedBox(height: 16),
+            // Primary action — full-width filled button (was a small text button
+            // tucked in the corner, easy to miss for the modal's only action).
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: () {
+                  if (comeback != null) game.claimComebackBonus();
+                  game.audioService.playClaim();
+                  Navigator.pop(context);
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppTheme.accentGold,
+                  foregroundColor: Colors.black,
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+                ),
+                child: Text('CLAIM',
+                    style: AppTheme.pixelHeading(fontSize: 14, color: Colors.black, letterSpacing: 2)),
+              ),
+            ),
           ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () {
-              if (comeback != null) game.claimComebackBonus();
-              game.audioService.playClaim();
-              Navigator.pop(context);
-            },
-            child: Text('CLAIM', style: AppTheme.pixelHeading(fontSize: 12, color: AppTheme.accentGold)),
-          ),
-        ],
+        actionsPadding: EdgeInsets.zero,
       ),
     );
   }
 
-  Widget _offlineRow(GameIconType icon, String text, Color color) {
+  Widget _offlineRow(Widget icon, String text, Color color) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -254,7 +275,7 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
         borderRadius: BorderRadius.circular(4),
       ),
       child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-        GameIcon(icon, size: 16, color: color),
+        icon,
         const SizedBox(width: 8),
         Text(text, style: AppTheme.pixelHeading(fontSize: 14, color: color)),
       ]),
@@ -264,6 +285,19 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
   @override
   Widget build(BuildContext context) {
     final game = GameStateProvider.of(context);
+    // Guided onboarding: when a system unlocks, jump to its tab and ask the hub
+    // to select its sub-tab (once per unlock). The overlay is rendered below.
+    if (game.pendingTutorial == null) {
+      _tutorialNavDone = false;
+    } else if (!_tutorialNavDone) {
+      _tutorialNavDone = true;
+      final t = game.pendingTutorial!;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        game.navRequestSubTab = t.subTab;
+        setState(() => _tab = t.navTab);
+      });
+    }
     if (game.pendingMilestone != null) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
@@ -372,7 +406,8 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
         );
       });
     }
-    return Scaffold(
+    return Stack(children: [
+      Scaffold(
       backgroundColor: AppTheme.darkBg,
       // Keep the top resource bar out from under the Android status bar
       // (time/battery/wifi). Bottom inset is handled by the nav bar below.
@@ -440,6 +475,113 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
         ],
         showGuild: game.effectiveUnlockStage >= 14,
       )),
+    ),
+      // Non-skippable coach overlay — covers the whole screen (incl. the nav) so
+      // the player must acknowledge it before continuing.
+      if (game.pendingTutorial != null)
+        _SystemTutorialOverlay(
+          tutorial: game.pendingTutorial!,
+          onDismiss: game.dismissSystemTutorial,
+        ),
+    ]);
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// System tutorial coach overlay — shown when a progression system unlocks.
+// A dim scrim over the (already navigated-to) system screen + a coach card.
+class _SystemTutorialOverlay extends StatelessWidget {
+  const _SystemTutorialOverlay({required this.tutorial, required this.onDismiss});
+  final SystemTutorial tutorial;
+  final VoidCallback onDismiss;
+
+  @override
+  Widget build(BuildContext context) {
+    return Positioned.fill(
+      // Absorb all taps outside the card so the player can't skip past the coach
+      // by tapping the nav or battle behind it.
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: () {},
+        child: Material(
+        color: Colors.black.withValues(alpha: 0.55),
+        child: SafeArea(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+                child: Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF17150E),
+                    border: Border.all(color: AppTheme.accentGold, width: 2),
+                    borderRadius: BorderRadius.circular(8),
+                    boxShadow: [
+                      BoxShadow(
+                          color: AppTheme.accentGold.withValues(alpha: 0.25),
+                          blurRadius: 16),
+                    ],
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Row(children: [
+                        Text(tutorial.icon, style: const TextStyle(fontSize: 26)),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text('NEW SYSTEM UNLOCKED',
+                                  style: TextStyle(
+                                      fontSize: 8,
+                                      letterSpacing: 2,
+                                      color: AppTheme.accentGold,
+                                      fontWeight: FontWeight.bold)),
+                              const SizedBox(height: 2),
+                              Text(tutorial.title,
+                                  style: AppTheme.pixelHeading(
+                                      fontSize: 16, letterSpacing: 1)),
+                            ],
+                          ),
+                        ),
+                      ]),
+                      const SizedBox(height: 12),
+                      Text(tutorial.howTo,
+                          style: const TextStyle(
+                              fontSize: 13,
+                              color: AppTheme.textLight,
+                              height: 1.5)),
+                      const SizedBox(height: 14),
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton(
+                          onPressed: onDismiss,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppTheme.accentGold,
+                            foregroundColor: Colors.black,
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(6)),
+                          ),
+                          child: Text('GOT IT',
+                              style: AppTheme.pixelHeading(
+                                  fontSize: 13,
+                                  letterSpacing: 2,
+                                  color: Colors.black)),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+      ),
     );
   }
 }
@@ -742,7 +884,9 @@ class TutorialTip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (_isSeen()) return const SizedBox.shrink();
+    // Veterans who have cleared Tier 0 (rebirthed at least once) no longer need
+    // tutorial tips — hide them all once a difficulty tier is unlocked.
+    if (game.highestUnlockedTier > 0 || _isSeen()) return const SizedBox.shrink();
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),

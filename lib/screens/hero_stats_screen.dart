@@ -11,6 +11,7 @@ import '../models/subclass.dart';
 import '../services/game_state.dart';
 import '../theme/app_theme.dart';
 import '../widgets/battle_sprites.dart';
+import '../widgets/currency_icon.dart';
 import '../widgets/stat_icon.dart';
 import 'main_shell.dart' show TutorialTip;
 
@@ -60,7 +61,6 @@ class _StatsBody extends StatelessWidget {
               'Track what\'s boosting your power here.',
         ),
         _currenciesSection(),
-        if (game.prestigeLevel > 0) _prestigeSection(),
         _section('DAMAGE TYPES',  _damageTypeRows()),
         if (game.endlessUpgrades.levelOf(EndlessNode.str) > 0 ||
             game.endlessUpgrades.levelOf(EndlessNode.dex) > 0)
@@ -184,6 +184,7 @@ class _StatsBody extends StatelessWidget {
       _StatRow(
         label: 'Gold',
         icon: Icons.monetization_on_outlined,
+        currencyId: 'gold',
         color: AppTheme.accentGold,
         total: AppTheme.fmtNumber(game.gold),
         sources: [
@@ -216,7 +217,7 @@ class _StatsBody extends StatelessWidget {
         total: AppTheme.fmtNumber(game.mythril),
         sources: [
           _Source('Dungeon', '1 per 2 floors cleared'),
-          _Source('Rebirth (Prestige)', '+10 on each prestige'),
+          _Source('Tier Clear', '+10 each time you unlock a new tier'),
           _Source('Boss Rush', 'rank-based rewards'),
         ],
       ),
@@ -233,13 +234,13 @@ class _StatsBody extends StatelessWidget {
         ],
       ),
       _StatRow(
-        label: 'Souls 🌑',
+        label: 'Paragon Points 🌑',
         icon: Icons.brightness_2_outlined,
         color: const Color(0xFFcc8844),
         total: AppTheme.fmtNumber(game.prestigeSouls),
         sources: [
-          _Source('Rebirth', 'earned each time you prestige (scales with stage)'),
-          _Source('Soul Shop', 'spend for permanent bonuses that survive resets'),
+          _Source('Level Up', 'earn 1 Paragon Point every level (no cap)'),
+          _Source('Paragon Board', 'spend for permanent bonuses that never reset'),
         ],
       ),
       _StatRow(
@@ -280,7 +281,7 @@ class _StatsBody extends StatelessWidget {
               const Icon(Icons.account_balance_wallet_outlined,
                   color: purple, size: 13),
               const SizedBox(width: 6),
-              Text('CURRENCIES & REBIRTHS',
+              Text('CURRENCIES & TIER',
                   style: AppTheme.pixelHeading(
                       fontSize: 11, letterSpacing: 2, color: purple)),
               const SizedBox(width: 8),
@@ -305,15 +306,15 @@ class _StatsBody extends StatelessWidget {
                 const Text('✦',
                     style: TextStyle(fontSize: 14, color: Color(0xFFcc88ff))),
                 const SizedBox(width: 8),
-                Text('Rebirths',
+                Text('Difficulty Tier',
                     style: GoogleFonts.rajdhani(
                         fontSize: 12, color: Colors.white54)),
                 const Spacer(),
-                Text('${game.prestigeLevel}',
+                Text('${game.highestUnlockedTier}',
                     style: GoogleFonts.rajdhani(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
-                        color: game.prestigeLevel > 0
+                        color: game.highestUnlockedTier > 0
                             ? const Color(0xFFcc88ff)
                             : Colors.white24)),
                 if (game.ascensionLevel > 0) ...[
@@ -344,8 +345,8 @@ class _StatsBody extends StatelessWidget {
     );
   }
 
-  // ── Prestige ─────────────────────────────────────────────────────────────────
-
+  // ── Prestige (retired in the tier rework — no longer rendered) ───────────────
+  // ignore: unused_element
   Widget _prestigeSection() {
     const gold  = Color(0xFFcc8844);
     final goldPct  = ((game.prestigeGoldMult - 1.0) * 100).round();
@@ -369,8 +370,6 @@ class _StatsBody extends StatelessWidget {
       if (game.prestigeShop.isUnlocked('ability_disc'))  '-25% Ability Cost',
       if (game.prestigeShop.isUnlocked('start_gold'))    '+500 Start Gold',
       if (game.prestigeShop.isUnlocked('start_gold_2'))  '+1500 Start Gold',
-      if (game.prestigeShop.isUnlocked('head_start'))    'Start Stage 6',
-      if (game.prestigeShop.isUnlocked('head_start_2'))  'Start Stage 11',
       if (game.prestigeShop.isUnlocked('forge_bonus'))   'Forge 2 items',
     ];
 
@@ -434,17 +433,18 @@ class _StatsBody extends StatelessWidget {
 
   List<_StatRow> _damageTypeRows() {
     final h = game.hero;
-    return DamageType.values.map((dt) {
+    // Damage only — resistances get their own RESISTANCES section below.
+    // Physical is no longer a hero damage type (heroes deal elements; Armor is
+    // the physical defence), so it's excluded here.
+    return DamageType.values.where((dt) => dt != DamageType.physical).map((dt) {
       final pct = h.damagePctFor(dt);
-      final res = game.heroResistancePct(dt);
       return _StatRow(
         label: '${dt.emoji} ${dt.label}',
         icon: Icons.whatshot,
         color: dt.color,
-        total: '+$pct% DMG / $res% RES',
+        total: '+$pct% DMG',
         sources: [
           _Source('Damage %', '+$pct%'),
-          _Source('Resistance %', '$res%'),
         ],
       );
     }).toList();
@@ -494,13 +494,12 @@ class _StatsBody extends StatelessWidget {
         + game.inventorySetTotal(ItemStat.strength);
     final petDmg = game.petDamage;
     final skinDmg = game.skinDamage;
-    final allyDmg = game.allyDmgBonus;
     final questDmg = game.questDamageBonus;
     final artifactDmg = game.artifactPowerBonus;
     final runeDmg = game.runeDmgBonus;
     final ascDmg = game.ascDmgBonus;
     final total = weaponDmg + heroDmg + passiveDmg + equipDmg + setDmg
-        + petDmg + skinDmg + allyDmg + questDmg + artifactDmg + runeDmg + ascDmg;
+        + petDmg + skinDmg + questDmg + artifactDmg + runeDmg + ascDmg;
 
     return [
       _StatRow(label: 'Total Damage', icon: Icons.flash_on, color: const Color(0xFFff6644), total: '$total', sources: [
@@ -511,7 +510,6 @@ class _StatsBody extends StatelessWidget {
         if (setDmg > 0) _Source('Set Bonuses', '+$setDmg'),
         if (petDmg > 0) _Source('Pets', '+$petDmg'),
         if (skinDmg > 0) _Source('Skins', '+$skinDmg'),
-        if (allyDmg > 0) _Source('Allies', '+$allyDmg'),
         if (questDmg > 0) _Source('Quests', '+$questDmg'),
         if (artifactDmg > 0) _Source('Artifacts', '+$artifactDmg'),
         if (runeDmg > 0) _Source('Runes', '+$runeDmg'),
@@ -532,7 +530,7 @@ class _StatsBody extends StatelessWidget {
                    + game.inventorySetTotal(ItemStat.strength);
     final atkPets  = game.petAttackBonus;
     final atkSkin  = game.skinAttackBonus;
-    final atkAlly  = game.allyAtkBonus;
+    final allyDmgPct = game.allyDmgPctBonus; // mercenaries now give % damage
 
     final dmgBase  = h.damageMod;
     final dmgPass  = pt.totalOf(PassiveEffect.damageFlat);
@@ -542,16 +540,19 @@ class _StatsBody extends StatelessWidget {
                    + game.inventorySetTotal(ItemStat.strength);
     final dmgPets  = game.petDamage;
     final dmgSkin  = game.skinDamage;
-    final dmgAlly  = game.allyDmgBonus;
     final dmgTrait = game.traitDmgPct;
 
+    // Armour is a RATING: STR (not DEX) adds to it, and it includes gems, quest,
+    // aura, artifact, rune and endless-CON sources too. The authoritative value
+    // is game.heroArmorValue (used by combat + modes); the rows below itemise it.
     final acBase  = h.armorClass;
     final acPass  = pt.totalOf(PassiveEffect.armorFlat);
     final acEquip = game.inventory.totalOf(ItemStat.armorClass)
-                  + game.inventory.totalOf(ItemStat.dexterity);
+                  + game.inventory.totalOf(ItemStat.strength)
+                  + game.inventoryGemTotal(ItemStat.armorClass)
+                  + game.inventoryGemTotal(ItemStat.strength);
     final acSet   = game.inventorySetTotal(ItemStat.armorClass)
-                  + game.inventorySetTotal(ItemStat.dexterity);
-    final acPets  = game.petArmor;
+                  + game.inventorySetTotal(ItemStat.strength);
     final acSkin  = game.skinArmor;
     final acAlly  = game.allyAcBonus;
 
@@ -561,9 +562,7 @@ class _StatsBody extends StatelessWidget {
     final hpTrait = game.traitHpPct + game.artifactHpPct + game.runeHpPct + hpAlly;
 
     final pierce    = pt.totalOf(PassiveEffect.pierce);
-    final critPass  = pt.totalOf(PassiveEffect.critChance);
     final dodgePass = pt.totalOf(PassiveEffect.dodgeChance);
-    final dodgePets = game.petDodgeChance;
 
     final regenPass  = pt.totalOf(PassiveEffect.regenFlat);
     final regenEquip = game.inventory.totalOf(ItemStat.constitution) * 3
@@ -578,7 +577,7 @@ class _StatsBody extends StatelessWidget {
         icon: Icons.flash_on,
         statIcon: StatIconType.power,
         color: const Color(0xFFff6644),
-        total: '+${atkBase + atkPass + atkEquip + atkSet + atkPets + atkSkin + atkAlly + dmgBase + dmgPass + dmgEquip + dmgSet + dmgPets + dmgSkin + dmgAlly}'
+        total: '+${atkBase + atkPass + atkEquip + atkSet + atkPets + atkSkin + dmgBase + dmgPass + dmgEquip + dmgSet + dmgPets + dmgSkin}'
             '${dmgTrait != 0 ? "  ×${(1 + dmgTrait / 100).toStringAsFixed(2)}" : ""}',
         sources: [
           _Source('Base (prof + level)', '+${atkBase + dmgBase}'),
@@ -588,24 +587,29 @@ class _StatsBody extends StatelessWidget {
           ..._petSourcesOrZero(PetBonusType.attackBonus, (v) => '+$v'),
           ..._petSourcesOrZero(PetBonusType.damage, (v) => '+$v'),
           _Source('Skin', '+${atkSkin + dmgSkin}'),
-          _Source('Mercenaries', '+${atkAlly + dmgAlly}'),
+          if (allyDmgPct > 0) _Source('Mercenaries (dmg)', '+$allyDmgPct%'),
           if (dmgTrait != 0) _Source('Trait (mult)', '${dmgTrait >= 0 ? '+' : ''}$dmgTrait%'),
         ],
       ),
       _StatRow(
-        label: 'Armor',
+        label: 'Armor Rating',
         icon: Icons.shield_outlined,
         statIcon: StatIconType.armor,
         color: const Color(0xFF66aaff),
-        total: '${acBase + acPass + acEquip + acSet + acPets + acSkin + acAlly}',
+        // Authoritative total (matches combat + modes), not a partial re-sum.
+        total: '${game.heroArmorValue}'
+            '  (${game.armorDrPctFor(game.heroArmorValue).round()}% DR)',
         sources: [
           _Source('Base (flat)', '$acBase'),
           _Source('Passives', '+$acPass'),
-          _Source('Equipment', '+$acEquip'),
+          _Source('Equipment (AC + STR)', '+$acEquip'),
           _Source('Set bonuses', '+$acSet'),
           ..._petSourcesOrZero(PetBonusType.armor, (v) => '+$v'),
           _Source('Skin', '+$acSkin'),
-          _Source('Mercenaries', '+$acAlly'),
+          _Source('Aura', '+${game.auraArmor}'),
+          _Source('Quest', '+${game.questACBonus}'),
+          _Source('Artifact / Rune', '+${game.artifactAcBonus + game.runeAcBonus}'),
+          _Source('Mercenaries / Subclass (rating %)', '+$acAlly%'),
         ],
       ),
       _StatRow(
@@ -619,6 +623,20 @@ class _StatsBody extends StatelessWidget {
           _Source('Passives', '+$hpPass%'),
           _Source('Trait / Artifact / Rune', '+${game.traitHpPct + game.artifactHpPct + game.runeHpPct}%'),
           _Source('Mercenaries', '+$hpAlly%'),
+        ],
+      ),
+      _StatRow(
+        label: 'Heal Rating',
+        icon: Icons.healing_outlined,
+        color: const Color(0xFF33dd99),
+        // All healing = ability value / 9 × this. Grows from gear/Vitalist, not HP.
+        total: AppTheme.fmtNumber(game.healRating),
+        sources: [
+          _Source('Gear (Heal Rating)', '+${game.inventory.totalOf(ItemStat.healRating) + game.inventorySetTotal(ItemStat.healRating) + game.inventoryGemTotal(ItemStat.healRating)}'),
+          _Source('Vitalist / Passives (flat)', '+${game.passiveTree.totalOf(PassiveEffect.healRatingFlat)}'),
+          _Source('Vitalist / Subclass (%)', '+${game.healBoostRatingPct.round()}%'),
+          if (game.passiveTree.hasKeystone(PassiveBranch.vitalist)) _Source('Eternal Font', '×2 base'),
+          _Source('Paragon', '×${game.paragonHealMult.toStringAsFixed(2)}'),
         ],
       ),
       _StatRow(
@@ -644,15 +662,9 @@ class _StatsBody extends StatelessWidget {
         sources: [
           if (game.critOverflowPct > 0)
             _Source('Overflow → Crit Damage', '+${game.critOverflowPct}% crit dmg'),
-          _Source('Passives (crit nodes)', '+$critPass%'),
-          _Source('ATK stat (items ×2)', '+${(game.inventory.totalOf(ItemStat.attackBonus) + game.inventorySetTotal(ItemStat.attackBonus)) * 2}%'),
-          _Source('Passives (ATK flat ×2)', '+${pt.totalOf(PassiveEffect.attackFlat) * 2}%'),
-          _Source('Pets / Skin / Aura', '+${(atkPets + atkSkin) * 2}%'),
-          _Source('Prestige: Killing Blow', '+${game.prestigeCritBonus}%'),
-          if (game.subclassEffect == SubclassEffect.champion) _Source('Champion subclass', '+15%'),
-          if (game.endlessUpgrades.ironGrip) _Source('Iron Grip upgrade', '+5%'),
-          if (game.endlessUpgrades.keenEdge) _Source('Keen Edge upgrade', '+10%'),
-          _Source('Active buff (ATK ability)', '+${game.buffAttackBonus}%'),
+          _Source('Gear: ATK stat (×2)', '+${(game.inventory.totalOf(ItemStat.attackBonus) + game.inventorySetTotal(ItemStat.attackBonus)) * 2}%'),
+          _Source('Gear: Dexterity', '+${game.inventory.totalOf(ItemStat.dexterity) + game.inventorySetTotal(ItemStat.dexterity)}%'),
+          const _Source('Everything else', 'grants % All Damage instead'),
         ],
       ),
       _StatRow(
@@ -663,19 +675,20 @@ class _StatsBody extends StatelessWidget {
         total: '${game.totalCritDamageMult.toStringAsFixed(1)}× damage',
         sources: [
           _Source('Base', '2.0× (hits deal double damage)'),
-          if (game.prestigeCritDamageMult > 1.0) _Source("Prestige: Death's Edge", '×${game.prestigeCritDamageMult.toStringAsFixed(1)}'),
-          if (game.subclassEffect == SubclassEffect.assassin) _Source('Assassin subclass', '3× base (triple damage)'),
-          _Source('Critical Fury keyword', '3× base if item equipped'),
+          const _Source('Critical Fury keyword', '3× base if item equipped'),
+          if (game.critOverflowPct > 0) _Source('Gear crit overflow', '+${game.critOverflowPct}% crit dmg'),
         ],
       ),
       _StatRow(
-        label: 'Dodge Chance',
+        label: 'Dodge Rating',
         icon: Icons.directions_run,
         color: const Color(0xFF88ffcc),
-        total: '+${dodgePass + dodgePets}%',
+        total: '${game.heroDodgeRating.round()}  (${game.effectiveDodgePct.round()}% dodge)',
         sources: [
-          _Source('Passives', '+$dodgePass%'),
-          ..._petSourcesOrZero(PetBonusType.dodgeChance, (v) => '+$v%'),
+          _Source('Passives', '+$dodgePass'),
+          ..._petSourcesOrZero(PetBonusType.dodgeChance, (v) => '+$v'),
+          _Source('DEX / auras / runes / subclass', 'in rating'),
+          const _Source('Diminishing returns', 'caps at 37.5% dodge'),
         ],
       ),
       _StatRow(
@@ -694,11 +707,10 @@ class _StatsBody extends StatelessWidget {
         label: 'All Damage %',
         icon: Icons.trending_up,
         color: const Color(0xFFff6633),
-        total: '+${pt.totalOf(PassiveEffect.allDamage) + game.inventory.totalOf(ItemStat.damagePercent) + h.levelBonusDamagePct}%',
+        total: '+${pt.totalOf(PassiveEffect.allDamage) + game.inventory.totalOf(ItemStat.damagePercent)}%',
         sources: [
           _Source('Passives', '+${pt.totalOf(PassiveEffect.allDamage)}%'),
           _Source('Equipment (%DMG)', '+${game.inventory.totalOf(ItemStat.damagePercent)}%'),
-          _Source('Level milestones', '+${h.levelBonusDamagePct}% (+10% per 10 levels)'),
         ],
       ),
     ];
@@ -707,35 +719,14 @@ class _StatsBody extends StatelessWidget {
   // ── Resistance rows ───────────────────────────────────────────────────────────
 
   List<_StatRow> _resistanceRows() {
-    final h = game.hero;
-
-    return DamageType.values.map((type) {
-      final baseStat = switch (type) {
-        DamageType.physical  => h.strength,
-        DamageType.lightning => h.dexterity,
-        DamageType.poison    => h.constitution,
-        DamageType.void_     => h.intelligence,
-        DamageType.cold      => h.wisdom,
-        DamageType.fire      => h.charisma,
-      };
-      final itemStat = switch (type) {
-        DamageType.physical  => ItemStat.strength,
-        DamageType.lightning => ItemStat.dexterity,
-        DamageType.poison    => ItemStat.constitution,
-        DamageType.void_     => ItemStat.intelligence,
-        DamageType.cold      => ItemStat.wisdom,
-        DamageType.fire      => ItemStat.charisma,
-      };
-
-      final equip = game.inventory.totalOf(itemStat);
-      final set   = game.inventorySetTotal(itemStat);
-      final gem   = game.inventoryGemTotal(itemStat);
-
-      // Attribute the -10 base offset to the base stat contribution.
-      final basePct  = ((baseStat - 10) * 25.0 / 90).round();
-      final equipPct = (equip * 25.0 / 90).round();
-      final setPct   = (set   * 25.0 / 90).round();
-      final gemPct   = (gem   * 25.0 / 90).round();
+    // Physical is not a resistance — Armor is the physical defence. Only the 5
+    // elements have resistances.
+    return DamageType.values.where((t) => t != DamageType.physical).map((type) {
+      // Resistance is a RATING: flat (stats + passives) boosted by a % (mastery +
+      // gems), through the diminishing-returns curve — caps at 75%.
+      final flatRating = game.heroResistFlatRating(type);
+      final boostPct   = game.heroResistRatingBoostPct(type);
+      final rating     = (flatRating * (1 + boostPct / 100.0)).round();
 
       final pct   = game.heroResistancePct(type);
       final sign  = pct >= 0 ? '+' : '';
@@ -744,9 +735,7 @@ class _StatsBody extends StatelessWidget {
           : pct < 0
               ? const Color(0xFFff4444)
               : AppTheme.textMuted;
-      final capped = pct.abs() == 75;
-
-      String sg(int v) => v >= 0 ? '+' : '';
+      final capped = pct >= 90 || pct <= -75;
 
       return _StatRow(
         label: '${type.label} Resist',
@@ -754,11 +743,11 @@ class _StatsBody extends StatelessWidget {
         color: color,
         total: '$sign$pct%${capped ? ' ⬆' : ''}',
         sources: [
-          _Source('Base ${type.resistanceStat} ($baseStat stat)', '${sg(basePct)}$basePct%'),
-          _Source('Equipment', '${sg(equipPct)}$equipPct%'),
-          _Source('Set bonuses', '${sg(setPct)}$setPct%'),
-          _Source('Gems', '${sg(gemPct)}$gemPct%'),
-          _Source('Cap', '±75% max'),
+          _Source('Flat rating (${type.resistanceStat} stat + passives)', '$flatRating'),
+          _Source('Mastery + Gems (rating boost)', '+$boostPct%'),
+          _Source('Effective rating', '$rating'),
+          _Source('→ Resistance', '$sign$pct%  (diminishing returns)'),
+          _Source('Cap', '+90% max · −75% floor'),
         ],
       );
     }).toList();
@@ -810,6 +799,7 @@ class _StatsBody extends StatelessWidget {
       _StatRow(
         label: 'Gold per Kill',
         icon: Icons.monetization_on_outlined,
+        currencyId: 'gold',
         color: AppTheme.accentGold,
         total: '+$totalGoldPct%',
         sources: [
@@ -932,32 +922,8 @@ class _StatsBody extends StatelessWidget {
   // ── Survival rows ─────────────────────────────────────────────────────────────
 
   List<_StatRow> _survivalRows() {
-    final h           = game.hero;
-    const baseHealPct = 10;
-    final conEquip    = game.inventory.totalOf(ItemStat.constitution) * 3
-                      + game.inventorySetTotal(ItemStat.constitution) * 3
-                      + game.inventoryGemTotal(ItemStat.constitution) * 3;
-    final endlessRegen = game.endlessUpgrades.flatDamageReduction;
-    final regenPets   = game.petHpRegen;
-    final regenSkin   = game.skinHpRegen;
-    final totalRegen  = (h.maxHealth * baseHealPct / 100).round()
-                      + endlessRegen + conEquip + regenPets + regenSkin;
-
+    final h = game.hero;
     return [
-      _StatRow(
-        label: 'Post-battle HP Heal',
-        icon: Icons.healing,
-        color: const Color(0xFFff6666),
-        total: '~$totalRegen HP ($baseHealPct% base)',
-        sources: [
-          _Source('Flat base — $baseHealPct% of max HP',
-              '~${(h.maxHealth * baseHealPct / 100).round()} HP'),
-          _Source('Endless upgrade (HP Recovery)', '+$endlessRegen HP'),
-          _Source('Equipment CON stat', '+$conEquip HP'),
-          ..._petSourcesOrZero(PetBonusType.hpRegen, (v) => '+$v HP'),
-          _Source('Skin', '+$regenSkin HP'),
-        ],
-      ),
       _StatRow(
         label: 'Vitality (VIT)',
         icon: Icons.favorite_border,
@@ -1069,9 +1035,8 @@ class _StatsBody extends StatelessWidget {
 
   String _allyPassiveTotal(NpcAllyDef a, int lv) {
     final parts = <String>[];
-    if (a.atkBonus > 0)      parts.add('+${a.atkBonus * lv} ATK');
-    if (a.dmgBonus > 0)      parts.add('+${a.dmgBonus * lv} DMG');
-    if (a.acBonus > 0)       parts.add('+${a.acBonus * lv} AC');
+    if (a.dmgPctBonus > 0)   parts.add('+${a.dmgPctBonus * lv}% Damage');
+    if (a.acBonus > 0)       parts.add('+${a.acBonus * lv}% AC Rating');
     if (a.hpPctBonus > 0)    parts.add('+${(a.hpPctBonus * lv * 100).round()}% HP');
     if (a.goldPctBonus > 0)  parts.add('+${(a.goldPctBonus * lv * 100).round()}% Gold');
     if (a.xpPctBonus > 0)    parts.add('+${(a.xpPctBonus * lv * 100).round()}% XP');
@@ -1098,11 +1063,13 @@ class _StatRow {
     required this.color,
     required this.total,
     this.statIcon,
+    this.currencyId,
     this.sources = const [],
   });
   final String        label;
   final IconData      icon;
-  final StatIconType? statIcon; // custom sprite icon; falls back to [icon]
+  final StatIconType? statIcon;  // custom sprite icon; falls back to [icon]
+  final String?       currencyId; // pixel-art CurrencyIcon; takes priority
   final Color         color;
   final String        total;
   final List<_Source> sources;
@@ -1165,9 +1132,11 @@ class _StatRowWidgetState extends State<_StatRowWidget> {
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
               child: Row(
                 children: [
-                  row.statIcon != null
-                      ? StatIcon(type: row.statIcon!, color: row.color, size: 16)
-                      : Icon(row.icon, color: row.color, size: 13),
+                  row.currencyId != null
+                      ? CurrencyIcon(id: row.currencyId!, size: 15)
+                      : row.statIcon != null
+                          ? StatIcon(type: row.statIcon!, color: row.color, size: 16)
+                          : Icon(row.icon, color: row.color, size: 13),
                   const SizedBox(width: 7),
                   Expanded(
                     child: Text(

@@ -65,9 +65,9 @@ const kCurrencies = <CurrencyDef>[
     use: 'Elemental Mastery upgrades.',
   ),
   CurrencyDef(
-    id: 'paragonPoints', icon: '👻', name: 'Prestige Souls', color: Color(0xFFccaaff),
-    source: 'Each Rebirth (Prestige), scaled by the campaign stage you reached.',
-    use: 'Permanent upgrades in the Prestige Shop.',
+    id: 'paragonPoints', icon: '👻', name: 'Paragon Points', color: Color(0xFFccaaff),
+    source: 'Earned by levelling up — 1 per level.',
+    use: 'Permanent upgrades on the Paragon board.',
   ),
   CurrencyDef(
     id: 'ascensionPoints', icon: '🌟', name: 'Ascension Points', color: Color(0xFFffd966),

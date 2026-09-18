@@ -4,6 +4,7 @@ import '../models/gem.dart';
 import '../services/game_state.dart';
 import '../theme/app_theme.dart';
 import '../widgets/currency_info.dart';
+import '../widgets/currency_icon.dart';
 
 class ForgeScreen extends StatefulWidget {
   const ForgeScreen({super.key, this.embedded = false});
@@ -692,7 +693,9 @@ class _GemsTabState extends State<_GemsTab> {
           // ── Gem type picker (one per line, with full description) ─────
           Text('GEM TYPE', style: AppTheme.pixelHeading(fontSize: 10, letterSpacing: 2, color: AppTheme.textMuted)),
           const SizedBox(height: 8),
-          ...GemType.values.map((t) {
+          // Onyx (physical) removed with the physical damage type — Armor is the
+          // physical defence, not a gem stat.
+          ...GemType.values.where((t) => t != GemType.onyx).map((t) {
             final sel = _type == t;
             // Effect % for the currently selected tier, so the description is live.
             final pct = _tier.pctBonus;
@@ -1134,9 +1137,11 @@ class _UpgradeTabState extends State<_UpgradeTab> {
               const SizedBox(height: 8),
               Row(children: [
                 const Text('Balance: ', style: TextStyle(fontSize: 10, color: AppTheme.textMuted)),
-                Text('💰 ${game.gold}', style: const TextStyle(fontSize: 11, color: AppTheme.accentGold, fontWeight: FontWeight.bold)),
+                const CurrencyIcon(id: 'gold', size: 12),
+                const SizedBox(width: 3),
+                Text(AppTheme.fmtNumber(game.gold), style: const TextStyle(fontSize: 11, color: AppTheme.accentGold, fontWeight: FontWeight.bold)),
                 const SizedBox(width: 14),
-                Text('◆ ${game.shards}', style: const TextStyle(fontSize: 11, color: Color(0xFF6699ff), fontWeight: FontWeight.bold)),
+                Text('◆ ${AppTheme.fmtNumber(game.shards)}', style: const TextStyle(fontSize: 11, color: Color(0xFF6699ff), fontWeight: FontWeight.bold)),
               ]),
             ],
           ),
@@ -1346,5 +1351,6 @@ class _UpgradeTabState extends State<_UpgradeTab> {
     ItemStat.xpPct           => 'XP%',
     ItemStat.elemPenetration => 'PEN%',
     ItemStat.damagePercent   => 'DMG%',
+    ItemStat.healRating      => 'HEAL',
   };
 }

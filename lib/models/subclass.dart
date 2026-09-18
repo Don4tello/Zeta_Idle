@@ -115,8 +115,9 @@ class Subclass {
     final p = <String>[];
     if (dmgPct != 0) p.add('+$dmgPct% damage');
     if (elemType != null && elemDmgPct != 0) p.add('+$elemDmgPct% ${elemType!.label} damage');
-    if (critChancePct != 0) p.add('+$critChancePct% crit chance');
-    if (critDmgPct != 0) p.add('+$critDmgPct% crit damage');
+    // Former crit chance/damage now converts to bonus % All Damage (crit is gear-only).
+    final critAsDamage = (critChancePct * 0.5 + critDmgPct * 0.25).round();
+    if (critAsDamage != 0) p.add('+$critAsDamage% all damage');
     if (abilityPowerPct != 0) p.add('+$abilityPowerPct% ability power');
     if (dotPct != 0) p.add('+$dotPct% DoT');
     if (healPct != 0) p.add('+$healPct% healing');
@@ -549,7 +550,7 @@ const kSubclassCatalog = <Subclass>[
     id: 'champion', name: 'Champion', classRequired: DndClass.fighter,
     flavor: 'Perfected technique turns near-misses into killing blows.',
     effect: SubclassEffect.champion,
-    effectLabel: 'Critical hit on 18, 19, or 20',
+    effectLabel: '+8% all damage',
     critChancePct: 12, critDmgPct: 20, strBonus: 1, conBonus: 1,
   ),
   Subclass(
@@ -907,7 +908,7 @@ const kSubclassCatalog = <Subclass>[
     id: 'assassin', name: 'Assassin', classRequired: DndClass.rogue,
     flavor: 'The critical strike is not a lucky blow — it is the only blow.',
     effect: SubclassEffect.assassin,
-    effectLabel: 'Critical hits deal triple damage',
+    effectLabel: '+10% all damage',
     critChancePct: 12, dexBonus: 2, strBonus: 1,
   ),
   Subclass(
