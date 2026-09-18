@@ -25,3 +25,6 @@ ios/Pods/
 
 # Local debug screenshots
 _*.png
+
+# Local telemetry pulls
+telemetry_dump.json

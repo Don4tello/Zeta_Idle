@@ -19,6 +19,16 @@ int get kLatestPatchBuild => kPatchNotes.first.build;
 
 const kPatchNotes = <PatchNote>[
   PatchNote(
+    build: 278,
+    title: 'Cloud Sign-in at Launch',
+    date: '2026-09-14',
+    changes: [
+      'The game now signs in (anonymously) at startup instead of waiting until you '
+          'open Guild/PvP/Cloud Save — so cloud features are ready the moment you '
+          'need them. No account or personal info required.',
+    ],
+  ),
+  PatchNote(
     build: 277,
     title: 'Behind-the-scenes Balance Tools',
     date: '2026-09-14',

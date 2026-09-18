@@ -24,6 +24,7 @@ import 'screens/loading_screen.dart';
 import 'services/game_state.dart';
 import 'services/debug_logger.dart';
 import 'services/telemetry_service.dart';
+import 'services/auth_service.dart';
 import 'core/routing/app_router.dart';
 import 'tools/debug_capture_surface.dart';
 
@@ -189,6 +190,17 @@ Future<void> _appMain() async {
       // Live balance knobs (difficulty/economy) — tunable from the console
       // without a new release. Best-effort; defaults keep current behavior.
       await RemoteConfigService.instance.init(FirebaseRemoteConfig.instance);
+
+      // ── Ensure a signed-in (anonymous) user from boot ───────────────────
+      // Auth was previously lazy — only triggered when opening Guild/PvP/cloud
+      // save. That left plain campaign/boss-rush sessions unauthenticated, so
+      // Firestore telemetry writes (which require signedIn()) were denied.
+      // Sign in anonymously up front (fire-and-forget) so cloud features AND
+      // telemetry work for every session.
+      try {
+        final auth = AuthService();
+        if (auth.currentUser == null) unawaited(auth.signInAnonymously());
+      } catch (_) {}
     } catch (e) {
       // ignore: avoid_print
       print('Firebase initialization warning: $e');

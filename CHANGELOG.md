@@ -3,6 +3,13 @@
 Version numbers are the pubspec build number (`0.1.0+N`), which is the Play
 Store `versionCode`. Newest first.
 
+## +278 — Eager anonymous sign-in (unblocks telemetry for testers)
+User: telemetry wasn't landing for plain campaign/boss-rush sessions.
+- Root cause: anonymous auth was **lazy** — only triggered when opening Guild/PvP/cloud save (`game_state`/`guild_screen`/`pvp_screen`). A fresh install that only fought campaign had `currentUser == null`, so the Firestore telemetry write (rule requires `signedIn()`) was denied and silently swallowed.
+- `main.dart`: after Firebase init, eagerly `signInAnonymously()` (fire-and-forget) if `currentUser == null`. Benefits cloud save/leaderboards too — they're ready from boot instead of on first cloud interaction.
+- Verified end-to-end via a `--dart-define=ZETA_TELEMETRY=1` diagnostic build: 58 fights landed in Firestore and were pulled/analyzed with `tool/pull_telemetry.ps1`.
+- Added `tool/pull_telemetry.ps1` (gcloud-auth → Firestore REST → flattened JSON dump) and gitignored the transient `telemetry_dump.json`.
+
 ## +277 — Fight telemetry → Firestore (runtime-gated)
 User: get the alt-mode/campaign telemetry off-device into Firebase, and enable it for the closed test.
 - New `services/telemetry_service.dart`: writes each fight's JSON (same fields as the `ZBAL` logcat lines) as a doc in a Firestore `telemetry` collection, with a server `ts` and a per-run `session` id. Structured so the console can filter/sort by mode/tier/win/min-HP/etc.
