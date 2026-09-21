@@ -622,13 +622,20 @@ class GameState extends ChangeNotifier {
   }
 
   // ── Campaign Energy ────────────────────────────────────────────────────────
-  static const int maxEnergy = 20;
+  // Max energy scales with hero level: a base of 20 at level 1, +1 per level,
+  // capped at 60 (reached at level 41). Energy becomes a progression reward
+  // instead of handing a level-1 character the full pool. It's a getter because
+  // it depends on hero.level.
+  static const int kEnergyCap  = 60;
+  static const int kBaseEnergy = 20;
+  int get maxEnergy => (kBaseEnergy + hero.level - 1).clamp(kBaseEnergy, kEnergyCap);
   static const int energyRechargeSeconds = 300; // 1 energy per 5 min
-  int energy = maxEnergy;
+  int energy = kBaseEnergy;
   int _energyRefillEpochMs = 0;
   int dailyEnergyRefillsUsed = 0;
   static const int maxDailyRefills = 3;
   static const int refillAmount = 10;
+  static const int energyPurchaseAmount = 20; // ZCoin buy grants a full bar's worth
 
   void tickEnergy() {
     if (energy >= maxEnergy) return;
@@ -669,8 +676,13 @@ class GameState extends ChangeNotifier {
   bool buyEnergy() {
     if (zcoins < 50) return false;
     zcoins -= 50;
-    energy = maxEnergy;
-    _energyRefillEpochMs = 0;
+    // Purchased energy is ADDED (a full bar's worth) and may overflow the cap —
+    // buying at 5/20 gives 25/20. Only natural regen and the free daily refill
+    // stop at maxEnergy; a purchase always grants the full amount so it's never
+    // partially wasted. Over-cap energy simply doesn't regen (tickEnergy guards
+    // on energy >= maxEnergy) but is spent normally.
+    energy += energyPurchaseAmount;
+    _energyRefillEpochMs = 0; // energy is now >= max; regen restarts once spent below
     notifyListeners();
     saveToLocal();
     return true;
@@ -894,6 +906,8 @@ class GameState extends ChangeNotifier {
   // Set to true the first time the hero hits level 30 (class questline unlocks).
   bool pendingClassQuestlineUnlock = false;
   bool _classQuestlineNoticeSeen   = false;
+  // Coached once, when the class questline is completed and the Ultimate unlocks.
+  bool _ultimateUnlockedTutorialSeen = false;
   // Artifacts have no stage gate — the table unlocks the first time one drops.
   bool artifactsUnlocked = false;
   final Set<int> _seenUnlockStages = {};
@@ -5792,6 +5806,19 @@ class GameState extends ChangeNotifier {
     essence += q.reward.essence;
     mythril += q.reward.mythril;
     if (q.reward.title != null) heroTitle = q.reward.title;
+    // Completing the class questline unlocks the Ultimate ability — coach it once
+    // (so the player knows their most powerful skill is now live and how it works).
+    if (classUltimateUnlocked && !_ultimateUnlockedTutorialSeen && pendingTutorial == null) {
+      _ultimateUnlockedTutorialSeen = true;
+      _triggerTutorial(const SystemTutorial(
+        stage: -5, navTab: 0, subTab: 'ABILITIES', icon: '🌟',
+        title: 'Ultimate Unlocked!',
+        howTo: 'You completed your class questline — your Ultimate ability is now '
+            'unlocked! It\'s your most powerful skill, on a long cooldown, and it '
+            'fires automatically in battle like your other abilities. Spend Shards '
+            'here to rank it up and pick its milestone upgrades.',
+      ));
+    }
     notifyListeners();
     saveToLocal();
     return true;
@@ -9101,7 +9128,12 @@ class GameState extends ChangeNotifier {
     if (hero.level > prevLevel) {
       audioService.playLevelUp();
       HapticFeedback.heavyImpact();
-      energy = (energy + 1).clamp(0, maxEnergy);
+      // Each level raises the cap by 1 (up to 60) and grants that energy now —
+      // fill the freshly-unlocked slot(s) immediately for every level gained.
+      // Guarded so it never reduces over-cap energy from a ZCoin purchase.
+      if (energy < maxEnergy) {
+        energy = (energy + (hero.level - prevLevel)).clamp(0, maxEnergy);
+      }
       final gains = <String>[];
       if (hero.strength     > prevStr) gains.add('STR');
       if (hero.dexterity    > prevDex) gains.add('DEX');
@@ -9929,6 +9961,7 @@ class GameState extends ChangeNotifier {
       'questItemsEquipped': _itemsEquipped,
       'questAbilitiesUpgraded': _abilitiesUpgraded,
       'classQuestlineNoticeSeen': _classQuestlineNoticeSeen,
+      'ultimateUnlockedTutorialSeen': _ultimateUnlockedTutorialSeen,
       'artifactsUnlocked': artifactsUnlocked,
       'questPassivesUnlocked': _passivesUnlocked,
       'questGemsSocketed': _gemsSocketed,
@@ -10108,7 +10141,7 @@ class GameState extends ChangeNotifier {
     }
     zcoins             = (json['zcoins'] as int?) ?? (json['crystals'] as int?) ?? 0;
     speedTier            = (json['speedTier']           as int?) ?? 1;
-    energy               = (json['energy']              as int?) ?? maxEnergy;
+    energy               = (json['energy']              as int?) ?? kBaseEnergy;
     _energyRefillEpochMs = (json['energyRefillEpochMs'] as int?) ?? 0;
     dailyEnergyRefillsUsed = (json['dailyEnergyRefillsUsed'] as int?) ?? 0;
     tickEnergy();
@@ -10327,6 +10360,9 @@ class GameState extends ChangeNotifier {
     _itemsEquipped = (json['questItemsEquipped'] as int?) ?? 0;
     _abilitiesUpgraded = (json['questAbilitiesUpgraded'] as int?) ?? 0;
     _classQuestlineNoticeSeen = (json['classQuestlineNoticeSeen'] as bool?) ?? (hero.level >= 30);
+    // Default true for existing saves that already have the Ultimate, so it
+    // doesn't retroactively fire on a character that's long past the questline.
+    _ultimateUnlockedTutorialSeen = (json['ultimateUnlockedTutorialSeen'] as bool?) ?? classUltimateUnlocked;
     artifactsUnlocked = (json['artifactsUnlocked'] as bool?) ?? ownedArtifacts.isNotEmpty;
     _passivesUnlocked = (json['questPassivesUnlocked'] as int?) ?? 0;
     _gemsSocketed = (json['questGemsSocketed'] as int?) ?? 0;

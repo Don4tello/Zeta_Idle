@@ -95,8 +95,11 @@ class HeroModel {
   // Attack bonus = proficiency only (stats no longer contribute)
   int get attackBonus => proficiencyBonus;
 
-  // Flat damage scales with level (+1 per 2 levels); % damage via damagePctFor
-  int get damageMod => level ~/ 2;
+  // Flat damage scales with level (+1 per 2 levels) PLUS Strength (Power) —
+  // STR is the universal weapon-power stat: +1 flat hit damage per point on
+  // EVERY attack, regardless of element (Physical was retired). % elemental
+  // damage still comes from the matching stat via damagePctFor.
+  int get damageMod => level ~/ 2 + strength;
 
   // Combined flat damage stat: proficiency bonus + level-based flat damage
   int get baseDmg => proficiencyBonus + damageMod;
@@ -117,8 +120,9 @@ class HeroModel {
         .round().clamp(1, 1000000000000000);
   }
 
-  // Armor class = 2 base; grows through items, passives, and STR bonuses on gear
-  int get armorClass => 2;
+  // Armor class = 2 base + Strength (Power). STR is also the universal defence
+  // stat: +1 armor rating per point, on top of gear/passive armour.
+  int get armorClass => 2 + strength;
 
   // Idle rate = flat 5; WIS no longer boosts idle rate (use passives/items)
   int get idleRate => 5;

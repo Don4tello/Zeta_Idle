@@ -88,6 +88,11 @@ class _SheetLayout extends StatelessWidget {
               .fadeIn(duration: 280.ms)
               .slideY(begin: 0.04, duration: 280.ms, curve: Curves.easeOut),
           const SizedBox(height: 12),
+          const StatsGridPanel(readOnly: true)
+              .animate(delay: 100.ms)
+              .fadeIn(duration: 280.ms)
+              .slideY(begin: 0.05, duration: 280.ms, curve: Curves.easeOut),
+          const SizedBox(height: 12),
           const CombatStatsPanel()
               .animate(delay: 120.ms)
               .fadeIn(duration: 280.ms)

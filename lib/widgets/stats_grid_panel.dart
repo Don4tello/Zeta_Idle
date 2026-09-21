@@ -14,7 +14,11 @@ import '../theme/app_theme.dart';
 // ─────────────────────────────────────────────────────────────────────────────
 
 class StatsGridPanel extends StatelessWidget {
-  const StatsGridPanel({super.key});
+  const StatsGridPanel({super.key, this.readOnly = false});
+
+  /// When true, cards show the stat + tap-for-info only (no gold-upgrade button)
+  /// — used on the Hero sheet and Bonuses sheet where it's a reference display.
+  final bool readOnly;
 
   @override
   Widget build(BuildContext context) {
@@ -56,6 +60,7 @@ class StatsGridPanel extends StatelessWidget {
               canAfford:   canAfford,
               isKeyAbility: keyStats.contains(d.abbr),
               hero:        hero,
+              readOnly:    readOnly,
               onUpgrade:   canAfford ? () { game.purchaseUpgrade(upgrade!); game.audioService.playClaim(); } : null,
             ),
           ),
@@ -105,6 +110,7 @@ class _StatCard extends StatefulWidget {
     required this.isKeyAbility,
     required this.hero,
     required this.onUpgrade,
+    this.readOnly = false,
   });
 
   final String     abbr;
@@ -117,6 +123,7 @@ class _StatCard extends StatefulWidget {
   final bool       isKeyAbility;
   final HeroModel  hero;
   final VoidCallback? onUpgrade;
+  final bool       readOnly;
 
   @override
   State<_StatCard> createState() => _StatCardState();
@@ -140,25 +147,38 @@ class _StatCardState extends State<_StatCard>
 
   String get _description {
     switch (widget.abbr) {
-      case 'STR': return 'Physical Damage % bonus (stat÷4, max 25%).\nScales Physical damage resistance.';
-      case 'DEX': return 'Lightning Damage % bonus (stat÷4, max 25%).\nScales Lightning damage resistance.';
-      case 'CON': return 'Poison Damage % bonus (stat÷4, max 25%).\nScales Poison damage resistance.';
-      case 'INT': return 'Void Damage % bonus (stat÷4, max 25%).\nScales Void damage resistance.';
-      case 'WIS': return 'Cold Damage % bonus (stat÷4, max 25%).\nScales Cold damage resistance.';
-      case 'CHA': return 'Fire Damage % bonus (stat÷4, max 25%).\nScales Fire damage resistance.';
+      case 'STR': return 'Raw Power — the universal weapon stat: +1 flat damage to EVERY '
+          'hit (any element) and +1 armor per point.';
+      case 'DEX': return 'Boosts Lightning damage (up to +25%) and Lightning resistance.\n'
+          'Also grants Dodge chance: +0.5% per point above 10 (max 30%).';
+      case 'CON': return 'Boosts Poison damage (up to +25%) and Poison resistance.\n'
+          'Also adds +1% Max HP per point and boosts your HP regen.';
+      case 'INT': return 'Boosts Void damage (up to +25%) and Void resistance.\n'
+          'Also amplifies damage-over-time: +1% per point above 10.';
+      case 'WIS': return 'Boosts Cold damage (up to +25%) and Cold resistance.\n'
+          'Also amplifies heal-over-time (auras): +1% per point above 10.';
+      case 'CHA': return 'Boosts Fire damage (up to +25%) and Fire resistance.\n'
+          'Also gives a chance to skip an ability cooldown: charisma÷5% (max 20%).';
       default:    return '';
     }
   }
 
+  // Live value box — the damage-type % PLUS this stat's signature secondary effect.
   String get _currentEffect {
     final h = widget.hero;
+    int abv10(int s) => s > 10 ? s - 10 : 0;
     switch (widget.abbr) {
-      case 'STR': return 'Physical Dmg  +${h.damagePctFor(DamageType.physical)}%';
-      case 'DEX': return 'Lightning Dmg  +${h.damagePctFor(DamageType.lightning)}%';
-      case 'CON': return 'Poison Dmg  +${h.damagePctFor(DamageType.poison)}%';
-      case 'INT': return 'Void Dmg  +${h.damagePctFor(DamageType.void_)}%';
-      case 'WIS': return 'Cold Dmg  +${h.damagePctFor(DamageType.cold)}%';
-      case 'CHA': return 'Fire Dmg  +${h.damagePctFor(DamageType.fire)}%';
+      case 'STR': return '+${h.strength} hit dmg   •   +${h.strength} armor';
+      case 'DEX': return 'Lightning Dmg +${h.damagePctFor(DamageType.lightning)}%'
+          '   •   Dodge +${(abv10(h.dexterity) * 0.5).clamp(0, 30).round()}%';
+      case 'CON': return 'Poison Dmg +${h.damagePctFor(DamageType.poison)}%'
+          '   •   +${h.constitution}% Max HP';
+      case 'INT': return 'Void Dmg +${h.damagePctFor(DamageType.void_)}%'
+          '   •   DoT +${abv10(h.intelligence)}%';
+      case 'WIS': return 'Cold Dmg +${h.damagePctFor(DamageType.cold)}%'
+          '   •   Heal-o-t +${abv10(h.wisdom)}%';
+      case 'CHA': return 'Fire Dmg +${h.damagePctFor(DamageType.fire)}%'
+          '   •   CD skip ${(h.charisma / 5).clamp(0, 20).round()}%';
       default:    return '';
     }
   }
@@ -250,46 +270,49 @@ class _StatCardState extends State<_StatCard>
                 ),
                 const SizedBox(height: 14),
 
-                // Upgrade call-to-action (inside dialog)
-                if (!isMaxed) ...[
-                  if (widget.canAfford)
-                    GestureDetector(
-                      onTap: () {
-                        Navigator.of(ctx).pop();
-                        _bounce.forward(from: 0);
-                        widget.onUpgrade?.call();
-                      },
-                      child: Container(
-                        width: double.infinity,
-                        constraints: const BoxConstraints(minHeight: 48),
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                        alignment: Alignment.center,
-                        decoration: BoxDecoration(
-                          color: widget.color.withValues(alpha: 0.18),
-                          border: Border.all(color: widget.color),
-                        ),
-                        child: Text(
-                          '+ UPGRADE  ·  ${widget.upgrade!.cost} GOLD',
-                          textAlign: TextAlign.center,
-                          style: AppTheme.pixelHeading(
-                            fontSize: 14,
-                            color: widget.color,
-                            letterSpacing: 1,
+                // Upgrade call-to-action — interactive view only. These attributes
+                // aren't directly buyable; they come from items, subclass, traits, etc.
+                if (!widget.readOnly) ...[
+                  if (!isMaxed) ...[
+                    if (widget.canAfford)
+                      GestureDetector(
+                        onTap: () {
+                          Navigator.of(ctx).pop();
+                          _bounce.forward(from: 0);
+                          widget.onUpgrade?.call();
+                        },
+                        child: Container(
+                          width: double.infinity,
+                          constraints: const BoxConstraints(minHeight: 48),
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          alignment: Alignment.center,
+                          decoration: BoxDecoration(
+                            color: widget.color.withValues(alpha: 0.18),
+                            border: Border.all(color: widget.color),
+                          ),
+                          child: Text(
+                            '+ UPGRADE  ·  ${widget.upgrade!.cost} GOLD',
+                            textAlign: TextAlign.center,
+                            style: AppTheme.pixelHeading(
+                              fontSize: 14,
+                              color: widget.color,
+                              letterSpacing: 1,
+                            ),
                           ),
                         ),
+                      )
+                    else
+                      Text(
+                        'Need ${widget.upgrade?.cost} gold to upgrade',
+                        style: AppTheme.pixelHeading(
+                            fontSize: 13, color: AppTheme.textMuted, letterSpacing: 0.5),
                       ),
-                    )
-                  else
-                    Text(
-                      'Need ${widget.upgrade?.cost} gold to upgrade',
-                      style: AppTheme.pixelHeading(
-                          fontSize: 13, color: AppTheme.textMuted, letterSpacing: 0.5),
-                    ),
-                  const SizedBox(height: 10),
-                ] else ...[
-                  Text('FULLY UPGRADED',
-                      style: AppTheme.pixelHeading(fontSize: 13, color: AppTheme.textMuted)),
-                  const SizedBox(height: 10),
+                    const SizedBox(height: 10),
+                  ] else ...[
+                    Text('FULLY UPGRADED',
+                        style: AppTheme.pixelHeading(fontSize: 13, color: AppTheme.textMuted)),
+                    const SizedBox(height: 10),
+                  ],
                 ],
 
                 // Close
@@ -397,7 +420,9 @@ class _StatCardState extends State<_StatCard>
                             ),
                           ),
                           Text(
-                            '${dmgType.emoji} ${dmgType.label}',
+                            widget.abbr == 'STR'
+                                ? '⚔ Power'
+                                : '${dmgType.emoji} ${dmgType.label}',
                             style: AppTheme.pixelHeading(
                                 fontSize: 10, letterSpacing: 0, color: dmgType.color),
                           ),
@@ -432,28 +457,28 @@ class _StatCardState extends State<_StatCard>
               ),
             ),
 
-            // ── Divider ────────────────────────────────────────────────────
-            Container(height: 1, color: AppTheme.cardBorder),
-
-            // ── Plus button or MAX label ───────────────────────────────────
-            if (isMaxed)
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 6),
-                child: Text(
-                  'MAX',
-                  style: AppTheme.pixelHeading(fontSize: 8, letterSpacing: 1, color: AppTheme.textMuted),
+            // ── Divider + upgrade (hidden in read-only reference mode) ─────
+            if (!widget.readOnly) ...[
+              Container(height: 1, color: AppTheme.cardBorder),
+              if (isMaxed)
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 6),
+                  child: Text(
+                    'MAX',
+                    style: AppTheme.pixelHeading(fontSize: 8, letterSpacing: 1, color: AppTheme.textMuted),
+                  ),
+                )
+              else
+                _PlusButton(
+                  color:     widget.color,
+                  canAfford: widget.canAfford,
+                  cost:      widget.upgrade!.cost,
+                  onTap: () {
+                    _bounce.forward(from: 0);
+                    widget.onUpgrade?.call();
+                  },
                 ),
-              )
-            else
-              _PlusButton(
-                color:     widget.color,
-                canAfford: widget.canAfford,
-                cost:      widget.upgrade!.cost,
-                onTap: () {
-                  _bounce.forward(from: 0);
-                  widget.onUpgrade?.call();
-                },
-              ),
+            ],
           ],
         ),
       ),

@@ -3,6 +3,29 @@
 Version numbers are the pubspec build number (`0.1.0+N`), which is the Play
 Store `versionCode`. Newest first.
 
+## +281 — Even gear stat pools + attributes reference-only
+User: stats shouldn't be directly upgradable (only items/other means); review + rebalance item generation.
+- **Attributes non-upgradable:** `stats_grid_panel.dart` — gated the tap-for-info dialog's "+UPGRADE" CTA behind `!readOnly` (the card button was already gated). The `str_1`…`cha_1` gold-upgrades are wired ONLY to this panel, which is now used read-only everywhere, so attributes come solely from gear/subclass/traits/base.
+- **Item-gen review finding:** the 6 attribute stats (each → a damage type + resistance) were unevenly gearable — CON/DEX/WIS on 4 slots, but INT/CHA on 2 and STR on 1. Fire/Void builds were starved.
+- **Rebalanced `_statsFor` pools** (`equipment.dart`) to ~3–4 slots each: STR (weapon/armor/gloves/relic=4), DEX (gloves/pants/boots/accessory=4), CON (offHand/armor/pants=3), INT (offHand/boots/accessory/relic=4), WIS (helmet/boots/accessory/relic=4), CHA (helmet/pants/accessory/relic=4). Core slot stats (armorClass, attack/damage on weapon/gloves, healRating/maxHpPct) preserved.
+- Noted separately (not changed): flat stats clamp at 999 + linear +8%/level scaling → negligible vs the exponential HP/damage curve at endgame. Left for a future scaling decision.
+
+## +280 — Attributes visible + explained, STR reworked, Ultimate coach
+User: keep STR/CON but SHOW the stats (hero + bonus sheet) and what they do; reuse STR (chose universal weapon power); add an Ultimate tutorial on questline completion.
+- **STR rework (`hero_model.dart`):** Physical is retired, so base STR was dead. `damageMod` now `level~/2 + strength` and `armorClass` now `2 + strength` — STR is the universal weapon-power stat: +1 flat hit damage (any element) + +1 armor per point. Single-point change flows to combat, PvP snapshot, and the bonus sheet (all derive from baseDmg/armorClass). Elemental %/resist mappings unchanged.
+- **Stats now visible:** `StatsGridPanel` (the STR/DEX/CON/INT/WIS/CHA grid) was dead code — surfaced it read-only on the Hero dashboard (`dashboard_screen`) and Bonuses sheet (`hero_stats_screen`). Added a `readOnly` mode (stat + tap-for-info, no gold-upgrade button) to avoid the legacy str_1 upgrade UI.
+- **Descriptions enriched:** the stat info dialog now lists each stat's FULL kit — damage-type %, resistance, AND its signature secondary (DEX→Dodge, CON→Max HP/regen, INT→DoT, WIS→heal-over-time, CHA→cooldown-skip). STR shows its new flat-damage + armor. Live values in the effect box.
+- **Ultimate coach (`game_state.dart`):** completing the class questline (5 quests → `classUltimateUnlocked`) now fires a one-time coach (Hero→Abilities) explaining the Ultimate. Persisted `_ultimateUnlockedTutorialSeen`; defaults true for saves that already have it.
+- Tier-clear question (user): confirmed NOT a bug — the stage-100 final boss (Zeta Absolute) was cleared each tier per telemetry; auto-campaign clears the final stretch and the campaign loops to stage 1, which reads as "never reached 100."
+
+## +279 — Energy: level-scaled cap + overflow purchases
+User: buying 20 energy at 5/20 should grant the full 20 (overflow past cap); free refill/regen still cap. Then: make max energy grow +1 per level up to 60.
+- `game_state.dart`: `buyEnergy()` now `energy += energyPurchaseAmount(20)` (overflow allowed) instead of `energy = maxEnergy` — matches the UI's "buy +20 energy" copy, which was a lie before (it filled to cap, wasting the difference). `useEnergyRefill()` and `tickEnergy()` still cap at maxEnergy.
+- **Level-scaled cap:** `maxEnergy` is now an instance getter `(kBaseEnergy 20 + hero.level - 1).clamp(20, kEnergyCap 60)` — 20 at L1, +1/level, hits 60 at L41. Converted from `static const`; call sites in `campaign_screen`/`battle_screen` moved from `GameState.maxEnergy` to `game.maxEnergy`. Field init + load default use `kBaseEnergy`.
+- Level-up grants energy per level gained (`energy += levelsGained`, guarded so it never clamps over-cap purchased energy down).
+- `campaign_screen.dart`: Buy button always visible (stock over the cap even when full); progress bar clamped to 1.0 for over-cap display; free-refill button + spacer gated to `energy < max`.
+- Review note (not changed, user's call): energy also gates the offline/idle catch-up (`simulateCampaignBattles` spends 1/fight) — the main divergence from idle-genre norms where the away loop runs free. Level-scaling + overflow buys ease it; options A/C (free idle / replays-only) left for later.
+
 ## +278 — Eager anonymous sign-in (unblocks telemetry for testers)
 User: telemetry wasn't landing for plain campaign/boss-rush sessions.
 - Root cause: anonymous auth was **lazy** — only triggered when opening Guild/PvP/cloud save (`game_state`/`guild_screen`/`pvp_screen`). A fresh install that only fought campaign had `currentUser == null`, so the Firestore telemetry write (rule requires `signedIn()`) was denied and silently swallowed.

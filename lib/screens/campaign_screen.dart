@@ -201,21 +201,21 @@ class CampaignScreen extends StatelessWidget {
                 Row(children: [
                   const Text('⚡', style: TextStyle(fontSize: 14)),
                   const SizedBox(width: 6),
-                  Text('${game.energy}/${GameState.maxEnergy}',
+                  Text('${game.energy}/${game.maxEnergy}',
                       style: AppTheme.pixelHeading(fontSize: 12, color: const Color(0xFF44aaff))),
                   const SizedBox(width: 8),
                   Expanded(
                     child: ClipRRect(
                       borderRadius: BorderRadius.circular(2),
                       child: LinearProgressIndicator(
-                        value: game.energy / GameState.maxEnergy,
+                        value: (game.energy / game.maxEnergy).clamp(0.0, 1.0),
                         minHeight: 6,
                         backgroundColor: const Color(0xFF2a2a3a),
                         valueColor: const AlwaysStoppedAnimation(Color(0xFF44aaff)),
                       ),
                     ),
                   ),
-                  if (game.energy < GameState.maxEnergy) ...[
+                  if (game.energy < game.maxEnergy) ...[
                     const SizedBox(width: 8),
                     Builder(builder: (_) {
                       final rem = game.energyRechargeRemaining;
@@ -225,11 +225,12 @@ class CampaignScreen extends StatelessWidget {
                     }),
                   ],
                 ]),
-                // Row 2: refill / buy actions on their own line (only when not full).
-                if (game.energy < GameState.maxEnergy) ...[
-                  const SizedBox(height: 8),
-                  Row(children: [
-                    if (game.dailyEnergyRefillsUsed < GameState.maxDailyRefills)
+                // Row 2: refill / buy actions. The free refill only shows when
+                // not full (it caps at max); the ZCoin buy is ALWAYS available so
+                // you can stock energy over the cap.
+                const SizedBox(height: 8),
+                Row(children: [
+                    if (game.energy < game.maxEnergy && game.dailyEnergyRefillsUsed < GameState.maxDailyRefills)
                       Expanded(
                         child: GestureDetector(
                           onTap: () { game.useEnergyRefill(); },
@@ -247,7 +248,7 @@ class CampaignScreen extends StatelessWidget {
                           ),
                         ),
                       ),
-                    if (game.dailyEnergyRefillsUsed < GameState.maxDailyRefills)
+                    if (game.energy < game.maxEnergy && game.dailyEnergyRefillsUsed < GameState.maxDailyRefills)
                       const SizedBox(width: 8),
                     Expanded(
                       child: GestureDetector(
@@ -272,7 +273,6 @@ class CampaignScreen extends StatelessWidget {
                       ),
                     ),
                   ]),
-                ],
               ],
             ),
           ),

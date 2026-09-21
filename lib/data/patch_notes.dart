@@ -19,6 +19,49 @@ int get kLatestPatchBuild => kPatchNotes.first.build;
 
 const kPatchNotes = <PatchNote>[
   PatchNote(
+    build: 281,
+    title: 'Even Gear Stats + Attributes Are Reference-Only',
+    date: '2026-09-14',
+    changes: [
+      'Rebalanced gear stat pools so all six attributes (STR/DEX/CON/INT/WIS/CHA) '
+          'can roll on a fair spread of slots — Fire (CHA) and Void (INT) builds '
+          'are no longer starved for gear, and Strength shows up on armour too.',
+      'Attributes are now shown for reference only on the Hero and Bonuses '
+          'sheets — they come from gear, specialization and traits, not a direct '
+          'gold upgrade.',
+    ],
+  ),
+  PatchNote(
+    build: 280,
+    title: 'Attributes Explained + Strength Reworked',
+    date: '2026-09-14',
+    changes: [
+      'Your core attributes (STR, DEX, CON, INT, WIS, CHA) are now shown on the '
+          'Hero dashboard and the Bonuses sheet — tap any to see exactly what it '
+          'improves (its damage type, resistance, and its special effect like '
+          'dodge, DoT, healing or cooldown skips).',
+      'Strength reworked: since Physical is retired, STR is now the universal '
+          'weapon-power stat — +1 flat damage to EVERY hit (any element) and +1 '
+          'armor per point. It matters for every build now.',
+      'New coach: when you finish your class questline and unlock your Ultimate '
+          'ability, a tip explains how it works.',
+    ],
+  ),
+  PatchNote(
+    build: 279,
+    title: 'Energy: Grows With Your Level + Fair Purchases',
+    date: '2026-09-14',
+    changes: [
+      'Your max energy now grows as you level — starting at 20 and gaining +1 per '
+          'level up to 60. Each level-up grants that energy right away, so energy '
+          'scales with your progress instead of being a flat cap.',
+      'Buying energy with ZCoins now always grants the full +20 and can go OVER '
+          'your current cap (e.g. 45/50 → 65/50), so a purchase is never partly '
+          'wasted. Natural regen and the free daily refill still top up only to '
+          'the cap.',
+    ],
+  ),
+  PatchNote(
     build: 278,
     title: 'Cloud Sign-in at Launch',
     date: '2026-09-14',

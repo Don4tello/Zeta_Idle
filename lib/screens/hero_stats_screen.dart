@@ -13,6 +13,7 @@ import '../theme/app_theme.dart';
 import '../widgets/battle_sprites.dart';
 import '../widgets/currency_icon.dart';
 import '../widgets/stat_icon.dart';
+import '../widgets/stats_grid_panel.dart';
 import 'main_shell.dart' show TutorialTip;
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -61,6 +62,12 @@ class _StatsBody extends StatelessWidget {
               'Track what\'s boosting your power here.',
         ),
         _currenciesSection(),
+        // Core attributes (STR/DEX/CON/INT/WIS/CHA) + what each improves —
+        // tap any for the full breakdown.
+        const Padding(
+          padding: EdgeInsets.only(top: 4, bottom: 8),
+          child: StatsGridPanel(readOnly: true),
+        ),
         _section('DAMAGE TYPES',  _damageTypeRows()),
         if (game.endlessUpgrades.levelOf(EndlessNode.str) > 0 ||
             game.endlessUpgrades.levelOf(EndlessNode.dex) > 0)

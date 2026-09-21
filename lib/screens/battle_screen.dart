@@ -1095,7 +1095,7 @@ class _BattleScreenState extends State<BattleScreen>
                                         fontWeight: FontWeight.bold,
                                         letterSpacing: 1)),
                                 Text(
-                                  '⚡ ${gs.energy} / ${GameState.maxEnergy}',
+                                  '⚡ ${gs.energy} / ${gs.maxEnergy}',
                                   style: const TextStyle(
                                       fontSize: 9, letterSpacing: 0.5),
                                 ),

@@ -554,15 +554,19 @@ class ItemLootTable {
   static const _relicNames   = ['Eye of Fate', 'Bone Fragment', 'Shadow Shard', 'Cursed Rune', 'Ancient Token', 'Void Crystal', 'Hex Ember', 'Death Spark'];
 
   // ── Stat pools per slot ────────────────────────────────────────────────────
+  // The six attributes (STR/DEX/CON/INT/WIS/CHA) each map to a damage type +
+  // resistance, so they're spread evenly (3–4 slots each) — every element build
+  // can gear its stat. STR (universal weapon power) sits on weapon + armour/gloves;
+  // INT/CHA are no longer accessory-only.
   static const _weaponStats   = [ItemStat.attackBonus, ItemStat.damageBonus, ItemStat.strength, ItemStat.elemPenetration, ItemStat.damagePercent];
-  static const _offHandStats  = [ItemStat.armorClass, ItemStat.attackBonus, ItemStat.constitution];
-  static const _helmetStats   = [ItemStat.armorClass, ItemStat.constitution, ItemStat.wisdom, ItemStat.healRating];
-  static const _armorStats    = [ItemStat.armorClass, ItemStat.constitution, ItemStat.maxHpPct];
-  static const _glovesStats   = [ItemStat.attackBonus, ItemStat.damageBonus, ItemStat.dexterity];
-  static const _pantsStats    = [ItemStat.armorClass, ItemStat.constitution, ItemStat.dexterity];
-  static const _bootsStats    = [ItemStat.dexterity, ItemStat.armorClass, ItemStat.wisdom];
+  static const _offHandStats  = [ItemStat.armorClass, ItemStat.attackBonus, ItemStat.constitution, ItemStat.intelligence];
+  static const _helmetStats   = [ItemStat.armorClass, ItemStat.healRating, ItemStat.wisdom, ItemStat.charisma];
+  static const _armorStats    = [ItemStat.armorClass, ItemStat.maxHpPct, ItemStat.constitution, ItemStat.strength];
+  static const _glovesStats   = [ItemStat.attackBonus, ItemStat.damageBonus, ItemStat.dexterity, ItemStat.strength];
+  static const _pantsStats    = [ItemStat.armorClass, ItemStat.constitution, ItemStat.dexterity, ItemStat.charisma];
+  static const _bootsStats    = [ItemStat.armorClass, ItemStat.dexterity, ItemStat.wisdom, ItemStat.intelligence];
   static const _accessoryStats = [ItemStat.goldPct, ItemStat.xpPct, ItemStat.wisdom, ItemStat.intelligence, ItemStat.charisma, ItemStat.dexterity, ItemStat.attackBonus, ItemStat.elemPenetration, ItemStat.damagePercent, ItemStat.healRating];
-  static const _relicStats    = [ItemStat.goldPct, ItemStat.xpPct, ItemStat.wisdom, ItemStat.intelligence, ItemStat.charisma, ItemStat.elemPenetration, ItemStat.healRating];
+  static const _relicStats    = [ItemStat.goldPct, ItemStat.xpPct, ItemStat.wisdom, ItemStat.intelligence, ItemStat.charisma, ItemStat.strength, ItemStat.elemPenetration, ItemStat.healRating];
 
   // ── Affix prefix/suffix tables (common, rare, epic) ───────────────────────
   static const _prefixCommon = {
