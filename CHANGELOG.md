@@ -3,6 +3,21 @@
 Version numbers are the pubspec build number (`0.1.0+N`), which is the Play
 Store `versionCode`. Newest first.
 
+## +301 — PvP tuning: 99% dmg cut + 10%-HP per-hit cap
+User: prefers more damage reduction (95% or 99%?). Clarified that for strong builds the per-hit CAP is the binding limit, not the %. Set `pvp_hero_dmg_mult` 0.10→0.01 (−99%, mainly protects weaker builds) and `pvp_max_hit_fraction` 0.15→0.10 (min ~10 hits to kill — the real fight-length lever). Both still Remote-Config tunable; cap is the knob to move for longer/shorter fights.
+
+## +300 — PvP: tier-scaled (mirror) bot opponents + one-shot cap
+User: can we auto-update PvP characters based on the unlocked campaign tier? Root issue: bots were D&D-scale (maxHp≤999, stats from rating÷80) while the player is game-scale (500K+ HP), so every bot was a faceroll.
+- `pvp.dart` `generateBotOpponent(myRating, {mirror})`: when a mirror snapshot is given, the bot is a ±15% variance copy of the PLAYER's own snapshot (random class). Since the snapshot's stats already reflect unlocked-tier power (prestige mults etc.), bots auto-scale as you climb tiers. Legacy rating-derived bot kept as the no-mirror fallback.
+- `pvp_screen.dart`: build `mySnap` once up front and pass it as the mirror to `generateBotOpponent`.
+- Damage-cap fix (completes +299): a flat % cut alone can't stop a one-shot once the bot is same-scale HP (a glass-cannon hit still exceeds a same-scale pool). `_pvpDamageScaled` now also HARD-CAPS a single hit to `pvp_max_hit_fraction` (default 0.15) of the foe's max HP → min ~7 hits to kill, any build. New Remote Config key alongside `pvp_hero_dmg_mult`; both tunable without a rebuild.
+
+## +299 — PvP hero-damage compression (tunable)
+User: does reducing PvP damage ~90% make matches better? Analysis of startPvpBattle: the visible fight gives the HERO full game-scale damage vs the rival's non-×5 `maxHp`, so the attacker bursts them in 1–2 rounds while the rival's proxy attack (~4.5%/hit) needs ~22 → attacker near-always wins. Compressing hero damage lets both sides matter.
+- `remote_config_service.dart`: new `pvp_hero_dmg_mult` (default 0.10 = −90%), tunable from the Firebase console without a rebuild.
+- `game_state.dart`: `_pvpDamageScaled(dmg)` — no-op outside `_pvpMode`, else `× pvpHeroDmgMult`. Applied to the main hero hit + the extra auto-strikes (Blade Flicker / Swift Strike / Mastery multi-strike). NOTE: does not yet scale spell-ability or DoT damage (fine for the auto-attack test fighter; extend if caster PvP still bursts). %-max-HP ally hits left unscaled (intentionally not touched — see the no-%HP-damage rule).
+- Validate from the now-logging PvP telemetry (build 297): expect fights to stretch from ~1–2 rounds toward ~10–20; tune `pvp_hero_dmg_mult` up/down from real win-rates and round-counts.
+
 ## +298 — In-dungeon Auto Run toggle
 User: expose the auto-run button inside the dungeon (in case you forgot to enable it, or want to pause and make manual decisions).
 - `dungeon_screen.dart`: the Auto Run AppBar button was gated to `run == null || run.isOver` (lobby/summary only). Removed the gate so it shows during an active run too. `_toggleAuto` now cancels the pending `_autoTimer` when turning OFF (immediate manual control); turning ON calls `_scheduleAutoAction()` which resumes from whatever state the run is in (door junction, resolved room/relic, floor transition). Combat auto-plays via its own timer regardless, so toggling on mid-fight just resumes navigation via `_onRoomResolved` when the fight ends.

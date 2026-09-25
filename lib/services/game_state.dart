@@ -2336,6 +2336,24 @@ class GameState extends ChangeNotifier {
     if (isBoss) rollRuneDrop();
   }
 
+  /// Scale a hero-outgoing hit down while in a PvP match so the attacker can't
+  /// burst a rival in 1–2 rounds. No-op outside PvP. Tuned via Remote Config
+  /// (`pvp_hero_dmg_mult`, default 0.10 = −90%) so it can change without a build.
+  int _pvpDamageScaled(int dmg) {
+    if (!_pvpMode) return dmg;
+    var d = (dmg * RemoteConfigService.instance.pvpHeroDmgMult).round();
+    // Hard cap a single hit to a fraction of the foe's HP so no build can
+    // one-shot a rival — guarantees a multi-round fight whatever the DPS/HP
+    // ratio (the % mult alone can't, since a glass-cannon hit still exceeds a
+    // same-scale HP pool). Tunable via Remote Config.
+    final foeHp = currentEnemy?.maxHealth ?? 0;
+    if (foeHp > 0) {
+      final cap = (foeHp * RemoteConfigService.instance.pvpMaxHitFraction).round();
+      if (cap > 0 && d > cap) d = cap;
+    }
+    return d.clamp(1, 1000000000000000);
+  }
+
   void recordPvpResult(bool won) {
     _logPvpTelemetry(won); // capture the fight BEFORE pvpRating is updated below
     pvpDailyDamage += (hero.baseDmg + hero.level) * 10;
@@ -8565,6 +8583,12 @@ class GameState extends ChangeNotifier {
         damage = max(1, damage - armorReduction);
       }
 
+      // PvP burst compression: in the visible match the hero deals full
+      // game-scale damage vs a rival's non-×5 HP, one-shotting them so the
+      // attacker always wins in 1-2 rounds. Scale the hero's hit down in PvP so
+      // both sides' damage matters. Tunable via Remote Config (default −90%).
+      damage = _pvpDamageScaled(damage);
+
       enemy.takeDamage(damage);
       lastHeroDamage     = damage;
       _recordHeroHit(damage);
@@ -8637,7 +8661,7 @@ class GameState extends ChangeNotifier {
           bd2 = (bd2 - (2 + (ratio * 6).floor()).clamp(2, 8)).clamp(1, 1000000000000000);
         }
         final flickerArmor = max(0, enemy.armorClass - pierce);
-        final dmg2 = max(1, (bd2 * endlessUpgrades.damageMultiplier).round() - flickerArmor);
+        final dmg2 = _pvpDamageScaled(max(1, (bd2 * endlessUpgrades.damageMultiplier).round() - flickerArmor));
         enemy.takeDamage(dmg2);
         _recordFightDamage(dmg2);
         battleLog.add('Blade Flicker!${c2 ? " CRIT" : ""}${heroType.shortTag} $dmg2 dmg.');
@@ -8645,8 +8669,8 @@ class GameState extends ChangeNotifier {
       }
       // Swift Strike keyword: 15% chance for an extra hit
       if (!enemy.isDefeated && _hasKeyword(ItemKeyword.swiftStrike) && _rng.nextInt(100) < 15) {
-        final ds = max(1, _rng.nextInt(8) + 1 + hero.baseDmg + inventory.totalOf(ItemStat.strength)
-            - max(0, enemy.armorClass - pierce)).toInt();
+        final ds = _pvpDamageScaled(max(1, _rng.nextInt(8) + 1 + hero.baseDmg + inventory.totalOf(ItemStat.strength)
+            - max(0, enemy.armorClass - pierce)).toInt());
         enemy.takeDamage(ds);
         _recordFightDamage(ds);
         battleLog.add('Swift Strike! $ds dmg.');
@@ -8660,8 +8684,8 @@ class GameState extends ChangeNotifier {
             + hero.baseDmg
             + _masteryTotal(MasteryEffect.flatDamagePerHit)
             + _masteryTotal(MasteryEffect.permanentDamage)).clamp(1, 1000000000000000);
-        final dm2 = max(1, (dm * endlessUpgrades.damageMultiplier).round()
-            - max(0, enemy.armorClass - pierce)).toInt();
+        final dm2 = _pvpDamageScaled(max(1, (dm * endlessUpgrades.damageMultiplier).round()
+            - max(0, enemy.armorClass - pierce)).toInt());
         enemy.takeDamage(dm2);
         _recordFightDamage(dm2);
         battleLog.add('${cm ? "CRITICAL " : ""}Mastery strike! $dm2 dmg.');

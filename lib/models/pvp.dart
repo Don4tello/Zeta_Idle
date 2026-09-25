@@ -114,10 +114,39 @@ String _randomBotPlayerName(Random rng) =>
     '${_botFirst[rng.nextInt(_botFirst.length)]}'
     '${_botLast[rng.nextInt(_botLast.length)]}';
 
-PvpSnapshot generateBotOpponent(int myRating) {
+/// A bot opponent for when no real rival is available. When [mirror] is given
+/// (the player's own snapshot), the bot is scaled to the player's actual power
+/// — which grows as they unlock campaign tiers — so PvP stays competitive at any
+/// progression instead of a faceroll against a fixed D&D-scale dummy. Without a
+/// mirror it falls back to the legacy rating-derived bot.
+PvpSnapshot generateBotOpponent(int myRating, {PvpSnapshot? mirror}) {
   final rng    = Random();
-  final level  = max(1, myRating ~/ 80);
   final rating = (myRating + rng.nextInt(201) - 100).clamp(100, 9999);
+
+  if (mirror != null) {
+    // ±15% on each stat so ~half the field can match or exceed you — keeps win
+    // rates competitive rather than 90%+. Auto-updates with your tier because
+    // your snapshot's stats already reflect your unlocked-tier power.
+    double v() => 0.85 + rng.nextDouble() * 0.30; // 0.85–1.15
+    final cls = DndClass.values[rng.nextInt(DndClass.values.length)];
+    return PvpSnapshot(
+      userId:      'bot_${rng.nextInt(99999)}',
+      displayName: 'Rival',
+      heroName:    kBotNames[rng.nextInt(kBotNames.length)],
+      heroClass:   cls.name,
+      level:       mirror.level,
+      maxHp:       max(10, (mirror.maxHp      * v()).round()),
+      attackBonus: max(1,  (mirror.attackBonus * v()).round()),
+      damageMod:   max(0,  (mirror.damageMod   * v()).round()),
+      armorClass:  max(1,  (mirror.armorClass  * v()).round()),
+      subclassId:  mirror.level >= 50 ? mirror.subclassId : null,
+      rating:      rating,
+      wins:        rng.nextInt(40),
+      losses:      rng.nextInt(30),
+    );
+  }
+
+  final level  = max(1, myRating ~/ 80);
 
   // Flat variance on each stat: 0–4 for ATK/AC, 0–3 for DMG, proportional for HP.
   // Creates a spread where ~20% of bots match or exceed the player's item advantage,

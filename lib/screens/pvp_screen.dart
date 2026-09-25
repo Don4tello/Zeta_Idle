@@ -159,21 +159,24 @@ class _PvpScreenState extends State<PvpScreen> {
 
     setState(() => _matchBusy = true);
 
+    // Build our snapshot once — used for the upload, the fight, AND as the
+    // template a bot mirrors so opponents scale with our unlocked-tier power.
+    final mySnap = game.buildPvpSnapshot(
+        _authService.currentUser?.uid ?? 'local');
+
     PvpSnapshot? opponent;
     try {
       final user = _authService.currentUser ??
           await _authService.signInAnonymously();
       if (user != null) {
-        final mySnap = game.buildPvpSnapshot(user.uid);
         await _pvpService.uploadSnapshot(user.uid, mySnap);
         opponent = await _pvpService.findOpponent(user.uid, game.pvpRating);
       }
     } catch (_) {}
 
-    opponent ??= generateBotOpponent(game.pvpRating);
+    // No real rival → a bot scaled to OUR power (grows with campaign tier).
+    opponent ??= generateBotOpponent(game.pvpRating, mirror: mySnap);
 
-    final mySnap = game.buildPvpSnapshot(
-        _authService.currentUser?.uid ?? 'local');
     final rng = Random();
     // Option A: result decided by the visible fight (recorded in onResult).
     // simulate only for the flavor log shown alongside the result.

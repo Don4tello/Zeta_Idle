@@ -44,6 +44,14 @@ class RemoteConfigService {
     'boss_rush_atk_mult': 1.0,
     'gauntlet_hp_mult': 1.0,
     'gauntlet_atk_mult': 1.0,
+    // PvP: scale the HERO's outgoing damage down so the attacker can't burst a
+    // rival's HP in 1-2 rounds (matches only the visible fight). 0.01 = -99%.
+    // NB: for strong builds the per-hit CAP below is the binding limit, not this
+    // — the % mainly protects weaker builds from over-nerf.
+    'pvp_hero_dmg_mult': 0.01,
+    // PvP: hard cap on a single hit as a fraction of the foe's max HP — THE main
+    // fight-length lever. 0.10 = min ~10 hits to kill (lower = longer fights).
+    'pvp_max_hit_fraction': 0.10,
     // Telemetry — OFF by default so a normal/production build never writes.
     // Flip on in the console for closed testing (optionally target by version).
     'telemetry_enabled': false,
@@ -104,6 +112,13 @@ class RemoteConfigService {
   double get bossRushAtkMult  => _d('boss_rush_atk_mult', 1.0);
   double get gauntletHpMult   => _d('gauntlet_hp_mult', 1.0);
   double get gauntletAtkMult  => _d('gauntlet_atk_mult', 1.0);
+
+  // ── PvP tuning ──────────────────────────────────────────────────────────────
+  // Multiplier on the hero's outgoing damage during a PvP match (1.0 = full,
+  // 0.10 = -90%). Compresses burst so matches are contested, not 1-2 round
+  // one-shots. Tune from PvP telemetry without a rebuild.
+  double get pvpHeroDmgMult   => _d('pvp_hero_dmg_mult', 0.01);
+  double get pvpMaxHitFraction => _d('pvp_max_hit_fraction', 0.10);
 
   // ── Telemetry (runtime gate for fight telemetry → Firestore) ────────────────
   bool   get telemetryEnabled   => _b('telemetry_enabled', false);

@@ -19,6 +19,38 @@ int get kLatestPatchBuild => kPatchNotes.first.build;
 
 const kPatchNotes = <PatchNote>[
   PatchNote(
+    build: 301,
+    title: 'PvP Fights Last Longer',
+    date: '2026-09-25',
+    changes: [
+      'Tuned PvP so fights run longer and are decided by sustained trading, not '
+          'a couple of big hits — no single hit can take more than ~10% of a '
+          'rival\'s health.',
+    ],
+  ),
+  PatchNote(
+    build: 300,
+    title: 'PvP Rivals Scale With You',
+    date: '2026-09-25',
+    changes: [
+      'PvP opponents now scale to your own power — which grows as you unlock '
+          'campaign tiers — so matches stay competitive instead of a faceroll '
+          'against a fixed dummy.',
+      'Added a safety cap so no single hit can one-shot a rival, guaranteeing '
+          'real multi-round fights.',
+    ],
+  ),
+  PatchNote(
+    build: 299,
+    title: 'PvP: Longer, Fairer Fights',
+    date: '2026-09-25',
+    changes: [
+      'PvP damage is now toned down so matches aren\'t decided by a 1–2 round '
+          'burst — fights last long enough for both fighters\' stats to matter. '
+          'Tunable behind the scenes as we gather match data.',
+    ],
+  ),
+  PatchNote(
     build: 298,
     title: 'Toggle Auto Run Mid-Dungeon',
     date: '2026-09-24',
