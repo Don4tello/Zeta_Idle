@@ -25,20 +25,25 @@ class StatsGridPanel extends StatelessWidget {
     final game = GameStateProvider.of(context);
     final hero = game.hero;
 
+    // Effective attribute = base + equipped-gear bonus. Combat already scales
+    // damage/resist/dodge/DoT/HoT/CD-skip off this total (an item's +STR fully
+    // raises the stat), so the sheet now shows the same effective number and
+    // effects instead of the bare base value.
+    int eff(int base, ItemStat s) => game.effectiveAttr(base, s);
     final data = <({
       String abbr,
       IconData icon,
       Color color,
       String? upgradeId,
       int score,
-      int mod,
+      int dmgPct,
     })>[
-      (abbr: 'STR', icon: Icons.fitness_center,   color: EndlessNode.str.color,          upgradeId: 'str_1', score: hero.strength,     mod: hero.strMod),
-      (abbr: 'DEX', icon: Icons.directions_run,   color: EndlessNode.dex.color,          upgradeId: 'dex_1', score: hero.dexterity,    mod: hero.dexMod),
-      (abbr: 'CON', icon: Icons.favorite,         color: EndlessNode.con.color,          upgradeId: 'con_1', score: hero.constitution, mod: hero.conMod),
-      (abbr: 'INT', icon: Icons.psychology,       color: EndlessNode.intelligence.color, upgradeId: 'int_1', score: hero.intelligence, mod: hero.intMod),
-      (abbr: 'WIS', icon: Icons.visibility,       color: EndlessNode.wis.color,          upgradeId: 'wis_1', score: hero.wisdom,       mod: hero.wisMod),
-      (abbr: 'CHA', icon: Icons.theater_comedy,   color: EndlessNode.cha.color,          upgradeId: 'cha_1', score: hero.charisma,     mod: hero.chaMod),
+      (abbr: 'STR', icon: Icons.fitness_center,   color: EndlessNode.str.color,          upgradeId: 'str_1', score: eff(hero.strength,     ItemStat.strength),     dmgPct: game.attrDamagePctFor(DamageType.physical)),
+      (abbr: 'DEX', icon: Icons.directions_run,   color: EndlessNode.dex.color,          upgradeId: 'dex_1', score: eff(hero.dexterity,    ItemStat.dexterity),    dmgPct: game.attrDamagePctFor(DamageType.lightning)),
+      (abbr: 'CON', icon: Icons.favorite,         color: EndlessNode.con.color,          upgradeId: 'con_1', score: eff(hero.constitution, ItemStat.constitution), dmgPct: game.attrDamagePctFor(DamageType.poison)),
+      (abbr: 'INT', icon: Icons.psychology,       color: EndlessNode.intelligence.color, upgradeId: 'int_1', score: eff(hero.intelligence, ItemStat.intelligence), dmgPct: game.attrDamagePctFor(DamageType.void_)),
+      (abbr: 'WIS', icon: Icons.visibility,       color: EndlessNode.wis.color,          upgradeId: 'wis_1', score: eff(hero.wisdom,       ItemStat.wisdom),       dmgPct: game.attrDamagePctFor(DamageType.cold)),
+      (abbr: 'CHA', icon: Icons.theater_comedy,   color: EndlessNode.cha.color,          upgradeId: 'cha_1', score: eff(hero.charisma,     ItemStat.charisma),     dmgPct: game.attrDamagePctFor(DamageType.fire)),
     ];
 
     final keyStats = hero.heroClass.info.keyStats;
@@ -54,6 +59,7 @@ class StatsGridPanel extends StatelessWidget {
             child: _StatCard(
               abbr:        d.abbr,
               score:       d.score,
+              dmgPct:      d.dmgPct,
               icon:        d.icon,
               color:       d.color,
               upgrade:     upgrade,
@@ -103,6 +109,7 @@ class _StatCard extends StatefulWidget {
   const _StatCard({
     required this.abbr,
     required this.score,
+    required this.dmgPct,
     required this.icon,
     required this.color,
     required this.upgrade,
@@ -114,7 +121,8 @@ class _StatCard extends StatefulWidget {
   });
 
   final String     abbr;
-  final int        score;
+  final int        score;   // effective attribute (base + equipped gear)
+  final int        dmgPct;  // effective damage % this attribute grants
 
   final IconData   icon;
   final Color      color;
@@ -163,22 +171,25 @@ class _StatCardState extends State<_StatCard>
     }
   }
 
-  // Live value box — the damage-type % PLUS this stat's signature secondary effect.
+  // Live value box — the damage-type % PLUS this stat's signature secondary
+  // effect. Uses the EFFECTIVE attribute (base + gear) and effective damage %,
+  // so it matches what combat actually grants (see attrDamagePctFor).
   String get _currentEffect {
-    final h = widget.hero;
-    int abv10(int s) => s > 10 ? s - 10 : 0;
+    final s = widget.score;      // effective attribute total
+    final dmg = widget.dmgPct;   // effective damage % for this stat's type
+    int abv10(int x) => x > 10 ? x - 10 : 0;
     switch (widget.abbr) {
-      case 'STR': return '+${h.strength} hit dmg   •   +${h.strength} armor';
-      case 'DEX': return 'Lightning Dmg +${h.damagePctFor(DamageType.lightning)}%'
-          '   •   Dodge +${(abv10(h.dexterity) * 0.5).clamp(0, 30).round()}%';
-      case 'CON': return 'Poison Dmg +${h.damagePctFor(DamageType.poison)}%'
-          '   •   +${h.constitution}% Max HP';
-      case 'INT': return 'Void Dmg +${h.damagePctFor(DamageType.void_)}%'
-          '   •   DoT +${abv10(h.intelligence)}%';
-      case 'WIS': return 'Cold Dmg +${h.damagePctFor(DamageType.cold)}%'
-          '   •   Heal-o-t +${abv10(h.wisdom)}%';
-      case 'CHA': return 'Fire Dmg +${h.damagePctFor(DamageType.fire)}%'
-          '   •   CD skip ${(h.charisma / 5).clamp(0, 20).round()}%';
+      case 'STR': return '+$s hit dmg   •   +$s armor';
+      case 'DEX': return 'Lightning Dmg +$dmg%'
+          '   •   Dodge +${(abv10(s) * 0.5).clamp(0, 30).round()}%';
+      case 'CON': return 'Poison Dmg +$dmg%'
+          '   •   +$s% Max HP';
+      case 'INT': return 'Void Dmg +$dmg%'
+          '   •   DoT +${abv10(s)}%';
+      case 'WIS': return 'Cold Dmg +$dmg%'
+          '   •   Heal-o-t +${abv10(s)}%';
+      case 'CHA': return 'Fire Dmg +$dmg%'
+          '   •   CD skip ${(s / 5).clamp(0, 20).round()}%';
       default:    return '';
     }
   }

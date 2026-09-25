@@ -426,12 +426,12 @@ class _ClassStep extends StatelessWidget {
   Widget _buildStatsPreview(DndClass cls, HeroGender gender) {
     final info = cls.info;
     final stats = [
-      ('PWR', info.str),
-      ('AGI', info.dex),
-      ('VIT', info.con),
-      ('ARC', info.intelligence),
-      ('FOC', info.wis),
-      ('FOR', info.cha),
+      ('STR', info.str),
+      ('DEX', info.dex),
+      ('CON', info.con),
+      ('INT', info.intelligence),
+      ('WIS', info.wis),
+      ('CHA', info.cha),
     ];
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
@@ -514,12 +514,12 @@ class _ClassStep extends StatelessWidget {
   bool _isPrimary(String statLabel, DndClassInfo info) {
     final primary = info.primaryAbility.toLowerCase();
     const map = {
-      'PWR': 'strength',
-      'AGI': 'dexterity',
-      'VIT': 'constitution',
-      'ARC': 'intelligence',
-      'FOC': 'wisdom',
-      'FOR': 'charisma',
+      'STR': 'strength',
+      'DEX': 'dexterity',
+      'CON': 'constitution',
+      'INT': 'intelligence',
+      'WIS': 'wisdom',
+      'CHA': 'charisma',
     };
     return primary.contains(map[statLabel] ?? '');
   }
@@ -625,10 +625,10 @@ class _ClassCard extends StatelessWidget {
                       _DmgPill(pair[1]),
                     ]),
                     const SizedBox(height: 6),
-                    // Stats as PWR/AGI/VIT/ARC/FOC/FOR
+                    // Stats as STR/DEX/CON/INT/WIS/CHA
                     Row(
                       children: [
-                        for (final e in [('PWR', stats[0]), ('AGI', stats[1]), ('VIT', stats[2])])
+                        for (final e in [('STR', stats[0]), ('DEX', stats[1]), ('CON', stats[2])])
                           Expanded(child: Column(mainAxisSize: MainAxisSize.min, children: [
                             Text(e.$1, textAlign: TextAlign.center,
                                 style: GoogleFonts.rajdhani(fontSize: 7, color: AppTheme.textMuted)),
@@ -641,7 +641,7 @@ class _ClassCard extends StatelessWidget {
                     const SizedBox(height: 2),
                     Row(
                       children: [
-                        for (final e in [('ARC', stats[3]), ('FOC', stats[4]), ('FOR', stats[5])])
+                        for (final e in [('INT', stats[3]), ('WIS', stats[4]), ('CHA', stats[5])])
                           Expanded(child: Column(mainAxisSize: MainAxisSize.min, children: [
                             Text(e.$1, textAlign: TextAlign.center,
                                 style: GoogleFonts.rajdhani(fontSize: 7, color: AppTheme.textMuted)),

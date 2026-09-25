@@ -28,3 +28,8 @@ _*.png
 
 # Local telemetry pulls
 telemetry_dump.json
+
+# Local save-data dumps / scratch (never commit — contain player save data)
+_cloud_saves_raw.json
+_rebuild_slot0.json
+zeta_screen.png

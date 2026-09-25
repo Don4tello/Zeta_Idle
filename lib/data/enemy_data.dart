@@ -67,6 +67,20 @@ class EnemyData {
   // so the boss barely got to swing. Fatter boss HP lengthens the finale to ~5-6
   // rounds so its per-round damage actually accumulates. Tier 0 untouched.
   static double endgameTierHpMult(int tier)  => tier <= 0 ? 1.0 : pow(1.48, tier).toDouble();
+
+  // Frontier BOSS HP catch-up (build 286→287). Power-normalized telemetry showed
+  // a near-maxed hero one-ROUNDING tier-4+ bosses (median 1 round; hits <5% of the
+  // hero's HP). Build 286 added a flat tier-wide ×(1+3·(tier−3)) HP ramp — which
+  // nailed mid-tier bosses (Shadow King @T5 st35: 1→6 rounds) but overshot the
+  // deep, already-steep stages: TRASH ran 15-27 rounds and st55+ bosses hit 44-54
+  // rounds. Fix: scope the ramp to BOSSES ONLY (trash stays fast) and ease the
+  // slope 3.0→2.0. Tiers 0-3 untouched (over == 0 → ×1); saturates at ×11 so the
+  // deepest tiers don't explode. Rewards key off enemy LEVEL not HP → no inflation.
+  static double frontierBossHpMult(int tier) {
+    final over = (tier - 3).clamp(0, 100);
+    return (1.0 + 2.0 * over).clamp(1.0, 11.0); // T4 ×3 · T5 ×5 · T7 ×9 · T10 ×11
+  }
+
   // ATK 1.09 → 1.20 (T10 ≈ ×2.37 → ×6.2). Telemetry (build 230): with healing +
   // lifesteal now BOUNDED, a maxed hero STILL ended the tier-10 boss at 100% HP —
   // so the sustain wasn't the whole story, the boss ATK is genuinely too low. The
@@ -1219,7 +1233,11 @@ class EnemyData {
       // (Simulation showed a flat premium walled every class at the first boss
       // around level 3, needing ~level 11 to clear.)
       final bossPhase   = isBoss ? ((stage - 4) / 21.0).clamp(0.0, 1.0) : 0.0;
-      final bossHpMult  = isBoss ? 1.4 + 1.1 * bossPhase : 1.0; // 1.4 → 2.5
+      // Frontier (tier 4+) BOSS-only HP catch-up so a near-maxed hero can't
+      // one-round the finale. Bosses only — trash stays fast. See
+      // frontierBossHpMult. (Non-frontier tiers → ×1, so this is a no-op there.)
+      final frontierBoss = isBoss ? frontierBossHpMult(prestigeLevel) : 1.0;
+      final bossHpMult  = isBoss ? (1.4 + 1.1 * bossPhase) * frontierBoss : 1.0; // 1.4 → 2.5, ×frontier
       final bossAtkMult = isBoss ? 1.6 + 1.9 * bossPhase : 1.0; // 1.6 → 3.5
       final enemyLevel = base.level + prestigeLevel * kTierLevelStep;
       // Over-level catch-up hits HP only — "flying through" is a fight-LENGTH

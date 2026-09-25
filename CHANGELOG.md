@@ -3,6 +3,110 @@
 Version numbers are the pubspec build number (`0.1.0+N`), which is the Play
 Store `versionCode`. Newest first.
 
+## +298 — In-dungeon Auto Run toggle
+User: expose the auto-run button inside the dungeon (in case you forgot to enable it, or want to pause and make manual decisions).
+- `dungeon_screen.dart`: the Auto Run AppBar button was gated to `run == null || run.isOver` (lobby/summary only). Removed the gate so it shows during an active run too. `_toggleAuto` now cancels the pending `_autoTimer` when turning OFF (immediate manual control); turning ON calls `_scheduleAutoAction()` which resumes from whatever state the run is in (door junction, resolved room/relic, floor transition). Combat auto-plays via its own timer regardless, so toggling on mid-fight just resumes navigation via `_onRoomResolved` when the fight ends.
+
+## +297 — Tower Ascension threat fix + PvP telemetry
+User: "both" (instrument PvP + make Tower Ascension threatening).
+- Tower Ascension (`game_state.dart` `startEndlessBattleAtStage`): telemetry showed 12 T5 climbs all won at 100% HP — bosses spawned at `enemy.level + 2` (level 6–30) so their to-hit couldn't land on a high-level hero despite HP scaling ~68×. Fix: `bossLevel = enemy.level + 2 + activeTier * kTierLevelStep` (campaign-parity to-hit) and lifted the artificial `attack` clamp (9999→1e9) and HP clamp (1e7→1e15). HP still scales via the tier mults only (no prestigeLevel → no campaign-curve/frontier double-scale). User-approved ATK/level bump.
+- PvP telemetry (`game_state.dart`): the arena fight already runs through the real combat engine. Captured `_pvpOpponent` + reset `_battleTurnCount` in `startPvpBattle`; added `_logPvpTelemetry(won)` emitting a mode:"pvp" ZBAL record (rounds, hero HP%/dmg-taken/dps, opponent level/HP/class, pre-fight rating) from `recordPvpResult`. Now PvP is finally instrumented — note the PvP opponent attack is still a first-pass HP-proxy (startPvpBattle) that this data can tune.
+
+## +296 — Boss Rush HP curve: add accelerating term (post-295 was too easy)
+User: "pull alt games for boss rush." Post-295 telemetry: a geared L453 cleared a whole T6 rush in 6 ROUNDS at 100% HP (5/5 bosses) — the 295 fix removed the double-scale but the surviving linear `1 + 0.85t` scaled too gently for an endgame hero.
+- `boss_rush_screen.dart`: `tierHpMult` linear `1 + 0.85t` → accelerating `1 + 0.85t + 0.5t²`. T0=1× (parity), T2≈4.7×, T4≈12.4×, T6≈24×, T10≈59.5× (vs old T6≈6.1×). Single-axis (no campaign-curve/frontier re-entry). Quadratic coefficient 0.5 is the tuning knob.
+- Caveat: calibrated against a juiced test hero (L453 + injected mythic gear), so re-check the next pull; only HP bumped (boss ATK untouched, per the no-unapproved-ATK-bump rule — flag if it needs to be more *threatening* vs just longer).
+
+## +295 — Fix Boss Rush HP double/triple-scaling
+User: "check the logs for alt game modes." Telemetry: Boss Rush runs were 187–565 ROUNDS (won T3 took 303 rounds; T5 killed 0/5 bosses in 45 rounds), while Dungeon clears at 88–100% HP across all tiers.
+- Root cause in `boss_rush_screen.dart` `_spawnBoss`: spawned bosses via `enemyForStage(stageIdx, prestigeLevel: t)` — which applies the full campaign continuous tier curve (`kHpGrowth^t ≈ 3.4^t`) AND the boss-only frontier HP ramp (build 287) — and THEN multiplied again by the mode's own `tierHpMult = 1 + 0.85·t`. Triple-scaling (added by the 284 tier-unification, contradicting the mode's own "tierHpMult is the tier axis" design).
+- Fix: spawn from the UNSCALED base (`prestigeLevel: 0`); tier HP/ATK scaling stays on `tierHpMult`/`tierAtkMult`; `resistanceTier: t` retained so hero resist/penetration still matters. Cuts high-tier boss HP by orders of magnitude back into a sane range.
+- Watch next pull: Boss Rush runs should drop from hundreds of rounds to a normal length; if it now over-corrects (too easy), bump `tierHpMult`.
+- NOTE (not fixed, lower priority): Dungeon is mildly too EASY at high tiers (a L122 hero cleared T4–T7 dungeons at 88–100% HP) — candidate for a small difficulty bump later.
+
+## +294 — Attribute breakdown on the Bonus sheet + display fixes
+User: "check if anything else is out of line/not displaying in the hero sheet; add it to the bonus sheet and show the detail (baseline vs item)."
+- `hero_stats_screen.dart` (the "ALL BONUSES" sheet): added an ATTRIBUTE BREAKDOWN section — one expandable row per STR/DEX/CON/INT/WIS/CHA showing Base + Gear + Set bonuses + Gems → Effective total, plus a "Grants" line (element damage % + secondary effect), all computed off the same effective values combat uses.
+- Fixed `_damageTypeRows` to use `game.attrDamagePctFor` (effective, gear-included) instead of base-only `hero.damagePctFor`.
+- Removed the stale `_survivalRows` "Vitality (VIT)" row (old naming, single-stat) — superseded by the full ATTRIBUTE BREAKDOWN. Removed a now-unused subclass import.
+- Audited the Hero sheet (dashboard) + attribute card dialog: they already show effective totals/effects (from +291) and correctly hide the upgrade CTA in read-only mode — no other stale attribute displays found.
+
+## +293 — Rename gold-bought Ability Scores to functional names
+User: "sort it all out and align it" — after unifying attributes to STR/DEX/CON/INT/WIS/CHA (+292), the gold-bought Ability Scores still used attribute-ish names (Power/Wrath/Vitality/Endurance/Fortitude/Durability, labels PWR/WRA/VIT/END/FOR/DUR) — notably VIT/FOR were the OLD attribute item codes, keeping the two systems confusable.
+- `ability_scores_screen.dart` `_stats`: renamed to three clear flat/% pairs — Attack (ATK), Might (MGT), Health (HP), Vigor (VIG), Armor (ARM), Ward (WRD). Save KEYS (pwr/prc/vit/agi/for_/lck) and all effects unchanged — only display label + name.
+- `game_state.dart`: updated the two stale name comments (Wrath→Might, Durability→Ward, Endurance→Vigor).
+- Net result of the naming pass (+292/+293): character attributes are STR/DEX/CON/INT/WIS/CHA everywhere (Hero Sheet, items, forge, inventory, home, char-create); the gold upgrade system reads as functional Attack/Might/Health/Vigor/Armor/Ward. No remaining label collisions. (Artifact 'PWR' power and the Endless-tree BRT/PRC/… are unrelated systems, untouched.)
+
+## +292 — Unify attribute labels to D&D names (STR/DEX/CON/INT/WIS/CHA)
+User: "where can we see FOC and FOR from items?" — items labeled the 6 attributes PWR/AGI/VIT/ARC/FOC/FOR while the Hero Sheet used STR/DEX/CON/INT/WIS/CHA, so an item's +FOC couldn't be matched to the sheet's WIS. Chose: items (and everywhere else) adopt the D&D names.
+- `equipment.dart`: `ItemStat.shortLabel` PWR/AGI/VIT/ARC/FOC/FOR → STR/DEX/CON/INT/WIS/CHA; `fullLabel` → plain "Strength/Dexterity/…".
+- `inventory_screen.dart` (both label switches), `forge_screen.dart`: item-stat labels → D&D names.
+- `home_screen.dart`, `character_creation_screen.dart`: hero-attribute display labels → D&D names (incl. the `_isPrimary` label→ability map keys, so primary-stat highlighting still works).
+- LEFT AS-IS (separate systems, distinct identities): gold-bought Ability Scores (`ability_scores_screen` PWR/AGI/VIT/PRC/FOR/LCK), artifact power ('PWR'), and the Endless-upgrade tree (`EndlessNode` BRT/PRC/TGH/PRO/INS/FOC).
+
+## +291 — Attributes fully honor gear (display + damage-% gap)
+User: "ability Scores in the Hero Sheet look static — do they get increased from items?" Investigation: combat ALREADY scaled resistance/dodge/DoT/HoT/CD-skip/flat-hit/armor off effective attributes (base + gear + sets + gems), but (a) the Hero Sheet displayed BASE only, and (b) attribute damage-% used base only. Chose to make gear fully raise attributes.
+- `game_state.dart`: added `effectiveAttr(base, stat)` = base + `inventory.totalOf` + `_setTotal` + `_gemTotal` (the same total combat uses). New `attrDamagePctFor(type)` uses it; replaced base-only `hero.damagePctFor` in the three damage aggregators (`heroAllDamagePctFor`, the DPS estimate, and the per-hit calc) + the ZPWR telemetry. Closes the one gap so an item's +STR now also boosts damage %.
+- `stats_grid_panel.dart`: Hero Sheet cards now show the EFFECTIVE attribute (`game.effectiveAttr`) as the number, and `_currentEffect` tooltips compute off the effective attribute + effective damage %, so the sheet matches combat. Added `dmgPct` to `_StatCard`.
+- Net: small, intended player buff (gear attributes now count toward damage %, previously base-only), and the sheet stops looking static — equipping +STR/+DEX gear visibly moves the numbers and their effects.
+
+## +290 — Ability Scores: cap 250 + quadratic gold curve
+User: "give Scores a max of 250 rank but have the gold curve spend much more increased… maxing out at level 500." Chose quadratic.
+- `game_state.dart`: `kAbilityScoreMaxRank` 100 → 250. `abilityScoreUpgradeCost` linear `(rank+1)×150` → quadratic `(rank+1)²×100` (`kAbilityScoreCostCoeff`). rank 1 = 100g · rank 100 ≈ 1.0M (was 15K) · rank 250 ≈ 6.25M; full 0→250 climb ≈ 524M per score (~3.1B all six).
+- UI (`ability_scores_screen.dart`) needs no change — cap is read from `kAbilityScoreMaxRank` and tier labels are computed strings (no fixed array), so 250 ranks render fine.
+- Coefficient (100) is the tuning knob; calibrate against real gold income from telemetry so max lands near hero L500. Existing rank-100 investments carry over and continue from 100 at the new (steeper) costs.
+
+## +289 — Save hardening: high-water-mark backup + auto-recovery
+User: a maxed L377 Warden reset to level 1; the 1-deep rolling `_bak` was overwritten by ~8 autosaves and the cloud got a level-1 sync, making it unrecoverable. Chose save-hardening first (isolated build), then rebuild a comparable fighter.
+- `save_service.dart`: `saveRaw` now also maintains a `_hwm` (high-water-mark) backup per slot — the HIGHEST hero level ever held — and NEVER lowers it. Added `loadHighWaterMark`, `clearHighWaterMark`, and `_levelOf`. `deleteSlot` clears `_hwm` too.
+- `game_state.dart` `loadSlot`: after local+cloud load, if the banked `_hwm` level exceeds the loaded level by >10 (hero level only rises in normal play, so a big drop = a wipe), auto-restore the maxed copy and re-establish it as primary. New characters clear the HWM first so a deliberate fresh hero isn't "recovered". Added `characterRecoveredFromBackup` flag for a UI notice.
+- Also retains the build-288 `ZLOADFAIL|` logcat print in the parse-failure catch for future diagnosis.
+- NOTE: the Warden that was already lost predates this backup, so it can't retroactively restore — this prevents recurrence (protects the intact slot_4 Lv7924 bard and all future characters). A comparable fighter is being rebuilt into cloud slot_0 separately.
+
+## +287 — Frontier ramp v2: boss-scoped + eased slope
+User: "check the latest logs." Build-286 telemetry (fresh T5 run, hero L323→377): the ramp NAILED mid-tier bosses (Shadow King @T5 st35: 1→6 rounds, ended 44%; Glacier Wyrm/Leviathan ~9 rounds) but OVERSHOT the deep end — st56-64 TRASH ran 15-27 rounds and st55/60/65 bosses hit 44-54 rounds with 3 losses (flat tier-wide multiplier over-amplified the already-steep deep stages and wrongly inflated trash).
+- `enemy_data.dart`: reverted `endgameTierHpMult` to the base `pow(1.48,tier)` (applies to all enemies as before). Added `frontierBossHpMult(tier)` = `(1 + 2·(tier−3)).clamp(1,11)` (T4 ×3 · T5 ×5 · T7 ×9 · T10 ×11), applied ONLY to bosses via `bossHpMult` in the campaign branch.
+- Net effect vs 286: trash loses the frontier factor entirely (fast again); frontier BOSS HP eased ~×7→×5 at T5 (deep bosses ~44→~30 rounds — still the intended wall, not a 50-round slog); mid-tier bosses stay a real fight. Tiers 0-3 unchanged (over==0 → ×1). Still HP-only, rewards key off level → no inflation.
+- Watch next pull: T5 st35-50 bosses should hold ~4-6 rounds; st55+ remains the soft ceiling; trash back to 1-4 rounds.
+
+## +286 — Frontier boss HP ramp (tiers 4+)
+User: telemetry review — "do number 2" (top-tier flattening). Power-normalized boss data showed T4 bosses dying in a median of 1 ROUND with enemy hits at only ~4.7% of the hero's HP pool (least threatening tier despite being hardest); T1–T3 are healthy ~5-round fights. Confirms the near-maxed hero trivializes the frontier (matches the code's own "maxed hero one-rounds tier-10 boss" history). Chose the Aggressive ramp.
+- `enemy_data.dart` `endgameTierHpMult`: on top of the base `pow(1.48,tier)`, tiers 4+ get a steep saturating extra HP factor `(1 + 3·(tier−3)).clamp(1,15)` → T4 ×4 · T5 ×7 · T6 ×10 · T10 ×15 (capped). Tiers 0–3 untouched.
+- HP-only (no ATK bump — per the saved balance direction: HP-up + recovery-down, never %-max-HP). Rewards key off enemy LEVEL not HP, so no gold/XP/loot inflation.
+- Applies through the shared campaign scaling path, so frontier bosses in Dungeon/Boss Rush (which reuse campaign stage indices) get tankier too.
+- Calibration step: slope 3.0 / cap 15 to be re-tuned from the next telemetry pull (watch T4/T5 boss round-counts and end-HP%).
+
+## +285 — Per-tier campaign progress (unlock only resets the new tier)
+User: "Can we make it so that the campaign only resets for the new unlocked tier?" (chose: auto-jump into the new tier, but keep the cleared tier's progress).
+- `game_state.dart`: new `Map<int,int> _campaignStageByTier` — each 0-based tier remembers its own campaign stage; the active tier's live value stays in `campaignStageIndex`.
+- `setActiveTier`: stashes the tier you leave and resumes the target tier's saved stage (or `prestigeHeadStart` if never played), so switching tiers no longer restarts the campaign.
+- Final-boss handler: on unlocking the next tier, parks the cleared tier at the Omega (final stage) and starts ONLY the new tier at the head-start; replaying an already-maxed tier still loops that tier back to farm.
+- Persistence: `campaignStageByTier` saved (string keys, active tier merged in) and loaded with clamping; older saves seed an empty map (current tier still resumes via `campaignStageIndex`). Map cleared on new-character/prestige reset.
+
+## +284 — Unified GLOBAL difficulty tier (all modes)
+User: "the whole game switches in difficulty — tower ascension, dungeon, boss rush, campaign — you get all the bonuses from it and it should increase the hp & damage of all monsters." + "yes do all your steps" (finish the plumbing).
+- Every mode now reads the single global `activeTier` (0-based) instead of a private `_selectedTier`. Setting the tier anywhere (any mode's selector or the campaign header) applies everywhere, and all tier bonuses carry across modes.
+- `boss_rush_screen.dart`: `_selectedTier` is now a getter returning `game.activeTier`; bosses scale HP/ATK by the tier (`enemyForStage(prestigeLevel: tier)`) AND resistance by the tier; rewards/artifacts use `tierRewardMult(tier)`. Removed the dead `_rebirthLvl` field and the orphaned `_TierButton` widget. Selector uses `highestUnlockedTier` + `setActiveTier`.
+- `gauntlet_screen.dart`: same getter conversion; enemy HP/ATK scale via the 0-based `_gauntletTierHpMult/AtkMult` (tier 0 = ×1), resistance by the global tier; reward + preview both use `tierRewardMult(tier)`. Removed `_rebirthLvl`.
+- `endless_screen.dart` (Tower Ascension): `_bossTier` now returns the global tier; the boss preview mirrors the real spawn scaling (`2× HP, 1.25× ATK, +AC`, quadratic tier), and the daily-clear key + Tower-Shard reward scale with the tier so re-clears at higher tiers pay more.
+- `tier_selector.dart`: converted to 0-based (tier 0 = base difficulty; `maxTiers = 11`), driven by `highestUnlockedTier`.
+- `dungeon.dart` / `dungeon_screen.dart`: tier scaling routed through `prestigeLevel: tier` (dropped the separate `_tierMult`); the campaign tier selector now appears in the dungeon lobby, defaulting to the global tier.
+- Per-mode `bossRushHighestTier` / `gauntletHighestTier` / `_dungeonHighestTier` now only mark per-mode "CLEARED" badges; tier UNLOCKING is solely `highestUnlockedTier` (raised by clearing the campaign).
+
+## +283 — Unified accelerating tier-reward curve (alt-modes)
+User: re-map alt-mode rewards for the unified tier; higher tiers should be more rewarding; rebirths are retired.
+- `game_state.dart`: new `tierRewardMult([tier])` — ONE accelerating curve for every mode, `1 + t*0.5 + t²*0.1` (0-based tier: 0→1×, 5≈6×, 10=16×). Rewards scale with the tier you play; no separate max-tier "rebirth" bonus.
+- `gauntlet_screen.dart`: replaced the old `tierMult × rebirthMult` double-scaling on score/essence/echoes/ZCoins with `game.tierRewardMult(_selectedTier - 1)`.
+- `boss_rush_screen.dart`: replaced the `rebirthMult` (highestUnlockedTier-based) on shards/echoes with `game.tierRewardMult(_selectedTier - 1)` — rewards now scale with the tier you PLAY, not your max.
+- `dungeon.dart`: added `_rewardMult` (same curve, tier 1-based) and applied it to combat gold + shards (were floor-only) — higher dungeon tiers finally pay more.
+- Note: `_selectedTier - 1` / `tier - 1` are the 1-based→0-based conversions; these simplify to `activeTier` once the tier plumbing is unified (next stage). Boss Rush artifact level + tier-clear tracking still use the per-mode tier for now.
+
+## +282 — Dungeon start guard (no wasted attempts)
+User: "went into the dungeon and it went straight out and wasted my attempt."
+- Telemetry showed the recent dungeon activity was 3 rapid T1 clears ~1min apart — the Auto-Run feature auto-entering/clearing. Separately found the real hazard: `startDungeon` had no guard against an already-active run, so a double-call (double-tap or Auto-Run racing a manual entry) consumed an attempt and overwrote the in-progress run WITHOUT finishing it (no telemetry, wasted attempt).
+- `game_state.dart` `startDungeon`: now early-returns if `activeDungeon != null && !activeDungeon.isOver` — never discards an in-progress run to start another.
+- Next up (approved): unified global difficulty tier replacing per-mode tiers (dungeon/boss rush/gauntlet/tower all follow the campaign tier; monsters scale HP/damage; all tier bonuses apply). Staged rework.
+
 ## +281 — Even gear stat pools + attributes reference-only
 User: stats shouldn't be directly upgradable (only items/other means); review + rebalance item generation.
 - **Attributes non-upgradable:** `stats_grid_panel.dart` — gated the tap-for-info dialog's "+UPGRADE" CTA behind `!readOnly` (the card button was already gated). The `str_1`…`cha_1` gold-upgrades are wired ONLY to this panel, which is now used read-only everywhere, so attributes come solely from gear/subclass/traits/base.

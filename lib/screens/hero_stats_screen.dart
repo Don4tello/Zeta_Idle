@@ -7,7 +7,6 @@ import '../models/npc_ally.dart';
 import '../models/passive_tree.dart';
 import '../models/pet.dart';
 import '../models/shop_catalog.dart';
-import '../models/subclass.dart';
 import '../services/game_state.dart';
 import '../theme/app_theme.dart';
 import '../widgets/battle_sprites.dart';
@@ -68,6 +67,8 @@ class _StatsBody extends StatelessWidget {
           padding: EdgeInsets.only(top: 4, bottom: 8),
           child: StatsGridPanel(readOnly: true),
         ),
+        // Tap any attribute to see base vs gear/set/gem and what it grants.
+        _section('ATTRIBUTE BREAKDOWN', _attributeRows()),
         _section('DAMAGE TYPES',  _damageTypeRows()),
         if (game.endlessUpgrades.levelOf(EndlessNode.str) > 0 ||
             game.endlessUpgrades.levelOf(EndlessNode.dex) > 0)
@@ -77,7 +78,6 @@ class _StatsBody extends StatelessWidget {
         _section('RESISTANCES', _resistanceRows()),
         _section('ECONOMY',     _economyRows()),
         _section('MASTERY',     _masteryRows()),
-        _section('SURVIVAL',    _survivalRows()),
         if (game.unlockedAllies.isNotEmpty) _mercenariesSection(),
       ],
     );
@@ -439,12 +439,12 @@ class _StatsBody extends StatelessWidget {
   // ── Damage Type rows ──────────────────────────────────────────────────────────
 
   List<_StatRow> _damageTypeRows() {
-    final h = game.hero;
     // Damage only — resistances get their own RESISTANCES section below.
     // Physical is no longer a hero damage type (heroes deal elements; Armor is
     // the physical defence), so it's excluded here.
     return DamageType.values.where((dt) => dt != DamageType.physical).map((dt) {
-      final pct = h.damagePctFor(dt);
+      // Effective (base + gear + sets + gems) — matches combat, not base-only.
+      final pct = game.attrDamagePctFor(dt);
       return _StatRow(
         label: '${dt.emoji} ${dt.label}',
         icon: Icons.whatshot,
@@ -926,22 +926,61 @@ class _StatsBody extends StatelessWidget {
     ];
   }
 
-  // ── Survival rows ─────────────────────────────────────────────────────────────
+  // ── Attribute rows (STR/DEX/CON/INT/WIS/CHA) ─────────────────────────────────
+  // Each attribute's EFFECTIVE total, expandable into where it comes from
+  // (base score vs gear / set / gem bonuses) plus what it grants. Mirrors the
+  // effective values combat uses (see game.effectiveAttr / attrDamagePctFor).
 
-  List<_StatRow> _survivalRows() {
+  List<_StatRow> _attributeRows() {
     final h = game.hero;
-    return [
-      _StatRow(
-        label: 'Vitality (VIT)',
-        icon: Icons.favorite_border,
-        color: const Color(0xFFff8888),
-        total: '${h.vitality} (mod ${h.conMod >= 0 ? '+' : ''}${h.conMod})',
+    int abv10(int x) => x > 10 ? x - 10 : 0;
+
+    _StatRow row(String abbr, String name, IconData icon, Color color,
+        ItemStat stat, int base, String Function(int total) grants) {
+      final gear = game.inventory.totalOf(stat);
+      final set  = game.inventorySetTotal(stat);
+      final gem  = game.inventoryGemTotal(stat);
+      final total = base + gear + set + gem; // == game.effectiveAttr(base, stat)
+      return _StatRow(
+        label: '$name ($abbr)',
+        icon: icon,
+        color: color,
+        total: '$total',
         sources: [
-          _Source('Base VIT', '${h.vitality}'),
-          _Source('Max HP Bonus', '+${h.vitality}%'),
-          _Source('Poison Dmg %', '+${h.damagePctFor(DamageType.poison)}% (${h.vitality}÷4)'),
+          _Source('Base', '$base'),
+          if (gear > 0) _Source('Gear', '+$gear'),
+          if (set  > 0) _Source('Set bonuses', '+$set'),
+          if (gem  > 0) _Source('Gems', '+$gem'),
+          _Source('Effective total', '$total'),
+          _Source('Grants', grants(total)),
         ],
-      ),
+      );
+    }
+
+    return [
+      row('STR', 'Strength', Icons.fitness_center, EndlessNode.str.color,
+          ItemStat.strength, h.strength,
+          (t) => '+$t hit dmg  •  +$t armor'),
+      row('DEX', 'Dexterity', Icons.directions_run, EndlessNode.dex.color,
+          ItemStat.dexterity, h.dexterity,
+          (t) => 'Lightning +${game.attrDamagePctFor(DamageType.lightning)}%'
+              '  •  Dodge +${(abv10(t) * 0.5).clamp(0, 30).round()}%'),
+      row('CON', 'Constitution', Icons.favorite, EndlessNode.con.color,
+          ItemStat.constitution, h.constitution,
+          (t) => 'Poison +${game.attrDamagePctFor(DamageType.poison)}%'
+              '  •  +$t% Max HP'),
+      row('INT', 'Intelligence', Icons.psychology, EndlessNode.intelligence.color,
+          ItemStat.intelligence, h.intelligence,
+          (t) => 'Void +${game.attrDamagePctFor(DamageType.void_)}%'
+              '  •  DoT +${abv10(t)}%'),
+      row('WIS', 'Wisdom', Icons.visibility, EndlessNode.wis.color,
+          ItemStat.wisdom, h.wisdom,
+          (t) => 'Cold +${game.attrDamagePctFor(DamageType.cold)}%'
+              '  •  Heal-o-t +${abv10(t)}%'),
+      row('CHA', 'Charisma', Icons.theater_comedy, EndlessNode.cha.color,
+          ItemStat.charisma, h.charisma,
+          (t) => 'Fire +${game.attrDamagePctFor(DamageType.fire)}%'
+              '  •  CD skip ${(t / 5).clamp(0, 20).round()}%'),
     ];
   }
 

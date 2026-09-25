@@ -38,8 +38,9 @@ const _kMaxModifiers = 3;
 const _kGauntletStages = [2, 4, 6, 8, 10, 12, 14, 16, 18, 20];
 
 // Per-tier difficulty growth (geometric — gentle at tier 1, steep at tier 10).
-double _gauntletTierHpMult(int tier)  => pow(1.5, tier - 1).toDouble();
-double _gauntletTierAtkMult(int tier) => pow(1.3, tier - 1).toDouble();
+// 0-based global tier: tier 0 = base difficulty (×1.0).
+double _gauntletTierHpMult(int tier)  => pow(1.5, tier).toDouble();
+double _gauntletTierAtkMult(int tier) => pow(1.3, tier).toDouble();
 
 enum _Phase { pick, battle, results }
 
@@ -58,7 +59,9 @@ class _GauntletScreenState extends State<GauntletScreen> {
 
   // -- Modifier selection ---------------------------------------------------
   final Set<String> _selectedIds = {};
-  int _selectedTier = 1;
+  // Unified global difficulty tier (0-based). Shared across every mode.
+  int get _selectedTier =>
+      _game?.activeTier ?? GameStateProvider.of(context).activeTier;
   List<int> _waveStages = List<int>.of(_kGauntletStages); // HP-sorted per run
   bool _autoRepeat = false;
   Timer? _autoRestartTimer;
@@ -90,7 +93,6 @@ class _GauntletScreenState extends State<GauntletScreen> {
   late DamageType _heroDmgType;
   double _heroDmgAllPct    = 0;
   double _heroPrestigeMult = 1.0;
-  int _rebirthLvl = 0;
   int _heroCritChancePct = 0;
   int _heroCritDmgMult   = 2;
 
@@ -226,7 +228,6 @@ class _GauntletScreenState extends State<GauntletScreen> {
     _heroDmgType      = game.hero.activeDamageType;
     _heroDmgAllPct    = game.heroAllDamagePctFor(_heroDmgType);
     _heroPrestigeMult = game.prestigeDamageMult; // tier + Paragon damage (1.0 when none)
-    _rebirthLvl        = 0; // Gauntlet scales by its own tier, not the global tier
     _heroCritChancePct = game.totalCritChancePct;
     _heroCritDmgMult   = game.totalCritDamageMult.round();
 
@@ -258,8 +259,8 @@ class _GauntletScreenState extends State<GauntletScreen> {
     // Order the 10 waves by HP so difficulty ramps smoothly (campaign bosses
     // sprinkled in the stage list otherwise spike mid-run).
     _waveStages = List<int>.of(_kGauntletStages)
-      ..sort((a, b) => EnemyData.enemyForStage(a, prestigeLevel: _rebirthLvl).maxHealth
-          .compareTo(EnemyData.enemyForStage(b, prestigeLevel: _rebirthLvl).maxHealth));
+      ..sort((a, b) => EnemyData.enemyForStage(a, prestigeLevel: 0).maxHealth
+          .compareTo(EnemyData.enemyForStage(b, prestigeLevel: 0).maxHealth));
     _log.add('⚔ GAUNTLET STARTS — ${_kGauntletEnemies} enemies await!');
     _spawnEnemy();
 
@@ -270,7 +271,9 @@ class _GauntletScreenState extends State<GauntletScreen> {
 
   void _spawnEnemy() {
     final stage = _waveStages[_waveIndex];
-    final base  = EnemyData.enemyForStage(stage, prestigeLevel: _rebirthLvl,
+    // HP/ATK scale via the gauntlet tier mults below; resistance scales by the
+    // shared global tier so hero resistances/penetration stay relevant.
+    final base  = EnemyData.enemyForStage(stage, prestigeLevel: 0,
         resistanceTier: _selectedTier);
     final tierHp  = _gauntletTierHpMult(_selectedTier);
     final tierAtk = _gauntletTierAtkMult(_selectedTier);
@@ -506,21 +509,20 @@ class _GauntletScreenState extends State<GauntletScreen> {
       'dmg': _totalDealt, 'maxhit': _maxHit, 'hits': _hitCount,
     });
 
-    // Score: kills × (1 + modifier count) × 100 × tier, +2000 for a clear
+    // Rewards scale with the difficulty tier via ONE unified, accelerating curve
+    // (replaces the old tierMult × rebirthMult double-scaling; rebirths retired).
+    // _selectedTier is the 0-based global tier.
     final modCount = _selectedIds.length;
-    final tierMult = 1.0 + (_selectedTier - 1) * 0.3;
-    final baseScore = (_kills * (1 + modCount) * 100 * tierMult).round();
-    final clearBonus = heroWon ? (2000 * tierMult).round() : 0;
+    final tMult = game.tierRewardMult(_selectedTier);
+    final baseScore = (_kills * (1 + modCount) * 100 * tMult).round();
+    final clearBonus = heroWon ? (2000 * tMult).round() : 0;
     final score = baseScore + clearBonus;
 
-    // Rewards: progressive tiers give a higher FLAT soul income per kill
-    // (5 × tierMult × rebirthMult); selected modifiers scale that up by their
-    // combined % essence bonus.
-    final rebirthMult = 1.0 + game.highestUnlockedTier * 0.15;
-    final flatSoulPerKill = 5 * tierMult * rebirthMult;
+    // Selected modifiers scale essence/echoes up via their % bonus on top of tier.
+    final flatSoulPerKill = 5 * tMult;
     final essence = (_kills * flatSoulPerKill * (1 + _essencePctBonus / 100.0)).round();
-    final zcoins = heroWon ? (10 + modCount * 5) * _selectedTier : 0;
-    final echoMult = (1.0 + modCount * 0.25) * tierMult;
+    final zcoins = heroWon ? ((10 + modCount * 5) * tMult).round() : 0;
+    final echoMult = (1.0 + modCount * 0.25) * tMult;
     final echoReward = ((_kills * 8 + (heroWon ? 40 + modCount * 20 : 0)) * echoMult).round();
 
     final result = GauntletResult(
@@ -665,9 +667,9 @@ class _GauntletScreenState extends State<GauntletScreen> {
         const SizedBox(height: 12),
         TierSelector(
           selectedTier: _selectedTier,
-          maxUnlocked: (game.gauntletHighestTier + 1).clamp(1, 10),
+          maxUnlocked: game.highestUnlockedTier,
           highestCleared: game.gauntletHighestTier,
-          onTierChange: (t) => setState(() => _selectedTier = t),
+          onTierChange: (t) => setState(() => game.setActiveTier(t)),
         ),
         const SizedBox(height: 12),
         _GauntletStartSection(onStart: _startBattle),
@@ -714,9 +716,9 @@ class _GauntletScreenState extends State<GauntletScreen> {
                 .rewardPctBonus)
             .reduce((a, b) => a + b);
     final game        = GameStateProvider.of(context);
-    final tierMult    = 1.0 + (_selectedTier - 1) * 0.3;
-    final rebirthMult = 1.0 + game.highestUnlockedTier * 0.15;
-    final essence     = (_kGauntletEnemies * 5 * tierMult * rebirthMult
+    // Preview mirrors the real payout: one unified accelerating tier curve.
+    final tMult       = game.tierRewardMult(_selectedTier);
+    final essence     = (_kGauntletEnemies * 5 * tMult
         * (1 + essencePct / 100.0)).round();
     final zcoins = 10 + modCount * 5;
     final scoreMult = 1 + modCount;

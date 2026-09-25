@@ -218,6 +218,9 @@ class GameState extends ChangeNotifier {
   // so a parse bug can never overwrite (and permanently destroy) the player's
   // real save on disk — a future app version can still recover it.
   bool _saveBlocked = false;
+  // Set true for one session when loadSlot auto-restored a wiped save from the
+  // high-water-mark backup, so the UI can surface a "character recovered" notice.
+  bool characterRecoveredFromBackup = false;
   bool _endlessMode = false;
   int _confirmedPrestigeLevel = 0;
 
@@ -1264,6 +1267,32 @@ class GameState extends ChangeNotifier {
   /// Total "increased damage %" for [type], mirroring the allDamagePct used in
   /// heroAttack(). External combat modes (Boss Rush, Dungeon) should multiply
   /// their raw damage by (1 + heroAllDamagePctFor(type) / 100).
+  /// The EFFECTIVE value of an attribute for combat: its base score plus every
+  /// equipped source (gear + set bonuses + gems). Combat already scales
+  /// resistance, dodge, DoT, HoT and CD-skip off this total, so an item's +STR
+  /// fully raises the stat. Exposed so the Hero sheet can show the same number.
+  int effectiveAttr(int base, ItemStat stat) =>
+      base + inventory.totalOf(stat) + _setTotal(stat) + _gemTotal(stat);
+
+  /// The base score + matching gear ItemStat for a damage type's attribute.
+  (int, ItemStat) _attrFor(DamageType type) => switch (type) {
+    DamageType.physical  => (hero.strength,     ItemStat.strength),
+    DamageType.lightning => (hero.dexterity,    ItemStat.dexterity),
+    DamageType.poison    => (hero.constitution,  ItemStat.constitution),
+    DamageType.void_     => (hero.intelligence,  ItemStat.intelligence),
+    DamageType.cold      => (hero.wisdom,        ItemStat.wisdom),
+    DamageType.fire      => (hero.charisma,      ItemStat.charisma),
+  };
+
+  /// Attribute-driven damage % for [type] — counts the EFFECTIVE attribute
+  /// (base + gear + sets + gems), matching resistance/dodge/DoT/HoT/CD-skip so
+  /// an item's +STR/+DEX fully raises the damage bonus. Replaces the base-only
+  /// [HeroModel.damagePctFor] in the damage aggregators.
+  int attrDamagePctFor(DamageType type) {
+    final (base, stat) = _attrFor(type);
+    return effectiveAttr(base, stat) * 25 ~/ 100;
+  }
+
   double heroAllDamagePctFor(DamageType type) =>
       passiveTree.totalOf(PassiveEffect.allDamage).toDouble()
       + passiveElemDamagePct(type)
@@ -1272,7 +1301,7 @@ class GameState extends ChangeNotifier {
       + _setTotal(ItemStat.damagePercent)
       + hero.levelBonusDamagePct
       + allyDmgPctBonus
-      + hero.damagePctFor(type)
+      + attrDamagePctFor(type)
       + elementalMasteryDamagePct(type);
 
   /// Total flat damage added per hit, mirroring baseDmg in heroAttack().
@@ -1591,9 +1620,25 @@ class GameState extends ChangeNotifier {
   void setActiveTier(int tier) {
     final clamped = tier.clamp(0, highestUnlockedTier);
     if (clamped == activeTier) return;
+    // Each tier keeps its own campaign progress: stash the tier we're leaving,
+    // then resume the target tier (or start it fresh if never played).
+    _campaignStageByTier[activeTier] = campaignStageIndex;
     activeTier = clamped;
+    campaignStageIndex = (_campaignStageByTier[clamped] ?? prestigeHeadStart)
+        .clamp(0, CampaignData.stages.length - 1);
     notifyListeners();
     saveToLocal();
+  }
+
+  /// Unified difficulty-tier reward multiplier — ONE curve for every mode, so
+  /// rewards scale with the tier you actually play (rebirths are retired; there
+  /// is no separate max-tier bonus). Accelerating, so higher tiers are
+  /// disproportionately more rewarding and pushing pays off:
+  ///   tier 0 = 1.0×  ·  tier 5 ≈ 6×  ·  tier 10 = 16×.
+  /// [tier] is 0-based (the global activeTier); defaults to the active tier.
+  double tierRewardMult([int? tier]) {
+    final t = (tier ?? activeTier).clamp(0, kMaxTier);
+    return 1.0 + t * 0.5 + t * t * 0.10;
   }
 
   /// Set when the final boss is cleared and a new tier unlocks — the UI reads
@@ -2292,6 +2337,7 @@ class GameState extends ChangeNotifier {
   }
 
   void recordPvpResult(bool won) {
+    _logPvpTelemetry(won); // capture the fight BEFORE pvpRating is updated below
     pvpDailyDamage += (hero.baseDmg + hero.level) * 10;
     const baseGems = 3;
     if (won) {
@@ -4330,7 +4376,7 @@ class GameState extends ChangeNotifier {
         + endlessUpgrades.flatDamageReduction
         + (endlessUpgrades.thickHide ? 3 : 0)
         + _scoreFor;
-    // Subclass armor, mercenary AC, and the DUR (Durability) score are all %
+    // Subclass armor, mercenary AC, and the Ward (WRD) score are all %
     // increases to total armor rating.
     return (flat * (1 + (subclassArmorPct + allyAcBonus + _scoreDurPct) / 100.0)).round();
   }
@@ -4373,8 +4419,8 @@ class GameState extends ChangeNotifier {
   /// those investments meaningful now that crit is a gear-only specialization.
   double get critReplacementDamagePct {
     var pct = 0.0;
-    pct += _scorePrc * 0.5;                  // Wrath score (% damage)
-    // (Endurance 'agi' now grants % max HP, not damage — see _syncHeroHpPct.)
+    pct += _scorePrc * 0.5;                  // Might score (% damage)
+    // (Vigor 'agi' now grants % max HP, not damage — see _syncHeroHpPct.)
     pct += subclassCritChancePct * 0.5;      // subclass crit-chance → damage
     pct += subclassCritDmgPct * 0.25;        // subclass crit-damage → damage
     if (subclassEffect == SubclassEffect.champion) pct += 8;
@@ -5464,7 +5510,7 @@ class GameState extends ChangeNotifier {
 
   // ── Ability Score upgrades (gold sink, available from level 1) ────────────
 
-  static const int kAbilityScoreMaxRank = 100;
+  static const int kAbilityScoreMaxRank = 250;
   final Map<String, int> _abilityScoreRanks = {};
 
   // Clamped to the max so any legacy ranks bought above the cap (was 1000) are
@@ -5478,10 +5524,18 @@ class GameState extends ChangeNotifier {
 
   bool abilityScoreGateMet(String id) => true;
 
+  // Gold cost to buy the NEXT rank. Quadratic so the 0→250 climb is a genuine
+  // long-haul gold sink (target: roughly maxed around hero level ~500) instead
+  // of the old linear curve that trivially topped out at 100. cost(r) =
+  // (r+1)² × 100 → rank 1 = 100g, rank 100 ≈ 1.0M, rank 250 ≈ 6.25M; the full
+  // 0→250 climb is ~524M per score (~3.1B for all six). The 100 coefficient is
+  // THE tuning knob — dial it from telemetry against real gold income.
+  static const int kAbilityScoreCostCoeff = 100;
   int abilityScoreUpgradeCost(String id) {
     final rank = abilityScoreRank(id);
     if (rank >= kAbilityScoreMaxRank) return 0;
-    return (rank + 1) * 150;
+    final next = rank + 1;
+    return next * next * kAbilityScoreCostCoeff;
   }
 
   void upgradeAbilityScore(String id) {
@@ -6650,6 +6704,7 @@ class GameState extends ChangeNotifier {
   }
 
   bool _pvpMode = false;
+  PvpSnapshot? _pvpOpponent; // captured at PvP start for the fight telemetry record
 
   int collectAllExpeditions() {
     int collected = 0;
@@ -6674,6 +6729,8 @@ class GameState extends ChangeNotifier {
     _isCampaignBattle = false;
     _endlessMode = false;
     _pvpMode = true;
+    _pvpOpponent = opponent;   // for the fight telemetry record
+    _battleTurnCount = 0;      // _resetBattlePerks doesn't clear the round counter
     heroDefeated = false;
     lastBattleWasFinalVictory = false;
     _resetBattlePerks();
@@ -6708,16 +6765,23 @@ class GameState extends ChangeNotifier {
     _activeAffixes = AffixEngine.affixesFor(stage, _rng);
     var enemy = EnemyData.enemyForStage(stage, affixes: _activeAffixes);
     // Scale like campaign bosses: 2× HP, 1.25× ATK, plus quadratic tier scaling.
+    // NB: HP scaling stays on the tier mults here (NOT prestigeLevel) so it never
+    // re-enters the campaign curve / frontier ramp (the double-scale that broke
+    // Boss Rush). Only the LEVEL borrows the campaign per-tier step so the boss's
+    // to-hit keeps pace — without it (old code = enemy.level + 2) tower bosses
+    // stayed level 6-30 and literally couldn't land a hit on a high-level hero,
+    // so every climb ended at 100% HP (a time-sink, not a threat).
     final hpMult = 2.0 * EnemyData.tierHpMult(activeTier);
     final atkMult = 1.25 * EnemyData.tierAtkMult(activeTier);
     final acBonus = 2 + activeTier ~/ 2;
+    final bossLevel = enemy.level + 2 + activeTier * EnemyData.kTierLevelStep;
     enemy = Enemy(
       id: enemy.id,
       name: '☠ ${enemy.name}',
       description: enemy.description,
-      maxHealth: (enemy.maxHealth * hpMult).round().clamp(100, 9999999),
-      attack: (enemy.attack * atkMult).round().clamp(10, 9999),
-      level: enemy.level + 2,
+      maxHealth: (enemy.maxHealth * hpMult).round().clamp(100, 1000000000000000),
+      attack: (enemy.attack * atkMult).round().clamp(10, 1000000000),
+      level: bossLevel,
       armorClass: enemy.armorClass + acBonus,
       attackType: enemy.attackType,
       resistances: enemy.resistances,
@@ -6835,6 +6899,10 @@ class GameState extends ChangeNotifier {
   DungeonRun? activeDungeon;
 
   void startDungeon({int tier = 1}) {
+    // Never discard an in-progress run to start another — that silently wastes
+    // the attempt already spent on it (double-tap / Auto-Run race). Only start
+    // when there's no run, or the current one is finished.
+    if (activeDungeon != null && !activeDungeon!.isOver) return;
     if (!consumeDungeonAttempt()) return;
     // Dungeon affixes removed — leave activeDungeonAffix null so all affix
     // effects (HP/heal mults, burn, shield, toxic) resolve to their neutral
@@ -7308,7 +7376,10 @@ class GameState extends ChangeNotifier {
     final raw = await saveService.loadRaw(slot: slot);
     final isNewCharacter = newName != null;
     if (isNewCharacter) {
-      // Always reset to defaults for new characters — ignore any stale slot data
+      // Always reset to defaults for new characters — ignore any stale slot data.
+      // Drop the high-water-mark too, so a deliberately fresh low-level hero is
+      // never mistaken for a wiped one and "recovered" back to the old character.
+      await saveService.clearHighWaterMark(slot: slot);
       _resetToDefaults(newName, heroClass ?? DndClass.fighter);
       if (heroRace != null) this.heroRace = heroRace;
       if (gender != null) hero.gender = gender;
@@ -7316,11 +7387,15 @@ class GameState extends ChangeNotifier {
     } else if (raw != null) {
       try {
         loadFromJson(raw);
-      } catch (e) {
+      } catch (e, st) {
         // Save exists but failed to parse (e.g. a field format changed across
         // versions). Show defaults for this session, but BLOCK auto-save so we
         // never overwrite the real save on disk — otherwise a load bug becomes
         // permanent character loss. A future/fixed version can still load it.
+        // Emit to logcat (release-visible, like ZBAL) so the exact failing field
+        // is diagnosable off-device via `adb logcat -d | grep ZLOADFAIL`.
+        // ignore: avoid_print
+        print('ZLOADFAIL|slot=$slot|$e|$st');
         debugPrint('⚠ loadFromJson failed (slot $slot): $e — save preserved, auto-save blocked');
         DebugLogger.log('save_parse_fail', 'slot=$slot err=$e');
         _resetToDefaults('The Warden', DndClass.fighter);
@@ -7350,6 +7425,31 @@ class GameState extends ChangeNotifier {
       }
     } catch (_) {
       // Cloud sync is non-critical — local save always wins if cloud fails.
+    }
+    // Wipe guard: hero level only ever rises in normal play, so if a much
+    // higher-level save is banked for this slot than what we just loaded
+    // (local OR cloud), a reset/parse-glitch must have clobbered the real
+    // character — restore the banked maxed copy. Skipped for brand-new
+    // characters (their HWM was just cleared) and when the load was blocked.
+    if (!isNewCharacter && !_saveBlocked) {
+      try {
+        final hwm = await saveService.loadHighWaterMark(slot: slot);
+        if (hwm.data != null && hwm.level > hero.level + 10) {
+          final lostLvl = hero.level;
+          loadFromJson(hwm.data!); // hwm was written by a successful toJson
+          await saveService.saveRaw(toJson(), slot: slot); // re-establish primary
+          characterRecoveredFromBackup = true;
+          _setLastAction('Recovered your Lv${hero.level} character from backup.');
+          DebugLogger.log('save_recover',
+              'slot=$slot restored Lv${hero.level} over Lv$lostLvl');
+        }
+      } catch (e) {
+        // HWM itself won't parse — leave the already-loaded save intact.
+        DebugLogger.log('save_recover_fail', 'slot=$slot err=$e');
+        if (raw != null) {
+          try { loadFromJson(raw); } catch (_) {}
+        }
+      }
     }
     _checkSeasonReset();
     _checkWeeklyReset();
@@ -7429,6 +7529,7 @@ class GameState extends ChangeNotifier {
     // for a new character it would otherwise inherit the PREVIOUS character's
     // soul_overdrive node and wrongly start at Stage 41.
     campaignStageIndex = keepTutorials ? prestigeHeadStart : 0;
+    _campaignStageByTier.clear(); // per-tier progress starts fresh
     currentEnemy = null;
     battleLog = ['$name the ${heroClass.displayName} awakens in the cursed realm.'];
     lastAction = 'Ready to battle';
@@ -7616,6 +7717,11 @@ class GameState extends ChangeNotifier {
   int gold;
   int idleProgress;
   int campaignStageIndex;
+  // Per-tier campaign progress. Each difficulty tier remembers its own stage,
+  // so switching tiers resumes where you left off and unlocking a new tier only
+  // resets THAT tier — never the one you just cleared. Keyed by 0-based tier;
+  // the active tier's live value is [campaignStageIndex].
+  Map<int, int> _campaignStageByTier = {};
   int campaignAllTimeHigh = 0; // never reset by prestige — used for mode unlocks
   Enemy? currentEnemy;
   List<String> battleLog;
@@ -7774,7 +7880,7 @@ class GameState extends ChangeNotifier {
           'passives':    r2(passiveTree.totalOf(PassiveEffect.allDamage)),
           'gear':        inventory.totalOf(ItemStat.damagePercent),
           'sets':        _setTotal(ItemStat.damagePercent),
-          'stat':        hero.damagePctFor(t),
+          'stat':        attrDamagePctFor(t),
           'elemPassive': r2(passiveElemDamagePct(t)),
           'elemGem':     r2(gemElemDamagePct(t)),
           'elemMastery': r2(elementalMasteryDamagePct(t)),
@@ -7863,6 +7969,43 @@ class GameState extends ChangeNotifier {
     } catch (_) {/* telemetry must never break a battle */}
   }
 
+  /// PvP fight telemetry — one ZBAL record per arena match (mode "pvp"). Mirrors
+  /// [_logBalanceTelemetry] but keyed to the opponent snapshot + PvP rating so we
+  /// can judge match fairness (rating gap vs win), fight length, and how close it
+  /// was. The PvP opponent's attack is a first-pass HP-derived proxy (see
+  /// startPvpBattle) — this is the data to tune it from.
+  void _logPvpTelemetry(bool won) {
+    try {
+      final opp = _pvpOpponent;
+      final maxHp = hero.maxHealth;
+      final rec = <String, dynamic>{
+        'mode':    'pvp',
+        'win':     won,
+        'rounds':  _battleTurnCount,
+        'rating':  pvpRating, // pre-update (called before recordPvpResult adjusts it)
+        // Hero
+        'h_lvl':     hero.level,
+        'h_hp':      maxHp,
+        'h_hp_end':  hero.currentHealth,
+        'h_hp_pct':  maxHp > 0 ? (hero.currentHealth * 100 / maxHp).round() : 0,
+        'h_hp_min_pct': (maxHp > 0 && _fightLowestHp != (1 << 62))
+            ? (_fightLowestHp * 100 / maxHp).round() : 100,
+        'h_dmg_taken': _fightDmgTaken,
+        'h_dps':     avgHeroHit,
+        // Opponent
+        'e_name':  opp?.heroName,
+        'e_lvl':   opp?.level,
+        'e_hp':    opp?.maxHp,
+        'e_class': opp?.heroClass,
+        // Fight totals
+        'dmg':     _fightDamage,
+        'maxhit':  _fightMaxHit,
+        'hits':    _fightHits,
+      };
+      DebugLogger.balance(jsonEncode(rec));
+    } catch (_) {/* telemetry must never break a battle */}
+  }
+
   /// Average damage per swing. Uses recent real hits once the hero has fought;
   /// before that, a gear-based estimate (avg weapon die + flat damage, scaled
   /// by damage% and rebirth) so the HUD always shows a sensible number.
@@ -7884,7 +8027,7 @@ class GameState extends ChangeNotifier {
         + inventory.totalOf(ItemStat.damagePercent)
         + hero.levelBonusDamagePct
         + allyDmgPctBonus
-        + hero.damagePctFor(hero.activeDamageType);
+        + attrDamagePctFor(hero.activeDamageType);
     var est = (avgDie + flat) * (1.0 + dmgPct / 100.0);
     est *= prestigeDamageMult; // tier + Paragon damage (1.0 when none)
     return est.round().clamp(1, 9999999);
@@ -8365,7 +8508,7 @@ class GameState extends ChangeNotifier {
                           + inventory.totalOf(ItemStat.damagePercent)
                           + _setTotal(ItemStat.damagePercent)  // set bonus damage%
                           + hero.levelBonusDamagePct
-                          + hero.damagePctFor(heroType)
+                          + attrDamagePctFor(heroType)
                           + elementalMasteryDamagePct(heroType)
                           + guildBuffs.allDamagePct, // guild castle (T10) all-damage buff
         endlessDmgMult:   endlessUpgrades.damageMultiplier,
@@ -9536,16 +9679,26 @@ class GameState extends ChangeNotifier {
     if (wasFinalBoss) {
       battleLog.add('The Omega falls. The curse is ended. A new age begins.');
       // Tier progression replaces rebirth: clearing the campaign at your highest
-      // unlocked tier unlocks the next tier (harder enemies + better loot). The
-      // campaign ALWAYS loops back to the start afterwards (replay at your tier);
+      // unlocked tier unlocks the next tier (harder enemies + better loot).
       // Level, Paragon, gear and currencies all persist — nothing resets.
+      final finalStage = CampaignData.stages.length - 1; // the Omega stage
       if (activeTier == highestUnlockedTier && highestUnlockedTier < kMaxTier) {
+        // Unlock the next tier and jump into it fresh. ONLY the new tier resets
+        // to the start — the tier you just cleared keeps its progress (parked at
+        // the Omega, replayable) so switching back doesn't lose your place.
+        _campaignStageByTier[activeTier] = finalStage;
         highestUnlockedTier += 1;
         activeTier = highestUnlockedTier;
         lastTierUnlocked = highestUnlockedTier;
+        // Head-start / instant-recall prestige nodes apply to the new tier.
+        campaignStageIndex = prestigeHeadStart;
+        _campaignStageByTier[activeTier] = campaignStageIndex;
+      } else {
+        // Replaying an already-maxed tier (or the top tier): loop THIS tier back
+        // to the start to farm it again; other tiers are untouched.
+        campaignStageIndex = prestigeHeadStart;
+        _campaignStageByTier[activeTier] = campaignStageIndex;
       }
-      // Head-start / instant-recall prestige nodes now apply on each tier restart.
-      campaignStageIndex = prestigeHeadStart;
       gold += prestigeStartGold;
       hero.currentHealth = hero.maxHealth;
       lastBattleWasFinalVictory = true;
@@ -9750,6 +9903,11 @@ class GameState extends ChangeNotifier {
       'echoes': echoes,
       'idleProgress': idleProgress,
       'campaignStageIndex': campaignStageIndex,
+      // Per-tier campaign progress (string keys for JSON), including the active
+      // tier's live stage so it round-trips even if it wasn't stashed yet.
+      'campaignStageByTier': (Map<int, int>.from(_campaignStageByTier)
+            ..[activeTier] = campaignStageIndex)
+          .map((k, v) => MapEntry(k.toString(), v)),
       'campaignAllTimeHigh': campaignAllTimeHigh,
       'lastAction': lastAction,
       'upgrades': upgrades.map((u) => u.toJson()).toList(),
@@ -10041,6 +10199,13 @@ class GameState extends ChangeNotifier {
     // Repair legacy saves that stalled past the final stage (old Abyss / pre-tier
     // rework): the campaign now loops per tier, so wrap them back to the start.
     if (campaignStageIndex >= CampaignData.stages.length) campaignStageIndex = 0;
+    // Per-tier campaign progress. Older saves lack it — seed from the single
+    // stage so the current tier at least resumes correctly.
+    final cst = json['campaignStageByTier'] as Map<String, dynamic>?;
+    _campaignStageByTier = cst == null
+        ? {}
+        : cst.map((k, v) => MapEntry(
+            int.parse(k), (v as int).clamp(0, CampaignData.stages.length - 1)));
     campaignAllTimeHigh = (json['campaignAllTimeHigh'] as int?) ?? campaignStageIndex;
     lastAction = json['lastAction'] as String;
 

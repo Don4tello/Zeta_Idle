@@ -9,9 +9,10 @@ class TierSelector extends StatelessWidget {
     required this.highestCleared,
     required this.onTierChange,
     this.scalingLabel,
-    this.maxTiers = 10,
+    this.maxTiers = 11,
   });
 
+  /// Tier is the 0-based global difficulty tier (0 = base). All modes share it.
   final int selectedTier;
   final int maxUnlocked;
   final int highestCleared;
@@ -19,11 +20,8 @@ class TierSelector extends StatelessWidget {
   final String? scalingLabel;
   final int maxTiers;
 
-  static String levelRange(int tier) {
-    final lo = (tier - 1) * 10 + 1;
-    final hi = tier * 10;
-    return 'Lv $lo–$hi';
-  }
+  static String levelRange(int tier) =>
+      tier == 0 ? 'Base difficulty' : 'Tier $tier scaling';
 
   @override
   Widget build(BuildContext context) {
@@ -62,10 +60,10 @@ class TierSelector extends StatelessWidget {
             height: 72,
             child: ListView.separated(
               scrollDirection: Axis.horizontal,
-              itemCount: maxUnlocked.clamp(1, maxTiers),
+              itemCount: (maxUnlocked + 1).clamp(1, maxTiers),
               separatorBuilder: (_, __) => const SizedBox(width: 6),
               itemBuilder: (_, i) {
-                final tier = i + 1;
+                final tier = i; // 0-based global tier
                 final isSelected = tier == selectedTier;
                 final isCleared  = tier <= highestCleared;
                 final isLocked   = tier > maxUnlocked;

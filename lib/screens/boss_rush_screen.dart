@@ -31,7 +31,8 @@ import 'main_shell.dart' show TutorialTip;
 // it's a genuine ~level-20 checkpoint (tops out at the stage-14 boss); each
 // higher tier shifts +5 stages deeper. Clamped to the campaign length.
 List<int> _bossStagesForTier(int tier) {
-  final base = 4 + (tier - 1) * 5;
+  // [tier] is the 0-based global tier (0 = base).
+  final base = 4 + tier * 5;
   return [base, base + 2, base + 5, base + 7, base + 10]
       .map((s) => s.clamp(0, 99))
       .toList();
@@ -52,9 +53,13 @@ class _BossRushScreenState extends State<BossRushScreen> {
   bool _running = false;
   bool _done    = false;
 
-  int _selectedTier = 1;
+  // Boss Rush runs at the global difficulty tier (0-based). Reads the shared
+  // activeTier (via _game once a run starts, else the provider) so picking a
+  // tier here changes it everywhere.
+  int get _selectedTier =>
+      _game?.activeTier ?? GameStateProvider.of(context).activeTier;
   // Boss source-stages for the active run, locked in when the run starts.
-  List<int> _stages = _bossStagesForTier(1);
+  List<int> _stages = _bossStagesForTier(0);
   int _bossIndex    = 0;
   int _heroHp     = 0;
   int _heroMaxHp  = 0;
@@ -86,7 +91,6 @@ class _BossRushScreenState extends State<BossRushScreen> {
   late DamageType _heroDmgType;
   double _heroDmgAllPct   = 0;
   double _heroPrestigeMult = 1.0;
-  int _rebirthLvl = 0;
   int _heroCritChancePct = 0;
   int _heroCritDmgMult   = 2;
   Map<DamageType, int> _bossResistances = {};
@@ -161,7 +165,6 @@ class _BossRushScreenState extends State<BossRushScreen> {
     _heroDmgType      = game.hero.activeDamageType;
     _heroDmgAllPct    = game.heroAllDamagePctFor(_heroDmgType);
     _heroPrestigeMult = game.prestigeDamageMult; // tier + Paragon damage (1.0 when none)
-    _rebirthLvl        = 0; // Boss Rush scales by its own tier, not the global tier
     _heroCritChancePct = game.totalCritChancePct;
     _heroCritDmgMult   = game.totalCritDamageMult.round();
     // Full hero armor RATING (same source as the campaign, incl. STR/sets/gems/
@@ -208,13 +211,24 @@ class _BossRushScreenState extends State<BossRushScreen> {
 
   void _spawnBoss() {
     final stageIdx    = _stages[_bossIndex];
-    final t           = _selectedTier - 1;
-    final base        = EnemyData.enemyForStage(stageIdx, prestigeLevel: _rebirthLvl,
+    // Tier scaling is done HERE via tierHpMult/tierAtkMult below — so spawn from
+    // the UNSCALED base (prestigeLevel: 0). Passing prestigeLevel: t layered the
+    // full campaign tier curve (3.4^t) AND the boss-only frontier HP ramp on top
+    // of this mode's own multipliers, triple-scaling boss HP into 200-565 round
+    // slogs (and making T5 bosses unkillable). Resistance still scales by tier so
+    // hero resist/penetration matters.
+    final t           = _selectedTier;
+    final base        = EnemyData.enemyForStage(stageIdx, prestigeLevel: 0,
         resistanceTier: t);
     // Tier 1 sits at ~campaign parity (a fair back-to-back re-fight of bosses
     // you've already cleared), and each tier ramps up meaningfully. Previously a
     // flat ×2 HP / ×1.25 ATK made even tier 1 double the campaign version.
-    final tierHpMult  = 1.0 + t * 0.85; // T1 = 1.0 (parity) … T10 ≈ 8.65
+    // Accelerating so high tiers stay a real fight for an endgame hero: telemetry
+    // (build 295) showed the old linear 1+0.85t let a geared L453 clear a whole
+    // T6 rush in 6 rounds at 100% HP. Quadratic term ramps the top end without
+    // re-introducing the campaign-curve double-scale. T0=1× (parity), T2≈4.7×,
+    // T4≈12.4×, T6≈24×, T10≈59.5×. Tune the 0.5 coefficient from the next pull.
+    final tierHpMult  = 1.0 + t * 0.85 + t * t * 0.5;
     final tierAtkMult = 1.0 + t * 0.35; // T1 = 1.0 … T10 ≈ 4.15
     final tierAcBonus = t ~/ 2;
     // Boss level scales with tier so its to-hit bonus grows meaningfully.
@@ -454,11 +468,13 @@ class _BossRushScreenState extends State<BossRushScreen> {
       abilitiesUsed: Map<String, int>.from(_fightAbilities),
       log: List<String>.from(_log),
     );
-    // Rewards: shards proportional to bosses defeated, extra if cleared.
-    // Soft rewards scale with your highest unlocked Tier (permanent progression).
-    final rebirthMult = 1.0 + game.highestUnlockedTier * 0.15;
-    final shardReward = ((result.bossesDefeated * 10 + (cleared ? 30 : 0)) * rebirthMult).round();
-    final echoReward = ((result.bossesDefeated * 6 + (cleared ? 25 : 0)) * rebirthMult).round();
+    // Rewards: shards proportional to bosses defeated, extra if cleared, scaled
+    // by the difficulty TIER you played via the unified accelerating curve
+    // (replaces the old max-tier "rebirth" bonus). _selectedTier is the 0-based
+    // global tier.
+    final tMult = game.tierRewardMult(_selectedTier);
+    final shardReward = ((result.bossesDefeated * 10 + (cleared ? 30 : 0)) * tMult).round();
+    final echoReward = ((result.bossesDefeated * 6 + (cleared ? 25 : 0)) * tMult).round();
     final crystalReward = cleared ? 15 : 0;
     final mythrilReward = switch (result.rank) {
       'S' => 15, 'A' => 10, 'B' => 6, 'C' => 3, _ => 1,
@@ -488,7 +504,7 @@ class _BossRushScreenState extends State<BossRushScreen> {
     if (cleared) game.recordBossRushComplete(tier: _selectedTier);
     // Artifact drop: A or S rank clears reward 1 artifact
     if (cleared && (result.rank == 'S' || result.rank == 'A')) {
-      final artLv = (_selectedTier * 10).clamp(1, 50);
+      final artLv = ((_selectedTier + 1) * 10).clamp(1, 50);
       game.gainArtifact(artLv);
     }
     game.saveToLocal();
@@ -663,10 +679,10 @@ class _BossRushScreenState extends State<BossRushScreen> {
           const SizedBox(height: 16),
           TierSelector(
             selectedTier: _selectedTier,
-            maxUnlocked: (game.bossRushHighestTier + 1).clamp(1, 10),
+            maxUnlocked: game.highestUnlockedTier,
             highestCleared: game.bossRushHighestTier,
             onTierChange: (t) => setState(() {
-              _selectedTier = t;
+              game.setActiveTier(t); // shared global tier
               _stages = _bossStagesForTier(t); // keep the preview in sync
             }),
           ),
@@ -1131,38 +1147,6 @@ class _ResultStat extends StatelessWidget {
               fontWeight: FontWeight.bold,
               color: color ?? Colors.white)),
     ]);
-  }
-}
-
-class _TierButton extends StatelessWidget {
-  const _TierButton({required this.icon, required this.onTap});
-  final IconData icon;
-  final VoidCallback? onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final enabled = onTap != null;
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: 36,
-        height: 36,
-        decoration: BoxDecoration(
-          color: enabled
-              ? AppTheme.accentGold.withValues(alpha: 0.12)
-              : const Color(0xFF1a1a1a),
-          border: Border.all(
-            color: enabled
-                ? AppTheme.accentGold.withValues(alpha: 0.6)
-                : AppTheme.cardBorder.withValues(alpha: 0.3),
-          ),
-          borderRadius: BorderRadius.circular(4),
-        ),
-        child: Icon(icon,
-            size: 18,
-            color: enabled ? AppTheme.accentGold : AppTheme.textMuted),
-      ),
-    );
   }
 }
 

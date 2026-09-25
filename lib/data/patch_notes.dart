@@ -19,6 +19,200 @@ int get kLatestPatchBuild => kPatchNotes.first.build;
 
 const kPatchNotes = <PatchNote>[
   PatchNote(
+    build: 298,
+    title: 'Toggle Auto Run Mid-Dungeon',
+    date: '2026-09-24',
+    changes: [
+      'The Auto Run button is now available INSIDE a dungeon run, not just from '
+          'the lobby — flip it on if you forgot, or turn it off any time to take '
+          'manual control of doors, rooms and relics.',
+    ],
+  ),
+  PatchNote(
+    build: 297,
+    title: 'Tower Ascension Bites Back',
+    date: '2026-09-24',
+    changes: [
+      'Tower Ascension bosses now scale their level with the tier, so at higher '
+          'tiers they can actually land hits and threaten you — before, they '
+          'couldn\'t touch a high-level hero and every climb ended at full HP.',
+      'PvP arena fights are now tracked (behind the scenes) so the mode can be '
+          'balanced properly.',
+    ],
+  ),
+  PatchNote(
+    build: 296,
+    title: 'Boss Rush Difficulty Dialed In',
+    date: '2026-09-24',
+    changes: [
+      'After the last fix removed the marathon HP, high-tier Boss Rush became '
+          'too easy (a full clear in a handful of rounds). Higher tiers now ramp '
+          'up on an accelerating curve so they stay a real fight.',
+    ],
+  ),
+  PatchNote(
+    build: 295,
+    title: 'Boss Rush No Longer a Marathon',
+    date: '2026-09-24',
+    changes: [
+      'Fixed Boss Rush bosses being wildly over-inflated on HP — a bug was '
+          'stacking the campaign tier curve on top of Boss Rush\'s own tier '
+          'scaling, turning runs into 200–500+ round slogs and making high-tier '
+          'bosses nearly unkillable.',
+      'Boss Rush now scales cleanly by tier again, so fights are a sane length.',
+    ],
+  ),
+  PatchNote(
+    build: 294,
+    title: 'Attribute Breakdown on the Bonus Sheet',
+    date: '2026-09-23',
+    changes: [
+      'The Bonuses sheet has a new ATTRIBUTE BREAKDOWN — tap any of STR/DEX/CON/'
+          'INT/WIS/CHA to see exactly where it comes from: base score vs gear, '
+          'set and gem bonuses, plus what it grants.',
+      'Fixed the Damage Types breakdown to show your true (gear-included) damage '
+          '%, and removed a stale "Vitality (VIT)" leftover.',
+    ],
+  ),
+  PatchNote(
+    build: 293,
+    title: 'Ability Scores Renamed',
+    date: '2026-09-23',
+    changes: [
+      'The gold-bought Ability Scores now have clear, functional names so they '
+          'can’t be confused with your character attributes: Attack, Might, '
+          'Health, Vigor, Armor, Ward (were Power/Wrath/Vitality/Endurance/'
+          'Fortitude/Durability).',
+      'Your invested ranks and their effects are unchanged — only the names.',
+    ],
+  ),
+  PatchNote(
+    build: 292,
+    title: 'One Name Per Stat',
+    date: '2026-09-23',
+    changes: [
+      'Attributes now use the same names everywhere — items, forge, inventory, '
+          'character select and the home panel all show STR/DEX/CON/INT/WIS/CHA '
+          'to match the Hero Sheet (no more PWR/AGI/FOC/FOR aliases).',
+      'So an item’s "+WIS" or "+CHA" clearly matches the WIS/CHA on your Hero '
+          'Sheet.',
+    ],
+  ),
+  PatchNote(
+    build: 291,
+    title: 'Gear Fully Powers Your Attributes',
+    date: '2026-09-23',
+    changes: [
+      'The Hero Sheet now shows your EFFECTIVE attributes (base + gear), so '
+          'equipping a +STR/+DEX item visibly raises the stat and its listed '
+          'effects.',
+      'Gear attribute bonuses now also boost your damage % (they already fed '
+          'resistance, dodge, DoT, heal-over-time and cooldown-skip) — so an '
+          'item’s +STR fully counts everywhere.',
+    ],
+  ),
+  PatchNote(
+    build: 290,
+    title: 'Ability Scores: Deeper & Pricier',
+    date: '2026-09-23',
+    changes: [
+      'Ability Score rank cap raised from 100 to 250 — a lot more permanent '
+          'power to chase.',
+      'Score costs now climb on a steep curve, so maxing them is a real '
+          'long-haul gold sink instead of an early throwaway (roughly maxed '
+          'around hero level 500).',
+    ],
+  ),
+  PatchNote(
+    build: 289,
+    title: 'Never Lose a Character Again',
+    date: '2026-09-23',
+    changes: [
+      'Added a protected backup that keeps a copy of your highest-level save and '
+          'can never be overwritten by a low-level one.',
+      'If a load glitch ever drops your character to level 1, the game now '
+          'automatically restores it from that backup on the next launch.',
+    ],
+  ),
+  PatchNote(
+    build: 287,
+    title: 'Frontier Tuning: Bosses, Not Slogs',
+    date: '2026-09-23',
+    changes: [
+      'The tier 4+ durability boost now applies to BOSSES only — regular '
+          'enemies are fast again (they were dragging out to 15+ rounds at deep '
+          'high-tier stages).',
+      'Eased the high-tier boss HP ramp so late-tier bosses are a real fight '
+          'without turning into a 40+ round slog. Mid-tier boss fights stay '
+          'meaty.',
+    ],
+  ),
+  PatchNote(
+    build: 286,
+    title: 'Frontier Bosses Bite Back',
+    date: '2026-09-23',
+    changes: [
+      'High-tier bosses (Tier 4+) are much tankier so the fight actually lasts — '
+          'a near-maxed hero was one-shotting them before their damage could '
+          'matter. Tiers 0–3 are unchanged.',
+      'This only adds boss durability (not damage), and rewards are unaffected — '
+          'gold, XP and loot scale off enemy level, not HP.',
+    ],
+  ),
+  PatchNote(
+    build: 285,
+    title: 'Every Tier Keeps Its Own Progress',
+    date: '2026-09-23',
+    changes: [
+      'Each difficulty tier now remembers its own campaign stage. Switching '
+          'tiers resumes right where you left off in that tier instead of '
+          'starting over.',
+      'Clearing stage 100 and unlocking a new tier ONLY resets the new tier to '
+          'stage 1 — the tier you just beat stays parked at the Omega, so hopping '
+          'back never wipes your place.',
+    ],
+  ),
+  PatchNote(
+    build: 284,
+    title: 'One Difficulty Tier, Whole Game',
+    date: '2026-09-22',
+    changes: [
+      'Your difficulty tier is now GLOBAL. Set it once and it applies '
+          'everywhere — Campaign, Dungeon, Boss Rush, Gauntlet and Tower '
+          'Ascension all share the same tier, and you carry every tier bonus '
+          'into each mode.',
+      'Higher tiers now raise the HP AND damage of every monster in every mode '
+          '(not just the campaign), so the whole game ramps together.',
+      'Dungeon and Boss Rush gained the same tier selector as the campaign, '
+          'defaulting to your current global tier.',
+      'Rewards across all modes pay out on the single accelerating tier curve — '
+          'no more per-mode tier bookkeeping.',
+    ],
+  ),
+  PatchNote(
+    build: 283,
+    title: 'Higher Tiers, Bigger Rewards',
+    date: '2026-09-14',
+    changes: [
+      'Gauntlet, Boss Rush and Dungeon rewards now scale on one unified curve '
+          'that ACCELERATES with difficulty — pushing to higher tiers pays off '
+          'disproportionately (tier 10 is ~16× the base). The old separate '
+          '"rebirth" bonus is folded into the tier itself.',
+      'Dungeon gold and shards now scale with the tier too (they were flat before), '
+          'so deeper tiers are finally worth running.',
+    ],
+  ),
+  PatchNote(
+    build: 282,
+    title: 'Dungeon: No More Wasted Attempts',
+    date: '2026-09-14',
+    changes: [
+      'Fixed a case where starting a dungeon while one was already active could '
+          'silently discard the run and waste your attempt (double-tap / Auto-Run '
+          'race). Entering now never throws away an in-progress run.',
+    ],
+  ),
+  PatchNote(
     build: 281,
     title: 'Even Gear Stats + Attributes Are Reference-Only',
     date: '2026-09-14',

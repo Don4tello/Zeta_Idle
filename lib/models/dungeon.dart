@@ -58,7 +58,7 @@ class DungeonMerchantItem {
   /// effect scales with the dungeon [tier]. Higher bone cost = strictly stronger.
   /// [floor] seeds a little variety between visits.
   static List<DungeonMerchantItem> stockForTier(int tier, int floor) {
-    final t = tier; // 1..10
+    final t = tier + 1; // [tier] is the 0-based global tier; merchant scales 1..11
 
     final oneBone = <DungeonMerchantItem>[
       DungeonMerchantItem(id: 'bone_charm', name: 'Bone Charm', icon: '🦴', boneCost: 1,
@@ -393,7 +393,7 @@ class DungeonRoom {
 // ── Run ───────────────────────────────────────────────────────────────────────
 
 class DungeonRun {
-  DungeonRun({required this.heroMaxHp, required this.heroHp, this.tier = 1, this.prestigeLevel = 0});
+  DungeonRun({required this.heroMaxHp, required this.heroHp, this.tier = 0, this.prestigeLevel = 0});
 
   /// Beating the boss on this floor clears the dungeon (every tier).
   static const int clearFloor = 20;
@@ -494,11 +494,19 @@ class DungeonRun {
   // (floors 6, 11, 16) — bosses are checkpoints, not speed bumps.
   double get _floorMult =>
       (1.0 + (floor - 1) * 0.05) * pow(1.25, (floor - 1) ~/ 5);
-  double get _tierMult  => 1.0 + (tier  - 1) * 0.30;
-  // Live-tunable Dungeon-only difficulty dials (default 1.0) layered on top of
-  // the floor/tier curve, so difficulty can be adjusted from the console.
-  double get _hpScale  => _floorMult * _tierMult * RemoteConfigService.instance.dungeonHpMult;
-  double get _atkScale => _floorMult * _tierMult * RemoteConfigService.instance.dungeonAtkMult;
+  // Unified tier REWARD multiplier (mirrors GameState.tierRewardMult; [tier] is
+  // now the 0-based global tier). Accelerating, so deeper tiers pay much more:
+  // combat gold/shards are multiplied by this so higher tiers are worth running.
+  double get _rewardMult {
+    final t = tier.clamp(0, 20);
+    return 1.0 + t * 0.5 + t * t * 0.10;
+  }
+  // Enemy TIER scaling now comes from the shared campaign curve via
+  // enemyForStage(prestigeLevel: tier) — so the Dungeon keeps pace with your
+  // campaign-tier progression (it used to hard-code tier 0 and stay trivial).
+  // Only the per-floor ramp + the live console dial are layered here.
+  double get _hpScale  => _floorMult * RemoteConfigService.instance.dungeonHpMult;
+  double get _atkScale => _floorMult * RemoteConfigService.instance.dungeonAtkMult;
 
   // Two-door generation: non-boss floors offer two distinct rooms and the
   // player picks one (chooseRoom). Boss floors are forced single rooms.
@@ -542,9 +550,8 @@ class DungeonRun {
 
   DungeonRoom _makeGoblinRoom(Random rng) {
     final stageIdx = (floor - 1).clamp(0, 50);
-    // Dungeons scale by their OWN tier (_tierMult) and floor — do NOT also layer
-    // the global campaign tier on enemy stats, or bosses double-scale and spike.
-    final e = EnemyData.enemyForStage(stageIdx, prestigeLevel: 0);
+    // Enemies scale by the unified global tier (prestigeLevel: tier) + floor.
+    final e = EnemyData.enemyForStage(stageIdx, prestigeLevel: tier);
     return DungeonRoom(
       floor: floor, type: DungeonRoomType.combat,
       enemyId: 'treasure_goblin',
@@ -603,7 +610,7 @@ class DungeonRun {
 
   DungeonRoom _makeCombatRoom(Random rng) {
     final stageIdx = (floor - 1).clamp(0, 50);
-    final e = EnemyData.enemyForStage(stageIdx, prestigeLevel: 0);
+    final e = EnemyData.enemyForStage(stageIdx, prestigeLevel: tier);
     return DungeonRoom(
       floor: floor, type: DungeonRoomType.combat,
       enemyId: EnemyData.spriteIdForStage(stageIdx),
@@ -618,7 +625,7 @@ class DungeonRun {
 
   DungeonRoom _makeEliteRoom(Random rng) {
     final stageIdx = (floor - 1).clamp(0, 50);
-    final e = EnemyData.enemyForStage(stageIdx, prestigeLevel: 0);
+    final e = EnemyData.enemyForStage(stageIdx, prestigeLevel: tier);
     const traits = ['frenzied', 'shielded', 'vampiric', 'armored', 'swift'];
     final trait = traits[rng.nextInt(traits.length)];
     return DungeonRoom(
@@ -636,7 +643,7 @@ class DungeonRun {
 
   DungeonRoom _makeAmbushRoom(Random rng) {
     final stageIdx = (floor - 1).clamp(0, 50);
-    final e = EnemyData.enemyForStage(stageIdx, prestigeLevel: 0);
+    final e = EnemyData.enemyForStage(stageIdx, prestigeLevel: tier);
     return DungeonRoom(
       floor: floor, type: DungeonRoomType.ambush,
       enemyId: EnemyData.spriteIdForStage(stageIdx),
@@ -715,8 +722,8 @@ class DungeonRun {
 
   DungeonRoom _makeBossRoom(Random rng) {
     final stageIdx = ((floor - 1) * 2).clamp(0, 60);
-    // Own-tier scaling only (see _makeGoblinRoom) — no global campaign-tier layer.
-    final e = EnemyData.enemyForStage(stageIdx, prestigeLevel: 0);
+    // Enemies scale by the unified global tier (prestigeLevel: tier) + floor.
+    final e = EnemyData.enemyForStage(stageIdx, prestigeLevel: tier);
     // Floor 20 is the dungeon's final boss — beefier and clearly labelled.
     final isFinal = floor >= clearFloor;
     final finalMult = isFinal ? 1.5 : 1.0;
@@ -1002,8 +1009,8 @@ class DungeonRun {
                    : isElite  ? (100 + floor * 40).round()  // elite pays ~1.3× normal
                    : isAmbushRoom ? (140 + floor * 50).round() // ambush pays ~1.7× normal
                    : 80 + floor * 30;
-    final gold = (baseGold * (room.isGoblin ? 6 : 1) * goldBonusMult).round();
-    final baseShards = isBoss ? 20 + floor * 4 : 8 + floor;
+    final gold = (baseGold * (room.isGoblin ? 6 : 1) * goldBonusMult * _rewardMult).round();
+    final baseShards = ((isBoss ? 20 + floor * 4 : 8 + floor) * _rewardMult).round();
 
     lastCombatSummary = isDead
         ? 'Fallen after $rounds rounds. Dealt $heroDmg dmg, took $enemyDmg.'

@@ -12,18 +12,21 @@ class AbilityScoresScreen extends StatelessWidget {
 
   static const _accent = Color(0xFF66ccff);
 
+  // Gold-bought UPGRADES (distinct from the STR/DEX/CON/INT/WIS/CHA character
+  // attributes). Three flat/% pairs — Attack, Health, Armor — named functionally
+  // so they can't be mistaken for attributes. Keys are unchanged (save-stable).
   static const _stats = [
-    _StatDef('pwr',  'PWR', Icons.bolt,             Color(0xFFff6644), 'Power',
+    _StatDef('pwr',  'ATK', Icons.bolt,             Color(0xFFff6644), 'Attack',
         '+2 flat attack damage per rank'),
-    _StatDef('prc',  'WRA', Icons.whatshot,         Color(0xFFffaa22), 'Wrath',
+    _StatDef('prc',  'MGT', Icons.whatshot,         Color(0xFFffaa22), 'Might',
         '+0.5% all damage per rank'),
-    _StatDef('vit',  'VIT', Icons.favorite,         Color(0xFF44ee66), 'Vitality',
+    _StatDef('vit',  'HP',  Icons.favorite,         Color(0xFF44ee66), 'Health',
         '+30 max HP per rank'),
-    _StatDef('agi',  'END', Icons.health_and_safety, Color(0xFFffee44), 'Endurance',
+    _StatDef('agi',  'VIG', Icons.health_and_safety, Color(0xFFffee44), 'Vigor',
         '+2% max HP per rank'),
-    _StatDef('for_', 'FOR', Icons.shield,           Color(0xFF66aaff), 'Fortitude',
+    _StatDef('for_', 'ARM', Icons.shield,           Color(0xFF66aaff), 'Armor',
         '+1 AC Rating per rank'),
-    _StatDef('lck',  'DUR', Icons.security,         Color(0xFF99bbdd), 'Durability',
+    _StatDef('lck',  'WRD', Icons.security,         Color(0xFF99bbdd), 'Ward',
         '+0.5% AC Rating per rank'),
   ];
 

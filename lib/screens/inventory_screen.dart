@@ -709,17 +709,17 @@ class _ItemTile extends StatelessWidget {
       case ItemStat.xpPct:
         return '% XP';
       case ItemStat.strength:
-        return 'PWR';
+        return 'STR';
       case ItemStat.dexterity:
-        return 'AGI';
+        return 'DEX';
       case ItemStat.constitution:
-        return 'VIT';
+        return 'CON';
       case ItemStat.intelligence:
-        return 'ARC';
+        return 'INT';
       case ItemStat.wisdom:
-        return 'FOC';
+        return 'WIS';
       case ItemStat.charisma:
-        return 'FOR';
+        return 'CHA';
       case ItemStat.elemPenetration:
         return 'PEN';
       case ItemStat.damagePercent:
@@ -1167,12 +1167,12 @@ class _ItemDetailSheetState extends State<_ItemDetailSheet> {
   }
 
   String _statName(ItemStat s) => switch (s) {
-        ItemStat.strength => 'PWR',
-        ItemStat.dexterity => 'AGI',
-        ItemStat.constitution => 'VIT',
-        ItemStat.intelligence => 'ARC',
-        ItemStat.wisdom => 'FOC',
-        ItemStat.charisma => 'FOR',
+        ItemStat.strength => 'STR',
+        ItemStat.dexterity => 'DEX',
+        ItemStat.constitution => 'CON',
+        ItemStat.intelligence => 'INT',
+        ItemStat.wisdom => 'WIS',
+        ItemStat.charisma => 'CHA',
         ItemStat.attackBonus => 'CRIT',
         ItemStat.damageBonus => 'DMG',
         ItemStat.armorClass => 'AC',

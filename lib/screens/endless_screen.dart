@@ -37,8 +37,9 @@ class _EndlessScreenState extends State<EndlessScreen> {
   bool _showingReward = false;
   int? _selectedBossStage;
   int? _activeBossStage;
-  // Tower bosses are fought at their campaign difficulty — no tier scaling.
-  static const int _bossTier = 1;
+  // Tower bosses scale with the shared global difficulty tier (0-based), same
+  // as every other mode. Used for the daily-clear key and reward scaling.
+  int get _bossTier => GameStateProvider.of(context).activeTier;
   int? _countdown; // 3/2/1 shown before the first attack; null = none
   bool _autoClear = false; // premium: auto-fight through all available bosses
 
@@ -679,9 +680,14 @@ class _EndlessScreenState extends State<EndlessScreen> {
               Builder(builder: (_) {
                 final boss = EnemyData.enemyForStage(_selectedBossStage!);
                 final spriteId = EnemyData.spriteIdForStage(_selectedBossStage!);
-                final tierMult = 1.0 + (_bossTier - 1) * 0.3;
-                final scaledHp = (boss.maxHealth * tierMult * 1.5).round();
-                final scaledAtk = (boss.attack * tierMult * 1.15).round();
+                // Mirror startEndlessBattleAtStage: 2× HP, 1.25× ATK, +AC, plus
+                // the quadratic global-tier scaling.
+                final hpMult  = 2.0 * EnemyData.tierHpMult(_bossTier);
+                final atkMult = 1.25 * EnemyData.tierAtkMult(_bossTier);
+                final acBonus = 2 + _bossTier ~/ 2;
+                final tierMult = GameStateProvider.of(context).tierRewardMult(_bossTier);
+                final scaledHp = (boss.maxHealth * hpMult).round();
+                final scaledAtk = (boss.attack * atkMult).round();
                 final bossGold = ((boss.level * 15 + 50) * tierMult).round().clamp(50, 99999);
                 final bossXp = ((boss.level * 20 + 100) * tierMult).round().clamp(100, 99999);
                 // The Tower-Shard reward is exact (matches recordTowerBossDefeated).
@@ -711,12 +717,12 @@ class _EndlessScreenState extends State<EndlessScreen> {
                             const SizedBox(width: 8),
                             _statChip('ATK', '$scaledAtk'),
                             const SizedBox(width: 8),
-                            _statChip('AC', '${boss.armorClass + _bossTier}'),
+                            _statChip('AC', '${boss.armorClass + acBonus}'),
                           ]),
                         ],
                       )),
                     ]),
-                    // No tier — the boss is fought at its campaign difficulty.
+                    // Scales with the shared global difficulty tier.
                     const SizedBox(height: 8),
                     Container(
                       width: double.infinity,

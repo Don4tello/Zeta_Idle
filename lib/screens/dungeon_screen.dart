@@ -37,7 +37,6 @@ class DungeonScreen extends StatefulWidget {
 }
 
 class _DungeonScreenState extends State<DungeonScreen> {
-  int _selectedTier = 1;
   bool _autoRun = false;
   Timer? _autoTimer;
   final Random _rng = Random();
@@ -56,9 +55,9 @@ class _DungeonScreenState extends State<DungeonScreen> {
     final body = switch (run) {
       null              => _DungeonLobby(
                              game: game,
-                             selectedTier: _selectedTier,
-                             onTierChange: (t) => setState(() => _selectedTier = t),
-                             onStart: () => setState(() => game.startDungeon(tier: _selectedTier)),
+                             selectedTier: game.activeTier,
+                             onTierChange: (t) => setState(() => game.setActiveTier(t)),
+                             onStart: () => setState(() => game.startDungeon(tier: game.activeTier)),
                            ),
       _ when run.isOver => _DungeonSummary(
                              run: run, game: game,
@@ -67,7 +66,7 @@ class _DungeonScreenState extends State<DungeonScreen> {
                              onExit: _exitDungeon,
                              onRunAgain: () => setState(() {
                                game.activeDungeon = null;
-                               game.startDungeon(tier: _selectedTier);
+                               game.startDungeon(tier: game.activeTier);
                              }),
                            ),
       _ when run.currentRoom == null
@@ -108,18 +107,20 @@ class _DungeonScreenState extends State<DungeonScreen> {
               showFightSummary(context, s);
             },
           ),
-          if (run == null || run.isOver)
-            IconButton(
-              icon: Icon(
-                game.hasPremium ? Icons.autorenew : Icons.lock,
-                color: _autoRun ? const Color(0xFF44cc88) : AppTheme.textMuted,
-                size: 20,
-              ),
-              tooltip: game.hasPremium
-                  ? (_autoRun ? 'Auto Run: ON' : 'Auto Run: OFF')
-                  : 'Auto Run (Premium)',
-              onPressed: _toggleAuto,
+          // Always available — including mid-run — so you can flip Auto Run on if
+          // you forgot to, or turn it off to take manual control of a run.
+          IconButton(
+            icon: Icon(
+              game.hasPremium ? Icons.autorenew : Icons.lock,
+              color: _autoRun ? const Color(0xFF44cc88) : AppTheme.textMuted,
+              size: 20,
             ),
+            tooltip: game.hasPremium
+                ? (_autoRun ? 'Auto Run: ON — tap to take manual control'
+                            : 'Auto Run: OFF — tap to auto-clear')
+                : 'Auto Run (Premium)',
+            onPressed: _toggleAuto,
+          ),
           if (run == null || run.isOver)
             IconButton(
               icon: const Icon(Icons.leaderboard, color: AppTheme.accentGold, size: 20),
@@ -179,7 +180,14 @@ class _DungeonScreenState extends State<DungeonScreen> {
       return;
     }
     setState(() => _autoRun = !_autoRun);
-    if (_autoRun) _scheduleAutoAction();
+    if (_autoRun) {
+      // Kick off auto-advance from wherever the run currently is (door choice,
+      // room, or floor transition) — so flipping it on mid-run just works.
+      _scheduleAutoAction();
+    } else {
+      // Taking manual control — stop the pending auto step immediately.
+      _autoTimer?.cancel();
+    }
   }
 
   void _scheduleAutoAction() {
@@ -201,7 +209,7 @@ class _DungeonScreenState extends State<DungeonScreen> {
         if (!mounted || !_autoRun) return;
         setState(() {
           game.activeDungeon = null;
-          game.startDungeon(tier: _selectedTier);
+          game.startDungeon(tier: game.activeTier);
         });
         _scheduleAutoAction();
       });
@@ -289,11 +297,11 @@ class _DungeonLobby extends StatelessWidget {
   final void Function(int) onTierChange;
   final VoidCallback onStart;
 
-  static const int _kMaxTiers = 10;
-
   @override
   Widget build(BuildContext context) {
-    final maxUnlocked = game.dungeonHighestTier + 1; // always can try the next tier
+    // Unified: the Dungeon runs at the global difficulty tier, gated by the
+    // highest campaign tier you've unlocked (0-based).
+    final maxUnlocked = game.highestUnlockedTier;
     return SingleChildScrollView(
       child: Column(
         children: [
@@ -351,7 +359,7 @@ class _DungeonLobby extends StatelessWidget {
           // Tier selector
           TierSelector(
             selectedTier: selectedTier,
-            maxUnlocked: maxUnlocked.clamp(1, _kMaxTiers),
+            maxUnlocked: maxUnlocked,
             highestCleared: game.dungeonHighestTier,
             onTierChange: onTierChange,
           ),

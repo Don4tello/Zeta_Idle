@@ -76,8 +76,51 @@ class SaveService {
     final existing = prefs.getString(key);
     if (existing != null && existing.isNotEmpty) {
       await prefs.setString('${key}_bak', existing);
+      // High-water-mark backup: preserve the HIGHEST-level save this slot has
+      // ever held, and NEVER lower it. Hero level only rises in normal play, so
+      // if a reset/parse-glitch ever writes a low-level save over a maxed one,
+      // the maxed copy survives here and load can auto-restore it. (This is the
+      // guard against the level-1 wipe that the 1-deep rolling _bak couldn't
+      // stop once a few autosaves rolled through it.)
+      final existingLvl = _levelOf(existing);
+      final hwmLvl = _levelOf(prefs.getString('${key}_hwm'));
+      if (existingLvl > hwmLvl) {
+        await prefs.setString('${key}_hwm', existing);
+      }
     }
     await prefs.setString(key, jsonEncode(rawData));
+  }
+
+  /// Hero level embedded in a raw save string, or -1 if absent/unparseable.
+  int _levelOf(String? raw) {
+    if (raw == null || raw.isEmpty) return -1;
+    try {
+      final data = jsonDecode(raw) as Map<String, dynamic>;
+      return (data['hero'] as Map<String, dynamic>?)?['level'] as int? ?? -1;
+    } catch (_) {
+      return -1;
+    }
+  }
+
+  /// The highest-level backup for a slot (level, raw-json). Level is -1 when no
+  /// high-water-mark exists. Used by load to detect and recover a wiped save.
+  Future<({int level, Map<String, dynamic>? data})> loadHighWaterMark(
+      {int slot = 0}) async {
+    final prefs = await SharedPreferences.getInstance();
+    final raw = prefs.getString('$_savePrefix${slot}_hwm');
+    if (raw == null || raw.isEmpty) return (level: -1, data: null);
+    try {
+      return (level: _levelOf(raw), data: jsonDecode(raw) as Map<String, dynamic>);
+    } catch (_) {
+      return (level: -1, data: null);
+    }
+  }
+
+  /// Drop the high-water-mark for a slot — called on deliberate delete / new
+  /// character so a fresh low-level hero isn't mistaken for a wipe.
+  Future<void> clearHighWaterMark({int slot = 0}) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('$_savePrefix${slot}_hwm');
   }
 
   Future<Map<String, dynamic>?> loadRaw({int slot = 0}) async {
@@ -141,6 +184,7 @@ class SaveService {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove('$_savePrefix$slot');
     await prefs.remove('$_savePrefix${slot}_bak');
+    await prefs.remove('$_savePrefix${slot}_hwm');
     await prefs.remove('$_prestigePrefix$slot');
   }
 
