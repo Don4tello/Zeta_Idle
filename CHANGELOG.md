@@ -3,6 +3,14 @@
 Version numbers are the pubspec build number (`0.1.0+N`), which is the Play
 Store `versionCode`. Newest first.
 
+## +307 — PLAY: clearer primary/secondary section divider
+User: consistency for other tabs? Assessment — only HERO (16 tabs) was overloaded; PLAY(9)/INVENTORY(6)/SHOP/GUILD are fine flat. PLAY already had a primary/secondary group separator, just a faint 1px hairline. Made it a clearer 2px gold rounded divider so the grouping reads intentionally. Left INVENTORY/SHOP/GUILD unchanged (a grid there would add a pointless tap; PLAY stays 1-tap-to-play).
+
+## +306 — Hero hub: category landing grid (Option C)
+User: reorganize the Hero menu — chose a hub landing grid over the flat 16-tab scroller.
+- `hero_hub_screen.dart`: the 16 tabs are grouped into 4 categories — CHARACTER (Sheet/Scores/Abilities/Passives/Specialize), PROGRESSION (Paragon/Upgrades/Ascend/Mastery), COLLECTION (Pets/Mercs/Bestiary/Codex), RECORDS (Achievements/Quests/Bonuses). The Hero tab now opens a 2×2 grid of category cards (icon, blurb, unlocked-page list, a gold dot if any page in the group has a claim/badge); tapping one opens just that group's short tab strip with a back button (+ hardware-back via PopScope).
+- Preserved: unlock-gating (`_unlockedIndices`), per-tab badges (surfaced on cards too), resource banners, and deep links — `switchTo` / `consumeNavRequestFor` now resolve the tab's GROUP and open it there, so guided tutorials still land on the right page. Empty/locked groups grey out; a group auto-closes to the hub if it ever empties.
+
 ## +305 — Show equipped premium skin on character select
 User: equipped skins don't show on the character-selection screen. Root cause: it rendered `summary.heroClass.spriteId` (class default) and `CharacterSummary` carried no skin field.
 - `save_service.dart`: `CharacterSummary` gains `skinSpriteId`; `listCharacters` resolves `equippedPremiumSkinId` via `premiumSkinById`, validates the skin's `heroClass` matches the character's class (mirrors GameState.activePremiumSkin), and stores the skin id (which IS the painter/sprite id).

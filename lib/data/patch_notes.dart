@@ -19,6 +19,26 @@ int get kLatestPatchBuild => kPatchNotes.first.build;
 
 const kPatchNotes = <PatchNote>[
   PatchNote(
+    build: 307,
+    title: 'Clearer PLAY Grouping',
+    date: '2026-09-25',
+    changes: [
+      'The PLAY tab now shows a clearer divider between the main battle modes '
+          'and the secondary modes (Challenges, Events, Expedition, PvP).',
+    ],
+  ),
+  PatchNote(
+    build: 306,
+    title: 'Hero Menu Reorganized',
+    date: '2026-09-25',
+    changes: [
+      'The Hero tab is now a clean category grid — Character, Progression, '
+          'Collection, Records — instead of one long strip of 16 tabs. Tap a '
+          'category to see just its pages; a dot marks a category with something '
+          'ready to claim.',
+    ],
+  ),
+  PatchNote(
     build: 305,
     title: 'Skins Show on Character Select',
     date: '2026-09-25',

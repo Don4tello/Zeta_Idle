@@ -123,6 +123,45 @@ Widget _buildScreen(int allTabIndex) => switch (allTabIndex) {
   _  => const SizedBox.shrink(),
 };
 
+// ── Hub landing groups (Option C: a category grid that opens sub-menus) ────────
+// Each group bundles a set of the tabs above by their label. The 16-tab flat
+// scroller is replaced by a 2×2 landing grid → tap a category → that group's
+// (much shorter) tab strip. Deep links / tutorials still work: we find the tab's
+// group and open it there.
+
+class _HubGroup {
+  const _HubGroup(this.label, this.blurb, this.icon, this.color, this.tabLabels);
+  final String        label;
+  final String        blurb;
+  final GameIconType  icon;
+  final Color         color;
+  final List<String>  tabLabels; // labels from _kAllTabs, in display order
+}
+
+const _kGroups = <_HubGroup>[
+  _HubGroup('CHARACTER', 'Your build & power', GameIconType.armor,
+      Color(0xFFdaa520), ['SHEET', 'SCORES', 'ABILITIES', 'PASSIVES', 'SPECIALIZE']),
+  _HubGroup('PROGRESSION', 'Endgame systems', GameIconType.mountain,
+      Color(0xFFaa88ff), ['PARAGON', 'UPGRADES', 'ASCEND', 'MASTERY']),
+  _HubGroup('COLLECTION', 'Allies & compendium', GameIconType.paw,
+      Color(0xFF66cc88), ['PETS', 'MERCS', 'BESTIARY', 'CODEX']),
+  _HubGroup('RECORDS', 'Goals & breakdowns', GameIconType.medal,
+      Color(0xFF66aaff), ['ACHIEVEMENTS', 'QUESTS', 'BONUSES']),
+];
+
+int _allIndexOfLabel(String label) =>
+    _kAllTabs.indexWhere((t) => t.label == label);
+
+/// The group index that owns a given all-tab index (-1 if none).
+int _groupOfAllIndex(int allIdx) {
+  if (allIdx < 0) return -1;
+  final label = _kAllTabs[allIdx].label;
+  for (int g = 0; g < _kGroups.length; g++) {
+    if (_kGroups[g].tabLabels.contains(label)) return g;
+  }
+  return -1;
+}
+
 // ── Widget ────────────────────────────────────────────────────────────────────
 
 class HeroHubScreen extends StatefulWidget {
@@ -135,8 +174,10 @@ class HeroHubScreen extends StatefulWidget {
 
 class _HeroHubScreenState extends State<HeroHubScreen>
     with TickerProviderStateMixin {
-  late TabController _ctrl;
-  int _visibleCount = 0;
+  // Option C: null = the category landing grid; otherwise the open group index.
+  int? _group;
+  List<int> _groupIndices = const []; // open group's UNLOCKED all-tab indices
+  TabController? _ctrl;               // only alive while a group is open
 
   // New indices: REBIRTH=8, UPGRADES=9(echoes gate), ASCEND=10(prestige gate)
   List<int> _unlockedIndices(GameState game) {
@@ -162,42 +203,77 @@ class _HeroHubScreenState extends State<HeroHubScreen>
     ];
   }
 
-  void _rebuildController(int newCount) {
-    final prev = _ctrl.index.clamp(0, newCount - 1);
-    _ctrl.removeListener(_onTab);
-    _ctrl.dispose();
-    _ctrl = TabController(length: newCount, vsync: this)
-      ..addListener(_onTab)
-      ..index = prev;
-    _visibleCount = newCount;
+  /// The UNLOCKED all-tab indices inside [g], in the group's display order.
+  List<int> _groupUnlockedIndices(int g, GameState game) {
+    final unlocked = _unlockedIndices(game).toSet();
+    return [
+      for (final lbl in _kGroups[g].tabLabels)
+        if (unlocked.contains(_allIndexOfLabel(lbl))) _allIndexOfLabel(lbl),
+    ];
   }
 
-  @override
-  void initState() {
-    super.initState();
-    _ctrl = TabController(length: 1, vsync: this)
+  bool _groupHasBadge(int g, GameState game) =>
+      _groupUnlockedIndices(g, game).any((i) => _hasBadge(i, game));
+
+  /// Open a group's tab strip. [tabAllIdx] optionally selects a specific tab.
+  void _openGroup(int g, GameState game, {int? tabAllIdx}) {
+    final indices = _groupUnlockedIndices(g, game);
+    if (indices.isEmpty) return;
+    var start = 0;
+    if (tabAllIdx != null) {
+      final p = indices.indexOf(tabAllIdx);
+      if (p >= 0) start = p;
+    }
+    _ctrl?.removeListener(_onTab);
+    _ctrl?.dispose();
+    _ctrl = TabController(length: indices.length, vsync: this, initialIndex: start)
       ..addListener(_onTab);
+    setState(() {
+      _group = g;
+      _groupIndices = indices;
+    });
+  }
+
+  void _backToHub() {
+    _ctrl?.removeListener(_onTab);
+    _ctrl?.dispose();
+    _ctrl = null;
+    setState(() {
+      _group = null;
+      _groupIndices = const [];
+    });
   }
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    final game = GameStateProvider.of(context);
-    final indices = _unlockedIndices(game);
-    final newCount = indices.isEmpty ? 1 : indices.length;
-    if (newCount != _visibleCount) {
-      _rebuildController(newCount);
+    // While a group is open, keep its tab strip in sync as tabs unlock — and
+    // fall back to the hub if the group ever empties out.
+    final g = _group;
+    if (g != null) {
+      final game = GameStateProvider.of(context);
+      final indices = _groupUnlockedIndices(g, game);
+      if (indices.isEmpty) {
+        _backToHub();
+      } else if (indices.length != (_ctrl?.length ?? 0)) {
+        final prev = (_ctrl?.index ?? 0).clamp(0, indices.length - 1);
+        _ctrl?.removeListener(_onTab);
+        _ctrl?.dispose();
+        _ctrl = TabController(length: indices.length, vsync: this, initialIndex: prev)
+          ..addListener(_onTab);
+        _groupIndices = indices;
+      }
     }
   }
 
   void _onTab() {
-    if (!_ctrl.indexIsChanging) setState(() {});
+    if (!(_ctrl?.indexIsChanging ?? true)) setState(() {});
   }
 
   @override
   void dispose() {
-    _ctrl.removeListener(_onTab);
-    _ctrl.dispose();
+    _ctrl?.removeListener(_onTab);
+    _ctrl?.dispose();
     super.dispose();
   }
 
@@ -259,165 +335,223 @@ class _HeroHubScreenState extends State<HeroHubScreen>
     _  => false,
   };
 
+  // ── Shared app-bar pieces (used by both the hub grid and a group view) ─────
+  Widget _whatsNewButton(GameState game) => Stack(
+    clipBehavior: Clip.none,
+    children: [
+      IconButton(
+        icon: const Icon(Icons.campaign_outlined, size: 20, color: AppTheme.accentGold),
+        tooltip: "What's New",
+        visualDensity: VisualDensity.compact,
+        constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+        padding: EdgeInsets.zero,
+        onPressed: () { game.markPatchNotesSeen(); showWhatsNew(context); },
+      ),
+      if (game.hasUnseenPatchNotes)
+        Positioned(right: 4, top: 6, child: Container(width: 8, height: 8,
+          decoration: const BoxDecoration(color: Color(0xFFff5544), shape: BoxShape.circle))),
+    ],
+  );
+
+  List<Widget> _commonActions() => [
+    IconButton(icon: const Icon(Icons.shield_outlined, size: 20), tooltip: 'Armory',
+        onPressed: () => context.push(Routes.armory)),
+    IconButton(icon: const Icon(Icons.settings_outlined, size: 20), tooltip: 'Settings',
+        onPressed: () => context.push(Routes.settings)),
+    if (widget.onBackToSelect != null)
+      TextButton(onPressed: widget.onBackToSelect,
+          child: Text('CHANGE', style: AppTheme.pixelHeading(
+              fontSize: 10, color: AppTheme.textMuted, letterSpacing: 1))),
+    const SizedBox(width: 4),
+  ];
+
   @override
   Widget build(BuildContext context) {
-    final game    = GameStateProvider.of(context);
-    final indices = _unlockedIndices(game);
+    final game = GameStateProvider.of(context);
 
-    // Guided-tutorial deep link: select the requested sub-tab if it lives here.
-    final want = game.consumeNavRequestFor([for (final i in indices) _kAllTabs[i].label]);
+    // Deep link (guided tutorials / cross-tab jumps): if a request names an
+    // unlocked tab, open ITS GROUP at that tab.
+    final unlocked = _unlockedIndices(game);
+    final want = game.consumeNavRequestFor([for (final i in unlocked) _kAllTabs[i].label]);
     if (want != null) {
-      final pos = indices.indexWhere((i) => _kAllTabs[i].label == want);
-      if (pos >= 0) {
+      final allIdx = _allIndexOfLabel(want);
+      final g = _groupOfAllIndex(allIdx);
+      if (g >= 0) {
         WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (mounted && pos < _ctrl.length && _ctrl.index != pos) _ctrl.animateTo(pos);
+          if (mounted) _openGroup(g, game, tabAllIdx: allIdx);
         });
       }
     }
 
-    if (indices.isEmpty) return const Scaffold(backgroundColor: AppTheme.darkBg, body: SizedBox.shrink());
-    final visIdx = _ctrl.index.clamp(0, indices.length - 1);
-    final allIdx = indices[visIdx];
-    final resource = _kAllTabs[allIdx].resource;
+    return _group == null ? _buildHub(game) : _buildGroup(game);
+  }
 
-    final tabs = [
-      for (final i in indices)
-        _tabLabel(
-          _kAllTabs[i].label,
-          _kAllTabs[i].icon,
-          badge: _hasBadge(i, game),
-          active: i == allIdx,
-        ),
-    ];
-
+  // ── Landing: 2×2 category grid ─────────────────────────────────────────────
+  Widget _buildHub(GameState game) {
     return Scaffold(
       backgroundColor: AppTheme.darkBg,
       appBar: AppBar(
         titleSpacing: 12,
-        title: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text('HERO',
-                style: AppTheme.pixelHeading(fontSize: 15, letterSpacing: 3)),
-            const SizedBox(width: 14),
-            Stack(
-              clipBehavior: Clip.none,
-              children: [
-                IconButton(
-                  icon: const Icon(Icons.campaign_outlined, size: 20,
-                      color: AppTheme.accentGold),
-                  tooltip: "What's New",
-                  visualDensity: VisualDensity.compact,
-                  constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
-                  padding: EdgeInsets.zero,
-                  onPressed: () {
-                    game.markPatchNotesSeen();
-                    showWhatsNew(context);
-                  },
-                ),
-                if (game.hasUnseenPatchNotes)
-                  Positioned(
-                    right: 4, top: 6,
-                    child: Container(
-                      width: 8, height: 8,
-                      decoration: const BoxDecoration(
-                        color: Color(0xFFff5544), shape: BoxShape.circle),
-                    ),
-                  ),
-              ],
-            ),
-            const SizedBox(width: 2),
-            _SocialButton(
-              icon: Icons.discord,
-              tooltip: 'Join our Discord',
-              url: 'https://discord.gg/F5WcvsZV9W',
-            ),
-            const SizedBox(width: 4),
-            _SocialButton(
-              icon: Icons.reddit,
-              tooltip: 'Visit r/zeta_idle',
-              url: 'https://www.reddit.com/r/zeta_idle/',
-            ),
-          ],
-        ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.shield_outlined, size: 20),
-            tooltip: 'Armory',
-            onPressed: () => context.push(Routes.armory),
-          ),
-          IconButton(
-            icon: const Icon(Icons.settings_outlined, size: 20),
-            tooltip: 'Settings',
-            onPressed: () => context.push(Routes.settings),
-          ),
-          if (widget.onBackToSelect != null)
-            TextButton(
-              onPressed: widget.onBackToSelect,
-              child: Text('CHANGE',
-                  style: AppTheme.pixelHeading(
-                      fontSize: 10, color: AppTheme.textMuted, letterSpacing: 1)),
-            ),
+        title: Row(mainAxisSize: MainAxisSize.min, children: [
+          Text('HERO', style: AppTheme.pixelHeading(fontSize: 15, letterSpacing: 3)),
+          const SizedBox(width: 14),
+          _whatsNewButton(game),
+          const SizedBox(width: 2),
+          _SocialButton(icon: Icons.discord, tooltip: 'Join our Discord',
+              url: 'https://discord.gg/F5WcvsZV9W'),
           const SizedBox(width: 4),
-        ],
-        bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(52),
-          child: ScrollConfiguration(
-            behavior: ScrollConfiguration.of(context).copyWith(
-              dragDevices: {
-                PointerDeviceKind.mouse,
-                PointerDeviceKind.touch,
-                PointerDeviceKind.trackpad,
-              },
-            ),
-            child: TabBar(
-              controller: _ctrl,
-              tabs: tabs,
-              isScrollable: true,
-              tabAlignment: TabAlignment.start,
-              labelColor: AppTheme.accentGold,
-              unselectedLabelColor: AppTheme.textMuted,
-              indicator: const GlowTabIndicator(),
-              indicatorWeight: 3,
-            ),
-          ),
-        ),
+          _SocialButton(icon: Icons.reddit, tooltip: 'Visit r/zeta_idle',
+              url: 'https://www.reddit.com/r/zeta_idle/'),
+        ]),
+        actions: _commonActions(),
       ),
       body: Stack(children: [
         Builder(builder: (ctx) {
           final reduced = GameStateProvider.of(ctx).reducedParticles;
           return AmbientParticles(count: reduced ? 4 : 15, color: const Color(0xFFdaa520));
         }),
-        HeroTabController(
-        switchTo: (targetAllIdx) {
-          // Accept all-tab index, map to visible index.
-          final vi = indices.indexOf(targetAllIdx);
-          if (vi >= 0) _ctrl.animateTo(vi);
-        },
-        child: Column(
-          children: [
-            if (resource != null) _ResourceBanner(resource: resource),
-            Expanded(
-              child: ScrollConfiguration(
-                behavior: ScrollConfiguration.of(context).copyWith(
-                  dragDevices: {
-                    PointerDeviceKind.mouse,
-                    PointerDeviceKind.touch,
-                    PointerDeviceKind.trackpad,
-                  },
-                ),
-                child: TabBarView(
-                  controller: _ctrl,
-                  children: [
-                    for (final i in indices) _buildScreen(i),
-                  ],
-                ),
-              ),
+        SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.all(14),
+            child: GridView.count(
+              crossAxisCount: 2,
+              mainAxisSpacing: 12,
+              crossAxisSpacing: 12,
+              childAspectRatio: 1.02,
+              children: [for (int g = 0; g < _kGroups.length; g++) _groupCard(g, game)],
             ),
-          ],
+          ),
+        ),
+      ]),
+    );
+  }
+
+  Widget _groupCard(int g, GameState game) {
+    final grp = _kGroups[g];
+    final indices = _groupUnlockedIndices(g, game);
+    final enabled = indices.isNotEmpty;
+    final badge = enabled && _groupHasBadge(g, game);
+    final names = indices.map((i) => _kAllTabs[i].label.toLowerCase()).join(' · ');
+    return Opacity(
+      opacity: enabled ? 1.0 : 0.35,
+      child: GestureDetector(
+        onTap: enabled ? () => _openGroup(g, game) : null,
+        child: Container(
+          decoration: BoxDecoration(
+            color: grp.color.withValues(alpha: 0.07),
+            border: Border.all(color: grp.color.withValues(alpha: 0.4)),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          padding: const EdgeInsets.all(14),
+          child: Stack(children: [
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                GameIcon(grp.icon, size: 32, color: grp.color),
+                const Spacer(),
+                Text(grp.label, style: AppTheme.pixelHeading(
+                    fontSize: 13, color: grp.color, letterSpacing: 2)),
+                const SizedBox(height: 3),
+                Text(grp.blurb, style: GoogleFonts.rajdhani(
+                    fontSize: 11, color: Colors.white54)),
+                const SizedBox(height: 6),
+                Text(enabled ? names : 'Locked',
+                    maxLines: 2, overflow: TextOverflow.ellipsis,
+                    style: GoogleFonts.rajdhani(
+                        fontSize: 10, color: Colors.white30, letterSpacing: 0.5)),
+              ],
+            ),
+            if (badge)
+              Positioned(top: 0, right: 0, child: Container(width: 9, height: 9,
+                decoration: const BoxDecoration(
+                    color: Color(0xFFFFCC44), shape: BoxShape.circle))),
+          ]),
         ),
       ),
-      ]),
+    );
+  }
+
+  // ── Group: the (short) tab strip for one category ──────────────────────────
+  Widget _buildGroup(GameState game) {
+    final indices = _groupIndices;
+    final ctrl = _ctrl;
+    if (indices.isEmpty || ctrl == null) return _buildHub(game);
+    final visIdx = ctrl.index.clamp(0, indices.length - 1);
+    final allIdx = indices[visIdx];
+    final resource = _kAllTabs[allIdx].resource;
+    final grp = _kGroups[_group!];
+
+    final tabs = [
+      for (final i in indices)
+        _tabLabel(_kAllTabs[i].label, _kAllTabs[i].icon,
+            badge: _hasBadge(i, game), active: i == allIdx),
+    ];
+
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) { if (!didPop) _backToHub(); },
+      child: Scaffold(
+        backgroundColor: AppTheme.darkBg,
+        appBar: AppBar(
+          titleSpacing: 4,
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back, size: 20),
+            tooltip: 'Hero menu',
+            onPressed: _backToHub,
+          ),
+          title: Row(mainAxisSize: MainAxisSize.min, children: [
+            GameIcon(grp.icon, size: 15, color: grp.color),
+            const SizedBox(width: 8),
+            Text(grp.label, style: AppTheme.pixelHeading(
+                fontSize: 14, letterSpacing: 2, color: grp.color)),
+          ]),
+          actions: _commonActions(),
+          bottom: PreferredSize(
+            preferredSize: const Size.fromHeight(52),
+            child: ScrollConfiguration(
+              behavior: ScrollConfiguration.of(context).copyWith(dragDevices: {
+                PointerDeviceKind.mouse, PointerDeviceKind.touch, PointerDeviceKind.trackpad,
+              }),
+              child: TabBar(
+                controller: ctrl,
+                tabs: tabs,
+                isScrollable: true,
+                tabAlignment: TabAlignment.start,
+                labelColor: AppTheme.accentGold,
+                unselectedLabelColor: AppTheme.textMuted,
+                indicator: const GlowTabIndicator(),
+                indicatorWeight: 3,
+              ),
+            ),
+          ),
+        ),
+        body: Stack(children: [
+          Builder(builder: (ctx) {
+            final reduced = GameStateProvider.of(ctx).reducedParticles;
+            return AmbientParticles(count: reduced ? 4 : 15, color: const Color(0xFFdaa520));
+          }),
+          HeroTabController(
+            switchTo: (targetAllIdx) {
+              final tg = _groupOfAllIndex(targetAllIdx);
+              if (tg >= 0) _openGroup(tg, game, tabAllIdx: targetAllIdx);
+            },
+            child: Column(children: [
+              if (resource != null) _ResourceBanner(resource: resource),
+              Expanded(
+                child: ScrollConfiguration(
+                  behavior: ScrollConfiguration.of(context).copyWith(dragDevices: {
+                    PointerDeviceKind.mouse, PointerDeviceKind.touch, PointerDeviceKind.trackpad,
+                  }),
+                  child: TabBarView(
+                    controller: ctrl,
+                    children: [for (final i in indices) _buildScreen(i)],
+                  ),
+                ),
+              ),
+            ]),
+          ),
+        ]),
+      ),
     );
   }
 }

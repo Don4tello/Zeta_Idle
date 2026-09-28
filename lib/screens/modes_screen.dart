@@ -218,14 +218,19 @@ class _ModesScreenState extends State<ModesScreen>
                               )),
                         ],
                       ),
-                      // Separator line between primary and secondary groups
+                      // Section break between the primary battle modes and the
+                      // secondary "more" modes — a clearer gold divider so the
+                      // grouping reads intentionally, not as a stray hairline.
                       if (showGroupSeparator)
                         Positioned(
-                          left: -14,
-                          top: 8, bottom: 8,
+                          left: -15,
+                          top: 6, bottom: 6,
                           child: Container(
-                            width: 1,
-                            color: const Color(0xFF5a4830),
+                            width: 2,
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF8a6a2a),
+                              borderRadius: BorderRadius.circular(1),
+                            ),
                           ),
                         ),
                       if (isNew)
