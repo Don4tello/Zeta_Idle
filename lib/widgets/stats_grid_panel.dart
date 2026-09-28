@@ -157,15 +157,20 @@ class _StatCardState extends State<_StatCard>
     switch (widget.abbr) {
       case 'STR': return 'Raw Power — the universal weapon stat: +1 flat damage to EVERY '
           'hit (any element) and +1 armor per point.';
-      case 'DEX': return 'Boosts Lightning damage (up to +25%) and Lightning resistance.\n'
+      case 'DEX': return 'Boosts Lightning damage (up to +25%) and adds to your '
+          'Lightning resistance rating (diminishing returns — not a flat %).\n'
           'Also grants Dodge chance: +0.5% per point above 10 (max 30%).';
-      case 'CON': return 'Boosts Poison damage (up to +25%) and Poison resistance.\n'
+      case 'CON': return 'Boosts Poison damage (up to +25%) and adds to your '
+          'Poison resistance rating (diminishing returns — not a flat %).\n'
           'Also adds +1% Max HP per point and boosts your HP regen.';
-      case 'INT': return 'Boosts Void damage (up to +25%) and Void resistance.\n'
+      case 'INT': return 'Boosts Void damage (up to +25%) and adds to your '
+          'Void resistance rating (diminishing returns — not a flat %).\n'
           'Also amplifies damage-over-time: +1% per point above 10.';
-      case 'WIS': return 'Boosts Cold damage (up to +25%) and Cold resistance.\n'
+      case 'WIS': return 'Boosts Cold damage (up to +25%) and adds to your '
+          'Cold resistance rating (diminishing returns — not a flat %).\n'
           'Also amplifies heal-over-time (auras): +1% per point above 10.';
-      case 'CHA': return 'Boosts Fire damage (up to +25%) and Fire resistance.\n'
+      case 'CHA': return 'Boosts Fire damage (up to +25%) and adds to your '
+          'Fire resistance rating (diminishing returns — not a flat %).\n'
           'Also gives a chance to skip an ability cooldown: charisma÷5% (max 20%).';
       default:    return '';
     }

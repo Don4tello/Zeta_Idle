@@ -50,8 +50,13 @@ class RemoteConfigService {
     // — the % mainly protects weaker builds from over-nerf.
     'pvp_hero_dmg_mult': 0.01,
     // PvP: hard cap on a single hit as a fraction of the foe's max HP — THE main
-    // fight-length lever. 0.10 = min ~10 hits to kill (lower = longer fights).
-    'pvp_max_hit_fraction': 0.10,
+    // fight-length lever. NB the hero lands ~3-4 hits/round, so effective damage
+    // ≈ 3.5× this per round; 0.04 → ~7-round fights (was 0.10 → ~3-4).
+    'pvp_max_hit_fraction': 0.04,
+    // PvP: the rival's per-hit attack as a fraction of ITS (player-scaled) HP, so
+    // it actually threatens back through the hero's armor. 0.045 barely dented a
+    // built hero (ended 100% HP); 0.12 makes matches a real risk.
+    'pvp_foe_atk_fraction': 0.12,
     // Telemetry — OFF by default so a normal/production build never writes.
     // Flip on in the console for closed testing (optionally target by version).
     'telemetry_enabled': false,
@@ -117,8 +122,9 @@ class RemoteConfigService {
   // Multiplier on the hero's outgoing damage during a PvP match (1.0 = full,
   // 0.10 = -90%). Compresses burst so matches are contested, not 1-2 round
   // one-shots. Tune from PvP telemetry without a rebuild.
-  double get pvpHeroDmgMult   => _d('pvp_hero_dmg_mult', 0.01);
-  double get pvpMaxHitFraction => _d('pvp_max_hit_fraction', 0.10);
+  double get pvpHeroDmgMult    => _d('pvp_hero_dmg_mult', 0.01);
+  double get pvpMaxHitFraction => _d('pvp_max_hit_fraction', 0.04);
+  double get pvpFoeAtkFraction => _d('pvp_foe_atk_fraction', 0.12);
 
   // ── Telemetry (runtime gate for fight telemetry → Firestore) ────────────────
   bool   get telemetryEnabled   => _b('telemetry_enabled', false);

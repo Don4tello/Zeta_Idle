@@ -3,6 +3,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../models/dnd_class.dart';
 import '../models/hero_model.dart' show HeroGender;
 import '../models/hero_race.dart';
+import '../models/palette_skin.dart';
 
 class CharacterSummary {
   const CharacterSummary({
@@ -16,6 +17,7 @@ class CharacterSummary {
     this.heroRace,
     this.frameId,
     this.nameColorId,
+    this.skinSpriteId,
   });
   final int slot;
   final String name;
@@ -27,6 +29,7 @@ class CharacterSummary {
   final HeroRace? heroRace;
   final String? frameId;      // equipped premium portrait frame cosmetic id
   final String? nameColorId;  // equipped premium name colour cosmetic id
+  final String? skinSpriteId; // equipped premium-skin sprite id (class-matched), else null
 }
 
 class SaveService {
@@ -160,11 +163,18 @@ class SaveService {
         final hero = data['hero'] as Map<String, dynamic>;
         final jsonPl  = (data['prestigeLevel'] as int?) ?? 0;
         final directPl = prefs.getInt('$_prestigePrefix$i') ?? 0;
+        final heroCls = DndClass.tryParse(hero['heroClass'] as String?);
+        // Equipped premium skin — only render it if it belongs to this hero's
+        // class (mirrors GameState.activePremiumSkin), else fall back to the
+        // class sprite. Its id IS the sprite id (see heroBattleSpriteId).
+        final skinDef = premiumSkinById(data['equippedPremiumSkinId'] as String?);
+        final skinSprite =
+            (skinDef != null && skinDef.heroClass == heroCls) ? skinDef.id : null;
         return CharacterSummary(
           slot: i,
           name: hero['name'] as String,
           level: hero['level'] as int,
-          heroClass: DndClass.tryParse(hero['heroClass'] as String?),
+          heroClass: heroCls,
           prestigeLevel: jsonPl > directPl ? jsonPl : directPl,
           totalAscensionAp: (data['totalAscensionAp'] as int?) ?? 0,
           gender: HeroGender.tryParse(hero['gender'] as String?),
@@ -173,6 +183,7 @@ class SaveService {
               .firstOrNull,
           frameId: data['activeFrame'] as String?,
           nameColorId: data['activeNameColor'] as String?,
+          skinSpriteId: skinSprite,
         );
       } catch (_) {
         return null;

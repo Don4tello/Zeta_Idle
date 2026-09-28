@@ -19,6 +19,44 @@ int get kLatestPatchBuild => kPatchNotes.first.build;
 
 const kPatchNotes = <PatchNote>[
   PatchNote(
+    build: 305,
+    title: 'Skins Show on Character Select',
+    date: '2026-09-25',
+    changes: [
+      'Your equipped premium skin now shows on the character-selection screen, '
+          'not just in battle.',
+    ],
+  ),
+  PatchNote(
+    build: 304,
+    title: 'Clearer Resistance Wording',
+    date: '2026-09-25',
+    changes: [
+      'Attribute tooltips now make clear that resistance is a rated stat with '
+          'diminishing returns (not a flat %), so the "+25%" only refers to the '
+          'damage bonus.',
+    ],
+  ),
+  PatchNote(
+    build: 303,
+    title: 'PvP: Longer, Riskier Duels',
+    date: '2026-09-25',
+    changes: [
+      'PvP fights now run longer and rivals hit harder, so a match is a genuine '
+          'risk instead of a guaranteed win at full health.',
+    ],
+  ),
+  PatchNote(
+    build: 302,
+    title: 'PvP Rivals Are Finally a Match',
+    date: '2026-09-25',
+    changes: [
+      'Every PvP rival is now scaled to your own power (whatever their level), '
+          'so matches are a real fight instead of a one-shot — they keep their '
+          'name and class but fight at your bracket.',
+    ],
+  ),
+  PatchNote(
     build: 301,
     title: 'PvP Fights Last Longer',
     date: '2026-09-25',

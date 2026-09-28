@@ -3,6 +3,28 @@
 Version numbers are the pubspec build number (`0.1.0+N`), which is the Play
 Store `versionCode`. Newest first.
 
+## +305 — Show equipped premium skin on character select
+User: equipped skins don't show on the character-selection screen. Root cause: it rendered `summary.heroClass.spriteId` (class default) and `CharacterSummary` carried no skin field.
+- `save_service.dart`: `CharacterSummary` gains `skinSpriteId`; `listCharacters` resolves `equippedPremiumSkinId` via `premiumSkinById`, validates the skin's `heroClass` matches the character's class (mirrors GameState.activePremiumSkin), and stores the skin id (which IS the painter/sprite id).
+- `character_select_screen.dart`: sprite is now `summary.skinSpriteId ?? heroClass.spriteId ?? fighter`. `BattleSprite._painterFor` already handles `premium_<class>` painter keys, so it renders correctly.
+
+## +304 — Clarify attribute-resistance wording (rating, not flat %)
+User: confirmed resistance from attributes should be flat-rating (it already is — attribute×0.25 → DR curve → capped %). Fixed the misleading wording.
+- `game_state.dart`: replaced the stale "Scales linearly: 25% at stat 100" comment (predated the DR curve) with an accurate rating→DR description.
+- `stats_grid_panel.dart`: attribute tooltips reworded — "and adds to your <Element> resistance rating (diminishing returns — not a flat %)" — so the "(up to +25%)" is clearly the DAMAGE bonus, not resistance. No mechanic change.
+
+## +303 — PvP tuning: longer fights + threatening rivals
+Telemetry (post-302): opponent scaling WORKS — rivals now ~1.8M HP (was 3–9K), fights 3–4 rounds (was 1), dmg-taken up to 90K. But still 100% win / 100% end-HP (rival too soft) and short of the ~10-round target (hero lands ~3–4 hits/round, each hitting the 10% cap).
+- `remote_config`: `pvp_max_hit_fraction` 0.10→0.04 (~7-round fights allowing for multi-hits); new `pvp_foe_atk_fraction` (default 0.12, was a hardcoded 0.045) so the rival threatens through the hero's armor.
+- `game_state` `startPvpBattle`: rival attack now uses `pvpFoeAtkFraction × oppHp`.
+- All three PvP dials (`pvp_hero_dmg_mult`, `pvp_max_hit_fraction`, `pvp_foe_atk_fraction`) are Remote-Config tunable without a rebuild. Re-validate: expect ~6–8 rounds and end-HP dipping into a real band (not 100%).
+
+## +302 — PvP: normalise the matched rival's combat budget to the player
+User: check the logs. PvP telemetry finally flowing (10 records) but every match = 1 round, 100% HP, 0 dmg taken vs Lv24–35 opponents. Root cause: `findOpponent` returns low-level / D&D-scale dummies from the pool, so the +300 mirror-bot (fallback-only) never ran; the built hero one-shots them.
+- `game_state.dart` `startPvpBattle`: rebuild the rival's HP + attack around the PLAYER's HP budget (`hero.maxHealth` ±15%), attack = 4.5% of that; keep identity (name/class/level). Applies to EVERY opponent (real/dev/bot), so PvP is fair at any tier and auto-scales with progression. Combined with the +301 10%-HP hit cap → ~10-round contested fights.
+- PvP telemetry now logs the SCALED `e_hp` (`_pvpOppHp`) actually fought, not the raw snapshot value.
+- Note: the +300 mirror bot stays (harmless; improves the bot's displayed snapshot), but this is the definitive fix since it also covers matched real/dev opponents.
+
 ## +301 — PvP tuning: 99% dmg cut + 10%-HP per-hit cap
 User: prefers more damage reduction (95% or 99%?). Clarified that for strong builds the per-hit CAP is the binding limit, not the %. Set `pvp_hero_dmg_mult` 0.10→0.01 (−99%, mainly protects weaker builds) and `pvp_max_hit_fraction` 0.15→0.10 (min ~10 hits to kill — the real fight-length lever). Both still Remote-Config tunable; cap is the knob to move for longer/shorter fights.
 

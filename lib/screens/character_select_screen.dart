@@ -298,7 +298,11 @@ class _SlotTile extends StatelessWidget {
       child: FittedBox(
         fit: BoxFit.contain,
         child: BattleSprite(
-          spriteId: summary!.heroClass?.spriteId ?? DndClass.fighter.spriteId,
+          // Show the equipped premium skin if any (its id is the sprite id),
+          // otherwise the hero's class sprite.
+          spriteId: summary!.skinSpriteId
+              ?? summary!.heroClass?.spriteId
+              ?? DndClass.fighter.spriteId,
           gender: summary!.gender,
           race: summary!.heroRace,
         ),

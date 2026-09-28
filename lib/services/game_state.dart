@@ -3057,8 +3057,11 @@ class GameState extends ChangeNotifier {
 
   // Hero elemental resistance derived from core stats (includes equipment bonuses).
   // STR→Physical, DEX→Lightning, CON→Poison, INT→Void, WIS→Cold, CHA→Fire.
-  // Scales linearly: 0% at stat 0, 25% at stat 100 (kStatCap) from base stats alone.
-  // Items/passives/rebirth bonuses add to tot() and can push the total up to ±75%.
+  // Each attribute point adds 0.25 to a flat resistance RATING (not a fixed %);
+  // gear, sets, gems and passives feed the SAME rating, which then runs through
+  // the diminishing-returns curve below (resistPctForRating) and caps at ±75/90%.
+  // So resistance is rating-based, never a flat percentage — big early gains that
+  // taper near the cap, consistent with armor and every other resistance source.
   /// Resistance % from a resistance rating (diminishing returns, caps at
   /// kResistCapPct = 75%). Same shape as [armorDrPctFor].
   double resistPctForRating(num rating) =>
@@ -6723,6 +6726,7 @@ class GameState extends ChangeNotifier {
 
   bool _pvpMode = false;
   PvpSnapshot? _pvpOpponent; // captured at PvP start for the fight telemetry record
+  int _pvpOppHp = 0;         // the rival's SCALED (player-relative) HP this match
 
   int collectAllExpeditions() {
     int collected = 0;
@@ -6753,18 +6757,26 @@ class GameState extends ChangeNotifier {
     lastBattleWasFinalVictory = false;
     _resetBattlePerks();
     _activeAffixes = [];
-    // The opponent's flat stat sum (damageMod + attackBonus) is D&D-scale and
-    // can't pierce a built hero's game-scale armor — which made every PvP an
-    // automatic win once the visible fight became authoritative. Give the rival
-    // a game-scale hit derived from their HP budget (a proxy for build power) so
-    // fights are actually contested. First-pass factor; tune from playtest data.
+    // Normalise the rival's COMBAT budget to the PLAYER's own power so PvP is a
+    // fair fight at any tier. Matched snapshots from the pool are usually
+    // low-level / D&D-scale dummies (maxHp in the hundreds) that a built hero
+    // one-shots — telemetry showed every match was a 1-round, 100%-HP win. We
+    // keep the rival's identity (name/class/level) for flavour but rebuild their
+    // HP + attack around the hero's HP budget, ±15% so ~half the field can
+    // out-trade you. Auto-scales with your tier because it tracks hero.maxHealth.
+    final oppHp = (hero.maxHealth * (0.85 + _rng.nextDouble() * 0.30))
+        .round()
+        .clamp(100, 1000000000000000);
+    _pvpOppHp = oppHp;
+    // Game-scale hit derived from the (now player-scale) HP budget so the rival
+    // actually threatens back; take the larger of that and their raw flat sum.
+    final scaledAtk = (oppHp * RemoteConfigService.instance.pvpFoeAtkFraction).round();
     final flatAtk   = opponent.damageMod + opponent.attackBonus;
-    final scaledAtk = (opponent.maxHp * 0.045).round();
     currentEnemy = Enemy(
       id: 'hero_${opponent.heroClass}',
       name: opponent.heroName,
       description: 'A rival hero.',
-      maxHealth: opponent.maxHp,
+      maxHealth: oppHp,
       attack: max(flatAtk, scaledAtk),
       level: opponent.level,
       armorClass: opponent.armorClass,
@@ -8013,7 +8025,7 @@ class GameState extends ChangeNotifier {
         // Opponent
         'e_name':  opp?.heroName,
         'e_lvl':   opp?.level,
-        'e_hp':    opp?.maxHp,
+        'e_hp':    _pvpOppHp, // player-scaled HP actually fought (not the raw snapshot)
         'e_class': opp?.heroClass,
         // Fight totals
         'dmg':     _fightDamage,
