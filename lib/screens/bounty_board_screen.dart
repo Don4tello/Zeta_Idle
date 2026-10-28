@@ -231,6 +231,10 @@ class _BossBountyCard extends StatelessWidget {
     ItemRarity.mythic    => const Color(0xFFDD1111),
     ItemRarity.set       => const Color(0xFF00cc88),
     ItemRarity.unique    => const Color(0xFFE8A0FF),
+    ItemRarity.ascended     => const Color(0xFFFF8A1E),
+    ItemRarity.primordial   => const Color(0xFF17E0A8),
+    ItemRarity.eternal      => const Color(0xFF36C6FF),
+    ItemRarity.transcendent => const Color(0xFFFFF4D6),
   };
 }
 

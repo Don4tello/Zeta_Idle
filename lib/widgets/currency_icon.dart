@@ -9,9 +9,34 @@ class CurrencyIcon extends StatelessWidget {
   final String id;
   final double size;
 
+  /// Currencies with a custom art asset (transparent PNG) override the built-in
+  /// pixel painter. Keyed by the in-game currency id → asset path.
+  static const Map<String, String> _assetFor = {
+    'gold':    'assets/gold.png',
+    'shards':  'assets/shard.png',
+    'echoes':  'assets/echo.png',
+    'mythril': 'assets/mythril.png',
+    'essence': 'assets/essence.png',
+    'paragonPoints': 'assets/paragon.png',
+    'xp': 'assets/xp.png',
+  };
+
   @override
   Widget build(BuildContext context) {
     if (id == 'zcoins') return ZCoinIcon(size: size, animate: false);
+    final asset = _assetFor[id];
+    if (asset != null) {
+      return Image.asset(
+        asset,
+        width: size,
+        height: size,
+        // Smooth downscale — the source art is detailed and shown small (11–26px).
+        filterQuality: FilterQuality.medium,
+        // If the asset is ever missing, fall back to the built-in pixel painter.
+        errorBuilder: (_, __, ___) =>
+            CustomPaint(size: Size(size, size), painter: _CurrencyIconPainter(id)),
+      );
+    }
     return CustomPaint(
       size: Size(size, size),
       painter: _CurrencyIconPainter(id),

@@ -204,9 +204,10 @@ class _StatsBody extends StatelessWidget {
         ],
       ),
       _StatRow(
-        label: 'Shards ◆',
+        label: 'Shards',
         icon: Icons.diamond_outlined,
-        color: const Color(0xFF44ccff),
+        currencyId: 'shards',
+        color: const Color(0xFF6699ff),
         total: AppTheme.fmtNumber(game.shards),
         sources: [
           _Source('Campaign', 'small drop per kill'),
@@ -241,9 +242,10 @@ class _StatsBody extends StatelessWidget {
         ],
       ),
       _StatRow(
-        label: 'Paragon Points 🌑',
+        label: 'Paragon Points',
         icon: Icons.brightness_2_outlined,
-        color: const Color(0xFFcc8844),
+        currencyId: 'paragonPoints',
+        color: const Color(0xFFCBA05E),
         total: AppTheme.fmtNumber(game.prestigeSouls),
         sources: [
           _Source('Level Up', 'earn 1 Paragon Point every level (no cap)'),
@@ -823,6 +825,7 @@ class _StatsBody extends StatelessWidget {
       _StatRow(
         label: 'XP per Kill',
         icon: Icons.trending_up,
+        currencyId: 'xp',
         color: const Color(0xFF88aaff),
         total: '+$totalXpPct%',
         sources: [
@@ -839,7 +842,8 @@ class _StatsBody extends StatelessWidget {
       _StatRow(
         label: 'Shards per Kill',
         icon: Icons.diamond_outlined,
-        color: const Color(0xFF44ccff),
+        currencyId: 'shards',
+        color: const Color(0xFF6699ff),
         total: '+$shardPass flat'
             '${shardPct + shardAlly + shardPrest > 0 ? "  +${shardPct + shardAlly + shardPrest}%" : ""}'
             '${shardPets > 0 ? "  +$shardPets" : ""}',
@@ -915,6 +919,7 @@ class _StatsBody extends StatelessWidget {
       _StatRow(
         label: 'Shard Gain %',
         icon: Icons.diamond,
+        currencyId: 'shards',
         color: const Color(0xFF6699ff),
         total: '+${essPass + essPrest + game.petEssenceGain}%',
         sources: [

@@ -44,6 +44,18 @@ class RemoteConfigService {
     'boss_rush_atk_mult': 1.0,
     'gauntlet_hp_mult': 1.0,
     'gauntlet_atk_mult': 1.0,
+    // Trash ATK multiplier — now neutral (1.0); enemy threat is set by the
+    // relative threat floor (enemy_threat_pct) in game_state, not this flat mult.
+    'trash_atk_mult': 1.0,
+    // Relative difficulty (enemy stats scale to the hero, D4-style):
+    //  • target_fight_rounds — base fight length; enemy HP floored to this many
+    //    rounds of the hero's damage-per-round (per-tier ramp + boss mult in code).
+    //  • enemy_threat_pct — base enemy damage per hit as a fraction of the hero's
+    //    max HP (per-tier ramp + boss mult in code), so fights stay threatening at
+    //    any gear level without ever one-shotting.
+    'target_fight_rounds': 8.0,
+    'enemy_threat_pct': 0.03,
+    'top_rarity_drop_mult': 1.0,
     // PvP: scale the HERO's outgoing damage down so the attacker can't burst a
     // rival's HP in 1-2 rounds (matches only the visible fight). 0.01 = -99%.
     // NB: for strong builds the per-hit CAP below is the binding limit, not this
@@ -80,11 +92,17 @@ class RemoteConfigService {
     }
   }
 
+  // NB: getDouble/getBool return 0/false for a key that is in NEITHER the remote
+  // config NOR the in-app defaults (source == valueStatic). That silently zeroed
+  // any dial missing from [_defaults] (e.g. target_fight_rounds, trash_atk_mult),
+  // disabling it. So we explicitly fall back to the code default on valueStatic.
   double _d(String key, double fallback) {
     final rc = _rc;
     if (rc == null) return fallback;
     try {
-      return rc.getDouble(key);
+      final v = rc.getValue(key);
+      if (v.source == ValueSource.valueStatic) return fallback;
+      return v.asDouble();
     } catch (_) {
       return fallback;
     }
@@ -94,7 +112,9 @@ class RemoteConfigService {
     final rc = _rc;
     if (rc == null) return fallback;
     try {
-      return rc.getBool(key);
+      final v = rc.getValue(key);
+      if (v.source == ValueSource.valueStatic) return fallback;
+      return v.asBool();
     } catch (_) {
       return fallback;
     }
@@ -105,6 +125,34 @@ class RemoteConfigService {
   double get enemyAtkMult        => _d('enemy_atk_mult', 1.0);
   double get campaignRampStep    => _d('campaign_ramp_step', 0.15);
   double get campaignRampPhaseIn => _d('campaign_ramp_phasein', 20.0);
+  // Trash-only ATK multiplier — applied ONLY to non-boss campaign enemies (see
+  // EnemyData.enemyForStage). Bosses are untouched (no boss-ATK bump). Telemetry
+  // (build 287): non-boss fights ended at 99–100% HP 82% of the time, and even
+  // on-level trash averaged ~96% min-HP — trash was toothless. This lifts trash
+  // damage so regular fights carry real bite (~85–90% min-HP) without slowing
+  // kills (HP is untouched, so time-to-kill is unchanged). 4.0 → 6.0 (build 318):
+  // bumped for more trash bite; still unvalidated on on-level players (maxed
+  // testers can't feel it). Tune live via the `trash_atk_mult` Remote Config key
+  // — no rebuild needed. Now NEUTRAL (1.0): enemy threat comes from the relative
+  // threat floor (enemyThreatPct), not this flat mult. Still applied to abyss trash.
+  double get trashAtkMult        => _d('trash_atk_mult', 1.0);
+
+  // Relative difficulty — enemy stats scale to the hero (D4-style), so content
+  // never trivializes with gear and tiers define the challenge.
+  //  • targetFightRounds: base fight length; enemy HP floored to this many rounds
+  //    of the hero's damage-per-round (+per-tier ramp, +boss mult in game_state).
+  //  • enemyThreatPct: base enemy damage per hit as a fraction of hero max HP
+  //    (+per-tier ramp, +boss mult), so fights stay threatening at any gear level.
+  // Set either to 0 to disable that half. Tune live, re-pull ZBAL.
+  double get targetFightRounds   => _d('target_fight_rounds', 8.0);
+  double get enemyThreatPct      => _d('enemy_threat_pct', 0.03);
+  // Extra rounds above the floor that cap a fight's length. Enemy HP is clamped
+  // to [floor, floor+band] rounds of the hero's damage, so naturally-tanky
+  // content can't produce 30-40 round grinds. 0 = no ceiling (floor only).
+  double get fightRoundsBand     => _d('fight_rounds_band', 4.0);
+  // Scales the post-Mythic (Ascended/Primordial/Eternal/Transcendent) boss-drop
+  // odds live. 1.0 = designed rate; raise to make the chase easier.
+  double get topRarityDropMult   => _d('top_rarity_drop_mult', 1.0);
 
   // ── Economy (applied in the battle reward path) ─────────────────────────────
   double get goldMult => _d('gold_mult', 1.0);

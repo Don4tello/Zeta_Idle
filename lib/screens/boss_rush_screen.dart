@@ -12,6 +12,7 @@ import '../models/damage_type.dart';
 import '../models/enemy.dart';
 import '../models/equipment.dart';
 import '../services/remote_config_service.dart';
+import '../widgets/currency_icon.dart';
 import '../models/hero_ability.dart';
 import '../models/passive_tree.dart';
 import '../screens/leaderboard_screen.dart';
@@ -233,7 +234,7 @@ class _BossRushScreenState extends State<BossRushScreen> {
     final tierAcBonus = t ~/ 2;
     // Boss level scales with tier so its to-hit bonus grows meaningfully.
     final bossLevel   = base.level + 2 + t;
-    final boss = Enemy(
+    final rawBoss = Enemy(
       id:          base.id,
       name:        '★ ${base.name} (Boss ${_bossIndex + 1})',
       description: base.description,
@@ -242,6 +243,9 @@ class _BossRushScreenState extends State<BossRushScreen> {
       level:       bossLevel,
       armorClass:  base.armorClass + 2 + tierAcBonus,
     );
+    // Keep Boss Rush fights ~8–12 rounds regardless of over-gear (see
+    // GameState.applyFightLengthFloor / target_fight_rounds).
+    final boss = _game?.applyFightLengthFloor(rawBoss, boss: true) ?? rawBoss;
     _bossResistances = base.resistances;
     _bossAttackType  = base.attackType;
     _bossEnraged    = false;
@@ -1190,10 +1194,10 @@ class _BossRushStartSection extends StatelessWidget {
                 style: AppTheme.pixelHeading(
                     fontSize: 11, letterSpacing: 2, color: AppTheme.accentGold)),
             const SizedBox(height: 8),
-            const _RewardRow(icon: '🔷', label: 'Shards', detail: '10 per boss  ·  +30 on full clear'),
-            const _RewardRow(icon: '🌀', label: 'Echoes', detail: '6 per boss  ·  +25 on full clear'),
-            const _RewardRow(icon: '💎', label: 'ZCoins', detail: '15 on a full clear'),
-            const _RewardRow(icon: '⛏️', label: 'Mythril', detail: 'Scaled by final rank'),
+            const _RewardRow(currencyId: 'shards', label: 'Shards', detail: '10 per boss  ·  +30 on full clear'),
+            const _RewardRow(currencyId: 'echoes', label: 'Echoes', detail: '6 per boss  ·  +25 on full clear'),
+            const _RewardRow(currencyId: 'zcoins', label: 'ZCoins', detail: '15 on a full clear'),
+            const _RewardRow(currencyId: 'mythril', label: 'Mythril', detail: 'Scaled by final rank'),
             const _RewardRow(icon: '🏺', label: 'Artifact', detail: 'Chance drop on A / S-rank clears'),
           ],
         ),
@@ -1258,15 +1262,26 @@ class _BossRushStartSection extends StatelessWidget {
 }
 
 class _RewardRow extends StatelessWidget {
-  const _RewardRow({required this.icon, required this.label, required this.detail});
-  final String icon, label, detail;
+  const _RewardRow({this.icon, this.currencyId, required this.label, required this.detail});
+  final String? icon;        // emoji fallback (e.g. Artifact)
+  final String? currencyId;  // CurrencyIcon id for aligned pixel-art currency
+  final String label, detail;
 
   @override
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 3),
-      child: Row(children: [
-        SizedBox(width: 22, child: Text(icon, style: const TextStyle(fontSize: 14))),
+      child: Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
+        // Fixed, centred icon box so every label lines up regardless of glyph.
+        SizedBox(
+          width: 24,
+          child: Center(
+            child: currencyId != null
+                ? CurrencyIcon(id: currencyId!, size: 16)
+                : Text(icon ?? '', style: const TextStyle(fontSize: 14)),
+          ),
+        ),
+        const SizedBox(width: 8),
         SizedBox(
           width: 64,
           child: Text(label,

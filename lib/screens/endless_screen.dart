@@ -9,6 +9,7 @@ import '../models/equipment.dart';
 import '../widgets/item_drop_badge.dart';
 import '../services/game_state.dart';
 import '../theme/app_theme.dart';
+import '../widgets/currency_icon.dart';
 import '../widgets/fight_summary_sheet.dart';
 import '../widgets/affix_chip_row.dart';
 import '../widgets/arena_ability_effect.dart';
@@ -463,6 +464,35 @@ class _EndlessScreenState extends State<EndlessScreen> {
               ]),
             ),
 
+          // Tower climb trophy — highest boss floor + next milestone reward
+          if (game.towerHighestFloor > 0)
+            Builder(builder: (_) {
+              final next = GameState.kTowerMilestones
+                  .where((m) => m > game.towerHighestFloor)
+                  .fold<int?>(null, (a, b) => a ?? b);
+              return Container(
+                margin: const EdgeInsets.only(bottom: 10),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF1a1028),
+                  border: Border.all(color: const Color(0xFFcc88ff).withValues(alpha: 0.45)),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: Row(children: [
+                  const Text('🗼', style: TextStyle(fontSize: 16)),
+                  const SizedBox(width: 8),
+                  Expanded(child: Text(
+                    'HIGHEST FLOOR: ${game.towerHighestFloor}',
+                    style: AppTheme.pixelHeading(
+                        fontSize: 11, letterSpacing: 1, color: const Color(0xFFcc88ff)),
+                  )),
+                  if (next != null)
+                    Text('Next reward: Floor $next',
+                        style: const TextStyle(fontSize: 10, color: AppTheme.textMuted)),
+                ]),
+              );
+            }),
+
           // ── ENTER BUTTON (top) ──────────────────────────────────
           SizedBox(
             height: 52,
@@ -859,17 +889,16 @@ class _EndlessScreenState extends State<EndlessScreen> {
             decoration: BoxDecoration(
               color: AppTheme.cardBg,
               border: Border.all(
-                  color: const Color(0xFF80d0ff).withValues(alpha: 0.35)),
+                  color: const Color(0xFF6699ff).withValues(alpha: 0.35)),
             ),
             child: Row(
               children: [
-                const Icon(Icons.diamond_outlined,
-                    color: Color(0xFF80d0ff), size: 14),
+                const CurrencyIcon(id: 'shards', size: 16),
                 const SizedBox(width: 8),
                 Text(
                   '${AppTheme.fmtNumber(game.shards)}  Shards of Fate',
                   style: GoogleFonts.rajdhani(
-                    fontSize: 13, color: const Color(0xFF80d0ff), letterSpacing: 1,
+                    fontSize: 13, color: const Color(0xFF6699ff), letterSpacing: 1,
                   ),
                 ),
               ],
@@ -1068,7 +1097,7 @@ class _EndlessScreenState extends State<EndlessScreen> {
                       letterSpacing: 4,
                     )),
                 const SizedBox(height: 16),
-                Text('+$_rewardGold GOLD',
+                Text('+${fmtNum(_rewardGold)} GOLD',
                     style: const TextStyle(
                       fontSize: 21,
                       fontWeight: FontWeight.bold,
@@ -1076,24 +1105,28 @@ class _EndlessScreenState extends State<EndlessScreen> {
                       letterSpacing: 2,
                     )),
                 const SizedBox(height: 6),
-                Text('+$_rewardExp XP',
-                    style: const TextStyle(
-                      fontSize: 21,
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xFF4ad46a),
-                      letterSpacing: 2,
-                    )),
+                Row(mainAxisSize: MainAxisSize.min,
+                    mainAxisAlignment: MainAxisAlignment.center, children: [
+                  const CurrencyIcon(id: 'xp', size: 22),
+                  const SizedBox(width: 8),
+                  Text('+${fmtNum(_rewardExp)} XP',
+                      style: const TextStyle(
+                        fontSize: 21,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF4ad46a),
+                        letterSpacing: 2,
+                      )),
+                ]),
                 const SizedBox(height: 6),
                 Row(mainAxisSize: MainAxisSize.min, children: [
-                  const Icon(Icons.diamond_outlined,
-                      color: Color(0xFF80d0ff), size: 16),
+                  const CurrencyIcon(id: 'shards', size: 16),
                   const SizedBox(width: 6),
                   if (_rewardShards > 0) Text(
-                    '+$_rewardShards SHARDS',
+                    '+${fmtNum(_rewardShards)} SHARDS',
                     style: const TextStyle(
                       fontSize: 17,
                       fontWeight: FontWeight.bold,
-                      color: Color(0xFF80d0ff),
+                      color: Color(0xFF6699ff),
                       letterSpacing: 1,
                     )),
                 ]),
@@ -1103,7 +1136,7 @@ class _EndlessScreenState extends State<EndlessScreen> {
                     const Text('🔮', style: TextStyle(fontSize: 14)),
                     const SizedBox(width: 6),
                     Text(
-                      '+$_rewardTowerShards TOWER SHARDS',
+                      '+${fmtNum(_rewardTowerShards)} TOWER SHARDS',
                       style: const TextStyle(
                         fontSize: 15,
                         fontWeight: FontWeight.bold,
@@ -1135,7 +1168,7 @@ class _EndlessScreenState extends State<EndlessScreen> {
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          '+${_rewardMilestone! * 50} GOLD  +${(_rewardMilestone! ~/ 10).clamp(1, 10)} ◆',
+                          '+${fmtNum(_rewardMilestone! * 50)} GOLD  +${(_rewardMilestone! ~/ 10).clamp(1, 10)} ◆',
                           style: const TextStyle(
                             fontSize: 11,
                             color: Color(0xFFFFCC44),
@@ -1174,29 +1207,4 @@ class _EndlessScreenState extends State<EndlessScreen> {
   }
 }
 
-class _LogLine extends StatelessWidget {
-  const _LogLine({required this.text});
-  final String text;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 2),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text('▸ ',
-              style: TextStyle(color: AppTheme.accentGold, fontSize: 11)),
-          Expanded(
-            child: Text(
-              text,
-              style: const TextStyle(
-                  fontSize: 11, color: AppTheme.textLight, height: 1.4),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
 

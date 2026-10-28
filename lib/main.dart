@@ -289,7 +289,14 @@ class _ZetaIdleAppState extends State<ZetaIdleApp> with WidgetsBindingObserver {
       });
       // Schedule "come back" reminders while the player is away (opt-out honored).
       if (_gameState.notificationsEnabled) {
-        NotificationService.instance.scheduleRetentionReminders();
+        // Retention clears first; then add the game-timer reminders (expeditions
+        // finishing, PvP stamina maxing) so they aren't wiped by the cancel-all.
+        NotificationService.instance.scheduleRetentionReminders().then((_) {
+          NotificationService.instance.scheduleGameReminders(
+            expeditions: _gameState.pendingExpeditionReminders,
+            pvpStaminaFull: _gameState.pvpStaminaFullIn,
+          );
+        });
       } else {
         NotificationService.instance.cancelAll();
       }

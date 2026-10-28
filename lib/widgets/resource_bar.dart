@@ -25,7 +25,7 @@ class ResourceBar extends StatelessWidget {
               tooltip: CurrencyInfo.shards),
           _Res(iconWidget: const CurrencyIcon(id: 'zcoins', size: 14), value: game.zcoins, color: const Color(0xFFffcc44),
               tooltip: CurrencyInfo.zcoins),
-          _Res(iconWidget: const CurrencyIcon(id: 'echoes', size: 15), value: game.echoes, color: const Color(0xFF44ccaa),
+          _Res(iconWidget: const CurrencyIcon(id: 'echoes', size: 15), value: game.echoes, color: const Color(0xFFC6A6F2),
               tooltip: CurrencyInfo.echoes),
         ],
       ),

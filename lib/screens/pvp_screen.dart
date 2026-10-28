@@ -595,23 +595,66 @@ class _RatingCard extends StatelessWidget {
         border: Border.all(color: AppTheme.accentGold.withValues(alpha: 0.4)),
         borderRadius: BorderRadius.circular(4),
       ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceAround,
-        children: [
-          _Stat(label: 'RATING', value: '★${game.pvpRating}',
-              color: AppTheme.accentGold),
-          _Stat(label: 'WINS',   value: '${game.pvpWins}',
-              color: const Color(0xFF44dd88)),
-          _Stat(label: 'LOSSES', value: '${game.pvpLosses}',
-              color: const Color(0xFFcc4444)),
-          _Stat(label: 'W/L',
-              value: game.pvpWins + game.pvpLosses == 0
-                  ? '—'
-                  : '${(game.pvpWins / (game.pvpWins + game.pvpLosses) * 100).toStringAsFixed(0)}%',
-              color: Colors.white),
-        ],
-      ),
+      child: Column(children: [
+        _LeagueBanner(game: game),
+        const SizedBox(height: 10),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceAround,
+          children: [
+            _Stat(label: 'RATING', value: '★${game.pvpRating}',
+                color: AppTheme.accentGold),
+            _Stat(label: 'WINS',   value: '${game.pvpWins}',
+                color: const Color(0xFF44dd88)),
+            _Stat(label: 'LOSSES', value: '${game.pvpLosses}',
+                color: const Color(0xFFcc4444)),
+            _Stat(label: 'W/L',
+                value: game.pvpWins + game.pvpLosses == 0
+                    ? '—'
+                    : '${(game.pvpWins / (game.pvpWins + game.pvpLosses) * 100).toStringAsFixed(0)}%',
+                color: Colors.white),
+          ],
+        ),
+      ]),
     );
+  }
+}
+
+/// Season league banner — shows the player's current league (off lifetime
+/// rating) and progress toward the next promotion.
+class _LeagueBanner extends StatelessWidget {
+  const _LeagueBanner({required this.game});
+  final GameState game;
+
+  static const _colors = [
+    Color(0xFFb08d57), // Bronze
+    Color(0xFFc0c8d0), // Silver
+    Color(0xFFffd24a), // Gold
+    Color(0xFF7fe0d4), // Platinum
+    Color(0xFF6fd3ff), // Diamond
+    Color(0xFFc98bff), // Master
+    Color(0xFFff6b6b), // Legend
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    final tier = game.pvpLeagueTier;
+    final c = _colors[tier.clamp(0, _colors.length - 1)];
+    final nextAt = game.pvpNextLeagueAt;
+    return Column(children: [
+      Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+        Icon(Icons.shield, size: 16, color: c),
+        const SizedBox(width: 6),
+        Text('${game.pvpLeagueName.toUpperCase()} LEAGUE',
+            style: AppTheme.pixelHeading(fontSize: 12, letterSpacing: 2, color: c)),
+      ]),
+      const SizedBox(height: 4),
+      Text(
+        nextAt > 0
+            ? 'Rating ${game.pvpRating} — ${nextAt - game.pvpRating} to next league'
+            : 'Rating ${game.pvpRating} — top league reached',
+        style: const TextStyle(fontSize: 10, color: AppTheme.textMuted),
+      ),
+    ]);
   }
 }
 

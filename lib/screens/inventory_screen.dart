@@ -6,6 +6,7 @@ import '../models/hero_ability.dart';
 import '../services/game_state.dart';
 import '../theme/app_theme.dart';
 import '../widgets/item_sprites.dart';
+import '../widgets/currency_icon.dart';
 import '../widgets/zcoin_icon.dart';
 
 class InventoryScreen extends StatefulWidget {
@@ -431,6 +432,7 @@ class _PaperDollSlot extends StatelessWidget {
                     child: Center(
                       child: ItemSprite(
                         slot: slot,
+                        typeKey: item!.itemTypeKey,
                         rarity: item!.rarity,
                         size: 32,
                         setColor: item!.rarity == ItemRarity.set
@@ -541,7 +543,8 @@ class _BagGrid extends StatelessWidget {
                     const SizedBox(width: 8),
                     Expanded(child: _QuickBtn(
                       icon: Icons.broken_image_outlined,
-                      label: '+$shardValue ◆',
+                      label: '+$shardValue',
+                      currencyId: 'shards',
                       color: const Color(0xFFff5544),
                       onTap: () {
                         Navigator.pop(context);
@@ -677,6 +680,7 @@ class _ItemTile extends StatelessWidget {
                     child: Center(
                       child: ItemSprite(
                         slot: item!.slot,
+                        typeKey: item!.itemTypeKey,
                         rarity: item!.rarity,
                         size: 32,
                         setColor: item!.rarity == ItemRarity.set
@@ -1526,11 +1530,14 @@ class _Chip extends StatelessWidget {
 
 class _QuickBtn extends StatelessWidget {
   const _QuickBtn({required this.icon, required this.label,
-      required this.color, required this.onTap});
+      required this.color, required this.onTap, this.currencyId});
   final IconData icon;
   final String   label;
   final Color    color;
   final VoidCallback onTap;
+  /// When set, a pixel [CurrencyIcon] is drawn after the label (matches the
+  /// game's icon language instead of an inline currency glyph).
+  final String?  currencyId;
 
   @override
   Widget build(BuildContext context) => GestureDetector(
@@ -1545,8 +1552,14 @@ class _QuickBtn extends StatelessWidget {
       child: Column(mainAxisSize: MainAxisSize.min, children: [
         Icon(icon, size: 20, color: color),
         const SizedBox(height: 4),
-        Text(label, style: TextStyle(fontSize: 10, color: color,
-            fontWeight: FontWeight.bold)),
+        Row(mainAxisSize: MainAxisSize.min, children: [
+          Text(label, style: TextStyle(fontSize: 10, color: color,
+              fontWeight: FontWeight.bold)),
+          if (currencyId != null) ...[
+            const SizedBox(width: 3),
+            CurrencyIcon(id: currencyId!, size: 11),
+          ],
+        ]),
       ]),
     ),
   );

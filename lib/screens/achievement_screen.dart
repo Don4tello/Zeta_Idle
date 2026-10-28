@@ -51,8 +51,8 @@ class _AchievementScreenState extends State<AchievementScreen> {
       BuildContext context, ({int count, int shards, int essence, int zcoins}) s) {
     if (s.count == 0) return;
     final rewards = <(String, String, int, Color)>[
-      ('◆', 'Shards',  s.shards,  const Color(0xFF80d0ff)),
-      ('✦', 'Essence', s.essence, const Color(0xFF88cc44)),
+      ('◆', 'Shards',  s.shards,  const Color(0xFF6699ff)),
+      ('✦', 'Essence', s.essence, const Color(0xFFE07A6E)),
       ('🪙', 'ZCoins',  s.zcoins,  AppTheme.accentGold),
     ].where((r) => r.$3 > 0).toList();
 

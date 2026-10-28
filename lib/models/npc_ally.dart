@@ -1,7 +1,9 @@
+import 'package:flutter/material.dart';
+
 enum AllyMilestone {
   killCount,
   campaignStage,
-  prestigeLevel,
+  tierUnlocked,
   ascensionLevel,
   dungeonClears,
   bossRushClears,
@@ -59,6 +61,19 @@ class AllyTalentOption {
     if (hpPctBonus    > 0) parts.add('+${(hpPctBonus    * 100).round()}% HP');
     return parts.join('  •  ');
   }
+
+  /// Material icon derived from the talent's dominant bonus — replaces the
+  /// emoji glyph so talent cards match the game's icon language (ability bar).
+  IconData get statIcon {
+    if (dmgPctBonus   > 0) return Icons.flash_on;
+    if (hpPctBonus    > 0) return Icons.favorite;
+    if (acBonus       > 0) return Icons.shield;
+    if (goldPctBonus  > 0) return Icons.monetization_on;
+    if (shardPctBonus > 0) return Icons.diamond;
+    if (xpPctBonus    > 0) return Icons.school;
+    if (idlePctBonus  > 0) return Icons.hourglass_bottom;
+    return Icons.auto_awesome;
+  }
 }
 
 class AllyTalentDef {
@@ -83,6 +98,8 @@ class NpcAllyDef {
     required this.milestoneTarget,
     required this.milestoneLabel,
     required this.bonusDescription,
+    this.spriteId = '',
+    this.tintArgb = 0xFF88cc88,
     this.dmgPctBonus    = 0,
     this.acBonus        = 0,
     this.goldPctBonus   = 0.0,
@@ -100,6 +117,10 @@ class NpcAllyDef {
   final String title;
   final String icon;
   final String lore;
+  /// Hero-class battle sprite id used for the roster portrait (tinted by [tintArgb]).
+  final String spriteId;
+  /// ARGB tint overlaid on the class sprite to give each mercenary a unique hue.
+  final int tintArgb;
   final AllyMilestone milestone;
   final int milestoneTarget;
   final String milestoneLabel;
@@ -121,6 +142,37 @@ class NpcAllyDef {
 
   static const int maxLevel = 5;
 
+  /// Battle-ability icon + colour, matching the hero-ability Material-icon style
+  /// used in the battle panel (NOT the roster emoji). Single source of truth for
+  /// both the slide-in call-out card and the bottom MERCS panel.
+  IconData get abilityIconData {
+    switch (id) {
+      case 'greybeard':      return Icons.campaign;          // War Cry
+      case 'mira':           return Icons.healing;           // Field Triage
+      case 'coin_felix':     return Icons.cloud;             // Smoke Screen
+      case 'elder_voss':     return Icons.auto_awesome;      // Arcane Surge
+      case 'ironhide':       return Icons.shield;            // Shield Wall
+      case 'shadow_lena':    return Icons.content_cut;       // Backstab
+      case 'golem_ruk':      return Icons.terrain;           // Stone Skin
+      case 'warmaster_cael': return Icons.bolt;              // Warmaster's Strike
+      default:               return Icons.people;
+    }
+  }
+
+  Color get abilityColor {
+    switch (id) {
+      case 'greybeard':      return const Color(0xFFffaa44);
+      case 'mira':           return const Color(0xFFff88aa);
+      case 'coin_felix':     return const Color(0xFFffd700);
+      case 'elder_voss':     return const Color(0xFF66aaff);
+      case 'ironhide':       return const Color(0xFF8899bb);
+      case 'shadow_lena':    return const Color(0xFF44cc88);
+      case 'golem_ruk':      return const Color(0xFF99aabb);
+      case 'warmaster_cael': return const Color(0xFFffcc44);
+      default:               return const Color(0xFFffcc66);
+    }
+  }
+
   // Shard + crystal cost to reach the given level (from level - 1)
   static (int shards, int zcoins) levelUpCost(int toLevel) => switch (toLevel) {
     2 => (20,  0),
@@ -136,6 +188,8 @@ class NpcAllyDef {
       name:            'Greybeard',
       title:           'Veteran Sellsword',
       icon:            '⚔️',
+      spriteId:        'hero_fighter',
+      tintArgb:        0xFF9aa4b4, // weathered steel
       lore:            'A weathered mercenary who fought in a dozen wars. He sharpens your blade and your resolve.',
       milestone:       AllyMilestone.killCount,
       milestoneTarget: 100,
@@ -163,6 +217,8 @@ class NpcAllyDef {
       name:            'Mira',
       title:           'Battle Medic',
       icon:            '🩹',
+      spriteId:        'hero_cleric',
+      tintArgb:        0xFF66cc88, // healer green
       lore:            'A field surgeon who has patched up heroes across three campaigns. Your max HP grows under her care.',
       milestone:       AllyMilestone.campaignStage,
       milestoneTarget: 10,
@@ -190,6 +246,8 @@ class NpcAllyDef {
       name:            'Felix',
       title:           'Merchant Prince',
       icon:            '💰',
+      spriteId:        'hero_bard',
+      tintArgb:        0xFFffcc44, // merchant gold
       lore:            'A shrewd trader who finds opportunity in every monster corpse. Gold flows more freely with him around.',
       milestone:       AllyMilestone.campaignStage,
       milestoneTarget: 15,
@@ -217,8 +275,10 @@ class NpcAllyDef {
       name:            'Elder Voss',
       title:           'Arcane Scholar',
       icon:            '📚',
+      spriteId:        'hero_wizard',
+      tintArgb:        0xFF6a7bdb, // arcane blue
       lore:            'Ancient knowledge pours from this tower-dwelling sage. His presence accelerates all learning.',
-      milestone:       AllyMilestone.prestigeLevel,
+      milestone:       AllyMilestone.tierUnlocked,
       milestoneTarget: 1,
       milestoneLabel:  'Unlock Tier 1',
       bonusDescription: '+20% XP / level',
@@ -244,6 +304,8 @@ class NpcAllyDef {
       name:            'Ironhide',
       title:           'Dwarven Armorsmith',
       icon:            '🛡️',
+      spriteId:        'hero_paladin',
+      tintArgb:        0xFFc8922e, // forged bronze
       lore:            'He hammers steel like he breathes — constantly. Your armor grows heavier and more reliable.',
       milestone:       AllyMilestone.dungeonClears,
       milestoneTarget: 5,
@@ -271,6 +333,8 @@ class NpcAllyDef {
       name:            'Lena',
       title:           'Shadow Rogue',
       icon:            '🗡️',
+      spriteId:        'hero_rogue',
+      tintArgb:        0xFF9b6cd6, // shadow violet
       lore:            'She moves in silence and strikes with precision. Your shard sense sharpens near her.',
       milestone:       AllyMilestone.bossRushClears,
       milestoneTarget: 1,
@@ -298,6 +362,8 @@ class NpcAllyDef {
       name:            'Ruk',
       title:           'Stone Golem',
       icon:            '🗿',
+      spriteId:        'hero_barbarian',
+      tintArgb:        0xFF8f8a7a, // weathered stone
       lore:            'Carved from the bones of a mountain, Ruk stands silent guard. His presence bolsters idle gains.',
       milestone:       AllyMilestone.ascensionLevel,
       milestoneTarget: 1,
@@ -325,6 +391,8 @@ class NpcAllyDef {
       name:            'Cael',
       title:           'Warmaster',
       icon:            '🏆',
+      spriteId:        'hero_fighter',
+      tintArgb:        0xFFcc4444, // battle crimson
       lore:            'A legendary champion who has bested every gauntlet ever devised. His fury sharpens your strikes.',
       milestone:       AllyMilestone.gauntletScore,
       milestoneTarget: 1000,

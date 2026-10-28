@@ -143,7 +143,7 @@ class BattleArenaState extends State<BattleArena> with TickerProviderStateMixin 
   late final AnimationController _mercCtrl = AnimationController(
       vsync: this, duration: const Duration(milliseconds: 1700));
   String _mercName = '';
-  String _mercIcon = '';
+  IconData _mercIcon = Icons.people;
   Color  _mercColor = const Color(0xFFffcc66);
 
   static Color _effectColor(AbilityEffect e) => switch (e) {
@@ -294,8 +294,8 @@ class BattleArenaState extends State<BattleArena> with TickerProviderStateMixin 
     _bannerCtrl.forward(from: 0);
   }
 
-  /// Slides in a merc call-out card (emoji + name) from the hero's side.
-  void playMercAbility(String name, String icon, Color color) {
+  /// Slides in a merc call-out card (icon + name) from the hero's side.
+  void playMercAbility(String name, IconData icon, Color color) {
     _mercName  = name;
     _mercIcon  = icon;
     _mercColor = color;
@@ -726,7 +726,7 @@ class BattleArenaState extends State<BattleArena> with TickerProviderStateMixin 
                                 color: _mercColor.withValues(alpha: 0.18),
                                 border: Border.all(color: _mercColor, width: 1.2),
                               ),
-                              child: Text(_mercIcon, style: const TextStyle(fontSize: 15)),
+                              child: Icon(_mercIcon, color: _mercColor, size: 16),
                             ),
                             const SizedBox(width: 7),
                             Column(

@@ -224,7 +224,7 @@ class _GemCraftingTabState extends State<_GemCraftingTab> {
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
             decoration: BoxDecoration(
               color: const Color(0xFF0d1020),
-              border: Border.all(color: const Color(0xFF44ccff).withValues(alpha: 0.4)),
+              border: Border.all(color: const Color(0xFFbb88ee).withValues(alpha: 0.4)),
               borderRadius: BorderRadius.circular(4),
             ),
             child: Row(children: [
@@ -233,7 +233,7 @@ class _GemCraftingTabState extends State<_GemCraftingTab> {
               Text('${game.gemShards}',
                   style: GoogleFonts.rajdhani(
                       fontSize: 17, fontWeight: FontWeight.bold,
-                      color: const Color(0xFF44ccff))),
+                      color: const Color(0xFFbb88ee))),
               const SizedBox(width: 6),
               const Text('Arcane Dust', style: TextStyle(fontSize: 12, color: AppTheme.textMuted)),
               const Spacer(),

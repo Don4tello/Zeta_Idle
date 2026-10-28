@@ -10,6 +10,8 @@ import '../services/game_state.dart';
 import '../services/iap_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/battle_sprites.dart';
+import '../widgets/currency_icon.dart';
+import '../widgets/vip_emblem.dart';
 import '../widgets/zcoin_icon.dart';
 import 'aura_shop_screen.dart';
 
@@ -25,10 +27,10 @@ class PremiumShopScreen extends StatefulWidget {
 
 class _PremiumShopScreenState extends State<PremiumShopScreen>
     with SingleTickerProviderStateMixin {
-  late final TabController _tabs = TabController(length: 9, vsync: this);
+  late final TabController _tabs = TabController(length: 5, vsync: this);
 
-  static const _tabLabels = ['BUNDLES', 'RESOURCES', 'STARTER', 'SKINS', 'AURAS', 'BOOSTS', 'MISC', 'COSMETICS', 'VIP'];
-  static const _tabIcons  = ['💎', '💰', '🎁', '🎨', '✨', '⚡', '🎒', '👑', '⭐'];
+  static const _tabLabels = ['BUNDLES', 'VIP', 'STARTER', 'RESOURCES', 'COSMETICS'];
+  static const _tabIcons  = ['💎', '⭐', '🎁', '💰', '🎨'];
 
   @override
   void dispose() {
@@ -87,7 +89,42 @@ class _PremiumShopScreenState extends State<PremiumShopScreen>
               if (_kCheatsEnabled) _DebugGrantPanel(game: game),
               _WatchAdCard(game: game),
               const SizedBox(height: 8),
-              ...IapService.packages.map((pkg) => _CrystalCard(pkg: pkg, game: game)),
+              for (int i = 0; i < IapService.packages.length; i++)
+                _CrystalCard(
+                  pkg: IapService.packages[i],
+                  game: game,
+                  // Anchor the biggest pack as the value pick.
+                  featured: i == IapService.packages.length - 1,
+                ),
+              const SizedBox(height: 24),
+            ],
+          ),
+
+          // ── VIP ───────────────────────────────────────────────
+          ListView(
+            padding: const EdgeInsets.all(14),
+            children: [
+              _SectionLabel('VIP SUBSCRIPTIONS', 'Recurring perks and benefits'),
+              ...SubscriptionTier.all.map((sub) => _SubCard(sub: sub, game: game)),
+              const SizedBox(height: 16),
+              if (IapService.platformSupported) ...[
+                _RestorePurchasesButton(game: game),
+                const SizedBox(height: 24),
+              ],
+            ],
+          ),
+
+          // ── STARTER PACKS ─────────────────────────────────────
+          ListView(
+            padding: const EdgeInsets.all(14),
+            children: [
+              _SectionLabel('STARTER PACKS', 'One-time purchase bundles'),
+              ...StarterPack.all.map((pack) => _PackCard(
+                    pack: pack,
+                    game: game,
+                    // Anchor the mid-tier hero pack as the popular pick.
+                    featured: pack.productId == 'pack_hero',
+                  )),
               const SizedBox(height: 24),
             ],
           ),
@@ -102,40 +139,20 @@ class _PremiumShopScreenState extends State<PremiumShopScreen>
             ],
           ),
 
-          // ── STARTER PACK ──────────────────────────────────────
-          ListView(
-            padding: const EdgeInsets.all(14),
-            children: [
-              _SectionLabel('STARTER PACKS', 'One-time purchase bundles'),
-              ...StarterPack.all.map((pack) => _PackCard(pack: pack, game: game)),
-              const SizedBox(height: 24),
-            ],
-          ),
-
-          // ── SKINS ─────────────────────────────────────────────
+          // ── COSMETICS (skins · auras · boosts · titles · frames · slots) ──
           ListView(
             padding: const EdgeInsets.all(14),
             children: [
               _PremiumSkinShowcase(game: game),
               const SizedBox(height: 18),
               CosmeticsSkinsSection(game: game, scrollable: false),
-              const SizedBox(height: 24),
-            ],
-          ),
-
-          // ── AURAS ─────────────────────────────────────────────
-          CosmeticsAurasSection(game: game),
-
-          // ── BOOSTS & ATTACK EFFECTS ───────────────────────────
-          CosmeticsBoostsSection(game: game),
-
-          // ── MISC (character slots) ────────────────────────────
-          CosmeticsMiscSection(game: game),
-
-          // ── COSMETICS (titles / name colours / frames / attack effects) ──
-          ListView(
-            padding: const EdgeInsets.all(14),
-            children: [
+              const SizedBox(height: 22),
+              _SectionLabel('AURAS', 'Equip a glow — owned aura bonuses always stack'),
+              CosmeticsAurasSection(game: game, scrollable: false),
+              const SizedBox(height: 22),
+              _SectionLabel('BOOSTS', 'Permanent stat boosts'),
+              CosmeticsBoostsSection(game: game, scrollable: false),
+              const SizedBox(height: 22),
               _SectionLabel('TITLES', 'A rank displayed beneath your name'),
               ...CosmeticItem.all
                   .where((c) => c.type == CosmeticType.title)
@@ -152,21 +169,10 @@ class _PremiumShopScreenState extends State<PremiumShopScreen>
                   .map((item) => _CosmeticCard(item: item, game: game)),
               const SizedBox(height: 20),
               AttackEffectsSection(game: game, scrollable: false),
+              const SizedBox(height: 22),
+              _SectionLabel('CHARACTER SLOTS', 'Extra character save slots'),
+              CosmeticsMiscSection(game: game, scrollable: false),
               const SizedBox(height: 24),
-            ],
-          ),
-
-          // ── VIP ───────────────────────────────────────────────
-          ListView(
-            padding: const EdgeInsets.all(14),
-            children: [
-              _SectionLabel('VIP SUBSCRIPTIONS', 'Recurring perks and benefits'),
-              ...SubscriptionTier.all.map((sub) => _SubCard(sub: sub, game: game)),
-              const SizedBox(height: 16),
-              if (IapService.platformSupported) ...[
-                _RestorePurchasesButton(game: game),
-                const SizedBox(height: 24),
-              ],
             ],
           ),
         ],
@@ -193,6 +199,50 @@ class _SectionLabel extends StatelessWidget {
       ),
     );
   }
+}
+
+/// Shared "premium tile" styling (gradient + accent glow border) so the shop's
+/// money cards — bundles, starter packs, VIP, premium skin — read consistently.
+BoxDecoration _premiumTile(Color accent, {bool active = false}) => BoxDecoration(
+      gradient: LinearGradient(
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+        colors: [
+          accent.withValues(alpha: 0.22),
+          const Color(0xFF17140F),
+          accent.withValues(alpha: 0.14),
+        ],
+      ),
+      border: Border.all(
+          color: active ? const Color(0xFF44cc88) : accent.withValues(alpha: 0.6),
+          width: 1.5),
+      borderRadius: BorderRadius.circular(8),
+      boxShadow: [
+        BoxShadow(color: accent.withValues(alpha: 0.18), blurRadius: 14, spreadRadius: 1),
+      ],
+    );
+
+/// A small anchor-badge pill ("BEST VALUE" / "MOST POPULAR").
+class _ValueBadge extends StatelessWidget {
+  const _ValueBadge(this.label, this.color);
+  final String label;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) => Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+        decoration: BoxDecoration(
+          color: color,
+          borderRadius: BorderRadius.circular(4),
+          boxShadow: [BoxShadow(color: color.withValues(alpha: 0.5), blurRadius: 8)],
+        ),
+        child: Text(label,
+            style: const TextStyle(
+                fontSize: 8,
+                fontWeight: FontWeight.bold,
+                letterSpacing: 1,
+                color: Color(0xFF1A1410))),
+      );
 }
 
 // ─── Premium class-skin showcase (real-money $4.99 endgame armour) ───────────
@@ -430,9 +480,10 @@ class _PremiumButton extends StatelessWidget {
 }
 
 class _PackCard extends StatelessWidget {
-  const _PackCard({required this.pack, required this.game});
+  const _PackCard({required this.pack, required this.game, this.featured = false});
   final StarterPack pack;
   final GameState game;
+  final bool featured;
 
   @override
   Widget build(BuildContext context) {
@@ -440,12 +491,16 @@ class _PackCard extends StatelessWidget {
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(colors: [pack.color.withValues(alpha: 0.12), const Color(0xFF1a1816)]),
-        border: Border.all(color: bought ? const Color(0xFF44cc88) : pack.color.withValues(alpha: 0.5)),
-        borderRadius: BorderRadius.circular(6),
-      ),
-      child: Row(children: [
+      decoration: _premiumTile(pack.color, active: bought),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (featured) ...[
+            _ValueBadge('MOST POPULAR', pack.color),
+            const SizedBox(height: 8),
+          ],
+          Row(children: [
         Text(pack.icon, style: const TextStyle(fontSize: 28)),
         const SizedBox(width: 12),
         Expanded(child: Tooltip(
@@ -502,6 +557,8 @@ class _PackCard extends StatelessWidget {
             }),
           ),
       ]),
+        ],
+      ),
     );
   }
 
@@ -518,21 +575,27 @@ class _PackCard extends StatelessWidget {
 }
 
 class _CrystalCard extends StatelessWidget {
-  const _CrystalCard({required this.pkg, required this.game});
+  const _CrystalCard({required this.pkg, required this.game, this.featured = false});
   final CrystalPackage pkg;
   final GameState game;
+  final bool featured;
 
   @override
   Widget build(BuildContext context) {
+    const accent = Color(0xFFffcc44);
     return Container(
-      margin: const EdgeInsets.only(bottom: 6),
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-      decoration: BoxDecoration(
-        color: const Color(0xFF1a1225),
-        border: Border.all(color: const Color(0xFFffcc44).withValues(alpha: 0.4)),
-        borderRadius: BorderRadius.circular(4),
-      ),
-      child: Row(children: [
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: _premiumTile(accent),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (featured) ...[
+            const _ValueBadge('BEST VALUE', accent),
+            const SizedBox(height: 8),
+          ],
+          Row(children: [
         const ZCoinIcon(size: 20),
         const SizedBox(width: 10),
         Expanded(child: Text(pkg.label,
@@ -564,6 +627,8 @@ class _CrystalCard extends StatelessWidget {
           }),
         ),
       ]),
+        ],
+      ),
     );
   }
 }
@@ -577,71 +642,179 @@ class _SubCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final active = (sub.id == 'sub_premium' && game.hasPremium) ||
                    (sub.id == 'sub_speed' && game.hasSpeedSub);
+    final accent = sub.color;
+    final storePrice = sub.productId != null ? game.iapService.priceFor(sub.productId!) : '';
+    final displayPrice = storePrice.isNotEmpty ? storePrice : sub.price;
+    const activeGreen = Color(0xFF44cc88);
+
     return Container(
-      margin: const EdgeInsets.only(bottom: 8),
-      padding: const EdgeInsets.all(14),
+      margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
-        gradient: LinearGradient(colors: [sub.color.withValues(alpha: 0.10), const Color(0xFF1a1816)]),
-        border: Border.all(color: active ? const Color(0xFF44cc88) : sub.color.withValues(alpha: 0.5)),
-        borderRadius: BorderRadius.circular(6),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            accent.withValues(alpha: 0.22),
+            const Color(0xFF17140F),
+            accent.withValues(alpha: 0.14),
+          ],
+        ),
+        border: Border.all(
+            color: active ? activeGreen : accent.withValues(alpha: 0.6), width: 1.5),
+        borderRadius: BorderRadius.circular(8),
+        boxShadow: [
+          BoxShadow(color: accent.withValues(alpha: 0.18), blurRadius: 14, spreadRadius: 1),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(children: [
-            Text(sub.icon, style: const TextStyle(fontSize: 22)),
-            const SizedBox(width: 10),
-            Expanded(child: Text(sub.name,
-                style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: sub.color))),
-            if (active)
-              const Text('ACTIVE', style: TextStyle(fontSize: 10, color: Color(0xFF44cc88), fontWeight: FontWeight.bold))
-            else
-              Text(sub.price, style: TextStyle(fontSize: 12, color: sub.color, fontWeight: FontWeight.bold)),
-          ]),
-          const SizedBox(height: 8),
-          ...sub.perks.map((p) => Padding(
-            padding: const EdgeInsets.only(bottom: 2),
-            child: Row(children: [
-              Text('✓ ', style: TextStyle(fontSize: 10, color: sub.color)),
-              Text(p, style: const TextStyle(fontSize: 10, color: Colors.white70)),
-            ]),
-          )),
-          if (!active) ...[
-            const SizedBox(height: 8),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: () {
-                  if (sub.productId != null && game.iapService.storeAvailable) {
-                    game.iapService.buyNonConsumable(sub.productId!);
-                  } else if (kDebugMode) {
-                    if (sub.id == 'sub_speed') {
-                      game.activateSpeedSub(30);
-                    } else {
-                      game.activatePremium(30);
-                    }
-                  } else {
-                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                      content: Text('Store unavailable — try again later.'),
-                      backgroundColor: Color(0xFF442222),
-                      duration: Duration(seconds: 2),
-                    ));
-                  }
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: sub.color.withValues(alpha: 0.15),
-                  foregroundColor: sub.color,
-                  side: BorderSide(color: sub.color),
-                ),
-                child: Builder(builder: (ctx) {
-                  final storePrice = sub.productId != null ? game.iapService.priceFor(sub.productId!) : '';
-                  final displayPrice = storePrice.isNotEmpty ? storePrice : sub.price;
-                  return Text('SUBSCRIBE  $displayPrice',
-                      style: AppTheme.pixelHeading(fontSize: 11, color: sub.color));
-                }),
+          // Header ribbon
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [accent.withValues(alpha: 0.30), Colors.transparent],
               ),
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(7)),
             ),
-          ],
+            child: Row(children: [
+              Text(sub.icon, style: const TextStyle(fontSize: 16)),
+              const SizedBox(width: 8),
+              Text('VIP SUBSCRIPTION',
+                  style: AppTheme.pixelHeading(
+                      fontSize: 11, letterSpacing: 2, color: accent)),
+              if (sub.id == 'sub_premium') ...[
+                const SizedBox(width: 8),
+                _ValueBadge('MOST POPULAR', accent),
+              ],
+              const Spacer(),
+              Text(active ? '✓ ACTIVE' : displayPrice,
+                  style: AppTheme.pixelHeading(
+                      fontSize: 11, color: active ? activeGreen : accent)),
+            ]),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(14, 6, 14, 14),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Emblem preview box (mirrors the premium-skin sprite frame)
+                Container(
+                  width: 88,
+                  height: 116,
+                  decoration: BoxDecoration(
+                    color: Colors.black.withValues(alpha: 0.28),
+                    border: Border.all(color: accent.withValues(alpha: 0.45)),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  alignment: Alignment.center,
+                  child: VipEmblem(
+                      kind: sub.id == 'sub_premium' ? 1 : 0, color: accent, size: 80),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(sub.name,
+                          style: TextStyle(
+                              fontSize: 18, fontWeight: FontWeight.bold, color: accent)),
+                      const SizedBox(height: 3),
+                      Text(sub.tagline,
+                          style: const TextStyle(
+                              fontSize: 12, color: AppTheme.textMuted, height: 1.3)),
+                      const SizedBox(height: 12),
+                      if (active)
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                          decoration: BoxDecoration(
+                            color: activeGreen.withValues(alpha: 0.18),
+                            border: Border.all(color: activeGreen),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Text('✓ SUBSCRIBED',
+                              style: AppTheme.pixelHeading(fontSize: 11, color: activeGreen)),
+                        )
+                      else
+                        SizedBox(
+                          width: double.infinity,
+                          child: ElevatedButton(
+                            onPressed: () {
+                              if (sub.productId != null && game.iapService.storeAvailable) {
+                                game.iapService.buyNonConsumable(sub.productId!);
+                              } else if (kDebugMode) {
+                                if (sub.id == 'sub_speed') {
+                                  game.activateSpeedSub(30);
+                                } else {
+                                  game.activatePremium(30);
+                                }
+                              } else {
+                                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                                  content: Text('Store unavailable — try again later.'),
+                                  backgroundColor: Color(0xFF442222),
+                                  duration: Duration(seconds: 2),
+                                ));
+                              }
+                            },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: accent.withValues(alpha: 0.15),
+                              foregroundColor: accent,
+                              side: BorderSide(color: accent),
+                            ),
+                            child: Text('SUBSCRIBE  $displayPrice',
+                                style: AppTheme.pixelHeading(fontSize: 11, color: accent)),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          // Perks as chips (mirrors the premium skin's "INCLUDED BONUSES")
+          Padding(
+            padding: const EdgeInsets.fromLTRB(14, 0, 14, 14),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (sub.id == 'sub_premium') ...[
+                  Text("Everything in Vanguard's Pact, plus:",
+                      style: TextStyle(
+                          fontSize: 11,
+                          fontStyle: FontStyle.italic,
+                          color: accent.withValues(alpha: 0.85))),
+                  const SizedBox(height: 8),
+                ],
+                Row(children: [
+                  Icon(Icons.auto_awesome, size: 13, color: accent),
+                  const SizedBox(width: 6),
+                  Text('INCLUDED PERKS',
+                      style: AppTheme.pixelHeading(
+                          fontSize: 10, letterSpacing: 1.5, color: accent)),
+                ]),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 6,
+                  runSpacing: 6,
+                  children: [
+                    for (final perk in sub.perks)
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: accent.withValues(alpha: 0.12),
+                          border: Border.all(color: accent.withValues(alpha: 0.4)),
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: Text(perk,
+                            style: const TextStyle(fontSize: 12, color: AppTheme.textLight)),
+                      ),
+                  ],
+                ),
+              ],
+            ),
+          ),
         ],
       ),
     );
@@ -665,7 +838,7 @@ class _ResourceCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(4),
       ),
       child: Row(children: [
-        Text(bundle.icon, style: const TextStyle(fontSize: 20)),
+        CurrencyIcon(id: bundle.resource, size: 26),
         const SizedBox(width: 10),
         Expanded(child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,

@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../services/game_state.dart';
 import '../theme/app_theme.dart';
+import '../widgets/game_icons.dart';
 import 'campaign_screen.dart';
 import 'endless_screen.dart';
 import 'daily_screen.dart';
@@ -38,12 +39,29 @@ class _ModesScreenState extends State<ModesScreen>
     ('TOWER ASCENSION',   '🗼', 35),   // boss 7
     ('GAUNTLET',          '🛡️', 45),  // boss 9
     // ── Secondary ─────────────────────────────────────────────────────────────
-    ('CHALLENGES',        '🎯',  5),   // boss 1 — daily / weekly / bounties
+    // PvP sits first among the secondary modes so it lands right after Gauntlet
+    // (both are "test your build" challenge modes). Still gated to stage 50, so
+    // it only appears once unlocked.
+    ('PVP',               '⚔️', 50),
+    ('CHALLENGES',        '🎯',  5),   // daily / weekly / bounties
     // QUESTS moved to the HERO tab.
     ('EVENTS',            '🌐', 30),   // boss 6
     ('EXPEDITION',        '🗺️', 40),  // boss 8
-    ('PVP',               '⚔️', 50),  // boss 10
   ];
+
+  // Pixel GameIcons for the mode tabs — matches the bottom nav's aesthetic
+  // (the emoji above are legacy and no longer rendered). Keyed by label.
+  static const _modeIcons = <String, GameIconType>{
+    'CAMPAIGN':        GameIconType.scroll,
+    'DUNGEON':         GameIconType.key,
+    'BOSS RUSH':       GameIconType.skull,
+    'TOWER ASCENSION': GameIconType.mountain,
+    'GAUNTLET':        GameIconType.gauntlet,
+    'PVP':             GameIconType.swords,
+    'CHALLENGES':      GameIconType.flag,
+    'EVENTS':          GameIconType.flame,
+    'EXPEDITION':      GameIconType.compass,
+  };
 
   late TabController _tabs;
   int _index = 0;
@@ -116,10 +134,10 @@ class _ModesScreenState extends State<ModesScreen>
     3  => const EndlessScreen(),         // TOWER ASCENSION
     4  => const GauntletScreen(),        // GAUNTLET
     // Secondary
-    5  => const DailyScreen(),           // CHALLENGES (daily / weekly / bounties)
-    6  => const WorldEventScreen(),      // EVENTS
-    7  => const ExpeditionScreen(),      // EXPEDITION
-    8  => const PvpScreen(),             // PVP
+    5  => const PvpScreen(),             // PVP (grouped next to Gauntlet)
+    6  => const DailyScreen(),           // CHALLENGES (daily / weekly / bounties)
+    7  => const WorldEventScreen(),      // EVENTS
+    8  => const ExpeditionScreen(),      // EXPEDITION
     _  => const SizedBox.shrink(),
   };
 
@@ -176,7 +194,7 @@ class _ModesScreenState extends State<ModesScreen>
               dividerColor: Colors.transparent,
               tabs: List.generate(indices.length, (vi) {
                 final i = indices[vi];
-                final (label, emoji, _) = _tabData[i];
+                final (label, _, _) = _tabData[i];
                 final isActive = _index == vi;
                 final isNew = !game.visitedModeTabs.contains(label);
                 final hasClaimable = switch (label) {
@@ -202,8 +220,12 @@ class _ModesScreenState extends State<ModesScreen>
                       Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Text(emoji,
-                              style: TextStyle(fontSize: isActive ? 17 : 14)),
+                          GameIcon(
+                              _modeIcons[label] ?? GameIconType.swords,
+                              size: isActive ? 20 : 16,
+                              color: isActive
+                                  ? AppTheme.accentGold
+                                  : AppTheme.textMuted),
                           const SizedBox(height: 3),
                           Text(label,
                               style: GoogleFonts.rajdhani(

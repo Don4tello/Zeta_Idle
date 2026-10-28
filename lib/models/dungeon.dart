@@ -473,6 +473,18 @@ class DungeonRun {
   bool isCleared   = false;
   bool get isOver  => isDead || isAbandoned || isCleared;
 
+  // ── Abyssal Push ───────────────────────────────────────────────────────────
+  /// Opt-in: when on, beating the floor-[clearFloor] Dungeon Lord credits the
+  /// tier clear (bonus + unlock) but DOESN'T end the run — you descend into
+  /// escalating "abyssal" floors (richer mythril/unique odds) until you die or
+  /// leave. Default off = classic behavior (clear at [clearFloor], run ends).
+  bool pushMode = false;
+  /// Set once the tier-clear bonus + unlock have been credited (so a later push
+  /// death can't revoke the clear, and the bonus is never granted twice).
+  bool tierCredited = false;
+  /// True while descending past [clearFloor] in push mode.
+  bool get isPushing => pushMode && floor >= clearFloor && tierCredited && !isOver;
+
   int goldEarned   = 0;
   int shardsEarned = 0;
   int roomsCleared   = 0;
@@ -797,6 +809,9 @@ class DungeonRun {
     int weaponBase = 0,
     double dmgMult = 1.0,
     double enemyHpMult = 1.0,
+    int hpFloor = 0,
+    int hpCeiling = 0,
+    int atkFloor = 0,
     double extHealMult = 1.0,
     int burnPerRound = 0,
     int enemyShield = 0,
@@ -806,10 +821,15 @@ class DungeonRun {
   }) {
     int heroHpLocal  = heroHp;
     int enemyHpLocal = ((room.enemyMaxHp ?? 10) * enemyHpMult).round();
+    // Fight-length clamp: keep the room ~8–12 rounds — floor raises trivial
+    // fights, ceiling caps grindy ones vs an under-geared hero.
+    if (hpFloor > enemyHpLocal) enemyHpLocal = hpFloor;
+    if (hpCeiling > 0 && enemyHpLocal > hpCeiling) enemyHpLocal = hpCeiling;
     var shieldLeft   = enemyShield;
     final totalHealMult = healMult * extHealMult;
     final baseAc  = heroAc + blessingAc;
-    final eAtk    = room.enemyAtk ?? 5;
+    // Threat floor: keep room enemies hitting for a meaningful share of hero HP.
+    final eAtk    = max(room.enemyAtk ?? 5, atkFloor);
 
     // Per-combat temp state
     int tempAtkBonus = 0, tempAtkRounds = 0;

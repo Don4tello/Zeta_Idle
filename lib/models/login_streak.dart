@@ -9,6 +9,7 @@
     this.essence = 0,
     this.isEpicItem = false,
     this.isClassLegendary = false,
+    this.isMilestone = false,
     required this.label,
     required this.icon,
   });
@@ -21,6 +22,10 @@
   final int essence;
   final String label;
   final String icon;
+  /// Weekly capstone / finale day. Its rare-currency payout (shards/echoes/
+  /// mythril) scales with the player's tier so the milestone keeps pace with
+  /// progression — see GameState.effectiveLoginReward. ZCoins stay flat.
+  final bool isMilestone;
 
   static const cycle = [
     // Week 1
@@ -30,7 +35,7 @@
     LoginReward(day: 4,  mythril: 6,  label: '6 Mythril',       icon: '⬡'),
     LoginReward(day: 5,  zcoins: 30, gold: 2000, label: '2000 Gold + 30 🪙', icon: '🎁'),
     LoginReward(day: 6,  shards: 300, label: '300 Shards',       icon: '✨'),
-    LoginReward(day: 7,  zcoins: 100, echoes: 100, label: '100 ZCoins + 100 Echoes', icon: '👑'),
+    LoginReward(day: 7,  zcoins: 100, echoes: 100, isMilestone: true, label: '100 ZCoins + 100 Echoes', icon: '👑'),
     // Week 2
     LoginReward(day: 8,  gold: 1500,  label: '1500 Gold',       icon: '💰'),
     LoginReward(day: 9,  shards: 100, label: '100 Shards',     icon: '◆'),
@@ -38,7 +43,7 @@
     LoginReward(day: 11, mythril: 10, label: '10 Mythril',      icon: '⬡'),
     LoginReward(day: 12, zcoins: 20, gold: 2500, label: '2500 Gold + 20 🪙', icon: '🎁'),
     LoginReward(day: 13, shards: 225, label: '225 Shards',       icon: '✨'),
-    LoginReward(day: 14, zcoins: 50, echoes: 75, isEpicItem: true, label: '50🪙 + 75🔊 + Epic Item!', icon: '👑'),
+    LoginReward(day: 14, zcoins: 50, echoes: 75, isEpicItem: true, isMilestone: true, label: '50🪙 + 75🔊 + Epic Item!', icon: '👑'),
     // Week 3
     LoginReward(day: 15, gold: 2000,  label: '2000 Gold',       icon: '💰'),
     LoginReward(day: 16, zcoins: 25, label: '25 ZCoins',    icon: '🪙'),
@@ -46,7 +51,7 @@
     LoginReward(day: 18, mythril: 15, label: '15 Mythril',      icon: '⬡'),
     LoginReward(day: 19, zcoins: 40, gold: 3000, label: '3000 Gold + 40 🪙', icon: '🎁'),
     LoginReward(day: 20, shards: 450, label: '450 Shards',       icon: '✨'),
-    LoginReward(day: 21, zcoins: 75, echoes: 100, label: '75 ZCoins + 100 Echoes', icon: '👑'),
+    LoginReward(day: 21, zcoins: 75, echoes: 100, isMilestone: true, label: '75 ZCoins + 100 Echoes', icon: '👑'),
     // Week 4 — grand finale
     LoginReward(day: 22, gold: 3000,  label: '3000 Gold',       icon: '💰'),
     LoginReward(day: 23, shards: 250, label: '250 Shards',     icon: '◆'),
@@ -54,13 +59,28 @@
     LoginReward(day: 25, mythril: 20, label: '20 Mythril',      icon: '⬡'),
     LoginReward(day: 26, zcoins: 50, gold: 5000, label: '5000 Gold + 50 🪙', icon: '🎁'),
     LoginReward(day: 27, shards: 600, echoes: 150, label: '600◆ + 150🔊', icon: '✨'),
-    LoginReward(day: 28, zcoins: 100, label: '100 ZCoins',  icon: '🪙'),
+    LoginReward(day: 28, zcoins: 100, shards: 400, isMilestone: true, label: '100 ZCoins + 400 Shards',  icon: '🪙'),
     LoginReward(day: 29, gold: 10000, zcoins: 50, echoes: 200, label: '10K Gold + 50🪙 + 200🔊', icon: '🎁'),
-    LoginReward(day: 30, isClassLegendary: true, label: 'Class Legendary Item!', icon: '⚔'),
+    LoginReward(day: 30, isClassLegendary: true, isMilestone: true, mythril: 25, shards: 500, label: 'Class Legendary + 25 Mythril + 500 Shards', icon: '⚔'),
   ];
 
   final bool isEpicItem;
   final bool isClassLegendary;
+
+  /// The pixel-art icon that best represents this reward — the UI renders the
+  /// matching [CurrencyIcon]/[ItemSprite] from this instead of the legacy emoji.
+  /// Priority favours the "headline" prize on bundle days (premium > crafting >
+  /// combat > gold), and item days get a weapon sprite.
+  String get primaryIconId {
+    if (isClassLegendary) return 'item_legendary';
+    if (isEpicItem)       return 'item_epic';
+    if (mythril > 0)      return 'mythril';
+    if (zcoins > 0)       return 'zcoins';
+    if (shards > 0)       return 'shards';
+    if (echoes > 0)       return 'echoes';
+    if (essence > 0)      return 'essence';
+    return 'gold';
+  }
 
   static LoginReward forDay(int day) => cycle[(day - 1) % cycle.length];
 }

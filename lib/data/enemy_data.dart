@@ -78,7 +78,10 @@ class EnemyData {
   // deepest tiers don't explode. Rewards key off enemy LEVEL not HP → no inflation.
   static double frontierBossHpMult(int tier) {
     final over = (tier - 3).clamp(0, 100);
-    return (1.0 + 2.0 * over).clamp(1.0, 11.0); // T4 ×3 · T5 ×5 · T7 ×9 · T10 ×11
+    // Slope 2.0 → 2.5 (build 287+): paired with the kRecoveryMult cut, frontier
+    // bosses need a firmer HP wall so a sustain-capped hero faces a real DPS
+    // check at the finale instead of a coin-flip. Still saturates at ×13.
+    return (1.0 + 2.5 * over).clamp(1.0, 13.0); // T4 ×3.5 · T5 ×6 · T7 ×11 · T10 ×13
   }
 
   // ATK 1.09 → 1.20 (T10 ≈ ×2.37 → ×6.2). Telemetry (build 230): with healing +
@@ -166,7 +169,7 @@ class EnemyData {
   static const double kOverLevelStep = 0.03; // +3% enemy HP per level over
   static const int    kOverLevelCap  = 50;   // …counted up to a 50-level gap
   static const List<int> _systemUnlockStages =
-      [2, 5, 8, 10, 12, 15, 18, 20, 22, 25, 28, 30, 35, 40, 45, 50, 55];
+      [2, 5, 8, 10, 12, 15, 18, 20, 22, 25, 28, 30, 35, 38, 40, 45, 50, 55];
   static int systemsUnlockedBy(int tier, int stage) => tier > 0
       ? _systemUnlockStages.length
       : _systemUnlockStages.where((s) => stage >= s).length;
@@ -1251,7 +1254,9 @@ class EnemyData {
       final atkValue = kRefAtk * pow(kAtkGrowth, depth).toDouble()
           * intraRamp * bossAtkMult
           * systemAtkSteepener(prestigeLevel, stage)
-          * endgameTierAtkMult(prestigeLevel) * rc.enemyAtkMult;
+          * endgameTierAtkMult(prestigeLevel) * rc.enemyAtkMult
+          // Trash-only bite: bosses keep their own (approval-gated) ATK curve.
+          * (isBoss ? 1.0 : rc.trashAtkMult);
       return Enemy(
         id:          base.id,
         name:        base.name,
@@ -1291,7 +1296,8 @@ class EnemyData {
     final level   = baseLvl + a ~/ 5 + prestigeLevel * kTierLevelStep;
     final overMult = overLevelMult(level); // HP only (see campaign branch)
     final hp      = (baseHP  * growth * prestigeHpMult  * overMult * rc.enemyHpMult ).round().clamp(baseHP,  1000000000000000);
-    final atk     = (baseAtk * sqrt(growth) * prestigeAtkMult * rc.enemyAtkMult).round().clamp(baseAtk, 1000000000000000);
+    // Abyss enemies are all non-boss trash → same trash-bite multiplier.
+    final atk     = (baseAtk * sqrt(growth) * prestigeAtkMult * rc.enemyAtkMult * rc.trashAtkMult).round().clamp(baseAtk, 1000000000000000);
     final acBonus = min((log(a + 1) / log(2) * 1.5).floor(), 12);
 
     final name = EnemyNamingEngine.buildName(

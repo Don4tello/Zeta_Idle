@@ -320,11 +320,12 @@ class SubscriptionTier {
     required this.price,
     required this.icon,
     required this.color,
+    required this.tagline,
     required this.perks,
     this.productId,
   });
 
-  final String id, name, price, icon;
+  final String id, name, price, icon, tagline;
   final Color color;
   final List<String> perks;
   final String? productId;
@@ -332,10 +333,11 @@ class SubscriptionTier {
   static const all = [
     SubscriptionTier(
       id: 'sub_speed',
-      name: 'Speed Boost',
+      name: "Vanguard's Pact",
       price: '\$0.99/month',
       icon: '⚡',
       color: Color(0xFFffcc44),
+      tagline: 'Relentless momentum — farm faster, climb harder.',
       productId: 'sub_speed_monthly',
       perks: [
         '2× battle speed permanently',
@@ -346,10 +348,11 @@ class SubscriptionTier {
     ),
     SubscriptionTier(
       id: 'sub_premium',
-      name: 'Premium Pass',
+      name: "Ascendant's Crown",
       price: '\$4.99/month',
       icon: '👑',
       color: Color(0xFFcc88ff),
+      tagline: 'The complete arsenal — every perk, maximised.',
       productId: 'sub_premium_monthly',
       perks: [
         '2× Season Pass XP',

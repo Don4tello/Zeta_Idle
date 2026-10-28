@@ -246,8 +246,12 @@ class GuildBoss {
     spriteId: (json['spriteId'] as String?) ?? 'lich',
   );
 
-  // Generate a boss scaled to member count
-  static GuildBoss generate(int memberCount, int guildLevel) {
+  // Generate the week's boss. HP is a big SHARED pool scaled to the hero's
+  // damage-per-round so it has room for every member to fight ~8-12 rounds
+  // (× a few attempts each) — a weekly damage race, not a one-shot. Pass
+  // [heroDmgPerRound] (GameState.heroDmgPerRound); the flat formula is only a
+  // floor for very early/weak heroes.
+  static GuildBoss generate(int memberCount, int guildLevel, {int heroDmgPerRound = 0}) {
     final names = [
       'Ancient Wyrm', 'Void Colossus', 'Plague Emperor',
       'Storm Titan', 'Shadow Sovereign', 'Infernal Archon',
@@ -255,7 +259,12 @@ class GuildBoss {
     final sprites = ['hydra', 'golem', 'chimera', 'phoenix', 'lich', 'minotaur'];
     final week = DateTime.now().millisecondsSinceEpoch ~/ (7 * 24 * 60 * 60 * 1000);
     final idx = week % names.length;
-    final hp = (5000 + memberCount * 2000) * guildLevel;
+    const kRoundsPerFight = 12;   // each member's assault lasts up to ~12 rounds
+    const kAttemptsPerWeek = 3;   // × a few attempts each across the week
+    final members = memberCount.clamp(1, 1000);
+    final relative = heroDmgPerRound * kRoundsPerFight * kAttemptsPerWeek * members;
+    final flatFloor = (5000 + memberCount * 2000) * guildLevel;
+    final hp = relative > flatFloor ? relative : flatFloor;
 
     return GuildBoss(
       name: names[idx],
@@ -264,6 +273,14 @@ class GuildBoss {
       spriteId: sprites[idx],
     );
   }
+
+  // Weekly reward for a member's final damage RANK in the guild boss race.
+  static Map<String, int> rewardsForRank(int rank) => switch (rank) {
+    1 => {'guildCoins': 500, 'gold': 100000, 'echoes': 300, 'zcoins': 50, 'mythril': 40},
+    2 => {'guildCoins': 350, 'gold': 70000,  'echoes': 220, 'zcoins': 30, 'mythril': 25},
+    3 => {'guildCoins': 250, 'gold': 50000,  'echoes': 150, 'zcoins': 20, 'mythril': 15},
+    _ => {'guildCoins': 120, 'gold': 20000,  'echoes': 60,  'zcoins': 8},
+  };
 }
 
 // ── Guild Perks ──────────────────────────────────────────────────────────────

@@ -24,6 +24,66 @@ import '../theme/app_theme.dart';
 // bar naturally disappears during a fight and reappears on Back.
 // ─────────────────────────────────────────────────────────────────────────────
 
+/// Loot-log bottom sheet — recent drops/rewards. Shown from the Hero hub.
+void showLootLog(BuildContext ctx, GameState game) {
+  showModalBottomSheet(
+    context: ctx,
+    backgroundColor: const Color(0xFF1a1a2e),
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(12)),
+    ),
+    builder: (_) => SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('LOOT LOG', style: AppTheme.pixelHeading(fontSize: 12, letterSpacing: 2, color: AppTheme.accentGold)),
+            const SizedBox(height: 10),
+            if (game.lootHistory.isEmpty)
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 20),
+                child: Center(child: Text('No loot yet — go fight something!',
+                    style: TextStyle(color: AppTheme.textMuted, fontSize: 12))),
+              )
+            else
+              SizedBox(
+                height: 300,
+                child: ListView.builder(
+                  itemCount: game.lootHistory.length,
+                  itemBuilder: (_, i) {
+                    final e = game.lootHistory[i];
+                    final ago = DateTime.now().difference(e.time);
+                    final timeLabel = ago.inMinutes < 1 ? 'just now'
+                        : ago.inMinutes < 60 ? '${ago.inMinutes}m ago'
+                        : '${ago.inHours}h ago';
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 6),
+                      child: Row(children: [
+                        Text(e.icon, style: const TextStyle(fontSize: 14)),
+                        const SizedBox(width: 8),
+                        Expanded(child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(e.text, style: const TextStyle(fontSize: 11, color: Colors.white70)),
+                            if (e.detail != null)
+                              Text(e.detail!, style: const TextStyle(fontSize: 9, color: AppTheme.textMuted)),
+                          ],
+                        )),
+                        Text(timeLabel, style: const TextStyle(fontSize: 9, color: AppTheme.textMuted)),
+                      ]),
+                    );
+                  },
+                ),
+              ),
+          ],
+        ),
+      ),
+    ),
+  );
+}
+
 class MainShell extends StatefulWidget {
   const MainShell({super.key, required this.onBackToSelect});
 
@@ -107,65 +167,6 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
     );
   }
 
-  void _showLootLog(BuildContext ctx, GameState game) {
-    showModalBottomSheet(
-      context: ctx,
-      backgroundColor: const Color(0xFF1a1a2e),
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(12)),
-      ),
-      builder: (_) => SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text('LOOT LOG', style: AppTheme.pixelHeading(fontSize: 12, letterSpacing: 2, color: AppTheme.accentGold)),
-              const SizedBox(height: 10),
-              if (game.lootHistory.isEmpty)
-                const Padding(
-                  padding: EdgeInsets.symmetric(vertical: 20),
-                  child: Center(child: Text('No loot yet — go fight something!',
-                      style: TextStyle(color: AppTheme.textMuted, fontSize: 12))),
-                )
-              else
-                SizedBox(
-                  height: 300,
-                  child: ListView.builder(
-                    itemCount: game.lootHistory.length,
-                    itemBuilder: (_, i) {
-                      final e = game.lootHistory[i];
-                      final ago = DateTime.now().difference(e.time);
-                      final timeLabel = ago.inMinutes < 1 ? 'just now'
-                          : ago.inMinutes < 60 ? '${ago.inMinutes}m ago'
-                          : '${ago.inHours}h ago';
-                      return Padding(
-                        padding: const EdgeInsets.only(bottom: 6),
-                        child: Row(children: [
-                          Text(e.icon, style: const TextStyle(fontSize: 14)),
-                          const SizedBox(width: 8),
-                          Expanded(child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(e.text, style: const TextStyle(fontSize: 11, color: Colors.white70)),
-                              if (e.detail != null)
-                                Text(e.detail!, style: const TextStyle(fontSize: 9, color: AppTheme.textMuted)),
-                            ],
-                          )),
-                          Text(timeLabel, style: const TextStyle(fontSize: 9, color: AppTheme.textMuted)),
-                        ]),
-                      );
-                    },
-                  ),
-                ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
   void _showOfflineDialog(GameState game) {
     final secs = game.offlineSecondsAway;
     final String awayLine;
@@ -215,7 +216,7 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
               const SizedBox(height: 6),
               // "essence" is an alias for Shards — use the real Shards icon/label.
               _offlineRow(const CurrencyIcon(id: 'shards', size: 16),
-                  '+${fmtNum(ess)} shards', const Color(0xFF44ccff)),
+                  '+${fmtNum(ess)} shards', const Color(0xFF6699ff)),
             ],
             if (exps > 0) ...[
               const SizedBox(height: 6),
@@ -414,27 +415,7 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
       body: SafeArea(
         bottom: false,
         child: Column(children: [
-        // Resource totals are shown contextually on the screens that spend them
-        // (Abilities, Scores, Forge, Shop, …) rather than a global top bar.
-        Container(
-          color: const Color(0xFF1a1916),
-          child: Row(children: [
-            const Spacer(),
-            GestureDetector(
-              onTap: () => _showLootLog(context, game),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-                child: Stack(children: [
-                  const Icon(Icons.notifications_outlined, size: 16, color: AppTheme.textMuted),
-                  if (game.lootHistory.isNotEmpty)
-                    Positioned(top: 0, right: 0,
-                      child: Container(width: 6, height: 6,
-                        decoration: const BoxDecoration(color: Color(0xFFffcc44), shape: BoxShape.circle))),
-                ]),
-              ),
-            ),
-          ]),
-        ),
+        // (Loot log moved to the Hero hub; resource totals shown contextually.)
         // Flash event banner
         if (game.activeFlashEvent != null && game.activeFlashEvent!.isActive)
           Container(

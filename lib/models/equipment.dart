@@ -5,7 +5,7 @@ import 'dnd_class.dart';
 import 'hero_ability.dart';
 
 enum ItemSlot { weapon, offHand, helmet, armor, gloves, pants, boots, ring, ring2, amulet, relic }
-enum ItemRarity { common, uncommon, rare, epic, legendary, mythic, set, unique }
+enum ItemRarity { common, uncommon, rare, epic, legendary, mythic, set, unique, ascended, primordial, eternal, transcendent }
 enum ItemStat {
   strength, dexterity, constitution, intelligence, wisdom, charisma,
   attackBonus, damageBonus, armorClass, maxHpPct, goldPct, xpPct,
@@ -405,7 +405,52 @@ class EquipmentItem {
     ItemRarity.mythic    => 'Mythic',
     ItemRarity.set       => 'Set',
     ItemRarity.unique    => 'Unique',
+    ItemRarity.ascended     => 'Ascended',
+    ItemRarity.primordial   => 'Primordial',
+    ItemRarity.eternal      => 'Eternal',
+    ItemRarity.transcendent => 'Transcendent',
   };
+
+  /// Canonical art type inferred from the item name, used to pick a pixel-art
+  /// sprite (bow, staff, orb, robe, …) instead of one generic icon per slot.
+  /// Works for both freshly-rolled class items and legacy saved gear.
+  String get itemTypeKey {
+    final n = name.toLowerCase();
+    bool has(String s) => n.contains(s);
+    switch (slot) {
+      case ItemSlot.weapon:
+        if (has('crossbow')) return 'crossbow';
+        if (has('bow')) return 'bow';
+        if (has('axe') || has('cleaver')) return 'axe';
+        if (has('maul') || has('hammer') || has('mace') || has('morningstar') ||
+            has('flail') || has('cudgel') || has('club')) return 'mace';
+        if (has('dagger') || has('dirk') || has('stiletto') || has('kris') ||
+            has('shadowblade')) return 'dagger';
+        if (has('staff') || has('nunchaku') || has('tonfa') || has('fist')) return 'staff';
+        if (has('wand') || has('rod') || has('scepter')) return 'wand';
+        if (has('halberd') || has('glaive') || has('spear') || has('pike') ||
+            has('sickle') || has('scythe')) return 'spear';
+        return 'sword'; // longsword, broadsword, rapier, saber, scimitar, blade
+      case ItemSlot.offHand:
+        if (has('quiver') || has('arrow') || has('bolt')) return 'quiver';
+        if (has('orb') || has('crystal') || has('sigil') || has('font')) return 'orb';
+        if (has('tome') || has('grimoire') || has('book')) return 'tome';
+        if (has('lute') || has('lyre')) return 'lute';
+        if (has('shield') || has('buckler') || has('aegis') || has('bulwark') ||
+            has('kite') || has('tower') || has('heater') || has('targe')) return 'shield';
+        if (has('knives') || has('knife') || has('parry')) return 'dagger';
+        return 'totem'; // holy symbol, idol, charm, beads, chalice, lantern, ward…
+      case ItemSlot.armor:
+        if (has('robe') || has('vestment') || has('mantle') || has('raiment') ||
+            has('silk') || has('gi') || has('wrapping')) return 'robe';
+        if (has('scale')) return 'scale';
+        if (has('leather') || has('garb') || has('doublet') || has('hide') ||
+            has('weave') || has('leathers')) return 'leather';
+        return 'plate'; // plate, mail, chain, breastplate, harness, faithguard
+      default:
+        return slot.name;
+    }
+  }
 
   /// Rough total stat budget for quick shop upgrade comparisons (not a precise
   /// DPS model — just base damage + summed stat values + a keyword bonus).
@@ -470,6 +515,10 @@ class EquipmentItem {
     ItemRarity.mythic    => const Color(0xFFDD1111),
     ItemRarity.set       => itemSet?.color ?? const Color(0xFF00cc88),
     ItemRarity.unique    => const Color(0xFFE8A0FF),
+    ItemRarity.ascended     => const Color(0xFFFF8A1E), // molten amber
+    ItemRarity.primordial   => const Color(0xFF17E0A8), // emerald teal
+    ItemRarity.eternal      => const Color(0xFF36C6FF), // radiant cyan
+    ItemRarity.transcendent => const Color(0xFFFFF4D6), // prismatic white-gold
   };
 
   Map<String, dynamic> toJson() => {
@@ -541,6 +590,11 @@ class ItemLootTable {
   /// Surfaced in the tier picker so players see the payoff of climbing.
   static const int kMagicFindPerTier = 3;
 
+  /// Active hero's class — kept in sync by game_state (see loadCharacter). Drops
+  /// use it to pick class-appropriate base types: a Ranger finds bows & quivers,
+  /// a Wizard finds staffs & orbs, each class its own armour (robes/plate/…).
+  static DndClass lootClass = DndClass.fighter;
+
   // ── Name pools ────────────────────────────────────────────────────────────
   static const _weaponNames  = ['Iron Blade', 'Bone Axe', 'Shadow Dagger', 'Cursed Mace', 'Runic Sword', 'Void Glaive', 'Hex Wand', 'Death Scythe'];
   static const _offHandNames = ['Targe Shield', 'Bone Buckler', 'Shadow Guard', 'Cursed Barrier', 'Rune Shield', 'Void Ward', 'Iron Bulwark', 'Death Aegis'];
@@ -552,6 +606,58 @@ class ItemLootTable {
   static const _ringNames    = ['Ring of Fury', 'Bone Band', 'Shadow Signet', 'Cursed Loop', 'Rune Circle', 'Void Ring', 'Hex Band', 'Death Seal'];
   static const _amuletNames  = ['Amulet of Might', 'Bone Talisman', 'Shadow Pendant', 'Cursed Locket', 'Rune Charm', 'Void Medallion', 'Hex Totem', 'Death Ward'];
   static const _relicNames   = ['Eye of Fate', 'Bone Fragment', 'Shadow Shard', 'Cursed Rune', 'Ancient Token', 'Void Crystal', 'Hex Ember', 'Death Spark'];
+
+  // ── Class-specific base types ───────────────────────────────────────────────
+  // The weapon, off-hand and body-armour a hero finds reflect their class, so a
+  // Ranger pulls bows + quivers + leather, a Wizard pulls staffs + orbs + robes,
+  // and so on. A material adjective ([_materials]) is prefixed at roll time to
+  // keep the existing dark-fantasy name variety ("Void Longbow", "Runic Robes").
+  static const _materials = ['Iron', 'Bone', 'Shadow', 'Cursed', 'Runic', 'Void', 'Hex', 'Grim'];
+
+  static const _classWeaponTypes = <DndClass, List<String>>{
+    DndClass.barbarian: ['Greataxe', 'Warmaul', 'Cleaver', 'Greatsword', 'Berserker Axe'],
+    DndClass.fighter:   ['Longsword', 'Battleaxe', 'Broadsword', 'War Flail', 'Halberd'],
+    DndClass.paladin:   ['Longsword', 'Warhammer', 'Blessed Mace', 'Flail', 'Greatblade'],
+    DndClass.ranger:    ['Longbow', 'Shortbow', 'Crossbow', 'Hunting Bow', 'Recurve Bow'],
+    DndClass.rogue:     ['Dagger', 'Dirk', 'Stiletto', 'Kris', 'Shadowblade'],
+    DndClass.monk:      ['Bo Staff', 'Nunchaku', 'Tonfa', 'Fist Wraps', 'Spirit Staff'],
+    DndClass.bard:      ['Rapier', 'Shortsword', 'Saber', 'Court Blade', 'Dueling Dagger'],
+    DndClass.druid:     ['Quarterstaff', 'Scimitar', 'Thornstaff', 'War Sickle', 'Oaken Club'],
+    DndClass.cleric:    ['Warhammer', 'Mace', 'Morningstar', 'Flail', 'Cudgel'],
+    DndClass.wizard:    ['Staff', 'Wand', 'Runestaff', 'Spellstaff', 'Arcane Rod'],
+    DndClass.sorcerer:  ['Wand', 'Scepter', 'Chaos Rod', 'Focus Staff', 'Dragon Wand'],
+    DndClass.warlock:   ['Eldritch Staff', 'Pact Rod', 'Grimscepter', 'Soul Wand', 'Doomstaff'],
+  };
+
+  static const _classOffHandTypes = <DndClass, List<String>>{
+    DndClass.barbarian: ['War Shield', 'Bone Totem', 'Skull Ward', 'Hide Guard'],
+    DndClass.fighter:   ['Kite Shield', 'Tower Shield', 'Buckler', 'Heater Shield'],
+    DndClass.paladin:   ['Holy Shield', 'Aegis', 'Blessed Bulwark', 'Faith Ward'],
+    DndClass.ranger:    ['Quiver', 'Arrow Case', 'Bolt Pouch', 'Beast Trophy'],
+    DndClass.rogue:     ['Parry Dagger', 'Throwing Knives', 'Smoke Pouch', 'Shadow Wrap'],
+    DndClass.monk:      ['Prayer Beads', 'Ki Focus', 'Meditation Charm', 'Spirit Band'],
+    DndClass.bard:      ['Lute', 'Lyre', 'Songbook', 'Harmony Charm'],
+    DndClass.druid:     ['Oaken Totem', 'Wild Idol', 'Spirit Charm', 'Barkward'],
+    DndClass.cleric:    ['Holy Symbol', 'Prayer Book', 'Sacred Chalice', 'Divine Ward'],
+    DndClass.wizard:    ['Spell Tome', 'Arcane Orb', 'Grimoire', 'Focus Crystal'],
+    DndClass.sorcerer:  ['Arcane Orb', 'Chaos Crystal', 'Power Font', 'Dragon Sigil'],
+    DndClass.warlock:   ['Grimoire', 'Eldritch Orb', 'Pact Sigil', 'Soul Lantern'],
+  };
+
+  static const _classArmorTypes = <DndClass, List<String>>{
+    DndClass.barbarian: ['Hide Plate', 'Chainmail', 'Battleplate', 'War Harness'],
+    DndClass.fighter:   ['Plate Mail', 'Chainmail', 'Breastplate', 'Full Plate'],
+    DndClass.paladin:   ['Holy Plate', 'Blessed Mail', 'Breastplate', 'Templar Plate'],
+    DndClass.ranger:    ['Leather Armor', 'Studded Leather', "Ranger's Garb", 'Hide Vest'],
+    DndClass.rogue:     ['Leather Armor', 'Shadowweave', 'Studded Leather', 'Silent Garb'],
+    DndClass.monk:      ['Monk Robes', 'Training Gi', 'Spirit Wrappings', 'Ki Vestments'],
+    DndClass.bard:      ["Performer's Leathers", 'Fine Doublet', 'Studded Leather', 'Silk Garb'],
+    DndClass.druid:     ['Hide Armor', 'Bark Vestments', 'Wildweave', 'Scalecoat'],
+    DndClass.cleric:    ['Scale Mail', 'Priest Plate', 'Blessed Scale', 'Faithguard'],
+    DndClass.wizard:    ['Arcane Robes', 'Spellweave Robes', 'Mystic Mantle', 'Silk Raiment'],
+    DndClass.sorcerer:  ['Sorcerer Robes', 'Dragon Silk', 'Chaos Vestments', 'Arcane Mantle'],
+    DndClass.warlock:   ['Pact Robes', 'Eldritch Vestments', 'Shadow Mantle', 'Occult Raiment'],
+  };
 
   // ── Stat pools per slot ────────────────────────────────────────────────────
   // The six attributes (STR/DEX/CON/INT/WIS/CHA) each map to a damage type +
@@ -653,6 +759,14 @@ class ItemLootTable {
         return baseName; // caller provides the set-prefixed name
       case ItemRarity.unique:
         return baseName; // unique items have explicit names
+      case ItemRarity.ascended:
+        return 'Ascended $baseName';
+      case ItemRarity.primordial:
+        return 'Primordial $baseName';
+      case ItemRarity.eternal:
+        return 'Eternal $baseName';
+      case ItemRarity.transcendent:
+        return 'Transcendent $baseName';
     }
   }
 
@@ -670,6 +784,25 @@ class ItemLootTable {
     ItemSlot.relic   => _relicNames,
   };
 
+  /// Base display name for a freshly-rolled item. Weapons, off-hands and body
+  /// armour draw from the active class's type pool (bows for rangers, staffs for
+  /// casters, …) prefixed with a material; all other slots use the shared pools.
+  static String _baseName(ItemSlot slot, Random rng) {
+    final types = switch (slot) {
+      ItemSlot.weapon  => _classWeaponTypes[lootClass],
+      ItemSlot.offHand => _classOffHandTypes[lootClass],
+      ItemSlot.armor   => _classArmorTypes[lootClass],
+      _                => null,
+    };
+    if (types != null && types.isNotEmpty) {
+      final mat  = _materials[rng.nextInt(_materials.length)];
+      final type = types[rng.nextInt(types.length)];
+      return '$mat $type';
+    }
+    final pool = _namesFor(slot);
+    return pool[rng.nextInt(pool.length)];
+  }
+
   static List<ItemStat> _statsFor(ItemSlot slot) => switch (slot) {
     ItemSlot.weapon  => _weaponStats,
     ItemSlot.offHand => _offHandStats,
@@ -683,6 +816,29 @@ class ItemLootTable {
     ItemSlot.amulet  => _accessoryStats,
     ItemSlot.relic   => _relicStats,
   };
+
+  // ── tryDropTopRarity: post-Mythic tiers, gated + scaling by difficulty tier ──
+  // Rolled on boss kills, highest-first. Each tier UNLOCKS at a minimum prestige
+  // tier and its odds climb with tier, so Tier 10 is where they flow. Chances are
+  // in percent-per-boss; [chanceMult] (from Remote Config) scales all of them live.
+  static EquipmentItem? tryDropTopRarity(int heroLevel, Random rng,
+      {int tier = 0, double chanceMult = 1.0}) {
+    // (rarity, gateTier, %-per-tier-over-gate). Transcendent is flat at its gate.
+    final rolls = <(ItemRarity, double)>[
+      (ItemRarity.transcendent, tier >= 10 ? 0.2 + 0.1 * (tier - 10) : 0.0),
+      (ItemRarity.eternal,      tier >= 8  ? 0.17 * (tier - 7) : 0.0),
+      (ItemRarity.primordial,   tier >= 6  ? 0.20 * (tier - 5) : 0.0),
+      (ItemRarity.ascended,     tier >= 4  ? 0.28 * (tier - 3) : 0.0),
+    ];
+    for (final (rarity, pct) in rolls) {
+      if (pct <= 0) continue;
+      if (rng.nextDouble() * 100 < pct * chanceMult) {
+        final slot = ItemSlot.values[rng.nextInt(ItemSlot.values.length)];
+        return craftAt(slot, rarity, heroLevel, rng, rebirthLevel: tier);
+      }
+    }
+    return null;
+  }
 
   // ── tryDrop: regular combat drop ──────────────────────────────────────────
   static EquipmentItem? tryDrop(int enemyLevel, Random rng, {int tier = 0}) {
@@ -698,7 +854,7 @@ class ItemLootTable {
 
     final slot     = ItemSlot.values[rng.nextInt(ItemSlot.values.length)];
     final pool     = _statsFor(slot);
-    final baseName = _namesFor(slot)[rng.nextInt(_namesFor(slot).length)];
+    final baseName = _baseName(slot, rng);
     final count    = rarity == ItemRarity.common || rarity == ItemRarity.uncommon ? 1 : 2;
     final bonuses  = _pickBonuses(pool, count, rarity, enemyLevel, rng);
 
@@ -716,7 +872,7 @@ class ItemLootTable {
 
     final slot     = ItemSlot.values[rng.nextInt(ItemSlot.values.length)];
     final pool     = _statsFor(slot);
-    final baseName = _namesFor(slot)[rng.nextInt(_namesFor(slot).length)];
+    final baseName = _baseName(slot, rng);
     // Legendary items can roll any keyword including legendary-exclusive ones
     final keyword  = ItemKeyword.values[rng.nextInt(ItemKeyword.values.length)];
     final count    = min(3, pool.length);
@@ -738,7 +894,7 @@ class ItemLootTable {
     final set      = kSetCatalog[rng.nextInt(kSetCatalog.length)];
     final slot     = set.slots[rng.nextInt(set.slots.length)];
     final pool     = _statsFor(slot);
-    final baseName = '${set.name} ${_namesFor(slot)[rng.nextInt(_namesFor(slot).length)]}';
+    final baseName = '${set.name} ${_baseName(slot, rng)}';
     final count    = min(3, pool.length); // 6-piece sets get 3 stats per piece
     final bonuses  = _pickBonuses(pool, count, ItemRarity.epic, heroLevel, rng);
 
@@ -756,7 +912,7 @@ class ItemLootTable {
 
     final slot     = ItemSlot.values[rng.nextInt(ItemSlot.values.length)];
     final pool     = _statsFor(slot);
-    final baseName = _namesFor(slot)[rng.nextInt(_namesFor(slot).length)];
+    final baseName = _baseName(slot, rng);
     final keyword  = ItemKeyword.values[rng.nextInt(ItemKeyword.values.length)];
     final count    = min(3, pool.length);
     final bonuses  = _pickBonuses(pool, count, ItemRarity.mythic, heroLevel, rng);
@@ -773,9 +929,13 @@ class ItemLootTable {
   static EquipmentItem craftAt(ItemSlot slot, ItemRarity rarity, int heroLevel, Random rng,
       {int rebirthLevel = 0}) {
     final pool     = _statsFor(slot);
-    final baseName = _namesFor(slot)[rng.nextInt(_namesFor(slot).length)];
+    final baseName = _baseName(slot, rng);
     // Base bonus count from rarity + extra from rebirth
     final baseCount = switch (rarity) {
+      ItemRarity.transcendent => 6,
+      ItemRarity.eternal      => 5,
+      ItemRarity.primordial   => 5,
+      ItemRarity.ascended     => 4,
       ItemRarity.mythic    => 4,
       ItemRarity.legendary => 3,
       ItemRarity.unique    => 3,
@@ -787,7 +947,9 @@ class ItemLootTable {
     };
     final count = min(baseCount + rebirthLevel, pool.length);
     ItemKeyword? keyword;
-    if (rarity == ItemRarity.legendary || rarity == ItemRarity.mythic) {
+    if (rarity == ItemRarity.legendary || rarity == ItemRarity.mythic ||
+        rarity == ItemRarity.ascended || rarity == ItemRarity.primordial ||
+        rarity == ItemRarity.eternal || rarity == ItemRarity.transcendent) {
       keyword = ItemKeyword.values[rng.nextInt(ItemKeyword.values.length)];
     }
     final bonuses = _pickBonuses(pool, count, rarity, heroLevel, rng);
@@ -835,6 +997,10 @@ class ItemLootTable {
       ItemRarity.mythic    => 2.5,
       ItemRarity.set       => 1.6,
       ItemRarity.unique    => 2.0,
+      ItemRarity.ascended     => 3.0,
+      ItemRarity.primordial   => 3.6,
+      ItemRarity.eternal      => 4.3,
+      ItemRarity.transcendent => 5.0,
     };
     final base = 5.0 + level * 1.5;
     final slotMult = slot == ItemSlot.offHand ? 0.6 : 1.0;
@@ -844,6 +1010,10 @@ class ItemLootTable {
 
   static int _baseValue(ItemStat stat, ItemRarity rarity, int level, Random rng) {
     final m = switch (rarity) {
+      ItemRarity.transcendent => 8,
+      ItemRarity.eternal      => 7,
+      ItemRarity.primordial   => 6,
+      ItemRarity.ascended     => 5,
       ItemRarity.mythic    => 4,
       ItemRarity.legendary => 3,
       ItemRarity.unique    => 3,
@@ -895,6 +1065,10 @@ class ItemLootTable {
         ItemRarity.epic      => (gold: 600,  shards: 50),
         ItemRarity.legendary => (gold: 1800, shards: 120),
         ItemRarity.mythic    => (gold: 5000, shards: 300),
+        ItemRarity.ascended     => (gold: 9000,  shards: 500),
+        ItemRarity.primordial   => (gold: 15000, shards: 800),
+        ItemRarity.eternal      => (gold: 24000, shards: 1200),
+        ItemRarity.transcendent => (gold: 40000, shards: 2000),
         _                    => (gold: 0,    shards: 0),
       };
 
@@ -903,7 +1077,11 @@ class ItemLootTable {
       rarity == ItemRarity.rare      ||
       rarity == ItemRarity.epic      ||
       rarity == ItemRarity.legendary ||
-      rarity == ItemRarity.mythic;
+      rarity == ItemRarity.mythic    ||
+      rarity == ItemRarity.ascended    ||
+      rarity == ItemRarity.primordial  ||
+      rarity == ItemRarity.eternal     ||
+      rarity == ItemRarity.transcendent;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

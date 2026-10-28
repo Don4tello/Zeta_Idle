@@ -121,6 +121,28 @@ class _DungeonScreenState extends State<DungeonScreen> {
                 : 'Auto Run (Premium)',
             onPressed: _toggleAuto,
           ),
+          // Abyssal Push — opt in to descend past the clear floor into escalating
+          // abyss floors instead of the run ending when the Dungeon Lord falls.
+          if (run != null && !run.isOver)
+            IconButton(
+              icon: Icon(Icons.keyboard_double_arrow_down,
+                  color: run.pushMode ? const Color(0xFFcc88ff) : AppTheme.textMuted,
+                  size: 20),
+              tooltip: run.pushMode
+                  ? 'Abyssal Push: ON — beat the Dungeon Lord to descend deeper'
+                  : 'Abyssal Push: OFF — run ends at the clear floor',
+              onPressed: () {
+                final newOn = !run.pushMode;
+                game.setDungeonPushMode(newOn);
+                ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                  content: Text(newOn
+                      ? 'Abyssal Push ON — clear the Dungeon Lord to descend into escalating abyss floors (richer Mythril + unique odds). Flee anytime to bank the clear.'
+                      : 'Abyssal Push OFF — the run ends when you clear the Dungeon Lord.'),
+                  behavior: SnackBarBehavior.floating,
+                  duration: const Duration(seconds: 3),
+                ));
+              },
+            ),
           if (run == null || run.isOver)
             IconButton(
               icon: const Icon(Icons.leaderboard, color: AppTheme.accentGold, size: 20),
@@ -762,7 +784,10 @@ class _FloorStrip extends StatelessWidget {
   Widget build(BuildContext context) {
     final cur = run.floor;
     final currentType = run.currentRoom?.type;
-    const totalFloors = DungeonRun.clearFloor;
+    // Past the clear floor (Abyssal Push) the ladder extends so the current
+    // floor always has its own node instead of the bar sitting pinned at full.
+    final inAbyss = cur > DungeonRun.clearFloor;
+    final totalFloors = inAbyss ? cur : DungeonRun.clearFloor;
     final theme = _themeForFloor(cur, totalFloors);
 
     return Container(
@@ -779,10 +804,14 @@ class _FloorStrip extends StatelessWidget {
             children: [
               Text('•', style: TextStyle(fontSize: 10, color: AppTheme.textMuted.withValues(alpha: 0.5))),
               const SizedBox(height: 2),
-              Text('F$cur', style: AppTheme.pixelHeading(fontSize: 10, color: AppTheme.accentGold)),
+              Text('F$cur', style: AppTheme.pixelHeading(fontSize: 10,
+                  color: inAbyss ? const Color(0xFFcc88ff) : AppTheme.accentGold)),
               const SizedBox(height: 2),
-              Text('${theme.icon} ${theme.name}',
-                  style: TextStyle(fontSize: 7, color: theme.color, fontWeight: FontWeight.bold, letterSpacing: 0.3)),
+              Text(inAbyss ? '⬇ ABYSS' : '${theme.icon} ${theme.name}',
+                  style: TextStyle(
+                      fontSize: 7,
+                      color: inAbyss ? const Color(0xFFcc88ff) : theme.color,
+                      fontWeight: FontWeight.bold, letterSpacing: 0.3)),
             ],
           ),
           const SizedBox(width: 8),
@@ -1347,7 +1376,7 @@ class _AnimatedCombatRoomState extends State<_AnimatedCombatRoom> {
   }
 
   // Staggers merc call-out animations so several firing at once don't overlap.
-  void _playMercFx(List<({String name, String icon, Color color})> fx) {
+  void _playMercFx(List<({String name, IconData icon, Color color})> fx) {
     for (var i = 0; i < fx.length; i++) {
       final e = fx[i];
       Future.delayed(Duration(milliseconds: i * 850), () {
@@ -1358,32 +1387,32 @@ class _AnimatedCombatRoomState extends State<_AnimatedCombatRoom> {
 
   void _fireAllyStart(GameState g) {
     final enemyName = _displayEnemyName;
-    final fx = <({String name, String icon, Color color})>[];
+    final fx = <({String name, IconData icon, Color color})>[];
     if (g.allyUnlocked('greybeard') && _allyUsed.add('greybeard')) {
       _bonusAtk += 5;
       _log.add('⚔ Greybeard: War Cry! +5% DMG for this fight.');
-      fx.add((name: 'Greybeard', icon: '📣', color: const Color(0xFFffaa44)));
+      fx.add((name: 'Greybeard', icon: Icons.campaign, color: const Color(0xFFffaa44)));
     }
     if (g.allyUnlocked('elder_voss') && _allyUsed.add('elder_voss')) {
       final burst = (_enemyMaxHp * 0.10).round().clamp(1, 1000000000000000);
       _enemyHp = (_enemyHp - burst).clamp(0, _enemyMaxHp);
       _log.add('⚡ Voss: Arcane Surge! $enemyName takes $burst arcane damage!');
-      fx.add((name: 'Voss', icon: '🔮', color: const Color(0xFF66aaff)));
+      fx.add((name: 'Voss', icon: Icons.auto_awesome, color: const Color(0xFF66aaff)));
     }
     if (g.allyUnlocked('coin_felix') && _allyUsed.add('coin_felix')) {
       _bonusAc += 6;
       _log.add('💨 Felix: Smoke Screen! Harder to hit (+6% AC) this fight.');
-      fx.add((name: 'Felix', icon: '💨', color: const Color(0xFFffd700)));
+      fx.add((name: 'Felix', icon: Icons.cloud, color: const Color(0xFFffd700)));
     }
     if (g.allyUnlocked('shadow_lena') && _allyUsed.add('shadow_lena')) {
       _bonusAtk += 8;
       _log.add('⚔ Lena: Backstab! +8% DMG for first strike.');
-      fx.add((name: 'Lena', icon: '🌑', color: const Color(0xFF44cc88)));
+      fx.add((name: 'Lena', icon: Icons.content_cut, color: const Color(0xFF44cc88)));
     }
     if (g.allyUnlocked('golem_ruk') && _allyUsed.add('golem_ruk')) {
       _bonusAc += 4;
       _log.add('◆ Ruk: Stone Skin! +4% AC for this fight.');
-      fx.add((name: 'Ruk', icon: '🪨', color: const Color(0xFF99aabb)));
+      fx.add((name: 'Ruk', icon: Icons.terrain, color: const Color(0xFF99aabb)));
     }
     _playMercFx(fx);
   }
@@ -1396,7 +1425,7 @@ class _AnimatedCombatRoomState extends State<_AnimatedCombatRoom> {
       final heal = (_heroMaxHp * 0.25).round().clamp(1, _heroMaxHp);
       _heroHp = (_heroHp + heal).clamp(0, _heroMaxHp);
       _log.add('⊕ Mira: Field Triage! Healed for $heal HP!');
-      _playMercFx([(name: 'Mira', icon: '💉', color: const Color(0xFFff88aa))]);
+      _playMercFx([(name: 'Mira', icon: Icons.healing, color: const Color(0xFFff88aa))]);
     }
   }
 

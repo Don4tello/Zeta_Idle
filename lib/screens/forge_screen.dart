@@ -270,6 +270,10 @@ class _DisenchantTabState extends State<_DisenchantTab> {
         ItemRarity.mythic    => 150,
         ItemRarity.set       => 100,
         ItemRarity.unique    => 80,
+        ItemRarity.ascended     => 250,
+        ItemRarity.primordial   => 400,
+        ItemRarity.eternal      => 650,
+        ItemRarity.transcendent => 1000,
       });
 
   @override
@@ -533,6 +537,10 @@ class _ForgeItemTile extends StatelessWidget {
     ItemRarity.mythic    => 150,
     ItemRarity.set       => 100,
     ItemRarity.unique    => 80,
+    ItemRarity.ascended     => 250,
+    ItemRarity.primordial   => 400,
+    ItemRarity.eternal      => 650,
+    ItemRarity.transcendent => 1000,
   };
 
   @override

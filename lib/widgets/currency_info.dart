@@ -37,9 +37,14 @@ const kCurrencies = <CurrencyDef>[
     use: 'Ability upgrades, item upgrades, and Passive Tree nodes.',
   ),
   CurrencyDef(
-    id: 'echoes', icon: '🔊', name: 'Echoes', color: Color(0xFF44ccaa),
+    id: 'echoes', icon: '🔊', name: 'Echoes', color: Color(0xFFC6A6F2),
     source: 'Gauntlet runs (scales with tier and modifiers).',
     use: 'Endless upgrades (the UPGRADES tab).',
+  ),
+  CurrencyDef(
+    id: 'essence', icon: '✦', name: 'Essence', color: Color(0xFFE07A6E),
+    source: 'Battles and idle income; also Shop bundles.',
+    use: 'Crafting and upgrade sinks.',
   ),
   // ── Premium ────────────────────────────────────────────────────────────────
   CurrencyDef(
@@ -54,7 +59,7 @@ const kCurrencies = <CurrencyDef>[
     use: 'Crafting Gems (socketed into gear) and ability Runes.',
   ),
   CurrencyDef(
-    id: 'mythril', icon: '⛏', name: 'Mythril', color: Color(0xFFa8c4d4),
+    id: 'mythril', icon: '⛏', name: 'Mythril', color: Color(0xFF6FAEEA),
     source: 'Dungeons (1 per 2 floors + clear bonus), Boss Rush, and prestige milestones.',
     use: 'Artifact upgrades, dungeon affix rerolls, and shrine blessings.',
   ),
@@ -65,7 +70,7 @@ const kCurrencies = <CurrencyDef>[
     use: 'Elemental Mastery upgrades.',
   ),
   CurrencyDef(
-    id: 'paragonPoints', icon: '👻', name: 'Paragon Points', color: Color(0xFFccaaff),
+    id: 'paragonPoints', icon: '👻', name: 'Paragon Points', color: Color(0xFFCBA05E),
     source: 'Earned by levelling up — 1 per level.',
     use: 'Permanent upgrades on the Paragon board.',
   ),

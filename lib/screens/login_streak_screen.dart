@@ -1,10 +1,53 @@
 ﻿import 'package:flutter/material.dart';
+import '../models/equipment.dart';
 import '../models/hero_race.dart';
 import '../models/login_streak.dart';
 import '../models/shop_catalog.dart';
 import '../services/game_state.dart';
 import '../theme/app_theme.dart';
 import '../widgets/battle_sprites.dart';
+import '../widgets/currency_icon.dart';
+import '../widgets/item_sprites.dart';
+
+/// Pixel-art icon for a login reward — mirrors the game's new [CurrencyIcon]
+/// set (and an [ItemSprite] for the epic/legendary item days), replacing the
+/// old emoji glyphs so the daily screen matches the rest of the UI.
+class RewardIcon extends StatelessWidget {
+  const RewardIcon({super.key, required this.reward, this.size = 18});
+  final LoginReward reward;
+  final double size;
+
+  @override
+  Widget build(BuildContext context) {
+    switch (reward.primaryIconId) {
+      case 'item_legendary':
+        return ItemSprite(
+            slot: ItemSlot.weapon, rarity: ItemRarity.legendary, size: size);
+      case 'item_epic':
+        return ItemSprite(
+            slot: ItemSlot.weapon, rarity: ItemRarity.epic, size: size);
+      case final id:
+        return CurrencyIcon(id: id, size: size);
+    }
+  }
+}
+
+/// Honest, live label for a login reward — reflects the scaled gold and the
+/// milestone-scaled rare currencies the player will actually receive, so the
+/// preview/claim text never undersells what lands in the balance.
+String loginRewardLabel(GameState game, LoginReward r) {
+  final eff = game.effectiveLoginReward(r);
+  final parts = <String>[];
+  if (eff.gold > 0)    parts.add('${AppTheme.fmtNumber(eff.gold)} Gold');
+  if (eff.zcoins > 0)  parts.add('${eff.zcoins} ZCoins');
+  if (eff.shards > 0)  parts.add('${AppTheme.fmtNumber(eff.shards)} Shards');
+  if (eff.echoes > 0)  parts.add('${AppTheme.fmtNumber(eff.echoes)} Echoes');
+  if (eff.mythril > 0) parts.add('${eff.mythril} Mythril');
+  if (eff.essence > 0) parts.add('${AppTheme.fmtNumber(eff.essence)} Essence');
+  if (r.isEpicItem)       parts.add('Epic Item!');
+  if (r.isClassLegendary) parts.add('Class Legendary!');
+  return parts.join(' + ');
+}
 
 class LoginStreakScreen extends StatelessWidget {
   const LoginStreakScreen({super.key});
@@ -13,8 +56,16 @@ class LoginStreakScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final game = GameStateProvider.of(context);
     final streak = game.loginStreak;
-    final dayInCycle = streak <= 0 ? 1 : ((streak - 1) % 7) + 1; // 1–7
+    // Source of truth = the SAME day the claim actually grants (1–30), not a
+    // separate %7 calc that used to drift out of sync past the first week.
+    final dayInCycle = game.loginRewardDay;
     final todayClaimed = game.loginTodayClaimed;
+    // The 7-cell grid shows the current week within the 30-day cycle.
+    final weekStart = ((dayInCycle - 1) ~/ 7) * 7 + 1;
+    final weekDays = [
+      for (var d = weekStart;
+          d < weekStart + 7 && d <= LoginReward.cycle.length; d++) d
+    ];
 
     return Scaffold(
       backgroundColor: const Color(0xFF1B1A17),
@@ -42,8 +93,7 @@ class LoginStreakScreen extends StatelessWidget {
             physics: const NeverScrollableScrollPhysics(),
             mainAxisSpacing: 8,
             crossAxisSpacing: 8,
-            children: List.generate(7, (i) {
-              final day = i + 1;
+            children: weekDays.map((day) {
               final reward = LoginReward.forDay(day);
               // A day is "past" only if it's before today's day, OR if it IS today and was claimed.
               final isPast   = day < dayInCycle || (day == dayInCycle && todayClaimed);
@@ -56,11 +106,12 @@ class LoginStreakScreen extends StatelessWidget {
                 isFuture: isFuture,
                 claimed: todayClaimed && day == dayInCycle,
               );
-            }),
+            }).toList(),
           ),
           const SizedBox(height: 20),
           if (!todayClaimed)
             _ClaimButton(
+              game: game,
               reward: LoginReward.forDay(dayInCycle),
               onClaim: () => game.claimLoginReward(),
             )
@@ -80,7 +131,7 @@ class LoginStreakScreen extends StatelessWidget {
               ),
             ),
           const SizedBox(height: 24),
-          _CyclePreview(dayInCycle: dayInCycle, claimed: todayClaimed),
+          _CyclePreview(game: game, dayInCycle: dayInCycle, claimed: todayClaimed),
         ],
       ),
     );
@@ -246,9 +297,11 @@ class _InfoBanner extends StatelessWidget {
       ),
       child: Text(
         claimed
-            ? 'Day $dayInCycle reward claimed. Keep the streak alive — log in tomorrow!'
-            : 'You\'ve been here $streak day${streak == 1 ? '' : 's'} in a row. '
-              'Claim today\'s reward below. Missing a day resets your streak.',
+            ? 'Day $dayInCycle reward claimed. Come back tomorrow to advance — '
+              'your progress is safe even if you miss a day.'
+            : 'You\'ve collected $streak daily reward${streak == 1 ? '' : 's'}. '
+              'Claim today\'s below — miss a day and you simply pick up right '
+              'where you left off, never back at Day 1.',
         style: const TextStyle(
             fontSize: 12, color: AppTheme.textMuted, height: 1.5),
       ),
@@ -292,22 +345,36 @@ class _DayCell extends StatelessWidget {
     return Container(
       decoration: BoxDecoration(
         color: bg,
-        border: Border.all(color: border, width: isToday ? 1.5 : 1),
+        border: Border.all(
+            color: reward.isMilestone && !isPast && !claimed
+                ? const Color(0xFFffb300)
+                : border,
+            width: isToday ? 1.5 : 1),
         borderRadius: BorderRadius.circular(4),
       ),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
+      child: Stack(
         children: [
-          if (isPast || claimed)
-            const Icon(Icons.check, size: 14, color: Color(0xFF44aa44))
-          else
-            Text(reward.icon, style: const TextStyle(fontSize: 15)),
-          const SizedBox(height: 2),
-          Text('D${reward.day}',
-              style: TextStyle(
-                  fontSize: 9,
-                  color: textColor,
-                  fontWeight: isToday ? FontWeight.bold : FontWeight.normal)),
+          Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              if (isPast || claimed)
+                const Icon(Icons.check, size: 14, color: Color(0xFF44aa44))
+              else
+                RewardIcon(reward: reward, size: 18),
+              const SizedBox(height: 2),
+              Text('D${reward.day}',
+                  style: TextStyle(
+                      fontSize: 9,
+                      color: textColor,
+                      fontWeight: isToday ? FontWeight.bold : FontWeight.normal)),
+            ],
+          ),
+          if (reward.isMilestone)
+            const Positioned(
+              top: 2,
+              right: 2,
+              child: Icon(Icons.star, size: 9, color: Color(0xFFffb300)),
+            ),
         ],
       ),
     );
@@ -315,7 +382,8 @@ class _DayCell extends StatelessWidget {
 }
 
 class _ClaimButton extends StatelessWidget {
-  const _ClaimButton({required this.reward, required this.onClaim});
+  const _ClaimButton({required this.game, required this.reward, required this.onClaim});
+  final GameState game;
   final LoginReward reward;
   final VoidCallback onClaim;
 
@@ -331,11 +399,14 @@ class _ClaimButton extends StatelessWidget {
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
         ),
         child: Row(mainAxisSize: MainAxisSize.min, children: [
-          Text(reward.icon, style: const TextStyle(fontSize: 19)),
+          RewardIcon(reward: reward, size: 22),
           const SizedBox(width: 10),
-          Text('CLAIM  ${reward.label}',
-              style: AppTheme.pixelHeading(
-                  fontSize: 12, letterSpacing: 1, color: Colors.black)),
+          Flexible(
+            child: Text('CLAIM  ${loginRewardLabel(game, reward)}',
+                textAlign: TextAlign.center,
+                style: AppTheme.pixelHeading(
+                    fontSize: 12, letterSpacing: 1, color: Colors.black)),
+          ),
         ]),
       ),
     );
@@ -343,7 +414,8 @@ class _ClaimButton extends StatelessWidget {
 }
 
 class _CyclePreview extends StatelessWidget {
-  const _CyclePreview({required this.dayInCycle, required this.claimed});
+  const _CyclePreview({required this.game, required this.dayInCycle, required this.claimed});
+  final GameState game;
   final int dayInCycle;
   final bool claimed;
 
@@ -352,9 +424,21 @@ class _CyclePreview extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('FULL 7-DAY CYCLE',
+        Text('FULL 30-DAY CYCLE',
             style: AppTheme.pixelHeading(
                 fontSize: 11, letterSpacing: 2, color: AppTheme.textMuted)),
+        const SizedBox(height: 4),
+        Row(children: [
+          const Icon(Icons.star, size: 11, color: Color(0xFFffb300)),
+          const SizedBox(width: 4),
+          Expanded(
+            child: Text(
+              'Milestone days scale their Shards/Echoes/Mythril with your tier '
+              '(currently ×${game.loginMilestoneMult.toStringAsFixed(1)}).',
+              style: const TextStyle(fontSize: 10, color: Color(0xFFffb300)),
+            ),
+          ),
+        ]),
         const SizedBox(height: 10),
         ...LoginReward.cycle.map((r) {
           final isToday = r.day == dayInCycle;
@@ -377,7 +461,7 @@ class _CyclePreview extends StatelessWidget {
               borderRadius: BorderRadius.circular(3),
             ),
             child: Row(children: [
-              Text(r.icon, style: const TextStyle(fontSize: 17)),
+              RewardIcon(reward: r, size: 20),
               const SizedBox(width: 10),
               Text('Day ${r.day}',
                   style: TextStyle(
@@ -388,9 +472,13 @@ class _CyclePreview extends StatelessWidget {
                           : isPast
                               ? const Color(0xFF44aa44)
                               : Colors.white54)),
+              if (r.isMilestone) ...[
+                const SizedBox(width: 4),
+                const Icon(Icons.star, size: 11, color: Color(0xFFffb300)),
+              ],
               const SizedBox(width: 8),
               Expanded(
-                child: Text(r.label,
+                child: Text(loginRewardLabel(game, r),
                     style: const TextStyle(
                         fontSize: 11, color: AppTheme.textMuted)),
               ),

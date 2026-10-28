@@ -60,6 +60,7 @@ class WorldEventDef {
     required this.description,
     required this.enemyName,
     required this.enemyEmoji,
+    required this.spriteId,
     required this.color,
     required this.icon,
     required this.rewards,
@@ -70,6 +71,9 @@ class WorldEventDef {
   final String description;
   final String enemyName;
   final String enemyEmoji;
+  /// Battle sprite id (see battle_sprites.dart) shown in the Events tab so the
+  /// hunted creature matches its name.
+  final String spriteId;
   final Color color;
   final String icon;
   final List<WorldEventReward> rewards;
@@ -88,7 +92,7 @@ class WorldEventDef {
     WorldEventDef(
       id: 'goblin_uprising', name: 'Goblin Uprising',
       description: 'Warchief Kragnuk rallies goblin clans. Pyromancer goblins hurl firebombs while warriors charge.',
-      enemyName: 'Goblin Raider', enemyEmoji: '👺',
+      enemyName: 'Goblin Raider', enemyEmoji: '👺', spriteId: 'goblin',
       color: Color(0xFF88cc44), icon: '⚔',
       damageTypes: ['physical', 'fire'],
       rewards: _shopFor('goblin', 'Looted Chest', "Warchief's Vault"),
@@ -97,7 +101,7 @@ class WorldEventDef {
     WorldEventDef(
       id: 'dragon_raid', name: 'Dragon Raid',
       description: 'Elder drake Malgrathos descends with storm and flame. Scale fragments fall with every blow.',
-      enemyName: 'Drake Spawn', enemyEmoji: '🐉',
+      enemyName: 'Drake Spawn', enemyEmoji: '🐉', spriteId: 'dragon_whelp',
       color: Color(0xFFff6644), icon: '🔥',
       damageTypes: ['fire', 'lightning'],
       rewards: _shopFor('dragon', 'Dragon Hoard', 'Elder Cache'),
@@ -106,7 +110,7 @@ class WorldEventDef {
     WorldEventDef(
       id: 'undead_siege', name: 'Undead Siege',
       description: 'Skeletal legions march from the Bone Wastes. A Lich Lord channels frost and shadow.',
-      enemyName: 'Lich Shard', enemyEmoji: '💀',
+      enemyName: 'Lich Shard', enemyEmoji: '💀', spriteId: 'lich',
       color: Color(0xFF88aacc), icon: '☠',
       damageTypes: ['cold', 'void'],
       rewards: _shopFor('undead', 'Soulstone Cache', "Necromancer's Hoard"),
@@ -115,7 +119,7 @@ class WorldEventDef {
     WorldEventDef(
       id: 'demon_incursion', name: 'Demon Incursion',
       description: 'A rift tears open above the Ashfields. Demons pour through wreathed in hellfire and void.',
-      enemyName: 'Demon Thrall', enemyEmoji: '👿',
+      enemyName: 'Demon Thrall', enemyEmoji: '👿', spriteId: 'imp',
       color: Color(0xFFcc4488), icon: '🔮',
       damageTypes: ['void', 'fire'],
       rewards: _shopFor('demon', 'Infernal Gem', 'Void Shard'),
@@ -124,7 +128,7 @@ class WorldEventDef {
     WorldEventDef(
       id: 'spider_plague', name: 'Spider Plague',
       description: 'Giant arachnids swarm from the Darkwood. Venomous fangs and crushing mandibles.',
-      enemyName: 'Brood Mother', enemyEmoji: '🕷',
+      enemyName: 'Brood Mother', enemyEmoji: '🕷', spriteId: 'spider_queen',
       color: Color(0xFF66aa44), icon: '☠',
       damageTypes: ['poison', 'physical'],
       rewards: _shopFor('spider', 'Venom Sac', 'Silk-Wrapped Cache'),
@@ -133,7 +137,7 @@ class WorldEventDef {
     WorldEventDef(
       id: 'storm_titan', name: 'Storm Titan Awakening',
       description: 'An ancient titan stirs beneath the mountains. Thunder and ice shatter the peaks.',
-      enemyName: 'Storm Fragment', enemyEmoji: '⚡',
+      enemyName: 'Storm Fragment', enemyEmoji: '⚡', spriteId: 'harpy',
       color: Color(0xFF4488ff), icon: '⛈',
       damageTypes: ['lightning', 'cold'],
       rewards: _shopFor('storm', 'Thunder Core', 'Titan Shard'),
@@ -142,7 +146,7 @@ class WorldEventDef {
     WorldEventDef(
       id: 'plague_of_shadows', name: 'Plague of Shadows',
       description: 'Void Wraiths seep from the dark between stars. Their touch corrodes both body and soul.',
-      enemyName: 'Shadow Wisp', enemyEmoji: '👻',
+      enemyName: 'Shadow Wisp', enemyEmoji: '👻', spriteId: 'banshee',
       color: Color(0xFF9966ff), icon: '🌑',
       damageTypes: ['void', 'poison'],
       rewards: _shopFor('shadow', 'Voidstone', 'Wraith Essence'),
@@ -151,7 +155,7 @@ class WorldEventDef {
     WorldEventDef(
       id: 'elemental_convergence', name: 'Elemental Convergence',
       description: 'The planes of fire and ice collide. Elemental chaos tears through the borderlands.',
-      enemyName: 'Chaos Elemental', enemyEmoji: '🌋',
+      enemyName: 'Chaos Elemental', enemyEmoji: '🌋', spriteId: 'chimera',
       color: Color(0xFFff8844), icon: '🜂',
       damageTypes: ['fire', 'cold'],
       rewards: _shopFor('elemental', 'Primal Core', 'Convergence Crystal'),
@@ -160,7 +164,7 @@ class WorldEventDef {
     WorldEventDef(
       id: 'iron_legion', name: 'Iron Legion March',
       description: 'Enchanted war golems march from a forgotten forge. Steel fists crackle with arcane lightning.',
-      enemyName: 'War Golem', enemyEmoji: '🤖',
+      enemyName: 'War Golem', enemyEmoji: '🤖', spriteId: 'golem',
       color: Color(0xFF888888), icon: '⚙',
       damageTypes: ['physical', 'lightning'],
       rewards: _shopFor('iron', 'Golem Core', 'Arcane Dynamo'),
@@ -169,7 +173,7 @@ class WorldEventDef {
     WorldEventDef(
       id: 'wyrm_awakening', name: 'Wyrm Awakening',
       description: 'A venomous wyrm bursts from volcanic vents. Toxic fumes and magma consume the valley.',
-      enemyName: 'Magma Wyrm', enemyEmoji: '🐍',
+      enemyName: 'Magma Wyrm', enemyEmoji: '🐍', spriteId: 'basilisk',
       color: Color(0xFFcc6622), icon: '🌋',
       damageTypes: ['poison', 'fire'],
       rewards: _shopFor('wyrm', 'Molten Fang', 'Wyrm Heart'),
@@ -178,7 +182,7 @@ class WorldEventDef {
     WorldEventDef(
       id: 'frost_giant_siege', name: 'Frost Giant Siege',
       description: 'Jotnar descend from the frozen peaks. Their massive clubs shatter walls, their breath freezes rivers.',
-      enemyName: 'Frost Jotnar', enemyEmoji: '❄',
+      enemyName: 'Frost Jotnar', enemyEmoji: '❄', spriteId: 'blood_ogre',
       color: Color(0xFF66bbee), icon: '🏔',
       damageTypes: ['cold', 'physical'],
       rewards: _shopFor('frost', 'Frozen Heart', 'Glacial Rune'),
@@ -187,7 +191,7 @@ class WorldEventDef {
     WorldEventDef(
       id: 'swamp_terror', name: 'Swamp Terror',
       description: 'Electric eels and toxic hydras boil from the Blightmarsh. The swamp itself fights back.',
-      enemyName: 'Blight Hydra', enemyEmoji: '🐊',
+      enemyName: 'Blight Hydra', enemyEmoji: '🐊', spriteId: 'hydra',
       color: Color(0xFF44aa88), icon: '☢',
       damageTypes: ['lightning', 'poison'],
       rewards: _shopFor('swamp', 'Blight Gland', 'Hydra Crown'),
@@ -196,7 +200,7 @@ class WorldEventDef {
     WorldEventDef(
       id: 'astral_breach', name: 'Astral Breach',
       description: 'The barrier between realms cracks. Astral horrors drift through, trailing frozen void.',
-      enemyName: 'Astral Horror', enemyEmoji: '🌌',
+      enemyName: 'Astral Horror', enemyEmoji: '🌌', spriteId: 'mind_flayer',
       color: Color(0xFFaa44cc), icon: '✦',
       damageTypes: ['void', 'cold'],
       rewards: _shopFor('astral', 'Astral Fragment', 'Rift Crystal'),

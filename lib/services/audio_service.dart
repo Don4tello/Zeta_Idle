@@ -263,7 +263,10 @@ class AudioService {
   );
 
   // ── Exploration music ─────────────────────────────────────────────────────────
-  final AudioPlayer _musicPlayer = AudioPlayer();
+  // Lazy: created on first use, not at construction — defers the audioplayers
+  // plugin call so AudioService can be built headless (unit tests) and so a
+  // session that never plays music never spins up a player.
+  late final AudioPlayer _musicPlayer = AudioPlayer();
   bool _musicMuted = false;
   double _musicVolume = 0.35;
   bool _musicStarted = false;
@@ -343,7 +346,7 @@ class AudioService {
   }
 
   // ── Battle music ──────────────────────────────────────────────────────────────
-  final AudioPlayer _battlePlayer = AudioPlayer();
+  late final AudioPlayer _battlePlayer = AudioPlayer(); // lazy (see _musicPlayer)
   bool _battleMusicStarted = false;
   bool _inBattle = false;
   String? _battleCachePath;

@@ -12,6 +12,7 @@ import '../widgets/dashboard_header.dart';
 import '../widgets/hero_tab_controller.dart';
 import '../widgets/stats_grid_panel.dart';
 import '../models/login_streak.dart';
+import 'login_streak_screen.dart' show RewardIcon, loginRewardLabel;
 import 'package:go_router/go_router.dart';
 import '../core/routing/app_router.dart';
 import 'main_shell.dart' show TutorialTip, MainShell;
@@ -292,7 +293,7 @@ class _IncomePanel extends StatelessWidget {
             Wrap(spacing: 16, runSpacing: 6, children: [
               if (game.shards > 0)
                 Tooltip(message: CurrencyInfo.shards,
-                    child: _IncomeRow('◆', 'Shards', AppTheme.fmtNumber(game.shards), const Color(0xFF44ccff))),
+                    child: _IncomeRow('◆', 'Shards', AppTheme.fmtNumber(game.shards), const Color(0xFF6699ff))),
               if (game.echoes > 0)
                 Tooltip(message: CurrencyInfo.echoes,
                     child: _IncomeRow('🔊', 'Echoes', AppTheme.fmtNumber(game.echoes), const Color(0xFFcc88ff))),
@@ -454,7 +455,7 @@ class _LoginRewardBanner extends StatelessWidget {
             borderRadius: BorderRadius.circular(6),
           ),
           child: Row(children: [
-            Text(reward.icon, style: const TextStyle(fontSize: 22)),
+            RewardIcon(reward: reward, size: 24),
             const SizedBox(width: 10),
             Expanded(child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -462,7 +463,7 @@ class _LoginRewardBanner extends StatelessWidget {
                 Text('DAY $day LOGIN REWARD',
                     style: AppTheme.pixelHeading(fontSize: 11, letterSpacing: 1, color: const Color(0xFFff8800))),
                 const SizedBox(height: 2),
-                Text(reward.label,
+                Text(loginRewardLabel(game, reward),
                     style: const TextStyle(fontSize: 11, color: AppTheme.textLight)),
               ],
             )),

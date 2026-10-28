@@ -244,7 +244,9 @@ class BattleSplitPanel extends StatelessWidget {
     }
 
     final allies = game.effectiveUnlockStage >= 15
-        ? game.unlockedAllies.where((a) => a.activeAbility != null).toList()
+        ? game.unlockedAllies
+            .where((a) => a.activeAbility != null && game.isMercActive(a.id))
+            .toList()
         : <dynamic>[];
     if (abilities.isEmpty && statusRows.isEmpty && allies.isEmpty) {
       return const SizedBox.shrink();
@@ -381,8 +383,8 @@ class BattleSplitPanel extends StatelessWidget {
                           context,
                           title: '${ally.name}: ${ally.activeAbility!.name}',
                           body: ally.activeAbility!.description,
-                          color: const Color(0xFF44cc88),
-                          icon: Icons.people,
+                          color: ally.abilityColor,
+                          icon: ally.abilityIconData,
                         ),
                         child: Opacity(
                           opacity: used ? 0.35 : 1.0,
@@ -398,7 +400,7 @@ class BattleSplitPanel extends StatelessWidget {
                               ),
                             ),
                             child: Row(children: [
-                              Text(ally.icon, style: const TextStyle(fontSize: 12)),
+                              Icon(ally.abilityIconData, color: ally.abilityColor, size: 14),
                               const SizedBox(width: 5),
                               Expanded(
                                 child: Text(
@@ -631,7 +633,9 @@ class BattleIconBar extends StatelessWidget {
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: allMercs.map((ally) {
-                    final hasActive = ally.activeAbility != null;
+                    // Only fielded mercs actually fire their ability — benched
+                    // ability-mercs render like passive supporters.
+                    final hasActive = ally.activeAbility != null && game.isMercActive(ally.id);
                     final used      = usedAllies.contains(ally.id);
                     final dimmed    = hasActive && used;
                     final borderColor = hasActive
@@ -648,8 +652,8 @@ class BattleIconBar extends StatelessWidget {
                         context,
                         title: sheetTitle,
                         body: sheetBody,
-                        color: borderColor,
-                        icon: Icons.people,
+                        color: ally.abilityColor,
+                        icon: ally.abilityIconData,
                       ),
                       child: Opacity(
                         opacity: dimmed ? 0.30 : 1.0,
@@ -667,7 +671,7 @@ class BattleIconBar extends StatelessWidget {
                           child: Column(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              Text(ally.icon, style: const TextStyle(fontSize: 22)),
+                              Icon(ally.abilityIconData, color: ally.abilityColor, size: 22),
                               const SizedBox(height: 2),
                               Text(
                                 ally.name.split(' ').first, // first word of name

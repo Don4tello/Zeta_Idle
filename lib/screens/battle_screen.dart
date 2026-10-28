@@ -1,6 +1,7 @@
 ﻿import 'dart:async';
 import 'package:flutter/foundation.dart' show kDebugMode;
 import '../models/damage_type.dart';
+import '../models/enemy.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show HapticFeedback;
 import 'package:go_router/go_router.dart';
@@ -17,6 +18,7 @@ import '../widgets/battle_sprites.dart';
 import '../widgets/item_drop_badge.dart';
 import '../widgets/pet_battle_sprite.dart';
 import '../theme/app_theme.dart';
+import '../widgets/currency_icon.dart';
 import '../widgets/level_up_section.dart';
 import '../data/ability_data.dart';
 import '../widgets/arena_ability_effect.dart';
@@ -104,6 +106,8 @@ class _BattleScreenState extends State<BattleScreen>
         await Future.delayed(const Duration(milliseconds: 300));
         await _showDefeatDialog(game);
         game.heroDefeated = false;
+        game.clearEventBossMode(); // lost the event boss → meter kept, no token
+        game.clearGuildWarMode();  // lost a War Attack → charge still spent? no: not consumed
         MainShell.switchToTab(0);
         if (mounted) context.go(Routes.shell);
         break;
@@ -145,6 +149,22 @@ class _BattleScreenState extends State<BattleScreen>
       }
       _rewardCompleter = null;
       if (!mounted || _exitRequested) break;
+
+      // Event boss down: grant the Boss Token and return to Events.
+      if (game.eventBossMode) {
+        game.finishEventBossVictory();
+        setState(() { _showingReward = false; _rewardItem = null; });
+        if (mounted) Navigator.pop(context);
+        break;
+      }
+
+      // Guild War attack won: add damage to the guild's score, return to Guild.
+      if (game.warBattleMode) {
+        game.finishGuildWarVictory();
+        setState(() { _showingReward = false; _rewardItem = null; });
+        if (mounted) Navigator.pop(context);
+        break;
+      }
 
       // Campaign replay: return to campaign map instead of looping
       if (game.isCampaignReplay) {
@@ -591,6 +611,23 @@ class _BattleScreenState extends State<BattleScreen>
     );
   }
 
+  /// A subtle element-colour wash so enemies reusing the same base sprite still
+  /// read as distinct creatures (e.g. an ice-wraith vs a void-wraith). Keyed off
+  /// the strongest NON-physical resistance (the enemy's element); base archetypes
+  /// with no elemental theme stay untinted.
+  static ColorFilter? _enemyElementTint(Enemy e) {
+    DamageType? best;
+    int bestV = 0;
+    for (final entry in e.resistances.entries) {
+      if (entry.key != DamageType.physical && entry.value > bestV) {
+        bestV = entry.value;
+        best = entry.key;
+      }
+    }
+    if (best == null || bestV < 25) return null;
+    return ColorFilter.mode(best.color.withValues(alpha: 0.33), BlendMode.srcATop);
+  }
+
   static List<Color> _heroBuffGlows(GameState game) {
     final glows = <Color>[];
     if (game.heroAbsorbShield > 0) glows.add(const Color(0xFF88ccff)); // sky   — absorb shield
@@ -773,6 +810,7 @@ class _BattleScreenState extends State<BattleScreen>
                 if (a.damageType != DamageType.physical) a.damageType,
             }.toList(),
             enemyResistances: enemy.resistances,
+            enemyColorFilter: _enemyElementTint(enemy),
             heroBuffGlows: _heroBuffGlows(game),
             enemyDebuffGlows: _enemyDebuffGlows(game),
             heroCritPct: game.totalCritChancePct,
@@ -917,22 +955,26 @@ class _BattleScreenState extends State<BattleScreen>
                                       color: Color(0xFFffd700), letterSpacing: 2))),
                             const SizedBox(height: 6),
                             _stagger(0.28, 0.53,
-                              child: Text('+${fmtNum(_rewardExp)} XP',
-                                  style: const TextStyle(
-                                      fontSize: 21, fontWeight: FontWeight.bold,
-                                      color: Color(0xFF4ad46a), letterSpacing: 2))),
+                              child: Row(mainAxisSize: MainAxisSize.min,
+                                  mainAxisAlignment: MainAxisAlignment.center, children: [
+                                const CurrencyIcon(id: 'xp', size: 22),
+                                const SizedBox(width: 8),
+                                Text('+${fmtNum(_rewardExp)} XP',
+                                    style: const TextStyle(
+                                        fontSize: 21, fontWeight: FontWeight.bold,
+                                        color: Color(0xFF4ad46a), letterSpacing: 2)),
+                              ])),
                             const SizedBox(height: 6),
                             _stagger(0.40, 0.65,
                               child: Row(mainAxisSize: MainAxisSize.min, children: [
-                                const Icon(Icons.diamond_outlined,
-                                    color: Color(0xFF80d0ff), size: 16),
+                                const CurrencyIcon(id: 'shards', size: 16),
                                 const SizedBox(width: 6),
                                 if (_rewardShards > 0) Text(
                                   '+$_rewardShards SHARDS',
                                   style: const TextStyle(
                                       fontSize: 17,
                                       fontWeight: FontWeight.bold,
-                                      color: Color(0xFF80d0ff),
+                                      color: Color(0xFF6699ff),
                                       letterSpacing: 1)),
                               ])),
                             if (_levelUpEvent != null) ...[

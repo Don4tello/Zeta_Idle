@@ -5,10 +5,12 @@ import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../core/routing/app_router.dart';
 import '../models/login_streak.dart';
+import 'login_streak_screen.dart' show RewardIcon, loginRewardLabel;
 import '../services/game_state.dart';
 import '../widgets/battle_sprites.dart';
 import '../widgets/section_card.dart';
 import '../widgets/zcoin_icon.dart';
+import '../widgets/currency_icon.dart';
 import '../theme/app_theme.dart';
 
 class HomeScreen extends StatelessWidget {
@@ -210,14 +212,16 @@ class HomeScreen extends StatelessWidget {
                 Row(children: [
                   Expanded(
                       child: _buildResourceBox(
-                          GameIconType.coin, 'GOLD', AppTheme.fmtNumber(game.gold),
+                          null, 'GOLD', AppTheme.fmtNumber(game.gold),
                           accent: AppTheme.accentGold,
+                          iconWidget: const CurrencyIcon(id: 'gold', size: 19),
                           tooltip: 'Gold\nEarned from battles and idle income.\nSpend in Upgrades and the Shop.')),
                   const SizedBox(width: 8),
                   Expanded(
                       child: _buildResourceBox(
-                          GameIconType.diamond, 'SHARDS', AppTheme.fmtNumber(game.shards),
-                          accent: const Color(0xFF44CCDD),
+                          null, 'SHARDS', AppTheme.fmtNumber(game.shards),
+                          accent: const Color(0xFF6699ff),
+                          iconWidget: const CurrencyIcon(id: 'shards', size: 19),
                           tooltip: 'Shards\nEarned from enemy kills, Dungeons, Expeditions, and Gauntlet.\nSpend on ability upgrades, item upgrades, and Passive Tree nodes.')),
                   const SizedBox(width: 8),
                   Expanded(
@@ -231,8 +235,9 @@ class HomeScreen extends StatelessWidget {
                 Row(children: [
                   Expanded(
                       child: _buildResourceBox(
-                          GameIconType.gear, 'MYTHRIL', '${game.mythril}',
-                          accent: const Color(0xFF7799CC),
+                          null, 'MYTHRIL', '${game.mythril}',
+                          accent: const Color(0xFF6FAEEA),
+                          iconWidget: const CurrencyIcon(id: 'mythril', size: 19),
                           tooltip: 'Mythril\nEarned from Dungeons, Boss Rush, and prestige milestones.\nSpend on Artifact upgrades, dungeon affix rerolls, and shrine blessings.')),
                   const SizedBox(width: 8),
                   Expanded(
@@ -962,11 +967,19 @@ class _LoginStreakButton extends StatelessWidget {
             child: Builder(builder: (_) {
               final nextDay = ((game.loginStreak) % LoginReward.cycle.length) + 1;
               final next = LoginReward.forDay(nextDay);
-              return Text(
-                'Tomorrow: ${next.icon} ${next.label}',
-                style: const TextStyle(fontSize: 8, color: AppTheme.textMuted),
-                overflow: TextOverflow.ellipsis,
-              );
+              return Row(mainAxisSize: MainAxisSize.min, children: [
+                const Text('Tomorrow: ',
+                    style: TextStyle(fontSize: 8, color: AppTheme.textMuted)),
+                RewardIcon(reward: next, size: 10),
+                const SizedBox(width: 3),
+                Flexible(
+                  child: Text(
+                    loginRewardLabel(game, next),
+                    style: const TextStyle(fontSize: 8, color: AppTheme.textMuted),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ]);
             }),
           ),
         ],

@@ -2,6 +2,7 @@
 import '../models/artifact.dart';
 import '../services/game_state.dart';
 import '../theme/app_theme.dart';
+import '../widgets/currency_icon.dart';
 import '../widgets/currency_info.dart';
 import '../widgets/stat_icon.dart';
 
@@ -18,7 +19,6 @@ class _ArtifactScreenState extends State<ArtifactScreen> {
   int?    _highlightedCell;
 
   static const _gridCols = 3;
-  static const _gridRows = 3;
   static const _maxCells = 9;
 
   void _onCellTap(GameState game, int cell) {
@@ -791,7 +791,7 @@ class _MythrilBadge extends StatelessWidget {
           borderRadius: BorderRadius.circular(3),
         ),
         child: Row(mainAxisSize: MainAxisSize.min, children: [
-          const Icon(Icons.diamond_outlined, size: 11, color: Color(0xFF9966ff)),
+          const CurrencyIcon(id: 'mythril', size: 13),
           const SizedBox(width: 4),
           Text('$mythril',
               style: AppTheme.pixelHeading(

@@ -213,7 +213,7 @@ class _LegendaryCard extends StatelessWidget {
             padding: const EdgeInsets.all(10),
             child: Row(children: [
               SizedBox(width: 32, height: 36,
-                  child: ItemSprite(slot: item.slot, rarity: item.rarity, size: 30)),
+                  child: ItemSprite(slot: item.slot, typeKey: item.itemTypeKey, rarity: item.rarity, size: 30)),
               const SizedBox(width: 10),
               Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Row(children: [

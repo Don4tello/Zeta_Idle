@@ -33,3 +33,12 @@ telemetry_dump.json
 _cloud_saves_raw.json
 _rebuild_slot0.json
 zeta_screen.png
+
+# Local build logs, debug screenshots, telemetry pulls & art backups (scratch)
+*.log
+.zeta_pid
+phone_*.png
+win_*.png
+zeta_*.png
+telemetry_check.json
+/_artifact_backup/

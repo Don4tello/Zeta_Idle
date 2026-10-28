@@ -33,12 +33,16 @@ class ItemSprite extends StatelessWidget {
   const ItemSprite({
     super.key,
     required this.slot,
+    this.typeKey,
     this.rarity,
     this.size = 40,
     this.setColor,
   });
 
   final ItemSlot  slot;
+  /// Art type from [EquipmentItem.itemTypeKey] (bow, staff, orb, robe, …).
+  /// When null the slot's default icon is used.
+  final String?  typeKey;
   final ItemRarity? rarity;
   final double  size;
   final Color?  setColor;
@@ -54,6 +58,10 @@ class ItemSprite extends StatelessWidget {
         ItemRarity.mythic    => const Color(0xFFDD1111),
         ItemRarity.set       => setColor ?? const Color(0xFF44ff88),
         ItemRarity.unique    => const Color(0xFFE8A0FF),
+        ItemRarity.ascended     => const Color(0xFFFF8A1E),
+        ItemRarity.primordial   => const Color(0xFF17E0A8),
+        ItemRarity.eternal      => const Color(0xFF36C6FF),
+        ItemRarity.transcendent => const Color(0xFFFFF4D6),
       };
 
   @override
@@ -61,12 +69,15 @@ class ItemSprite extends StatelessWidget {
     final glow   = glowColorFor(rarity, setColor: setColor);
     final sprite = CustomPaint(
       size: Size(size, size),
-      painter: _painterFor(slot),
+      painter: _painterFor(slot, typeKey),
     );
 
     if (glow == null) return SizedBox(width: size, height: size, child: sprite);
 
-    if (rarity == ItemRarity.legendary) {
+    // Legendary + the top post-Mythic tiers pulse; everything else is a static glow.
+    if (rarity == ItemRarity.legendary ||
+        rarity == ItemRarity.eternal ||
+        rarity == ItemRarity.transcendent) {
       return _LegendaryGlow(size: size, color: glow, child: sprite);
     }
 
@@ -152,19 +163,43 @@ class _LegendaryGlowState extends State<_LegendaryGlow>
 
 // ── Painter factory ───────────────────────────────────────────────────────────
 
-CustomPainter _painterFor(ItemSlot slot) => switch (slot) {
-      ItemSlot.weapon  => _WeaponPainter(),
-      ItemSlot.offHand => _OffHandPainter(),
-      ItemSlot.helmet  => _HelmetPainter(),
-      ItemSlot.armor   => _ArmorPainter(),
-      ItemSlot.gloves  => _GlovesPainter(),
-      ItemSlot.pants   => _PantsPainter(),
-      ItemSlot.boots   => _BootsPainter(),
-      ItemSlot.ring    => _RingPainter(),
-      ItemSlot.ring2   => _RingPainter(),
-      ItemSlot.amulet  => _AmuletPainter(),
-      ItemSlot.relic   => _RelicPainter(),
-    };
+CustomPainter _painterFor(ItemSlot slot, [String? type]) {
+  // Type-specific art (weapons, off-hands, body armour) takes priority.
+  switch (type) {
+    case 'sword':    return _SwordPainter();
+    case 'axe':      return _AxePainter();
+    case 'mace':     return _MacePainter();
+    case 'dagger':   return _DaggerPainter();
+    case 'bow':      return _BowPainter();
+    case 'crossbow': return _CrossbowPainter();
+    case 'staff':    return _StaffPainter();
+    case 'wand':     return _WandPainter();
+    case 'spear':    return _SpearPainter();
+    case 'shield':   return _ShieldPainter();
+    case 'orb':      return _OrbPainter();
+    case 'tome':     return _TomePainter();
+    case 'quiver':   return _QuiverPainter();
+    case 'totem':    return _TotemPainter();
+    case 'lute':     return _LutePainter();
+    case 'plate':    return _PlatePainter();
+    case 'robe':     return _RobePainter();
+    case 'leather':  return _LeatherPainter();
+    case 'scale':    return _ScalePainter();
+  }
+  return switch (slot) {
+    ItemSlot.weapon  => _SwordPainter(),
+    ItemSlot.offHand => _ShieldPainter(),
+    ItemSlot.helmet  => _HelmetPainter(),
+    ItemSlot.armor   => _PlatePainter(),
+    ItemSlot.gloves  => _GlovesPainter(),
+    ItemSlot.pants   => _PantsPainter(),
+    ItemSlot.boots   => _BootsPainter(),
+    ItemSlot.ring    => _RingPainter(),
+    ItemSlot.ring2   => _RingPainter(),
+    ItemSlot.amulet  => _AmuletPainter(),
+    ItemSlot.relic   => _RelicPainter(),
+  };
+}
 
 // ── Abstract base ─────────────────────────────────────────────────────────────
 
@@ -194,7 +229,7 @@ abstract class _P extends CustomPainter {
 //   grip: cols 7-8, rows 9-12
 //   pommel: cols 6-9, rows 13-15
 // ─────────────────────────────────────────────────────────────────────────────
-class _WeaponPainter extends _P {
+class _SwordPainter extends _P {
   @override
   void draw(Canvas c, Size sz) {
     // Blade edges
@@ -231,7 +266,7 @@ class _WeaponPainter extends _P {
 // ─────────────────────────────────────────────────────────────────────────────
 // OFF-HAND — kite shield, front-facing, with cross boss
 // ─────────────────────────────────────────────────────────────────────────────
-class _OffHandPainter extends _P {
+class _ShieldPainter extends _P {
   @override
   void draw(Canvas c, Size sz) {
     // Dark outline shape
@@ -317,7 +352,7 @@ class _HelmetPainter extends _P {
 // ─────────────────────────────────────────────────────────────────────────────
 // ARMOR — full chest plate, front-facing
 // ─────────────────────────────────────────────────────────────────────────────
-class _ArmorPainter extends _P {
+class _PlatePainter extends _P {
   @override
   void draw(Canvas c, Size sz) {
     // Left pauldron
@@ -475,36 +510,31 @@ class _BootsPainter extends _P {
 class _RingPainter extends _P {
   @override
   void draw(Canvas c, Size sz) {
-    // Outer ring band (circle approximation)
-    b(c,  5,  1,  6,  1, _G);  // top arc
-    b(c,  3,  2,  2,  1, _G);  b(c, 11,  2,  2,  1, _G);
-    b(c,  2,  3,  2,  4, _G);  b(c, 12,  3,  2,  4, _G);
-    b(c,  3,  7,  2,  1, _G);  b(c, 11,  7,  2,  1, _G);
-    b(c,  5,  8,  6,  1, _G);  // bottom arc
+    // Gold band — face-on circle, vertically centred in the 16×16 box.
+    // Outer arcs
+    b(c,  6,  6,  4,  1, _GD); // top
+    b(c,  6, 13,  4,  1, _GD); // bottom
+    b(c,  4,  7,  2,  6, _GD); // left
+    b(c, 10,  7,  2,  6, _GD); // right
+    b(c,  5,  6,  1,  1, _GD); b(c, 10,  6,  1,  1, _GD);
+    b(c,  5, 13,  1,  1, _GD); b(c, 10, 13,  1,  1, _GD);
+    // Bright gold face / highlight
+    b(c,  6,  6,  4,  1, _G);
+    b(c,  4,  7,  1,  6, _GL); // left highlight
+    b(c, 11,  7,  1,  6, _G);
+    b(c,  6, 13,  4,  1, _G);
+    // Inner hole (background)
+    b(c,  6,  7,  4,  6, _K);
+    b(c,  6,  8,  4,  4, 0xFF1c1c24); // slightly lifted centre
 
-    // Inner band highlight (lighter)
-    b(c,  5,  1,  4,  1, _GL);
-    b(c,  3,  2,  1,  1, _GL); b(c,  2,  3,  1,  2, _GL);
-
-    // Inner dark (hole of ring)
-    b(c,  5,  2,  6,  1, _GD);
-    b(c,  4,  3,  1,  3, _GD); b(c, 11,  3,  1,  3, _GD);
-    b(c,  5,  6,  6,  1, _GD);
-    // Very inside (background)
-    b(c,  5,  3,  6,  3, _K);
-
-    // Setting / bezel (top)
-    b(c,  6,  0,  4,  2, _GD);
-    b(c,  6,  0,  4,  1, _G);
-
-    // Gemstone (ruby red, rows -2 to 0 — use 0..1 since we have room)
-    // Let's put a big gem at top rows 0-4 centred
-    b(c,  5, -1,  6,  4, _RD); // won't render (negative), shift down
-    // Center gem on top of ring
-    b(c,  5,  0,  6,  3, _RD);         // gem body
-    b(c,  5,  0,  3,  1, 0xFFff5555); // top-left highlight
-    b(c,  5,  1,  2,  1, 0xFFff7777); // inner highlight
-    b(c,  9,  2,  2,  1, 0xFF881111); // shadow corner
+    // Gemstone (ruby) seated on top of the band, centred
+    b(c,  6,  3,  4,  4, _RD);         // gem body
+    b(c,  6,  3,  2,  2, 0xFFff6b6b);  // top-left highlight
+    b(c,  7,  4,  1,  1, 0xFFffb0b0);  // inner gleam
+    b(c,  9,  5,  1,  2, 0xFF8f1515);  // shadow corner
+    // Gold setting beneath the gem
+    b(c,  5,  6,  6,  1, _GL);
+    b(c,  6,  2,  4,  1, _GD);         // crown prongs
   }
 }
 
@@ -586,5 +616,402 @@ class _RelicPainter extends _P {
     b(c,  5, 14,  1,  1, _GL);
     b(c,  8, 14,  1,  1, _GL);
     b(c, 11, 14,  1,  1, _GL);
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// AXE — double-bit battleaxe, vertical haft
+// ─────────────────────────────────────────────────────────────────────────────
+class _AxePainter extends _P {
+  @override
+  void draw(Canvas c, Size sz) {
+    // Haft
+    b(c,  7,  2,  2, 13, _BR);
+    b(c,  7,  2,  1, 13, _BM);
+    b(c,  7, 12,  2,  1, _GL); // grip band
+    b(c,  7,  0,  2,  2, _GD); // top pommel
+    // Left bit
+    b(c,  2,  2,  5,  5, _SD);
+    b(c,  2,  3,  5,  3, _S);
+    b(c,  2,  3,  4,  1, _SL);
+    b(c,  2,  3,  1,  3, _SL); // edge gleam
+    // Right bit
+    b(c,  9,  2,  5,  5, _SD);
+    b(c,  9,  3,  5,  3, _S);
+    b(c, 10,  3,  4,  1, _SL);
+    b(c, 13,  3,  1,  3, _S);
+    // Gold collar where heads meet haft
+    b(c,  6,  3,  4,  2, _G);
+    b(c,  6,  3,  4,  1, _GL);
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// MACE — flanged war-mace, head on top
+// ─────────────────────────────────────────────────────────────────────────────
+class _MacePainter extends _P {
+  @override
+  void draw(Canvas c, Size sz) {
+    // Haft
+    b(c,  7,  5,  2, 10, _BR);
+    b(c,  7,  5,  1, 10, _BM);
+    b(c,  7, 13,  2,  1, _GL);
+    // Head (metal ball)
+    b(c,  5,  1,  6,  5, _SD);
+    b(c,  5,  1,  6,  4, _S);
+    b(c,  5,  1,  3,  2, _SL);
+    // Flanges / spikes
+    b(c,  4,  2,  1,  2, _SD);
+    b(c, 11,  2,  1,  2, _SD);
+    b(c,  7,  0,  2,  1, _SD);
+    b(c,  5,  5,  6,  1, _SD);
+    // Gold band under head
+    b(c,  6,  5,  4,  1, _G);
+    b(c,  6,  5,  4,  1, _GL);
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// DAGGER — short blade, centred
+// ─────────────────────────────────────────────────────────────────────────────
+class _DaggerPainter extends _P {
+  @override
+  void draw(Canvas c, Size sz) {
+    // Blade
+    b(c,  7,  2,  1,  7, _SL);
+    b(c,  8,  2,  1,  7, _S);
+    b(c,  7,  2,  2,  1, _SL); // tip
+    b(c,  6,  3,  1,  5, _SD);
+    b(c,  9,  3,  1,  5, _SD);
+    // Crossguard
+    b(c,  5,  8,  6,  1, _GD);
+    b(c,  5,  8,  6,  1, _G);
+    // Grip
+    b(c,  7,  9,  2,  4, _BR);
+    b(c,  7,  9,  1,  4, _BM);
+    // Pommel
+    b(c,  6, 13,  4,  2, _G);
+    b(c,  6, 13,  4,  1, _GL);
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// BOW — vertical longbow with nocked arrow
+// ─────────────────────────────────────────────────────────────────────────────
+class _BowPainter extends _P {
+  @override
+  void draw(Canvas c, Size sz) {
+    // Bow limb (curved, left side)
+    b(c,  4,  1,  2,  2, _BM);
+    b(c,  3,  3,  2,  3, _BM);
+    b(c,  2,  6,  2,  4, _BM);
+    b(c,  3, 10,  2,  3, _BM);
+    b(c,  4, 13,  2,  2, _BM);
+    b(c,  4,  1,  1,  2, _BR);
+    b(c,  3,  3,  1,  3, _BR);
+    b(c,  2,  6,  1,  4, _BR);
+    // Tips (gold nocks)
+    b(c,  5,  0,  1,  1, _G);
+    b(c,  5, 15,  1,  1, _G);
+    // String (taut)
+    b(c,  6,  1,  1, 14, _SL);
+    // Nocked arrow (vertical)
+    b(c,  8,  2,  1, 10, _BL);
+    b(c,  7,  2,  3,  1, _S);   // arrowhead
+    b(c,  7,  1,  2,  1, _SL);
+    b(c,  8, 12,  1,  2, _RD);  // fletching
+    b(c,  9, 12,  1,  2, _RD);
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// CROSSBOW — horizontal stock with limbs and loaded bolt
+// ─────────────────────────────────────────────────────────────────────────────
+class _CrossbowPainter extends _P {
+  @override
+  void draw(Canvas c, Size sz) {
+    // Stock
+    b(c,  3,  7, 11,  2, _BR);
+    b(c,  3,  7, 11,  1, _BM);
+    b(c,  3,  7,  1,  2, _G); // butt trim
+    // Bow limbs (front, vertical)
+    b(c, 11,  3,  1,  4, _SD);
+    b(c, 12,  2,  1,  2, _SD);
+    b(c, 11,  9,  1,  4, _SD);
+    b(c, 12, 12,  1,  2, _SD);
+    // String
+    b(c, 13,  3,  1, 11, _SL);
+    // Loaded bolt (horizontal)
+    b(c,  5,  6,  9,  1, _BL);
+    b(c, 13,  6,  1,  1, _S);  // bolt head
+    b(c,  5,  6,  1,  1, _RD); // fletch
+    // Trigger grip
+    b(c,  4,  9,  2,  4, _BR);
+    b(c,  4,  9,  2,  4, _BM);
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// STAFF — tall wizard staff crowned with a crystal
+// ─────────────────────────────────────────────────────────────────────────────
+class _StaffPainter extends _P {
+  @override
+  void draw(Canvas c, Size sz) {
+    // Shaft
+    b(c,  7,  3,  2, 12, _BR);
+    b(c,  7,  3,  1, 12, _BM);
+    b(c,  7,  8,  2,  1, _G);  // wrap band
+    b(c,  7, 12,  2,  1, _G);
+    b(c,  7, 15,  2,  1, _GD); // ferrule
+    // Head prongs holding a gem
+    b(c,  6,  2,  1,  3, _BL);
+    b(c,  9,  2,  1,  3, _BL);
+    b(c,  6,  1,  1,  1, _BL);
+    b(c,  9,  1,  1,  1, _BL);
+    // Crystal (cyan)
+    b(c,  7,  1,  2,  4, _CY);
+    b(c,  7,  1,  1,  2, 0xFFbbffee);
+    b(c,  8,  3,  1,  1, 0xFF117766);
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// WAND — short rod with a gem tip
+// ─────────────────────────────────────────────────────────────────────────────
+class _WandPainter extends _P {
+  @override
+  void draw(Canvas c, Size sz) {
+    // Rod
+    b(c,  7,  5,  2, 10, _BR);
+    b(c,  7,  5,  1, 10, _BL);
+    b(c,  7, 11,  2,  1, _G);  // band
+    b(c,  7, 15,  2,  1, _GD); // pommel
+    // Gem tip (amethyst)
+    b(c,  6,  2,  4,  4, _PU);
+    b(c,  6,  2,  2,  2, 0xFFcc77ee);
+    b(c,  8,  4,  1,  1, 0xFF551177);
+    // Setting prongs
+    b(c,  6,  5,  4,  1, _G);
+    b(c,  6,  1,  1,  1, _G);
+    b(c,  9,  1,  1,  1, _G);
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SPEAR — polearm with a leaf-blade head
+// ─────────────────────────────────────────────────────────────────────────────
+class _SpearPainter extends _P {
+  @override
+  void draw(Canvas c, Size sz) {
+    // Shaft
+    b(c,  7,  2,  2, 13, _BR);
+    b(c,  7,  2,  1, 13, _BM);
+    b(c,  7, 12,  2,  1, _GL); // grip band
+    // Spearhead (leaf blade)
+    b(c,  7,  0,  2,  1, _SL);
+    b(c,  6,  1,  4,  2, _SD);
+    b(c,  6,  1,  4,  1, _S);
+    b(c,  5,  3,  6,  2, _SD);
+    b(c,  6,  3,  4,  1, _S);
+    b(c,  6,  3,  2,  1, _SL);
+    b(c,  6,  5,  4,  1, _SD);
+    // Gold collar
+    b(c,  7,  6,  2,  1, _G);
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ORB — floating arcane orb (no pedestal), centred
+// ─────────────────────────────────────────────────────────────────────────────
+class _OrbPainter extends _P {
+  @override
+  void draw(Canvas c, Size sz) {
+    // Outline
+    b(c,  5,  3,  6,  1, _SD);
+    b(c,  4,  4,  8,  1, _SD);
+    b(c,  3,  5, 10,  6, _SD);
+    b(c,  4, 11,  8,  1, _SD);
+    b(c,  5, 12,  6,  1, _SD);
+    // Blue face
+    b(c,  5,  3,  6,  1, _BU);
+    b(c,  4,  4,  8,  1, _BU);
+    b(c,  3,  5, 10,  6, _BU);
+    b(c,  4, 11,  8,  1, _BU);
+    b(c,  5, 12,  6,  1, _BU);
+    // Inner glow
+    b(c,  5,  5,  6,  4, 0xFF66aaff);
+    // Highlight
+    b(c,  5,  4,  3,  3, 0xFFbbddff);
+    b(c,  5,  4,  2,  2, 0xFFffffff);
+    // Shadow + sparkle
+    b(c,  9,  9,  3,  3, 0xFF1133aa);
+    b(c, 10,  4,  1,  1, 0xFFffffff);
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// TOME — bound spellbook with clasp
+// ─────────────────────────────────────────────────────────────────────────────
+class _TomePainter extends _P {
+  @override
+  void draw(Canvas c, Size sz) {
+    // Cover (dark red)
+    b(c,  3,  2, 11, 12, 0xFF772222);
+    b(c,  3,  2,  1, 12, _GD); // spine
+    // Page edges (right)
+    b(c, 12,  3,  2, 10, _SL);
+    b(c, 12,  3,  1, 10, _S);
+    // Gold frame
+    b(c,  4,  2,  8,  1, _G);
+    b(c,  4, 13,  8,  1, _G);
+    // Emblem / clasp
+    b(c,  6,  6,  4,  4, _GD);
+    b(c,  7,  7,  2,  2, _GL);
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// QUIVER — arrow case with fletched arrows
+// ─────────────────────────────────────────────────────────────────────────────
+class _QuiverPainter extends _P {
+  @override
+  void draw(Canvas c, Size sz) {
+    // Case (leather cylinder)
+    b(c,  5,  5,  6, 11, _LD);
+    b(c,  5,  5,  6, 10, _LT);
+    b(c,  5,  5,  2, 10, 0xFFd8b878); // highlight
+    // Straps
+    b(c,  5,  8,  6,  1, _BR);
+    b(c,  5, 12,  6,  1, _BR);
+    // Arrows poking out of the top
+    b(c,  5,  0,  1,  5, _BL);
+    b(c,  7,  0,  1,  5, _BL);
+    b(c,  9,  0,  1,  5, _BL);
+    b(c,  5,  0,  1,  2, _RD);
+    b(c,  7,  0,  1,  2, _GE);
+    b(c,  9,  0,  1,  2, _RD);
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// TOTEM — carved tribal / holy focus
+// ─────────────────────────────────────────────────────────────────────────────
+class _TotemPainter extends _P {
+  @override
+  void draw(Canvas c, Size sz) {
+    // Body (carved wood)
+    b(c,  5,  2,  6, 12, _BR);
+    b(c,  6,  2,  4, 12, _BM);
+    b(c,  7,  2,  2, 12, _BL);
+    // Top knot
+    b(c,  6,  0,  4,  2, _GD);
+    b(c,  6,  0,  4,  1, _G);
+    // Binding bands
+    b(c,  5,  3,  6,  1, _G);
+    b(c,  5, 10,  6,  1, _G);
+    // Carved gem eye
+    b(c,  6,  5,  4,  3, _GD);
+    b(c,  7,  5,  2,  3, _GE);
+    b(c,  7,  6,  2,  1, 0xFF88ffbb);
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// LUTE — stringed instrument (bard off-hand)
+// ─────────────────────────────────────────────────────────────────────────────
+class _LutePainter extends _P {
+  @override
+  void draw(Canvas c, Size sz) {
+    // Rounded body
+    b(c,  5,  7,  7,  1, _BR);
+    b(c,  4,  8,  9,  6, _BM);
+    b(c,  5, 14,  7,  1, _BR);
+    b(c,  4,  8,  4,  6, _BL); // highlight side
+    // Sound hole
+    b(c,  7, 10,  2,  2, _K);
+    // Neck (up-right)
+    b(c, 10,  1,  2,  7, _BR);
+    b(c, 10,  1,  1,  7, _BM);
+    // Headstock
+    b(c, 11,  0,  3,  2, _GD);
+    // Strings
+    b(c,  8,  2,  1,  8, _SL);
+    b(c,  9,  2,  1,  9, _S);
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ROBE — flowing mage robe with hood
+// ─────────────────────────────────────────────────────────────────────────────
+class _RobePainter extends _P {
+  @override
+  void draw(Canvas c, Size sz) {
+    // Shoulders → flared body
+    b(c,  5,  2,  6,  2, _PU);
+    b(c,  4,  4,  8,  8, _PU);
+    b(c,  3, 12, 10,  3, _PU);
+    // Outline shading
+    b(c,  4,  4,  1,  8, 0xFF551188);
+    b(c, 11,  4,  1,  8, 0xFF551188);
+    b(c,  3, 12,  1,  3, 0xFF551188);
+    b(c, 12, 12,  1,  3, 0xFF551188);
+    // Highlight
+    b(c,  5,  4,  2,  7, 0xFFaa66dd);
+    // Hood opening (dark)
+    b(c,  6,  2,  4,  3, _K);
+    // Centre trim (gold) + belt
+    b(c,  7,  4,  2, 10, _G);
+    b(c,  7,  4,  1, 10, _GL);
+    b(c,  4,  9,  8,  1, _GD);
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// LEATHER — studded leather jerkin
+// ─────────────────────────────────────────────────────────────────────────────
+class _LeatherPainter extends _P {
+  @override
+  void draw(Canvas c, Size sz) {
+    // Shoulders
+    b(c,  2,  3,  3,  3, _LD);
+    b(c,  2,  3,  3,  2, _LT);
+    b(c, 11,  3,  3,  3, _LD);
+    b(c, 11,  3,  3,  2, _LT);
+    // Torso
+    b(c,  4,  2,  8, 12, _LD);
+    b(c,  5,  3,  6, 10, _LT);
+    b(c,  5,  3,  3,  6, 0xFFd8b878); // highlight
+    // Central lacing panel
+    b(c,  7,  4,  2,  9, _BR);
+    for (final sy in [5.0, 8.0, 11.0]) {
+      b(c,  6, sy,  1,  1, _BL);
+      b(c,  9, sy,  1,  1, _BL);
+    }
+    // Belt + buckle
+    b(c,  4, 12,  8,  2, _BR);
+    b(c,  7, 12,  2,  2, _GD);
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SCALE — overlapping scale mail
+// ─────────────────────────────────────────────────────────────────────────────
+class _ScalePainter extends _P {
+  @override
+  void draw(Canvas c, Size sz) {
+    // Base + shoulders
+    b(c,  4,  2,  8, 12, _SD);
+    b(c,  2,  2,  3,  3, _SD);
+    b(c, 11,  2,  3,  3, _SD);
+    // Gold neckline
+    b(c,  6,  2,  4,  1, _G);
+    // Scale rows (staggered)
+    b(c,  5,  3,  2,  2, _S);  b(c,  7,  3,  2,  2, _SL); b(c,  9,  3,  2,  2, _S);
+    b(c,  4,  5,  2,  2, _SL); b(c,  6,  5,  2,  2, _S);  b(c,  8,  5,  2,  2, _SL); b(c, 10,  5,  2,  2, _S);
+    b(c,  5,  7,  2,  2, _S);  b(c,  7,  7,  2,  2, _SL); b(c,  9,  7,  2,  2, _S);
+    b(c,  4,  9,  2,  2, _SL); b(c,  6,  9,  2,  2, _S);  b(c,  8,  9,  2,  2, _SL); b(c, 10,  9,  2,  2, _S);
+    b(c,  5, 11,  2,  2, _S);  b(c,  7, 11,  2,  2, _SL); b(c,  9, 11,  2,  2, _S);
+    // Belt
+    b(c,  4, 13,  8,  1, _GD);
   }
 }

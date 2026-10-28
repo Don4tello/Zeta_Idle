@@ -78,6 +78,32 @@ class Enemy {
     'currentHealth': currentHealth,
   };
 
+  /// Copy preserving every combat field (resistances, abilities, attackType,
+  /// namedBoss, dodge). Omitting [currentHealth] refills to the new [maxHealth]
+  /// — intended for spawn-time rescaling.
+  Enemy copyWith({
+    String? name,
+    int? maxHealth,
+    int? attack,
+    int? level,
+    int? armorClass,
+    int? currentHealth,
+  }) => Enemy(
+    id: id,
+    name: name ?? this.name,
+    description: description,
+    maxHealth: maxHealth ?? this.maxHealth,
+    attack: attack ?? this.attack,
+    level: level ?? this.level,
+    armorClass: armorClass ?? this.armorClass,
+    attackType: attackType,
+    resistances: resistances,
+    namedBoss: namedBoss,
+    dodge: dodge,
+    abilities: abilities,
+    currentHealth: currentHealth,
+  );
+
   factory Enemy.fromJson(Map<String, dynamic> json) => Enemy(
     id: json['id'] as String,
     name: json['name'] as String,

@@ -4,6 +4,8 @@ import 'package:flutter_animate/flutter_animate.dart';
 import '../models/npc_ally.dart';
 import '../services/game_state.dart';
 import '../theme/app_theme.dart';
+import '../widgets/battle_sprites.dart';
+import '../widgets/currency_icon.dart';
 import '../widgets/zcoin_icon.dart';
 import 'main_shell.dart' show TutorialTip;
 
@@ -35,6 +37,10 @@ class NpcAllyScreen extends StatelessWidget {
           const SizedBox(height: 12),
         ],
         _ActiveBonusBar(game: game),
+        if (unlockedCount > 0) ...[
+          const SizedBox(height: 10),
+          _PartyBanner(game: game),
+        ],
         const SizedBox(height: 16),
         Text('ROSTER',
             style: AppTheme.pixelHeading(
@@ -167,18 +173,77 @@ class _Chip {
   final Color color;
 }
 
+// ── Battle party counter ──────────────────────────────────────────────────────
+
+class _PartyBanner extends StatelessWidget {
+  const _PartyBanner({required this.game});
+  final GameState game;
+
+  @override
+  Widget build(BuildContext context) {
+    final count = game.activeMercCount;
+    final max   = game.maxActiveMercs;
+    const accent = Color(0xFFaa77ff);
+    return Container(
+      padding: const EdgeInsets.fromLTRB(12, 9, 12, 10),
+      decoration: BoxDecoration(
+        color: const Color(0xFF1a1028),
+        border: Border.all(color: accent.withValues(alpha: 0.4)),
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Row(children: [
+          const Icon(Icons.groups, size: 15, color: accent),
+          const SizedBox(width: 6),
+          Text('BATTLE PARTY',
+              style: AppTheme.pixelHeading(
+                  fontSize: 10, letterSpacing: 1, color: accent)),
+          const Spacer(),
+          Text('$count / $max fielded',
+              style: AppTheme.pixelHeading(
+                  fontSize: 11,
+                  color: count > 0 ? accent : AppTheme.textMuted)),
+        ]),
+        const SizedBox(height: 5),
+        const Text(
+          'Every recruit\'s passive bonuses always apply. Only fielded mercs '
+          'fire their battle ability — pick your openers.',
+          style: TextStyle(fontSize: 10, color: Colors.white54, height: 1.35),
+        ),
+      ]),
+    );
+  }
+}
+
 // ── Portrait medallion ────────────────────────────────────────────────────────
 
 class _MercPortrait extends StatefulWidget {
   const _MercPortrait({
     required this.icon,
+    required this.spriteId,
+    required this.tintArgb,
     required this.unlocked,
     required this.level,
   });
   final String icon;
+  final String spriteId;
+  final int tintArgb;
   final bool unlocked;
   final int level;
   static const double size = 54;
+
+  /// Tinted hero-class sprite for this mercenary, or null to fall back to emoji.
+  Widget? _spriteOrNull(double px) {
+    if (spriteId.isEmpty) return null;
+    return StaticEnemySprite(
+      spriteId: spriteId,
+      size: px,
+      colorFilter: ColorFilter.mode(
+        Color(tintArgb).withValues(alpha: 0.55),
+        BlendMode.srcATop,
+      ),
+    );
+  }
 
   @override
   State<_MercPortrait> createState() => _MercPortraitState();
@@ -232,8 +297,8 @@ class _MercPortraitState extends State<_MercPortrait>
           // Very faint silhouette
           Opacity(
             opacity: 0.12,
-            child: Text(widget.icon,
-                style: TextStyle(fontSize: s * 0.50)),
+            child: widget._spriteOrNull(s * 0.82) ??
+                Text(widget.icon, style: TextStyle(fontSize: s * 0.50)),
           ),
           // Question mark
           Text('?',
@@ -271,8 +336,9 @@ class _MercPortraitState extends State<_MercPortrait>
             color: ringColor.withValues(alpha: 0.08),
           ),
         ),
-        // Emoji
-        Text(widget.icon, style: TextStyle(fontSize: s * 0.46)),
+        // Tinted hero-class sprite (falls back to emoji if none set)
+        widget._spriteOrNull(s * 0.86) ??
+            Text(widget.icon, style: TextStyle(fontSize: s * 0.46)),
       ]),
     );
   }
@@ -444,7 +510,12 @@ class _CardContent extends StatelessWidget {
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         // ── Header row ────────────────────────────────────────────────────────
         Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          _MercPortrait(icon: def.icon, unlocked: unlocked, level: level),
+          _MercPortrait(
+              icon: def.icon,
+              spriteId: def.spriteId,
+              tintArgb: def.tintArgb,
+              unlocked: unlocked,
+              level: level),
           const SizedBox(width: 13),
           Expanded(
             child: Column(
@@ -466,6 +537,10 @@ class _CardContent extends StatelessWidget {
                   if (unlocked) ...[
                     const SizedBox(width: 6),
                     _LevelBadge(level: level, maxed: maxed),
+                    if (game.allyStars(def.id) > 0) ...[
+                      const SizedBox(width: 4),
+                      _StarCountChip(stars: game.allyStars(def.id)),
+                    ],
                   ],
                 ]),
                 const SizedBox(height: 2),
@@ -511,8 +586,7 @@ class _CardContent extends StatelessWidget {
               borderRadius: BorderRadius.circular(3),
             ),
             child: Row(children: [
-              Text(def.activeAbility!.icon,
-                  style: const TextStyle(fontSize: 14)),
+              Icon(def.abilityIconData, size: 15, color: def.abilityColor),
               const SizedBox(width: 8),
               Expanded(
                 child: Column(
@@ -582,6 +656,13 @@ class _CardContent extends StatelessWidget {
                 onTap:        () { game.upgradeAlly(def.id); game.audioService.playClaim(); },
               ),
           ]),
+          // Star ascension — the endgame merc sink (only once maxed).
+          if (maxed) ...[
+            const SizedBox(height: 8),
+            _StarControl(def: def, game: game),
+          ],
+          const SizedBox(height: 8),
+          _PartyToggle(def: def, game: game),
         ],
       ]),
     );
@@ -636,6 +717,12 @@ class _TalentSection extends StatelessWidget {
               ),
             ],
           ]),
+          if (chosen != null) ...[
+            const SizedBox(height: 4),
+            Text(
+                'Switching branch costs ${GameState.kAllyTalentRespecCost} ◆ Shards',
+                style: const TextStyle(fontSize: 8, color: Colors.white38)),
+          ],
           const SizedBox(height: 8),
           Row(children: [
             Expanded(child: _TalentOption(
@@ -690,7 +777,8 @@ class _TalentOption extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(children: [
-              Text(option.icon, style: const TextStyle(fontSize: 13)),
+              Icon(option.statIcon, size: 13,
+                  color: isChosen ? chosen : const Color(0xFF6688aa)),
               const SizedBox(width: 5),
               Expanded(
                 child: Text(option.name,
@@ -820,6 +908,183 @@ class _MaxBadge extends StatelessWidget {
         )
         .animate(onPlay: (c) => c.repeat(reverse: true))
         .shimmer(duration: 2000.ms, color: AppTheme.accentGold.withValues(alpha: 0.4));
+  }
+}
+
+// ── Star count chip (header) ──────────────────────────────────────────────────
+
+class _StarCountChip extends StatelessWidget {
+  const _StarCountChip({required this.stars});
+  final int stars;
+  @override
+  Widget build(BuildContext context) {
+    const c = Color(0xFFffb300);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+      decoration: BoxDecoration(
+        color: c.withValues(alpha: 0.12),
+        border: Border.all(color: c.withValues(alpha: 0.5)),
+        borderRadius: BorderRadius.circular(3),
+      ),
+      child: Text('★$stars',
+          style: AppTheme.pixelHeading(fontSize: 9, color: c)),
+    );
+  }
+}
+
+// ── Star ascension control (maxed mercs) ──────────────────────────────────────
+
+class _StarControl extends StatelessWidget {
+  const _StarControl({required this.def, required this.game});
+  final NpcAllyDef def;
+  final GameState game;
+
+  @override
+  Widget build(BuildContext context) {
+    final stars    = game.allyStars(def.id);
+    const maxStars = GameState.kMaxAllyStars;
+    final atMax    = stars >= maxStars;
+    final cost     = atMax ? 0 : game.allyStarCost(stars + 1);
+    final canAfford = !atMax && game.mythril >= cost;
+    const c = Color(0xFFffb300);
+
+    return Container(
+      padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
+      decoration: BoxDecoration(
+        color: const Color(0xFF241a08),
+        border: Border.all(color: c.withValues(alpha: 0.4)),
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Row(children: [
+          Text('STAR RANK',
+              style: AppTheme.pixelHeading(
+                  fontSize: 9, letterSpacing: 1, color: c)),
+          const Spacer(),
+          Text('$stars / $maxStars',
+              style: AppTheme.pixelHeading(fontSize: 10, color: c)),
+        ]),
+        const SizedBox(height: 6),
+        Row(children: [
+          for (int i = 0; i < maxStars; i++)
+            Padding(
+              padding: const EdgeInsets.only(right: 2),
+              child: Icon(i < stars ? Icons.star : Icons.star_border,
+                  size: 12,
+                  color: i < stars ? c : c.withValues(alpha: 0.3)),
+            ),
+        ]),
+        const SizedBox(height: 7),
+        if (atMax)
+          Text('★ FULLY ASCENDED — each star adds +1 effective level.',
+              style: TextStyle(fontSize: 9, color: c.withValues(alpha: 0.85)))
+        else ...[
+          GestureDetector(
+            onTap: canAfford
+                ? () { game.ascendAllyStar(def.id); game.audioService.playClaim(); }
+                : null,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              decoration: BoxDecoration(
+                color: canAfford ? c.withValues(alpha: 0.12) : Colors.transparent,
+                border: Border.all(color: canAfford ? c : AppTheme.cardBorder),
+                borderRadius: BorderRadius.circular(3),
+              ),
+              child: Row(mainAxisSize: MainAxisSize.min, children: [
+                Text('ASCEND ★${stars + 1}',
+                    style: AppTheme.pixelHeading(
+                        fontSize: 9,
+                        color: canAfford ? c : AppTheme.textMuted)),
+                const SizedBox(width: 8),
+                const CurrencyIcon(id: 'mythril', size: 11),
+                const SizedBox(width: 3),
+                Text('$cost',
+                    style: TextStyle(
+                        fontSize: 9,
+                        fontWeight: FontWeight.bold,
+                        color: canAfford ? c : const Color(0xFFcc6644))),
+              ]),
+            ),
+          ),
+          if (!canAfford)
+            Padding(
+              padding: const EdgeInsets.only(top: 3),
+              child: Text('You have: ${game.mythril} Mythril',
+                  style: const TextStyle(fontSize: 8, color: Color(0xFFcc6644))),
+            ),
+        ],
+        const SizedBox(height: 2),
+        Text('Each star = +1 effective level of this merc\'s bonus.',
+            style: const TextStyle(fontSize: 8, color: Colors.white38)),
+      ]),
+    );
+  }
+}
+
+// ── Party field / bench toggle ────────────────────────────────────────────────
+
+class _PartyToggle extends StatelessWidget {
+  const _PartyToggle({required this.def, required this.game});
+  final NpcAllyDef def;
+  final GameState game;
+
+  @override
+  Widget build(BuildContext context) {
+    // Passive-only mercs have nothing to field.
+    if (def.activeAbility == null) {
+      return const Text('Passive bonuses only — always active.',
+          style: TextStyle(
+              fontSize: 9, color: Colors.white38, fontStyle: FontStyle.italic));
+    }
+    final active   = game.isMercActive(def.id);
+    final full     = game.activeMercCount >= game.maxActiveMercs;
+    final canField = !active && !full;
+    const c = Color(0xFFaa77ff);
+
+    final String label;
+    final IconData icon;
+    if (active) {
+      label = 'FIELDED — ABILITY ON';
+      icon = Icons.check_circle;
+    } else if (full) {
+      label = 'PARTY FULL — BENCH ONE TO FIELD';
+      icon = Icons.block;
+    } else {
+      label = 'FIELD FOR BATTLE';
+      icon = Icons.add_circle_outline;
+    }
+
+    final enabled = active || canField;
+    final fg = active
+        ? c
+        : canField
+            ? c.withValues(alpha: 0.85)
+            : AppTheme.textMuted;
+
+    return GestureDetector(
+      onTap: enabled
+          ? () { game.toggleMercActive(def.id); game.audioService.playClaim(); }
+          : null,
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        decoration: BoxDecoration(
+          color: active ? c.withValues(alpha: 0.14) : Colors.transparent,
+          border: Border.all(
+              color: active
+                  ? c
+                  : canField
+                      ? c.withValues(alpha: 0.5)
+                      : AppTheme.cardBorder),
+          borderRadius: BorderRadius.circular(3),
+        ),
+        child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+          Icon(icon, size: 13, color: fg),
+          const SizedBox(width: 6),
+          Text(label, style: AppTheme.pixelHeading(fontSize: 9, color: fg)),
+        ]),
+      ),
+    );
   }
 }
 
@@ -1035,7 +1300,7 @@ class _SynergyCard extends StatelessWidget {
           const SizedBox(height: 8),
           Row(children: [
             _PartnerChip(
-              icon: ally1.icon,
+              icon: ally1.abilityIconData,
               name: ally1.name,
               level: lv1,
               needed: syn.minLevel,
@@ -1049,7 +1314,7 @@ class _SynergyCard extends StatelessWidget {
                         : Colors.white24)),
             const SizedBox(width: 4),
             _PartnerChip(
-              icon: ally2.icon,
+              icon: ally2.abilityIconData,
               name: ally2.name,
               level: lv2,
               needed: syn.minLevel,
@@ -1107,7 +1372,7 @@ class _PartnerChip extends StatelessWidget {
     required this.level,
     required this.needed,
   });
-  final String icon;
+  final IconData icon;
   final String name;
   final int level;
   final int needed;
@@ -1128,7 +1393,8 @@ class _PartnerChip extends StatelessWidget {
         borderRadius: BorderRadius.circular(3),
       ),
       child: Row(mainAxisSize: MainAxisSize.min, children: [
-        Text(icon, style: const TextStyle(fontSize: 13)),
+        Icon(icon, size: 12,
+            color: met ? const Color(0xFFcc99ff) : Colors.white38),
         const SizedBox(width: 4),
         Text(name,
             style: TextStyle(

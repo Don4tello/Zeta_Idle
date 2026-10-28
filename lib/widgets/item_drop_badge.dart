@@ -67,6 +67,7 @@ class _ItemDropBadgeState extends State<ItemDropBadge>
               children: [
                 ItemSprite(
                   slot: item.slot,
+                  typeKey: item.itemTypeKey,
                   rarity: item.rarity,
                   size: 52,
                   setColor: item.rarity == ItemRarity.set ? color : null,

@@ -1,5 +1,7 @@
 ﻿import 'dart:math';
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
+import '../core/routing/app_router.dart';
 import '../widgets/game_icons.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../data/bestiary_data.dart';
@@ -18,6 +20,7 @@ import '../theme/app_theme.dart';
 import '../widgets/arena_ability_effect.dart';
 import '../widgets/battle_arena.dart';
 import '../widgets/pixel_castle.dart';
+import '../widgets/currency_icon.dart';
 import '../widgets/battle_split_panel.dart';
 import '../widgets/battle_sprites.dart';
 import '../widgets/pixel_health_bar.dart';
@@ -90,7 +93,7 @@ class _GuildScreenState extends State<GuildScreen> {
             level: game.hero.level,
             lastActive: DateTime.now(),
           ));
-          _guild!.weeklyBoss ??= GuildBoss.generate(_guild!.memberCount, _guild!.level);
+          _guild!.weeklyBoss ??= GuildBoss.generate(_guild!.memberCount, _guild!.level, heroDmgPerRound: game.heroDmgPerRound);
         }
         if (_guild == null) {
           // Dev guild id is out of range (shouldn't happen) — safe to clear.
@@ -345,7 +348,7 @@ class _GuildScreenState extends State<GuildScreen> {
       _guild = guild;
       // Generate weekly boss for dev guild
       if (guild.weeklyBoss == null) {
-        guild.weeklyBoss = GuildBoss.generate(guild.memberCount, guild.level);
+        guild.weeklyBoss = GuildBoss.generate(guild.memberCount, guild.level, heroDmgPerRound: game.heroDmgPerRound);
       }
       if (mounted) setState(() => _loading = false);
       return;
@@ -378,7 +381,7 @@ class _GuildScreenState extends State<GuildScreen> {
     final boss = guild.weeklyBoss;
 
     return DefaultTabController(
-      length: 5,
+      length: 6,
       child: Column(
         children: [
           TabBar(
@@ -391,6 +394,7 @@ class _GuildScreenState extends State<GuildScreen> {
               Tab(child: Row(mainAxisSize: MainAxisSize.min, children: [GameIcon(GameIconType.scroll,      size: 14, color: Colors.white54), SizedBox(width: 4), Text('INFO')])),
               Tab(child: Row(mainAxisSize: MainAxisSize.min, children: [GameIcon(GameIconType.castle,       size: 14, color: Colors.white54), SizedBox(width: 4), Text('CASTLE')])),
               Tab(child: Row(mainAxisSize: MainAxisSize.min, children: [GameIcon(GameIconType.dragonSkull, size: 14, color: Colors.white54), SizedBox(width: 4), Text('BOSS')])),
+              Tab(child: Row(mainAxisSize: MainAxisSize.min, children: [GameIcon(GameIconType.swords,     size: 14, color: Colors.white54), SizedBox(width: 4), Text('WAR')])),
               Tab(child: Row(mainAxisSize: MainAxisSize.min, children: [GameIcon(GameIconType.bubble,      size: 14, color: Colors.white54), SizedBox(width: 4), Text('CHAT')])),
               Tab(child: Row(mainAxisSize: MainAxisSize.min, children: [GameIcon(GameIconType.shopBag,     size: 14, color: Colors.white54), SizedBox(width: 4), Text('SHOP')])),
             ],
@@ -401,6 +405,7 @@ class _GuildScreenState extends State<GuildScreen> {
                 _buildInfoTab(game, guild),
                 _buildCastleTab(game, guild),
                 _buildBossTab(game, guild, boss),
+                _buildWarTab(context, game, guild),
                 _buildChatTab(game, guild),
                 _buildShopTab(game),
               ],
@@ -849,6 +854,42 @@ class _GuildScreenState extends State<GuildScreen> {
           ),
           const SizedBox(height: 12),
 
+          // Last week's ranked reward, if unclaimed.
+          if (game.hasGuildBossReward) ...[
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: () {
+                  // Rank = your finalized damage vs guildmates' weekly output.
+                  final mine = game.guildBossPendingDmg;
+                  var rank = 1;
+                  for (final m in guild.members) {
+                    if (m.userId == 'local_player') continue;
+                    final mateDmg = m.level * 900 + (m.name.hashCode.abs() % 6000);
+                    if (mateDmg > mine) rank++;
+                  }
+                  final r = game.claimGuildBossReward(rank);
+                  if (r != null && context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                      content: Text('🏆 Last week\'s boss: Rank #${r['rank']} — '
+                          '+${r['guildCoins'] ?? 0} Guild Coins, +${r['gold'] ?? 0} gold'),
+                      duration: const Duration(seconds: 3)));
+                    setState(() {});
+                  }
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppTheme.accentGold.withValues(alpha: 0.18),
+                  foregroundColor: AppTheme.accentGold,
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  side: const BorderSide(color: AppTheme.accentGold),
+                ),
+                child: Text('🏆 CLAIM LAST WEEK\'S BOSS REWARD',
+                    style: AppTheme.pixelHeading(fontSize: 12, color: AppTheme.accentGold)),
+              ),
+            ),
+            const SizedBox(height: 12),
+          ],
+
           // Attack button + attempts
           if (!boss.defeated) ...[
             Text('Attempts: ${_maxBossAttacks - _bossAttacksToday} / $_maxBossAttacks',
@@ -923,6 +964,7 @@ class _GuildScreenState extends State<GuildScreen> {
   }
 
   void _applyBossDamage(GameState game, int damage) {
+    game.addGuildBossDamage(damage); // persist weekly total for the ranked reward
     final coins = (damage ~/ 100).clamp(1, 50);
     if (game.guildId != null && game.guildId!.startsWith('dev_guild_') && _guild != null) {
       _guild!.weeklyBoss?.takeDamage(damage);
@@ -1120,6 +1162,215 @@ class _GuildScreenState extends State<GuildScreen> {
 
   // ── Shop Tab ───────────────────────────────────────────────────────────────
 
+  // ── Guild War (Weekly GvG) tab ───────────────────────────────────────────
+  Widget _buildWarTab(BuildContext context, GameState game, Guild guild) {
+    game.syncGuildWar();
+    const gold = AppTheme.accentGold;
+    final phase = GuildWarSchedule.currentPhase();
+    final war = game.guildWar;
+    final enlisted = war != null;
+
+    Widget phaseBanner() => Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: const Color(0xFF0d1020),
+        border: Border.all(color: gold.withValues(alpha: 0.4)),
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Text(GuildWarSchedule.phaseLabel,
+          style: const TextStyle(fontSize: 12, color: Colors.white, fontWeight: FontWeight.bold)),
+    );
+
+    Widget scoreRow(String name, int score, Color c, bool me) => Padding(
+      padding: const EdgeInsets.symmetric(vertical: 3),
+      child: Row(children: [
+        Icon(me ? Icons.person : Icons.groups, size: 16, color: c),
+        const SizedBox(width: 6),
+        Expanded(child: Text(name, style: TextStyle(fontSize: 13, color: c, fontWeight: FontWeight.bold), overflow: TextOverflow.ellipsis)),
+        Text('$score', style: TextStyle(fontSize: 14, color: c, fontWeight: FontWeight.bold)),
+      ]),
+    );
+
+    Widget standings() {
+      final board = game.guildWarLeaderboard(guild.name);
+      final rows = <Widget>[];
+      for (var i = 0; i < board.length && i < 10; i++) {
+        final e = board[i];
+        final rankColor = i == 0 ? gold : i == 1 ? const Color(0xFFc0c0c0) : i == 2 ? const Color(0xFFcd7f32) : AppTheme.textMuted;
+        rows.add(Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+          margin: const EdgeInsets.only(bottom: 3),
+          decoration: BoxDecoration(
+            color: e.isPlayer ? gold.withValues(alpha: 0.12) : Colors.transparent,
+            border: e.isPlayer ? Border.all(color: gold.withValues(alpha: 0.5)) : null,
+            borderRadius: BorderRadius.circular(4),
+          ),
+          child: Row(children: [
+            SizedBox(width: 24, child: Text('#${i + 1}', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: rankColor))),
+            const SizedBox(width: 6),
+            Expanded(child: Text(e.name, style: TextStyle(fontSize: 13, color: e.isPlayer ? gold : Colors.white, fontWeight: e.isPlayer ? FontWeight.bold : FontWeight.normal), overflow: TextOverflow.ellipsis)),
+            Text('${e.wins}', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: e.isPlayer ? gold : Colors.white70)),
+            const SizedBox(width: 3),
+            const Text('W', style: TextStyle(fontSize: 10, color: AppTheme.textMuted)),
+          ]),
+        ));
+      }
+      return Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: const Color(0xFF0d1020),
+          border: Border.all(color: gold.withValues(alpha: 0.3)),
+          borderRadius: BorderRadius.circular(6),
+        ),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Row(children: [
+            const GameIcon(GameIconType.trophy, size: 15, color: gold),
+            const SizedBox(width: 6),
+            Text('WAR STANDINGS', style: AppTheme.pixelHeading(fontSize: 12, color: gold)),
+            const Spacer(),
+            Text('Your record: ${game.guildWarWins}W–${game.guildWarLosses}L',
+                style: const TextStyle(fontSize: 11, color: AppTheme.textMuted)),
+          ]),
+          const SizedBox(height: 8),
+          ...rows,
+        ]),
+      );
+    }
+
+    final banner = ClipRRect(
+      borderRadius: BorderRadius.circular(6),
+      child: Image.asset('assets/guild_war_sign_up.jpg',
+          width: double.infinity, height: 150, fit: BoxFit.cover,
+          filterQuality: FilterQuality.medium,
+          errorBuilder: (_, __, ___) => const SizedBox.shrink()),
+    );
+
+    final children = <Widget>[banner, const SizedBox(height: 10), phaseBanner(), const SizedBox(height: 12)];
+
+    if (!enlisted) {
+      children.add(Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: AppTheme.cardBg,
+          border: Border.all(color: AppTheme.cardBorder),
+          borderRadius: BorderRadius.circular(6),
+        ),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          const Text('Weekly Guild War', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Colors.white)),
+          const SizedBox(height: 6),
+          const Text('Enlist during Preparation (Mon–Tue). Wed–Fri, spend War Attacks to fight rival champions and earn points for your guild. Sat–Sun, claim rank rewards.',
+              style: TextStyle(fontSize: 12, color: AppTheme.textMuted, height: 1.4)),
+          const SizedBox(height: 12),
+          SizedBox(width: double.infinity, child: ElevatedButton(
+            onPressed: phase != GuildWarPhase.ended
+                ? () {
+                    if (game.enlistInGuildWar(guild.id, guild.name)) {
+                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                        content: Text(phase == GuildWarPhase.battle
+                            ? '⚔ Enlisted! Spend your War Attacks now.'
+                            : '⚔ Enlisted! Return Wed–Fri to fight.'),
+                        duration: const Duration(seconds: 2)));
+                    }
+                  }
+                : null,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: gold.withValues(alpha: 0.18), foregroundColor: gold,
+              side: BorderSide(color: phase != GuildWarPhase.ended ? gold : AppTheme.cardBorder)),
+            child: Text(phase != GuildWarPhase.ended ? 'ENLIST YOUR GUILD' : 'WAR ENDED — WAIT FOR NEXT WEEK',
+                style: AppTheme.pixelHeading(fontSize: 12, color: phase != GuildWarPhase.ended ? gold : AppTheme.textMuted)),
+          )),
+        ]),
+      ));
+      children.add(const SizedBox(height: 16));
+      children.add(standings());
+      return ListView(padding: const EdgeInsets.all(14), children: children);
+    }
+
+    // Enlisted — show matchup + scores + phase action.
+    final myScore = game.guildWarMyScore;
+    final rivalScore = game.guildWarRivalScore;
+    children.add(Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(colors: [Color(0xFF241a2e), Color(0xFF17140F)]),
+        border: Border.all(color: gold.withValues(alpha: 0.4)),
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Column(children: [
+        scoreRow('${war.guildAName} (you)', myScore, gold, true),
+        const Divider(color: Colors.white12, height: 10),
+        scoreRow(war.guildBName, rivalScore, const Color(0xFFff6688), false),
+        const SizedBox(height: 6),
+        Text(myScore >= rivalScore ? '🏆 Your guild leads!' : '⚠ Your guild is behind — fight!',
+            style: TextStyle(fontSize: 11, color: myScore >= rivalScore ? const Color(0xFF66dd88) : const Color(0xFFffaa44))),
+      ]),
+    ));
+    children.add(const SizedBox(height: 12));
+
+    if (phase == GuildWarPhase.battle) {
+      final charges = game.warAttacksRemaining;
+      children.add(SizedBox(width: double.infinity, child: ElevatedButton(
+        onPressed: charges > 0
+            ? () { game.startGuildWarBattle(); if (game.warBattleMode) context.push(Routes.battle); }
+            : null,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: gold.withValues(alpha: 0.18), foregroundColor: gold,
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          side: BorderSide(color: charges > 0 ? gold : AppTheme.cardBorder)),
+        child: Text(charges > 0 ? '⚔ FIGHT FOR THE GUILD  ($charges/${GameState.kWarAttacksPerDay})' : 'NO WAR ATTACKS LEFT TODAY',
+            style: AppTheme.pixelHeading(fontSize: 12, color: charges > 0 ? gold : AppTheme.textMuted)),
+      )));
+      children.add(const SizedBox(height: 6));
+      children.add(const Text('War Attacks refresh daily during the Battle phase.',
+          style: TextStyle(fontSize: 10, color: AppTheme.textMuted)));
+    } else if (phase == GuildWarPhase.ended) {
+      children.add(SizedBox(width: double.infinity, child: ElevatedButton(
+        onPressed: game.warRewardsClaimed ? null : () {
+          final r = game.claimGuildWarRewards();
+          if (r != null && context.mounted) {
+            final won = (r['won'] ?? 0) == 1;
+            ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+              content: Text('${won ? '🏆 Victory!' : 'War over.'} +${r['guildCoins'] ?? 0} Guild Coins, +${r['gold'] ?? 0} gold'),
+              duration: const Duration(seconds: 3)));
+          }
+        },
+        style: ElevatedButton.styleFrom(
+          backgroundColor: const Color(0xFFcc8844).withValues(alpha: 0.18), foregroundColor: const Color(0xFFffaa44),
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          side: BorderSide(color: game.warRewardsClaimed ? AppTheme.cardBorder : const Color(0xFFcc8844))),
+        child: Text(game.warRewardsClaimed ? 'REWARDS CLAIMED' : 'CLAIM WAR REWARDS',
+            style: AppTheme.pixelHeading(fontSize: 12, color: game.warRewardsClaimed ? AppTheme.textMuted : const Color(0xFFffaa44))),
+      )));
+    } else {
+      children.add(const Text('Battle begins Wednesday — come back to fight!',
+          style: TextStyle(fontSize: 12, color: AppTheme.textMuted)));
+    }
+
+    children.add(const SizedBox(height: 16));
+    children.add(standings());
+    return ListView(padding: const EdgeInsets.all(14), children: children);
+  }
+
+  // Maps a guild-shop item to the new currency art (CurrencyIcon); non-currency
+  // items (e.g. Arcane Dust) keep their emoji.
+  Widget _guildShopItemIcon(GuildShopItem item, double size) {
+    final cur = switch (item.id) {
+      'guild_xp_scroll'     => 'xp',
+      'guild_gold_bag'      => 'gold',
+      'guild_shard_box'     => 'shards',
+      'guild_echo_crystal'  => 'echoes',
+      'guild_mythril_ore'   => 'mythril',
+      'guild_essence_vial'  => 'shards',
+      'guild_crystal_chest' => 'zcoins',
+      _                     => null,
+    };
+    if (cur != null) return CurrencyIcon(id: cur, size: size);
+    return Text(item.icon, style: TextStyle(fontSize: size));
+  }
+
   Widget _buildShopTab(GameState game) {
     return SingleChildScrollView(
       padding: const EdgeInsets.all(14),
@@ -1154,7 +1405,7 @@ class _GuildScreenState extends State<GuildScreen> {
                 borderRadius: BorderRadius.circular(4),
               ),
               child: Row(children: [
-                Text(item.icon, style: const TextStyle(fontSize: 22)),
+                _guildShopItemIcon(item, 24),
                 const SizedBox(width: 12),
                 Expanded(child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -1329,7 +1580,10 @@ class _GuildBossBattleState extends State<_GuildBossBattle> {
     _heroMaxHp = hero.maxHealth;
     _bossHp = widget.boss.hp.clamp(1, widget.boss.maxHp);
     _bossMaxHp = widget.boss.maxHp;
-    _bossAtk = (widget.boss.maxHp ~/ 50).clamp(10, 500);
+    // Same relative threat scaling as every other mode: the boss hits for a
+    // fraction of the hero's max HP so a member survives ~8-12 rounds before
+    // being wiped (their damage dealt = their contribution to the weekly race).
+    _bossAtk = game.enemyAtkFloorFor(true).clamp(10, 1 << 40);
 
     _heroDmgMod     = game.heroFlatDmgBonus;
     _heroWeaponBase = game.inventory.equippedWeaponDamage;

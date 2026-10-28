@@ -1,4 +1,5 @@
 ﻿import 'dart:io' show Platform;
+import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -577,9 +578,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     fontSize: 10, color: const Color(0xFF44cc88))),
               ),
             ),
+            // Dev tools — hidden in release builds. These are testing cheats
+            // (Max Character, Level +100) and the sprite exporter; they must
+            // never be reachable by players, or they'd wreck the economy and
+            // leaderboards. `kDebugMode` is false in `flutter build --release`.
+            if (kDebugMode) ...[
             const SizedBox(height: 16),
-
-            // Dev tools — desktop only, used for exporting sprites as PNG
             _SectionHeader('DEV TOOLS', color: const Color(0xFF445566)),
             _SettingsTile(
               title: 'Export Sprites',
@@ -658,6 +662,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     fontSize: 10, color: const Color(0xFF6699aa))),
               ),
             ),
+            ], // end if (kDebugMode) DEV TOOLS
           ],
         ),
       ),

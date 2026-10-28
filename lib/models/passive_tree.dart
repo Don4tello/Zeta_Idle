@@ -20,7 +20,6 @@ enum PassiveBranch {
 enum PassiveEffect {
   attackFlat,    // +N critical damage
   damageFlat,    // +N flat damage
-  critChance,    // +N% crit chance
   pierce,        // ignore N enemy AC
   allDamage,     // +N% to ALL damage dealt
   maxHp,         // +N% max HP

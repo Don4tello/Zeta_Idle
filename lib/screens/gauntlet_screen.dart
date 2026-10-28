@@ -262,9 +262,9 @@ class _GauntletScreenState extends State<GauntletScreen> {
       ..sort((a, b) => EnemyData.enemyForStage(a, prestigeLevel: 0).maxHealth
           .compareTo(EnemyData.enemyForStage(b, prestigeLevel: 0).maxHealth));
     _log.add('⚔ GAUNTLET STARTS — ${_kGauntletEnemies} enemies await!');
+    _game = game; // set before first spawn so wave 1 gets the difficulty floor
     _spawnEnemy();
 
-    _game = game;
     game.audioService.startBattleMusic();
     _startTimer();
   }
@@ -290,15 +290,18 @@ class _GauntletScreenState extends State<GauntletScreen> {
       attackType:  base.attackType,
       resistances: base.resistances,
     );
+    // Relative difficulty floor (HP + threat) so over-geared heroes can't
+    // one-hit gauntlet waves — matches campaign/endless/dungeon/boss-rush.
+    final floored = _game?.applyFightLengthFloor(scaled) ?? scaled;
     _enemyWeakenRem = 0;
     _enemyVulnRem   = 0;
     setState(() {
-      _currentEnemy = scaled;
-      _enemyMaxHp   = scaled.maxHealth;
-      _enemyHp      = scaled.maxHealth;
+      _currentEnemy = floored;
+      _enemyMaxHp   = floored.maxHealth;
+      _enemyHp      = floored.maxHealth;
     });
     _log.add('');
-    _log.add('Wave ${_waveIndex + 1}: ${base.name}  (${scaled.maxHealth} HP)');
+    _log.add('Wave ${_waveIndex + 1}: ${base.name}  (${floored.maxHealth} HP)');
   }
 
   Future<void> _doRound() async {
@@ -1071,26 +1074,6 @@ class _WaveProgressHeaderState extends State<_WaveProgressHeader>
 
 // -- Shared widgets ------------------------------------------------------------
 
-class _InfoBox extends StatelessWidget {
-  const _InfoBox(this.text);
-  final String text;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: AppTheme.accentGold.withValues(alpha: 0.05),
-        border:
-            Border.all(color: AppTheme.accentGold.withValues(alpha: 0.3)),
-        borderRadius: BorderRadius.circular(4),
-      ),
-      child: Text(text,
-          style: const TextStyle(
-              fontSize: 11, color: Colors.white60, height: 1.5)),
-    );
-  }
-}
 
 class _ModifierPickCard extends StatelessWidget {
   const _ModifierPickCard({

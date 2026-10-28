@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../models/passive_tree.dart';
 import '../services/game_state.dart';
 import '../theme/app_theme.dart';
+import '../widgets/currency_icon.dart';
 import '../widgets/currency_info.dart';
 import '../widgets/passive_icon.dart';
 import 'main_shell.dart' show TutorialTip;
@@ -53,7 +54,7 @@ class PassiveTreeScreen extends StatelessWidget {
         Tooltip(
           message: CurrencyInfo.shards,
           child: Row(mainAxisSize: MainAxisSize.min, children: [
-            const Icon(Icons.diamond, color: Color(0xFF6699ff), size: 13),
+            const CurrencyIcon(id: 'shards', size: 15),
             const SizedBox(width: 5),
             Text(
               '${game.shards}',
@@ -367,7 +368,7 @@ class PassiveTreeScreen extends StatelessWidget {
           Padding(
             padding: const EdgeInsets.only(right: 16),
             child: Row(mainAxisSize: MainAxisSize.min, children: [
-              const Icon(Icons.diamond, color: Color(0xFF6699ff), size: 14),
+              const CurrencyIcon(id: 'shards', size: 15),
               const SizedBox(width: 5),
               Text(
                 '${game.shards}',
@@ -424,7 +425,6 @@ class _NodeCard extends StatelessWidget {
   static String _effectLabel(PassiveEffect e) => switch (e) {
     PassiveEffect.attackFlat      => 'Critical Damage',
     PassiveEffect.damageFlat      => 'Flat Damage',
-    PassiveEffect.critChance      => 'Crit Chance',
     PassiveEffect.pierce          => 'Armor Pierce',
     PassiveEffect.allDamage       => 'All Damage',
     PassiveEffect.maxHp           => 'Max HP',
@@ -618,14 +618,17 @@ class _NodeCard extends StatelessWidget {
     final cost       = canUpgrade ? game.passiveTree.costForNextRank(node.id) : 0;
     final canAfford  = canUpgrade && game.shards >= cost;
 
+    // Owned (rank > 0) nodes get a bright border so "I've invested here" reads
+    // clearly even before a node is maxed — distinct from a merely-affordable
+    // unowned node.
     final borderColor = locked
         ? const Color(0xFF211E1A)
         : isMax
             ? color
-            : canAfford
-                ? color.withOpacity(0.55)
-                : rank > 0
-                    ? color.withOpacity(0.28)
+            : rank > 0
+                ? color
+                : canAfford
+                    ? color.withOpacity(0.55)
                     : const Color(0xFF2E2A26);
 
     return TweenAnimationBuilder<double>(
@@ -644,7 +647,7 @@ class _NodeCard extends StatelessWidget {
           color: locked
               ? const Color(0xFF090c15)
               : rank > 0
-                  ? color.withOpacity(0.10)
+                  ? color.withOpacity(0.22)
                   : const Color(0xFF0d1020),
           border: Border.all(
             color: node.isKeystone && rank > 0 ? color : borderColor,
@@ -712,8 +715,13 @@ class _NodeCard extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 1),
-            Text('$rank/${node.maxRank}',
-                style: TextStyle(fontSize: 7, color: locked ? Colors.white12 : color.withValues(alpha: 0.6))),
+            Text(rank > 0 ? '✓ $rank/${node.maxRank}' : '$rank/${node.maxRank}',
+                style: TextStyle(
+                    fontSize: 7,
+                    fontWeight: rank > 0 ? FontWeight.bold : FontWeight.normal,
+                    color: locked
+                        ? Colors.white12
+                        : rank > 0 ? color : color.withValues(alpha: 0.6))),
             const SizedBox(height: 2),
             if (isMax)
               Text('MAX',

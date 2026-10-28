@@ -558,9 +558,9 @@ class _DailyChestCard extends StatelessWidget {
                   const SizedBox(height: 8),
                   _chestRow(const ZCoinIcon(size: 16), '+50 ZCOINS', const Color(0xFF44ddcc)),
                   const SizedBox(height: 8),
-                  _chestRow('◆', '+75 SHARDS', const Color(0xFF80d0ff)),
+                  _chestRow('◆', '+75 SHARDS', const Color(0xFF6699ff)),
                   const SizedBox(height: 8),
-                  _chestRow('✦', '+50 ESSENCE', const Color(0xFF88cc44)),
+                  _chestRow('✦', '+50 ESSENCE', const Color(0xFFE07A6E)),
                   const SizedBox(height: 20),
                   ElevatedButton(
                     onPressed: () => Navigator.pop(dialogCtx),

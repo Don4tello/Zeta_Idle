@@ -95,6 +95,28 @@ class NotificationService {
         const Duration(days: 3));
   }
 
+  /// Schedule reminders for in-flight game timers — each expedition finishing and
+  /// PvP stamina maxing out. Does NOT cancel existing reminders, so call it AFTER
+  /// [scheduleRetentionReminders] (which clears first). Uses a separate id range
+  /// (10–18 expeditions, 20 stamina) so it never collides with retention (1–3).
+  Future<void> scheduleGameReminders({
+    List<Duration> expeditions = const [],
+    Duration? pvpStaminaFull,
+  }) async {
+    if (!_ready) return;
+    var id = 10;
+    for (final d in expeditions) {
+      if (d.inSeconds <= 30) continue; // effectively done already
+      await _scheduleIn(id++, 'Expedition complete',
+          'Your mercenary has returned — collect the rewards!', d);
+      if (id > 18) break; // cap
+    }
+    if (pvpStaminaFull != null && pvpStaminaFull.inSeconds > 30) {
+      await _scheduleIn(20, 'PvP stamina full',
+          'Your PvP stamina is maxed out — challenge a rival!', pvpStaminaFull);
+    }
+  }
+
   /// Cancel all pending reminders. Call when the app returns to foreground.
   Future<void> cancelAll() async {
     if (!_ready) return;

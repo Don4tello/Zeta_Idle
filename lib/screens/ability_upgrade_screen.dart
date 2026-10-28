@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../data/ability_data.dart';
 import '../data/class_quest_data.dart';
 import '../widgets/ability_icon.dart';
+import '../widgets/currency_icon.dart';
 import '../models/equipment.dart';
 import '../models/hero_ability.dart';
 import '../models/passive_tree.dart';
@@ -180,12 +181,12 @@ class AbilityUpgradeScreen extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
       child: Row(
         children: [
-          const Icon(Icons.diamond_outlined, color: Color(0xFF80d0ff), size: 13),
+          const CurrencyIcon(id: 'shards', size: 15),
           const SizedBox(width: 5),
           Text(
             AppTheme.fmtNumber(game.shards),
             style: GoogleFonts.rajdhani(
-              color: const Color(0xFF80d0ff),
+              color: const Color(0xFF6699ff),
               fontSize: 15,
               fontWeight: FontWeight.bold,
             ),
@@ -302,13 +303,12 @@ class AbilityUpgradeScreen extends StatelessWidget {
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Icon(Icons.diamond_outlined,
-                    color: Color(0xFF80d0ff), size: 14),
+                const CurrencyIcon(id: 'shards', size: 16),
                 const SizedBox(width: 5),
                 Text(
                   AppTheme.fmtNumber(game.shards),
                   style: GoogleFonts.rajdhani(
-                    color: const Color(0xFF80d0ff),
+                    color: const Color(0xFF6699ff),
                     fontSize: 17,
                     fontWeight: FontWeight.bold,
                   ),
@@ -590,7 +590,7 @@ class _AbilityCard extends StatelessWidget {
                                 letterSpacing: 1),
                           ),
                         ] else ...[
-                          const Icon(Icons.diamond_outlined, size: 13),
+                          const CurrencyIcon(id: 'shards', size: 15),
                           const SizedBox(width: 6),
                           Text(
                             'UPGRADE  ($cost shards)',
@@ -630,7 +630,7 @@ class _AbilityCard extends StatelessWidget {
   );
 }
 
-// ── Ability Ascension row (spend Ascension Points, +10% power per tier) ───────
+// ── Ability Ascension row (costs Paragon Points, capped by difficulty tier, +10%/tier) ─
 class _AbilityAscendRow extends StatelessWidget {
   const _AbilityAscendRow({required this.ability, required this.game});
   final HeroAbility ability;
@@ -643,7 +643,9 @@ class _AbilityAscendRow extends StatelessWidget {
     final maxed  = tier >= GameState.kAbilityAscendMaxTier;
     final cap    = game.highestUnlockedTier; // ability ascension is unlocked by difficulty tiers
     final tierLocked = !maxed && tier >= cap;
-    final canAscend  = !maxed && !tierLocked;
+    final cost   = game.abilityAscendCost(ability.id); // Paragon Points for next tier
+    final afford = game.prestigeSouls >= cost;
+    final canAscend  = !maxed && !tierLocked && afford;
     final curPct  = (tier * GameState.kAbilityAscendPerTier * 100).round();
     final nextPct = ((tier + 1) * GameState.kAbilityAscendPerTier * 100).round();
 
@@ -676,8 +678,9 @@ class _AbilityAscendRow extends StatelessWidget {
                 maxed
                     ? 'Fully ascended  ·  +$curPct% ability power'
                     : tierLocked
-                        ? '+$curPct% power  ·  Clear the campaign to unlock Tier ${tier + 1}'
-                        : '+$curPct% power  →  +$nextPct% (free — Tier ${tier + 1})',
+                        ? '+$curPct% power  ·  Unlock difficulty Tier ${tier + 1} (rebirth) to ascend further'
+                        : '+$curPct%  →  +$nextPct% power  ·  costs $cost ✦ Paragon'
+                            '${afford ? '' : '  (you have ${game.prestigeSouls})'}',
                 style: const TextStyle(color: Colors.white38, fontSize: 11),
               ),
             ],
@@ -698,7 +701,7 @@ class _AbilityAscendRow extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
               minimumSize: const Size(0, 34),
             ),
-            child: Text(tierLocked ? 'LOCKED' : 'ASCEND',
+            child: Text(tierLocked ? 'LOCKED' : 'ASCEND  $cost ✦',
                 style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, letterSpacing: 1)),
           ),
       ]),

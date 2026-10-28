@@ -6,9 +6,12 @@ import '../widgets/whats_new_sheet.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:go_router/go_router.dart';
 import '../core/routing/app_router.dart';
+import 'main_shell.dart' show showLootLog;
 import '../services/game_state.dart';
 import '../theme/app_theme.dart';
 import '../widgets/ambient_particles.dart';
+import '../widgets/currency_icon.dart';
+import '../widgets/hub_emblem.dart';
 import '../widgets/glow_tab_indicator.dart';
 import '../widgets/hero_tab_controller.dart';
 import 'dashboard_screen.dart';
@@ -25,6 +28,7 @@ import 'ascension_screen.dart';
 import 'codex_screen.dart';
 import 'achievement_screen.dart';
 import 'bestiary_screen.dart';
+import 'armory_screen.dart';
 import 'quest_screen.dart';
 import 'pet_screen.dart';
 import 'elemental_mastery_screen.dart';
@@ -33,11 +37,13 @@ import 'elemental_mastery_screen.dart';
 
 class _TabResource {
   const _TabResource({required this.icon, required this.color,
-      required this.name, required this.sources});
+      required this.name, required this.sources, this.currencyId});
   final GameIconType icon;
   final Color        color;
   final String       name;
   final String       sources;
+  // When set, the banner shows the custom currency art instead of [icon].
+  final String?      currencyId;
 }
 
 class _TabDef {
@@ -52,45 +58,45 @@ class _TabDef {
 const _kAllTabs = <_TabDef>[
   _TabDef('SHEET',        GameIconType.armor,      0),
   _TabDef('SCORES',       GameIconType.star,        4, resource: _TabResource(
-    icon: GameIconType.coin, color: Color(0xFFdaa520), name: 'Gold',
+    icon: GameIconType.coin, color: Color(0xFFdaa520), name: 'Gold', currencyId: 'gold',
     sources: 'Every enemy kill & idle income · Expeditions · Dungeons · Events',
   )),
   _TabDef('ABILITIES',    GameIconType.swords,      2, resource: _TabResource(
-    icon: GameIconType.diamond, color: Color(0xFF44ccff), name: 'Shards',
+    icon: GameIconType.diamond, color: Color(0xFF6699ff), name: 'Shards', currencyId: 'shards',
     sources: 'Enemy kills · Dungeons · Expeditions · Gauntlet',
   )),
   _TabDef('ACHIEVEMENTS', GameIconType.medal,       5),
   _TabDef('PASSIVES',     GameIconType.leaf,        8, resource: _TabResource(
-    icon: GameIconType.diamond, color: Color(0xFF6699ff), name: 'Shards',
+    icon: GameIconType.diamond, color: Color(0xFF6699ff), name: 'Shards', currencyId: 'shards',
     sources: 'Enemy kills · Dungeons · Expeditions · Gauntlet',
   )),
   _TabDef('BONUSES',      GameIconType.barChart,   10),
   _TabDef('BESTIARY',     GameIconType.eyeMonster, 12),
   _TabDef('CODEX',        GameIconType.book,       15),
   _TabDef('PETS',         GameIconType.paw,        18, resource: _TabResource(
-    icon: GameIconType.coin, color: Color(0xFF66aaff), name: 'ZCoins',
+    icon: GameIconType.coin, color: Color(0xFF66aaff), name: 'ZCoins', currencyId: 'zcoins',
     sources: 'Premium shop · Login rewards · Season pass',
   )),
   _TabDef('MERCS',        GameIconType.warriors,   22, resource: _TabResource(
-    icon: GameIconType.diamond, color: Color(0xFF6699ff), name: 'Shards + ZCoins',
+    icon: GameIconType.diamond, color: Color(0xFF6699ff), name: 'Shards + ZCoins', currencyId: 'shards',
     sources: 'Shards from kills/Dungeons; ZCoins from purchases, Bounties & streaks',
   )),
   // Unlocks at stage 100 (when Prestige first becomes available) and stays
   // unlocked forever after — effectiveUnlockStage latches to >=100 once you've
   // prestiged, so a post-rebirth stage reset can't hide it.
   _TabDef('PARAGON',      GameIconType.flame,       2, resource: _TabResource(
-    icon: GameIconType.crown, color: Color(0xFFcc8844), name: 'Paragon Points',
+    icon: GameIconType.crown, color: Color(0xFFCBA05E), name: 'Paragon Points', currencyId: 'paragonPoints',
     sources: 'Earned by levelling up — 1 per level',
   )),
   _TabDef('UPGRADES',     GameIconType.gear,       45, resource: _TabResource(
-    icon: GameIconType.bolt, color: Color(0xFFcc88ff), name: 'Echoes',
+    icon: GameIconType.bolt, color: Color(0xFFC6A6F2), name: 'Echoes', currencyId: 'echoes',
     sources: 'Challenge Gauntlet runs',
   )),
   _TabDef('ASCEND',       GameIconType.mountain,   50, resource: _TabResource(
     icon: GameIconType.star, color: Color(0xFFaa88ff), name: 'Asc. Points',
     sources: 'Earned by Ascending your hero',
   )),
-  _TabDef('MASTERY',      GameIconType.crown,      35, resource: _TabResource(
+  _TabDef('MASTERY',      GameIconType.crown,      38, resource: _TabResource(
     icon: GameIconType.flask, color: Color(0xFFff8844), name: 'Tower Shards',
     sources: 'Tower Ascension runs',
   )),
@@ -101,6 +107,11 @@ const _kAllTabs = <_TabDef>[
   // Moved here from the PLAY tab. Appended last to keep the index-based
   // _buildScreen mapping stable; unlocks at campaign stage 10 as before.
   _TabDef('QUESTS',       GameIconType.book,       10),
+  // Legendary/Set item catalogue. Appended last (index 16) to keep the
+  // index-based _buildScreen mapping stable; lives in the COLLECTION group
+  // alongside the other reference databases (Bestiary/Codex). Unlocks at
+  // stage 28 (same gate as the Inventory-hub Armory tab).
+  _TabDef('ARMORY',       GameIconType.shield,     28),
 ];
 
 Widget _buildScreen(int allTabIndex) => switch (allTabIndex) {
@@ -120,6 +131,7 @@ Widget _buildScreen(int allTabIndex) => switch (allTabIndex) {
   13 => const ElementalMasteryScreen(embedded: true),      // MASTERY
   14 => const SubclassScreen(embedded: true),              // SPECIALIZE
   15 => const QuestScreen(),                               // QUESTS (moved from PLAY)
+  16 => const ArmoryScreen(embedded: true),                // ARMORY (legendary/set catalogue)
   _  => const SizedBox.shrink(),
 };
 
@@ -144,7 +156,7 @@ const _kGroups = <_HubGroup>[
   _HubGroup('PROGRESSION', 'Endgame systems', GameIconType.mountain,
       Color(0xFFaa88ff), ['PARAGON', 'UPGRADES', 'ASCEND', 'MASTERY']),
   _HubGroup('COLLECTION', 'Allies & compendium', GameIconType.paw,
-      Color(0xFF66cc88), ['PETS', 'MERCS', 'BESTIARY', 'CODEX']),
+      Color(0xFF66cc88), ['PETS', 'MERCS', 'BESTIARY', 'CODEX', 'ARMORY']),
   _HubGroup('RECORDS', 'Goals & breakdowns', GameIconType.medal,
       Color(0xFF66aaff), ['ACHIEVEMENTS', 'QUESTS', 'BONUSES']),
 ];
@@ -353,9 +365,22 @@ class _HeroHubScreenState extends State<HeroHubScreen>
     ],
   );
 
-  List<Widget> _commonActions() => [
-    IconButton(icon: const Icon(Icons.shield_outlined, size: 20), tooltip: 'Armory',
-        onPressed: () => context.push(Routes.armory)),
+  List<Widget> _commonActions() {
+    final game = GameStateProvider.of(context);
+    return [
+    // Loot log (moved here from the old global top bar).
+    IconButton(
+      tooltip: 'Loot Log',
+      icon: Stack(clipBehavior: Clip.none, children: [
+        const Icon(Icons.inventory_2_outlined, size: 20),
+        if (game.lootHistory.isNotEmpty)
+          Positioned(top: -1, right: -1, child: Container(width: 7, height: 7,
+            decoration: const BoxDecoration(color: Color(0xFFffcc44), shape: BoxShape.circle))),
+      ]),
+      onPressed: () => showLootLog(context, game),
+    ),
+    // Armory moved into the COLLECTION group (with Bestiary/Codex) — the old
+    // redundant header shortcut was dropped to declutter the Hero header.
     IconButton(icon: const Icon(Icons.settings_outlined, size: 20), tooltip: 'Settings',
         onPressed: () => context.push(Routes.settings)),
     if (widget.onBackToSelect != null)
@@ -364,6 +389,7 @@ class _HeroHubScreenState extends State<HeroHubScreen>
               fontSize: 10, color: AppTheme.textMuted, letterSpacing: 1))),
     const SizedBox(width: 4),
   ];
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -413,12 +439,25 @@ class _HeroHubScreenState extends State<HeroHubScreen>
         SafeArea(
           child: Padding(
             padding: const EdgeInsets.all(14),
-            child: GridView.count(
-              crossAxisCount: 2,
-              mainAxisSpacing: 12,
-              crossAxisSpacing: 12,
-              childAspectRatio: 1.02,
-              children: [for (int g = 0; g < _kGroups.length; g++) _groupCard(g, game)],
+            // Two Expanded rows fill the full body height (the old GridView left
+            // the bottom ~45% of the screen empty), so each card grows to fill
+            // its quarter of the viewport.
+            child: Column(
+              children: [
+                for (int r = 0; r < 2; r++) ...[
+                  if (r > 0) const SizedBox(height: 12),
+                  Expanded(
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Expanded(child: _groupCard(r * 2, game)),
+                        const SizedBox(width: 12),
+                        Expanded(child: _groupCard(r * 2 + 1, game)),
+                      ],
+                    ),
+                  ),
+                ],
+              ],
             ),
           ),
         ),
@@ -447,18 +486,29 @@ class _HeroHubScreenState extends State<HeroHubScreen>
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                GameIcon(grp.icon, size: 32, color: grp.color),
-                const Spacer(),
+                // Pixel-art emblem fills the card's upper area and scales with
+                // the (now taller) card via FittedBox.
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    child: Center(
+                      child: FittedBox(
+                        fit: BoxFit.contain,
+                        child: HubEmblem(kind: g, color: grp.color, size: 96),
+                      ),
+                    ),
+                  ),
+                ),
                 Text(grp.label, style: AppTheme.pixelHeading(
-                    fontSize: 13, color: grp.color, letterSpacing: 2)),
-                const SizedBox(height: 3),
+                    fontSize: 14, color: grp.color, letterSpacing: 2)),
+                const SizedBox(height: 4),
                 Text(grp.blurb, style: GoogleFonts.rajdhani(
-                    fontSize: 11, color: Colors.white54)),
+                    fontSize: 13, color: Colors.white54)),
                 const SizedBox(height: 6),
                 Text(enabled ? names : 'Locked',
                     maxLines: 2, overflow: TextOverflow.ellipsis,
                     style: GoogleFonts.rajdhani(
-                        fontSize: 10, color: Colors.white30, letterSpacing: 0.5)),
+                        fontSize: 11, color: Colors.white30, letterSpacing: 0.5)),
               ],
             ),
             if (badge)
@@ -573,7 +623,9 @@ class _ResourceBanner extends StatelessWidget {
       ),
       child: Row(
         children: [
-          GameIcon(resource.icon, size: 13, color: resource.color),
+          resource.currencyId != null
+              ? CurrencyIcon(id: resource.currencyId!, size: 15)
+              : GameIcon(resource.icon, size: 13, color: resource.color),
           const SizedBox(width: 6),
           Text(resource.name.toUpperCase(),
               style: GoogleFonts.rajdhani(

@@ -267,48 +267,114 @@ class BattleSpriteState extends State<BattleSprite>
 
   static Size _sizeFor(String id) {
     switch (id) {
-      // ── Legacy IDs (kept for backward-compatibility) ────────────────────
+      // The native size MUST equal the drawn extent of whatever painter the id
+      // resolves to in _painterFor — otherwise the sprite sits off-centre in its
+      // box (Bestiary / map node / battle). Grouped by painter family below.
+
+      // ── 100×80 : Beast / Frost Drake / Dragon Whelp ──────────────────────
       case 'abyssal_beast':
       case 'frost_drake':
       case 'dragon_whelp':
+      case 'winter_wolf':        // Beast
+      case 'corruption_beast':   // Beast
+      case 'god_of_rot':         // Beast
+      case 'frost_dragon':       // Frost Drake
         return const Size(100, 80);
+
+      // ── 120×80 : Spider Queen / Chimera / Hydra / Basilisk ───────────────
       case 'spider_queen':
-        return const Size(120, 80);
-      case 'stone_golem':
-      case 'blood_ogre':
-        return const Size(100, 100);
-      case 'dark_lord':
-        return const Size(80, 130);
-      case 'ancient_lich':
-        return const Size(80, 140);
-
-      case 'treasure_goblin':
-        return const Size(80, 120);
-
-      // ── Wide / low creatures ────────────────────────────────────────────
       case 'chimera':
       case 'hydra':
       case 'basilisk':
+      case 'krakentide':         // Chimera
+      case 'the_unbound':        // Chimera
+      case 'plague_mother':      // Chimera
+      case 'necrotic_abomination': // Chimera
+      case 'leviathan':          // Hydra
+      case 'sea_colossus':       // Hydra
+      case 'god_eater':          // Hydra
+      case 'scar_feeder':        // Hydra
+      case 'gem_serpent':        // Basilisk
+      case 'abyssal_shark':      // Basilisk
+      case 'shackle_beast':      // Basilisk
         return const Size(120, 80);
-      case 'golem':
-      case 'minotaur':
-        return const Size(100, 100);
 
-      // ── Tall / imposing creatures ────────────────────────────────────────
-      case 'lich':
-      case 'mind_flayer':
-        return const Size(80, 140);
+      // ── 110×90 : Phoenix / Wyvern ────────────────────────────────────────
       case 'phoenix':
       case 'wyvern':
+      case 'king_of_storms':     // Phoenix
+      case 'world_ender':        // Phoenix
+      case 'fallen_archangel':   // Phoenix
+      case 'god_shard_elemental': // Phoenix
+      case 'last_light_seraph':  // Phoenix
+      case 'glacier_wyrm':       // Wyvern
+      case 'lightning_drake':    // Wyvern
+      case 'cell_breaker':       // Wyvern
         return const Size(110, 90);
 
-      // ── Floating / small creatures ───────────────────────────────────────
+      // ── 100×100 : Stone Golem / Blood Ogre / Golem / Minotaur ────────────
+      case 'stone_golem':
+      case 'blood_ogre':
+      case 'golem':
+      case 'minotaur':
+      case 'prime_emperor':      // Stone Golem
+      case 'glacial_troll':      // Blood Ogre
+      case 'the_first_prisoner': // Blood Ogre
+      case 'storm_titan':        // Golem
+      case 'antimatter_construct': // Golem
+      case 'gate_titan':         // Golem
+      case 'containment_golem':  // Golem
+      case 'arcane_colossus':    // Minotaur
+      case 'storm_giant':        // Minotaur
+      case 'gate_colossus':      // Minotaur
+      case 'dark_hour_titan':    // Minotaur
+        return const Size(100, 100);
+
+      // ── 80×130 : Dark Lord ───────────────────────────────────────────────
+      case 'dark_lord':
+      case 'shadow_king':        // Dark Lord
+        return const Size(80, 130);
+
+      // ── 80×140 : Lich / Mind Flayer / Ancient Lich ───────────────────────
+      case 'lich':
+      case 'mind_flayer':
+      case 'ancient_lich':
+      case 'lich_emperor':       // Lich
+      case 'null_sovereign':     // Lich
+      case 'shade_sovereign':    // Lich
+      case 'eternal_sentinel':   // Lich
+      case 'null_emperor':       // Lich
+      case 'frontier_guardian':  // Lich
+      case 'the_void_god':       // Mind Flayer
+      case 'dream_stalker':      // Mind Flayer
+      case 'entropy_fiend':      // Mind Flayer
+      case 'the_devourer':       // Mind Flayer
+      case 'the_omega':          // Ancient Lich
+        return const Size(80, 140);
+
+      // ── 60×70 : Pixie / Imp / Eyeball Watcher (small / floating) ─────────
       case 'pixie':
       case 'imp':
       case 'eyeball_watcher':
+      case 'crystal_shard':      // Pixie
+      case 'frost_sprite':       // Pixie
+      case 'divine_wraith':      // Pixie
+      case 'fallen_cherub':      // Pixie
+      case 'null_sprite':        // Imp
+      case 'the_tyrant_eye':     // Eyeball
+      case 'thunder_elemental':  // Eyeball
+      case 'halo_specter':       // Eyeball
+      case 'watcher_construct':  // Eyeball
+      case 'void_membrane':      // Eyeball
         return const Size(60, 70);
 
-      // ── Everything else: standard upright silhouette ─────────────────────
+      // ── 80×100 : Construct (new) ─────────────────────────────────────────
+      case 'crystal_guardian':
+      case 'assembly_drone':
+      case 'siege_engine':
+        return const Size(80, 100);
+
+      // ── Everything else: standard upright silhouette (16×24 grid) ────────
       default:
         return const Size(80, 120);
     }
@@ -431,21 +497,21 @@ class BattleSpriteState extends State<BattleSprite>
 
       // ── BOSSES (every 5th stage) ──────────────────────────────────────────
       case 'goblin_warchief':  return _OrcPainter(facingLeft, t);
-      case 'necromancer_vael': return _LichEnemyPainter(facingLeft, t);
+      case 'necromancer_vael': return _LichApprentPainter(facingLeft);   // distinct necromancer
       case 'pharaoh_kethran':  return _MummyPainter(facingLeft, t);
       case 'the_tyrant_eye':   return _EyeballWatcherPainter(facingLeft, t);
       case 'lich_emperor':     return _LichEnemyPainter(facingLeft, t);
       case 'prism_lord':       return _GargoylePainter(facingLeft, t);
-      case 'shadow_king':      return _MindFlayerPainter(facingLeft, t);
+      case 'shadow_king':      return _DarkLordPainter(facingLeft);     // shadow king = dark lord
       case 'glacier_wyrm':     return _WyvernPainter(facingLeft, t);
       case 'king_of_storms':   return _PhoenixPainter(facingLeft, t);
       case 'leviathan':        return _HydraPainter(facingLeft, t);
-      case 'the_dreaming_god': return _MindFlayerPainter(facingLeft, t);
-      case 'prime_emperor':    return _GolemPainter(facingLeft, t);
-      case 'god_of_rot':       return _ChimeraPainter(facingLeft, t);
+      case 'the_dreaming_god': return _ForestWraithPainter(facingLeft); // ethereal, distinct
+      case 'prime_emperor':    return _StoneGolemPainter(facingLeft);   // distinct imperial construct
+      case 'god_of_rot':       return _BeastPainter(facingLeft);       // rot beast, distinct
       case 'the_void_god':     return _MindFlayerPainter(facingLeft, t);
       case 'null_sovereign':   return _LichEnemyPainter(facingLeft, t);
-      case 'the_first_prisoner': return _MinotaurPainter(facingLeft, t);
+      case 'the_first_prisoner': return _BloodOgrePainter(facingLeft);  // bound brute, distinct
       case 'gate_titan':       return _GolemPainter(facingLeft, t);
       case 'god_eater':        return _HydraPainter(facingLeft, t);
       case 'world_ender':      return _PhoenixPainter(facingLeft, t);
@@ -453,24 +519,24 @@ class BattleSpriteState extends State<BattleSprite>
 
       // ── Crystal Sanctum (25-29) ───────────────────────────────────────────
       case 'crystal_shard':    return _PixiePainter(facingLeft, t);
-      case 'prism_wraith':     return _BansheePainter(facingLeft, t);
+      case 'prism_wraith':     return _WraithPainter(facingLeft);      // NEW hooded wraith
       case 'gem_serpent':      return _BasiliskPainter(facingLeft, t);
-      case 'crystal_guardian': return _GolemPainter(facingLeft, t);
+      case 'crystal_guardian': return _ConstructPainter(facingLeft);   // NEW construct
       case 'arcane_colossus':  return _MinotaurPainter(facingLeft, t);
 
       // ── Shadow Realm (30-34) ──────────────────────────────────────────────
       case 'shadow_stalker':   return _CultistPainter(facingLeft, t);
-      case 'shade_assassin':   return _GoblinPainter(facingLeft, t);
-      case 'umbral_knight':    return _OrcPainter(facingLeft, t);
+      case 'shade_assassin':   return _ShadeWarriorPainter(facingLeft); // shadow warrior
+      case 'umbral_knight':    return _InfernalKnightPainter(facingLeft); // armored knight
       case 'dark_phantom':     return _GhoulPainter(facingLeft, t);
       case 'shade_sovereign':  return _LichEnemyPainter(facingLeft, t);
 
       // ── Frozen Wastes (35-39) ─────────────────────────────────────────────
       case 'frost_sprite':     return _PixiePainter(facingLeft, t);
       case 'ice_wraith':       return _BansheePainter(facingLeft, t);
-      case 'glacial_troll':    return _OrcPainter(facingLeft, t);
-      case 'winter_wolf':      return _BasiliskPainter(facingLeft, t);
-      case 'frost_dragon':     return _WyvernPainter(facingLeft, t);
+      case 'glacial_troll':    return _BloodOgrePainter(facingLeft);   // brute ≈ troll
+      case 'winter_wolf':      return _BeastPainter(facingLeft);       // quadruped beast ≈ wolf
+      case 'frost_dragon':     return _FrostDrakePainter(facingLeft);  // actual frost drake
 
       // ── Storm Heights (40-44) ─────────────────────────────────────────────
       case 'storm_hawk':         return _HarpyPainter(facingLeft, t);
@@ -481,7 +547,7 @@ class BattleSpriteState extends State<BattleSprite>
 
       // ── Abyssal Ocean (45-49) ─────────────────────────────────────────────
       case 'deep_lurker':    return _GhoulPainter(facingLeft, t);
-      case 'tide_wraith':    return _BansheePainter(facingLeft, t);
+      case 'tide_wraith':    return _WraithPainter(facingLeft);     // hooded, distinct from ice
       case 'abyssal_shark':  return _BasiliskPainter(facingLeft, t);
       case 'sea_colossus':   return _HydraPainter(facingLeft, t);
       case 'krakentide':     return _ChimeraPainter(facingLeft, t);
@@ -495,7 +561,7 @@ class BattleSpriteState extends State<BattleSprite>
 
       // ── Forgotten Empire (55-59) ──────────────────────────────────────────
       case 'archive_scribe':     return _CultistPainter(facingLeft, t);
-      case 'assembly_drone':     return _GolemPainter(facingLeft, t);
+      case 'assembly_drone':     return _ConstructPainter(facingLeft); // NEW construct
       case 'vault_guardian':     return _GargoylePainter(facingLeft, t);
       case 'protocol_enforcer':  return _HobgoblinPainter(facingLeft, t);
       case 'eternal_sentinel':   return _LichEnemyPainter(facingLeft, t);
@@ -504,12 +570,12 @@ class BattleSpriteState extends State<BattleSprite>
       case 'plague_rat':          return _GoblinPainter(facingLeft, t);
       case 'infected_soldier':    return _HobgoblinPainter(facingLeft, t);
       case 'rot_priest':          return _CultistPainter(facingLeft, t);
-      case 'corruption_beast':    return _BasiliskPainter(facingLeft, t);
+      case 'corruption_beast':    return _BeastPainter(facingLeft);   // beast, not serpent
       case 'plague_mother':       return _ChimeraPainter(facingLeft, t);
 
       // ── Celestial Ruins (65-69) ───────────────────────────────────────────
       case 'broken_seraph':    return _HarpyPainter(facingLeft, t);
-      case 'divine_wraith':    return _BansheePainter(facingLeft, t);
+      case 'divine_wraith':    return _PixiePainter(facingLeft, t);   // radiant celestial
       case 'fallen_cherub':    return _PixiePainter(facingLeft, t);
       case 'halo_specter':     return _EyeballWatcherPainter(facingLeft, t);
       case 'fallen_archangel': return _PhoenixPainter(facingLeft, t);
@@ -530,9 +596,9 @@ class BattleSpriteState extends State<BattleSprite>
 
       // ── Abyss Gate (80-84) ────────────────────────────────────────────────
       case 'gate_crawler':       return _GhoulPainter(facingLeft, t);
-      case 'sentinel_wraith':    return _BansheePainter(facingLeft, t);
+      case 'sentinel_wraith':    return _ShadeWarriorPainter(facingLeft); // armored sentinel
       case 'watcher_construct':  return _EyeballWatcherPainter(facingLeft, t);
-      case 'siege_engine':       return _GolemPainter(facingLeft, t);
+      case 'siege_engine':       return _ConstructPainter(facingLeft);  // NEW construct
       case 'gate_colossus':      return _MinotaurPainter(facingLeft, t);
 
       // ── Shattered Realm (85-89) ───────────────────────────────────────────
@@ -551,7 +617,7 @@ class BattleSpriteState extends State<BattleSprite>
 
       // ── Omega Throne (95-99) ──────────────────────────────────────────────
       case 'omega_herald':    return _CultistPainter(facingLeft, t);
-      case 'memory_shade':    return _BansheePainter(facingLeft, t);
+      case 'memory_shade':    return _WraithPainter(facingLeft);        // NEW hooded wraith
       case 'dark_hour_titan': return _MinotaurPainter(facingLeft, t);
       case 'throne_sentinel': return _GargoylePainter(facingLeft, t);
       case 'the_omega':       return _AncientLichPainter(facingLeft);
@@ -2226,6 +2292,111 @@ class _LichEnemyPainter extends _Painter {
 // Scrappy green gremlin — huge ears, toothy grin, belt dagger
 // ─────────────────────────────────────────────────────────────
 
+// ── NEW: Wraith — a hooded specter (distinct from the screaming Banshee) ──────
+class _WraithPainter extends _Painter {
+  const _WraithPainter(super.facingLeft);
+
+  @override
+  void draw(Canvas c, Size sz) {
+    const CL = 0xFF241f38; // cloak darkest
+    const CM = 0xFF423a62; // cloak mid
+    const CH = 0xFF645a8c; // cloak highlight
+    const HD = 0xFF080610; // hood interior shadow
+    const EY = 0xFFd8c0ff; // eye glow
+    const WS = 0xFF4a4268; // wisp tatters
+
+    // ── HOOD (pointed) ──
+    b(c, 7, 0, 2, 1, CM);
+    b(c, 6, 1, 4, 1, CM);
+    b(c, 5, 2, 6, 1, CM); b(c, 5, 2, 1, 1, CL); b(c, 10, 2, 1, 1, CL);
+    b(c, 4, 3, 8, 2, CM); b(c, 4, 3, 1, 2, CL); b(c, 11, 3, 1, 2, CL);
+    b(c, 4, 3, 8, 1, CH);
+    b(c, 3, 5, 10, 3, CM); b(c, 3, 5, 1, 3, CL); b(c, 12, 5, 1, 3, CL);
+    // hood interior (face shadow) + glowing eyes
+    b(c, 5, 4, 6, 4, HD);
+    b(c, 6, 5, 1, 2, EY);
+    b(c, 9, 5, 1, 2, EY);
+    b(c, 6, 5, 1, 1, 0xFFffffff);
+    b(c, 9, 5, 1, 1, 0xFFffffff);
+
+    // ── SHOULDERS / CLOAK BODY ──
+    b(c, 2, 8, 12, 2, CM); b(c, 2, 8, 1, 2, CL); b(c, 13, 8, 1, 2, CL);
+    b(c, 2, 8, 12, 1, CH);
+    b(c, 3, 10, 10, 4, CM);
+    b(c, 4, 10, 8, 1, CH);
+    // chest clasp glow
+    b(c, 7, 11, 2, 2, EY);
+    b(c, 7, 11, 2, 1, 0xFFffffff);
+    // sleeve drapes
+    b(c, 2, 10, 2, 5, CL);
+    b(c, 12, 10, 2, 5, CL);
+    b(c, 1, 12, 1, 3, WS);
+    b(c, 14, 12, 1, 3, WS);
+
+    // ── TATTERED LOWER (fading jagged hem) ──
+    b(c, 3, 14, 10, 3, CM);
+    b(c, 4, 15, 8, 2, CL);
+    b(c, 3, 17, 2, 3, CM);
+    b(c, 6, 17, 2, 4, CM);
+    b(c, 9, 17, 2, 3, CM);
+    b(c, 11, 17, 2, 4, CM);
+    b(c, 4, 20, 1, 2, WS);
+    b(c, 7, 21, 1, 2, WS);
+    b(c, 10, 20, 1, 2, WS);
+    b(c, 12, 21, 1, 2, WS);
+  }
+}
+
+// ── NEW: Construct — angular arcane sentinel (distinct from the rocky Golem) ──
+class _ConstructPainter extends _Painter {
+  const _ConstructPainter(super.facingLeft);
+
+  @override
+  void draw(Canvas c, Size sz) {
+    const MD = 0xFF2c3440; // metal dark
+    const MM = 0xFF55687a; // metal mid
+    const MH = 0xFF8aa0b4; // metal highlight
+    const CO = 0xFF66e0ff; // core glow
+    const CW = 0xFFd0f8ff; // core white
+    const RV = 0xFF1a2028; // rivet
+
+    // ── HEAD (angular) ──
+    b(c, 6, 1, 4, 3, MM); b(c, 6, 1, 4, 1, MH);
+    b(c, 5, 2, 1, 2, MD); b(c, 10, 2, 1, 2, MD);
+    b(c, 6, 2, 4, 1, CO); b(c, 7, 2, 2, 1, CW); // eye slit
+
+    // ── TORSO ──
+    b(c, 4, 4, 8, 7, MM);
+    b(c, 4, 4, 8, 1, MH);
+    b(c, 4, 4, 1, 7, MD); b(c, 11, 4, 1, 7, MD);
+    // central core gem
+    b(c, 6, 6, 4, 3, CO);
+    b(c, 7, 6, 2, 2, CW);
+    b(c, 6, 6, 4, 1, 0xFFffffff);
+    // rivets
+    b(c, 5, 5, 1, 1, RV); b(c, 10, 5, 1, 1, RV);
+    b(c, 5, 9, 1, 1, RV); b(c, 10, 9, 1, 1, RV);
+
+    // ── ARMS (blocky) ──
+    b(c, 1, 5, 3, 2, MM); b(c, 1, 5, 3, 1, MH);
+    b(c, 1, 7, 2, 4, MD);
+    b(c, 1, 11, 3, 2, MM);
+    b(c, 12, 5, 3, 2, MM); b(c, 12, 5, 3, 1, MH);
+    b(c, 13, 7, 2, 4, MD);
+    b(c, 12, 11, 3, 2, MM);
+
+    // ── LEGS ──
+    b(c, 5, 11, 2, 6, MM); b(c, 5, 11, 2, 1, MH);
+    b(c, 9, 11, 2, 6, MM); b(c, 9, 11, 2, 1, MH);
+    b(c, 5, 11, 1, 6, MD); b(c, 9, 11, 1, 6, MD);
+    b(c, 4, 17, 3, 2, MD);
+    b(c, 9, 17, 3, 2, MD);
+    // energy seams
+    b(c, 6, 13, 1, 2, CO);
+    b(c, 9, 13, 1, 2, CO);
+  }
+}
+
 class _GoblinPainter extends _Painter {
   const _GoblinPainter(super.facingLeft, [super.t = 0.0]);
 
@@ -2558,7 +2729,6 @@ class _KoboldPainter extends _Painter {
     const EY = 0xFF60c860; // slit green eye
     const RG = 0xFF2c1808; // crude rags
     const RL = 0xFF4a2e18; // rags light
-    const MT = 0xFF888090; // crude metal
     const ML = 0xFFaaa8b0; // metal light
     const K  = 0xFF181820;
 
@@ -4336,7 +4506,6 @@ class _ClericHeroPainter extends _Painter {
   void draw(Canvas c, Size sz) {
     const WH = 0xFFd4d4c4; // robe off-white
     const WL = 0xFFf0f0e4; // robe highlight
-    const WD = 0xFF9898880; // robe shadow (unused — use below)
     const GD = 0xFFd4af37; // gold holy symbol
     const BL = 0xFF1c3480; // blue trim
     const SK = 0xFFe0c890; // skin
@@ -4622,7 +4791,6 @@ class _RangerHeroPainter extends _Painter {
   void draw(Canvas c, Size sz) {
     const HD = 0xFF1a3018; // hood dark
     const HL = 0xFF2a4828; // hood mid
-    const HG = 0xFF3a6030; // hood bright
     const CL = 0xFF1c3c1a; // cloak
     const CL2 = 0xFF2c5228; // cloak light
     const LB = 0xFF5c3810; // leather

@@ -89,10 +89,11 @@ class SystemTutorial {
     ),
     SystemTutorial(
       stage: 5, navTab: 1, subTab: 'CHALLENGES', icon: '🎯',
-      title: 'Challenges & Achievements',
+      title: 'Challenges & Bounties',
       howTo: 'Daily and weekly Challenges give bonus rewards for playing. '
           'Complete them for Shards, Gold and Z-Coins — they refresh on a timer, '
-          'so check back often.',
+          'so check back often. The Bounties tab here stays locked until stage 20, '
+          'when campaign bosses start dropping bounty rewards.',
     ),
     SystemTutorial(
       stage: 8, navTab: 0, subTab: 'PASSIVES', icon: '🌿',

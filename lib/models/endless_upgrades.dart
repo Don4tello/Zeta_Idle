@@ -138,7 +138,7 @@ enum EndlessNode {
       case EndlessNode.cha: return const [
         MilestonePerk(levelRequired: 5,  name: "Silver Tongue",  description: 'All upgrade costs reduced by 15%'),
         MilestonePerk(levelRequired: 10, name: 'Rally Cry',      description: '+40% XP from every kill'),
-        MilestonePerk(levelRequired: 25, name: "Fortune's Favour", description: '25% chance to double Echo drops'),
+        MilestonePerk(levelRequired: 25, name: "Fortune's Favour", description: '25% chance to double Arcane Dust drops (40% with Shadow Merchant)'),
       ];
     }
   }

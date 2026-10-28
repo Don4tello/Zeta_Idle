@@ -767,7 +767,7 @@ List<_TraitBonus> _traitBonuses(HeroTrait t) {
   String pct(int v) => v >= 0 ? '+$v%' : '$v%';
   if (t.xpPct    != 0) out.add(_TraitBonus('XP per kill',    pct(t.xpPct),    const Color(0xFF88aaff)));
   if (t.goldPct  != 0) out.add(_TraitBonus('Gold per kill',  pct(t.goldPct),  t.goldPct  > 0 ? AppTheme.accentGold : const Color(0xFFaa6644)));
-  if (t.shardPct != 0) out.add(_TraitBonus('Shards per kill',pct(t.shardPct), t.shardPct > 0 ? const Color(0xFF44ccff) : const Color(0xFF4488aa)));
+  if (t.shardPct != 0) out.add(_TraitBonus('Shards per kill',pct(t.shardPct), t.shardPct > 0 ? const Color(0xFF6699ff) : const Color(0xFF4488aa)));
   if (t.hpPct    != 0) out.add(_TraitBonus('Max HP',         pct(t.hpPct),    t.hpPct    > 0 ? const Color(0xFF44cc88) : const Color(0xFFff4444)));
   if (t.dmgPct   != 0) out.add(_TraitBonus('Damage dealt',   pct(t.dmgPct),   t.dmgPct   > 0 ? const Color(0xFFff8844) : const Color(0xFFcc4444)));
   return out;
