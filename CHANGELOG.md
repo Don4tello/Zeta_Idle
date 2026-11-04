@@ -3,6 +3,19 @@
 Version numbers are the pubspec build number (`0.1.0+N`), which is the Play
 Store `versionCode`. Newest first.
 
+## +372 — The Warband Update: merc parties, PvP Seasons & promo codes
+- ⚔️ Mercenaries reworked — field a 3-merc battle party, push companions past Lv5 into Star Ranks, and respec their talents.
+- 🏆 PvP Seasons — climb a persistent league ladder from Bronze all the way to Legend, with one-time promotion rewards.
+- 🗼 Tower Ascension — floor milestones and a highest-floor trophy to chase.
+- 🔥 Dungeon Abyssal Push — beat the Dungeon Lord, then keep descending into escalating abyss floors for richer Mythril and unique drops.
+- 🎁 Daily login no longer resets if you miss a day, milestone rewards now scale with your tier, and the reward icons got a fresh pixel look.
+- ✨ Ability damage now scales with your attributes, Elemental Mastery and set bonuses — a big boost for ability-focused builds.
+- ⚖️ Steadier battle pacing across all modes, fairer boss gold, and sharper pixel UI icons throughout.
+- 🐞 Fixed several perks that were silently doing nothing (Savage Momentum, Fortune's Favour, the WIS Echoes bonus) — they all work now.
+- 🏷️ NEW: Promo codes! Got a code? Redeem it in Settings → Promo Code for rewards.
+
+---
+
 ## +307 — PLAY: clearer primary/secondary section divider
 User: consistency for other tabs? Assessment — only HERO (16 tabs) was overloaded; PLAY(9)/INVENTORY(6)/SHOP/GUILD are fine flat. PLAY already had a primary/secondary group separator, just a faint 1px hairline. Made it a clearer 2px gold rounded divider so the grouping reads intentionally. Left INVENTORY/SHOP/GUILD unchanged (a grid there would add a pointless tap; PLAY stays 1-tap-to-play).
 

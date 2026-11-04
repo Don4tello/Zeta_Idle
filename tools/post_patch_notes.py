@@ -96,7 +96,7 @@ def post_discord(cfg, build, title, bullets, dry):
         return
     r = requests.post(url, json={"embeds": [embed]}, timeout=20)
     r.raise_for_status()
-    print(f"✓ Posted to Discord (HTTP {r.status_code})")
+    print(f"Posted to Discord (HTTP {r.status_code})")
 
 
 def post_reddit(cfg, build, title, bullets, dry):
@@ -131,7 +131,7 @@ def post_reddit(cfg, build, title, bullets, dry):
     errors = r.json().get("json", {}).get("errors")
     if errors:
         sys.exit(f"Reddit submit error: {errors}")
-    print(f"✓ Posted to Reddit r/{sub}")
+    print(f"Posted to Reddit r/{sub}")
 
 
 def main():
