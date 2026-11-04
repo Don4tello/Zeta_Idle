@@ -34,6 +34,25 @@ class SettingsScreen extends StatefulWidget {
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
+  final TextEditingController _promoCtrl = TextEditingController();
+  String? _promoMsg;
+  bool _promoOk = false;
+
+  @override
+  void dispose() {
+    _promoCtrl.dispose();
+    super.dispose();
+  }
+
+  void _redeemPromo(GameState game) {
+    final res = game.redeemPromoCode(_promoCtrl.text);
+    setState(() { _promoMsg = res.message; _promoOk = res.ok; });
+    if (res.ok) {
+      _promoCtrl.clear();
+      game.audioService.playClaim();
+    }
+  }
+
   Future<void> _showRenameDialog(GameState game) async {
     final controller = TextEditingController(text: game.hero.name);
     await showDialog<void>(
@@ -178,6 +197,61 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 child: Text('RENAME (${game.renameHeroCost} 🪙)',
                     style: const TextStyle(color: Color(0xFF66aaff))),
               ),
+            ),
+            const SizedBox(height: 16),
+
+            // Promo code section
+            _SectionHeader('PROMO CODE'),
+            Container(
+              margin: const EdgeInsets.only(top: 6),
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: const Color(0xFF231F1B),
+                border: Border.all(color: AppTheme.cardBorder),
+                borderRadius: BorderRadius.circular(4),
+              ),
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                const Text('Got a code? Redeem it here for rewards.',
+                    style: TextStyle(fontSize: 12, color: AppTheme.textMuted)),
+                const SizedBox(height: 10),
+                Row(children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _promoCtrl,
+                      textCapitalization: TextCapitalization.characters,
+                      style: const TextStyle(color: AppTheme.textLight, fontSize: 14, letterSpacing: 1),
+                      decoration: InputDecoration(
+                        hintText: 'ENTER CODE',
+                        hintStyle: const TextStyle(color: AppTheme.textDisabled, letterSpacing: 1),
+                        isDense: true,
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+                        enabledBorder: const OutlineInputBorder(borderSide: BorderSide(color: AppTheme.cardBorder)),
+                        focusedBorder: const OutlineInputBorder(borderSide: BorderSide(color: AppTheme.accentGold)),
+                      ),
+                      onSubmitted: (_) => _redeemPromo(game),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  TextButton(
+                    onPressed: () => _redeemPromo(game),
+                    style: TextButton.styleFrom(
+                      foregroundColor: Colors.black,
+                      backgroundColor: AppTheme.accentGold,
+                      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+                      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
+                    ),
+                    child: Text('REDEEM', style: AppTheme.pixelHeading(fontSize: 12, color: Colors.black)),
+                  ),
+                ]),
+                if (_promoMsg != null) ...[
+                  const SizedBox(height: 8),
+                  Text(_promoMsg!,
+                      style: TextStyle(
+                          fontSize: 11,
+                          color: _promoOk ? const Color(0xFF55cc66) : const Color(0xFFcc5544),
+                          fontWeight: FontWeight.bold)),
+                ],
+              ]),
             ),
             const SizedBox(height: 16),
 

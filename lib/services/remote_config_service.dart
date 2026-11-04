@@ -73,6 +73,10 @@ class RemoteConfigService {
     // Flip on in the console for closed testing (optionally target by version).
     'telemetry_enabled': false,
     'telemetry_sample_pct': 100.0,
+    // Promo codes — a JSON map of CODE → reward, redeemed in Settings. Edit in
+    // the console to add/expire codes without a rebuild. Example:
+    //   {"ZETAPLAYTEST":{"zcoins":500,"gold":100000,"expires":"2026-12-05"}}
+    'promo_codes': '{}',
   };
 
   Future<void> init(FirebaseRemoteConfig rc) async {
@@ -115,6 +119,19 @@ class RemoteConfigService {
       final v = rc.getValue(key);
       if (v.source == ValueSource.valueStatic) return fallback;
       return v.asBool();
+    } catch (_) {
+      return fallback;
+    }
+  }
+
+  String _s(String key, String fallback) {
+    final rc = _rc;
+    if (rc == null) return fallback;
+    try {
+      final v = rc.getValue(key);
+      if (v.source == ValueSource.valueStatic) return fallback;
+      final s = v.asString();
+      return s.isEmpty ? fallback : s;
     } catch (_) {
       return fallback;
     }
@@ -177,4 +194,7 @@ class RemoteConfigService {
   // ── Telemetry (runtime gate for fight telemetry → Firestore) ────────────────
   bool   get telemetryEnabled   => _b('telemetry_enabled', false);
   double get telemetrySamplePct => _d('telemetry_sample_pct', 100.0);
+
+  // ── Promo codes — JSON map {CODE: {zcoins, gold, …, expires}} ───────────────
+  String get promoCodesJson => _s('promo_codes', '{}');
 }

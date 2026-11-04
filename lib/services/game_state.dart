@@ -1,5 +1,5 @@
 ﻿import 'dart:async';
-import 'dart:convert' show jsonEncode;
+import 'dart:convert' show jsonEncode, jsonDecode;
 import 'dart:math';
 import 'debug_logger.dart';
 import 'package:flutter/foundation.dart' show kDebugMode;
@@ -413,6 +413,60 @@ class GameState extends ChangeNotifier {
   int zcoins = 0;
   String? equippedAuraId;
   final Set<String> ownedAuraIds = {};
+
+  // ── Promo codes (redeemed in Settings; codes/rewards live in Remote Config) ─
+  final Set<String> redeemedPromoCodes = {};
+
+  /// Redeem a promo code against the Remote Config `promo_codes` map. Validates
+  /// the code, checks it isn't expired or already used, grants the rewards, and
+  /// records it so it can't be reused on this save. Returns (ok, message).
+  ({bool ok, String message}) redeemPromoCode(String raw) {
+    final code = raw.trim().toUpperCase();
+    if (code.isEmpty) return (ok: false, message: 'Enter a code.');
+    if (redeemedPromoCodes.contains(code)) {
+      return (ok: false, message: 'You already redeemed this code.');
+    }
+    Map<String, dynamic> all;
+    try {
+      all = (jsonDecode(RemoteConfigService.instance.promoCodesJson) as Map)
+          .cast<String, dynamic>();
+    } catch (_) {
+      return (ok: false, message: 'Could not reach the code service — try again later.');
+    }
+    // Match case-insensitively against however the console keyed the code.
+    final key = all.keys.firstWhere(
+        (k) => k.trim().toUpperCase() == code, orElse: () => '');
+    if (key.isEmpty || all[key] is! Map) {
+      return (ok: false, message: 'Invalid code.');
+    }
+    final r = (all[key] as Map).cast<String, dynamic>();
+    // Expiry (optional) — an ISO date/datetime string.
+    final exp = r['expires'] as String?;
+    if (exp != null) {
+      final until = DateTime.tryParse(exp);
+      if (until != null && DateTime.now().isAfter(until)) {
+        return (ok: false, message: 'This code has expired.');
+      }
+    }
+    final parts = <String>[];
+    void grant(String field, String label, void Function(int) add) {
+      final v = (r[field] as num?)?.toInt() ?? 0;
+      if (v > 0) { add(v); parts.add('+$v $label'); }
+    }
+    grant('zcoins',    'ZCoins',      (v) => zcoins += v);
+    grant('gold',      'Gold',        (v) => gold += v);
+    grant('shards',    'Shards',      (v) => shards += v);
+    grant('echoes',    'Echoes',      (v) => echoes += v);
+    grant('mythril',   'Mythril',     (v) => mythril += v);
+    grant('gemShards', 'Arcane Dust', (v) => gemShards += v);
+    grant('essence',   'Essence',     (v) => essence += v);
+    if (parts.isEmpty) return (ok: false, message: 'Invalid code.');
+    redeemedPromoCodes.add(code);
+    _setLastAction('🎁 Promo redeemed: ${parts.join('  ')}');
+    notifyListeners();
+    saveToLocal();
+    return (ok: true, message: 'Redeemed!  ${parts.join('   ')}');
+  }
 
   Color? get heroAuraColor {
     if (equippedAuraId == null) return null;
@@ -10759,6 +10813,7 @@ class GameState extends ChangeNotifier {
       'passiveTree': passiveTree.toJson(),
       'inventory': inventory.toJson(),
       'zcoins': zcoins,
+      'redeemedPromoCodes': redeemedPromoCodes.toList(),
       'speedTier': speedTier,
       'energy': energy,
       'energyRefillEpochMs': _energyRefillEpochMs,
@@ -11140,6 +11195,9 @@ class GameState extends ChangeNotifier {
       inventory.loadFromJson(Map<String, dynamic>.from(json['inventory'] as Map));
     }
     zcoins             = (json['zcoins'] as int?) ?? (json['crystals'] as int?) ?? 0;
+    redeemedPromoCodes
+      ..clear()
+      ..addAll(((json['redeemedPromoCodes'] as List?) ?? const []).cast<String>());
     speedTier            = (json['speedTier']           as int?) ?? 1;
     energy               = (json['energy']              as int?) ?? kBaseEnergy;
     _energyRefillEpochMs = (json['energyRefillEpochMs'] as int?) ?? 0;
