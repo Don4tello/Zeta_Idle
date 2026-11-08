@@ -3,6 +3,8 @@ import 'dart:ui' show PlatformDispatcher;
 import 'package:firebase_core/firebase_core.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'services/analytics_service.dart';
+import 'services/locale_controller.dart';
+import 'l10n/app_localizations.dart';
 import 'package:firebase_app_check/firebase_app_check.dart';
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:firebase_analytics/firebase_analytics.dart';
@@ -227,6 +229,13 @@ Future<void> _appMain() async {
   } catch (e) {
     DebugLogger.log('notif_init', 'error: $e');
   }
+  // Restore the saved language override (if any) before the first frame so the
+  // app opens in the player's chosen language.
+  try {
+    await LocaleController.instance.load();
+  } catch (e) {
+    DebugLogger.log('locale_init', 'error: $e');
+  }
   runApp(const ZetaIdleApp());
 }
 
@@ -359,38 +368,51 @@ class _ZetaIdleAppState extends State<ZetaIdleApp> with WidgetsBindingObserver {
 
   @override
   Widget build(BuildContext context) {
-    final pending = _pendingLoad;
-    if (pending != null) {
-      // Show loading screen outside of router while game data loads
-      return GameStateProvider(
-        gameState: _gameState,
-        child: MaterialApp(
-          title: 'Zeta Idle',
-          theme: AppTheme.darkMedievalTheme(),
-          home: LoadingScreen(
-            task: () => _gameState.loadSlot(
-              pending.slot,
-              newName: pending.name,
-              heroClass: pending.heroClass,
-              heroRace: pending.heroRace,
-              trait: pending.trait,
-              gender: pending.gender,
+    // Rebuild the app when the chosen language changes so the switch applies
+    // instantly. `locale == null` falls back to the device/system locale.
+    return ValueListenableBuilder<Locale?>(
+      valueListenable: LocaleController.instance,
+      builder: (context, locale, _) {
+        final pending = _pendingLoad;
+        if (pending != null) {
+          // Show loading screen outside of router while game data loads
+          return GameStateProvider(
+            gameState: _gameState,
+            child: MaterialApp(
+              title: 'Zeta Idle',
+              theme: AppTheme.darkMedievalTheme(),
+              locale: locale,
+              localizationsDelegates: AppLocalizations.localizationsDelegates,
+              supportedLocales: AppLocalizations.supportedLocales,
+              home: LoadingScreen(
+                task: () => _gameState.loadSlot(
+                  pending.slot,
+                  newName: pending.name,
+                  heroClass: pending.heroClass,
+                  heroRace: pending.heroRace,
+                  trait: pending.trait,
+                  gender: pending.gender,
+                ),
+                onComplete: _onLoadComplete,
+              ),
             ),
-            onComplete: _onLoadComplete,
-          ),
-        ),
-      );
-    }
+          );
+        }
 
-    return GameStateProvider(
-      gameState: _gameState,
-      child: MaterialApp.router(
-        title: 'Zeta Idle',
-        theme: AppTheme.darkMedievalTheme(),
-        routerConfig: _router,
-        builder: (_, child) =>
-            DebugCaptureSurface(child: child ?? const SizedBox()),
-      ),
+        return GameStateProvider(
+          gameState: _gameState,
+          child: MaterialApp.router(
+            title: 'Zeta Idle',
+            theme: AppTheme.darkMedievalTheme(),
+            locale: locale,
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            supportedLocales: AppLocalizations.supportedLocales,
+            routerConfig: _router,
+            builder: (_, child) =>
+                DebugCaptureSurface(child: child ?? const SizedBox()),
+          ),
+        );
+      },
     );
   }
 }

@@ -1,0 +1,41 @@
+{
+  "@@locale": "en",
+
+  "ccForgeYourLegend": "FORGE YOUR LEGEND",
+  "@ccForgeYourLegend": { "description": "Character creation name-step heading" },
+  "ccNameYourWarrior": "— NAME YOUR WARRIOR —",
+  "ccDefaultHeroName": "The Warden",
+  "@ccDefaultHeroName": { "description": "Default hero name prefilled in the name field" },
+  "ccQuickStart": "QUICK START",
+  "@ccQuickStart": { "description": "One-tap onboarding button (a lightning emoji is shown before it)" },
+  "ccQuickStartHint": "Jump straight in with a recommended hero",
+  "ccChooseClassAndRace": "CHOOSE CLASS & RACE",
+  "@ccChooseClassAndRace": { "description": "Secondary button that opens the full step-by-step creation wizard" },
+
+  "ccChooseYourClass": "CHOOSE YOUR CLASS",
+  "ccSelectYourPath": "— SELECT YOUR PATH —",
+  "ccChooseRace": "CHOOSE RACE",
+  "ccSelectAClass": "SELECT A CLASS",
+  "ccRecommendedForBeginners": "★ RECOMMENDED FOR BEGINNERS",
+  "ccComplexity": "COMPLEXITY",
+
+  "ccChooseYourRace": "CHOOSE YOUR RACE",
+  "ccHeritageDefinesYou": "— YOUR HERITAGE DEFINES YOU —",
+  "ccBeginYourJourney": "BEGIN YOUR JOURNEY",
+  "ccSelectARace": "SELECT A RACE",
+
+  "ccNameNotAllowed": "Please choose a different name — that one isn't allowed.",
+
+  "csSelectCharacter": "— SELECT CHARACTER —",
+  "csNewCharacter": "NEW CHARACTER",
+  "csSwipeToDelete": "Swipe a character left to delete",
+  "csDeleteTitle": "Delete \"{name}\"?",
+  "@csDeleteTitle": { "placeholders": { "name": { "type": "String" } } },
+  "csDeleteBody": "Are you sure? Once gone it cannot be stored.",
+  "csCancel": "CANCEL",
+  "csDelete": "DELETE",
+  "csLockedSlot": "LOCKED SLOT",
+
+  "settingsLanguage": "Language",
+  "settingsLanguageSystem": "System default"
+}

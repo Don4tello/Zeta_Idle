@@ -8,6 +8,7 @@ import '../models/hero_trait.dart';
 import '../models/shop_catalog.dart';
 import '../services/game_state.dart';
 import '../services/save_service.dart';
+import '../l10n/app_localizations.dart';
 import '../theme/app_theme.dart';
 import '../widgets/battle_sprites.dart';
 import 'character_creation_screen.dart';
@@ -68,25 +69,26 @@ class _CharacterSelectScreenState extends State<CharacterSelectScreen> {
 
   /// Confirmation dialog only — returns whether the user chose to delete.
   Future<bool> _confirmDeleteDialog(CharacterSummary existing) async {
+    final l = AppLocalizations.of(context);
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: AppTheme.cardBg,
-        title: Text('Delete "${existing.name}"?',
+        title: Text(l.csDeleteTitle(existing.name),
             style: GoogleFonts.rajdhani(color: AppTheme.accentGold)),
         content: Text(
-          'Are you sure? Once gone it cannot be stored.',
+          l.csDeleteBody,
           style: GoogleFonts.rajdhani(color: AppTheme.textMuted),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: Text('CANCEL',
+            child: Text(l.csCancel,
                 style: GoogleFonts.rajdhani(color: AppTheme.textMuted)),
           ),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
-            child: Text('DELETE',
+            child: Text(l.csDelete,
                 style: GoogleFonts.rajdhani(color: AppTheme.accentRed)),
           ),
         ],
@@ -137,7 +139,7 @@ class _CharacterSelectScreenState extends State<CharacterSelectScreen> {
               .slideY(begin: -0.2, duration: 600.ms, curve: Curves.easeOut),
           const SizedBox(height: 8),
           Text(
-            '— SELECT CHARACTER —',
+            AppLocalizations.of(context).csSelectCharacter,
             style: GoogleFonts.rajdhani(
               fontSize: 12,
               color: AppTheme.textMuted,
@@ -236,7 +238,7 @@ class _CharacterSelectScreenState extends State<CharacterSelectScreen> {
           Padding(
             padding: const EdgeInsets.only(bottom: 24),
             child: Text(
-              'Swipe a character left to delete',
+              AppLocalizations.of(context).csSwipeToDelete,
               style: GoogleFonts.rajdhani(
                 fontSize: 11,
                 color: AppTheme.textMuted.withValues(alpha: 0.5),
@@ -287,7 +289,7 @@ class _SlotTile extends StatelessWidget {
         child: Stack(
           children: [
             isEmpty
-                ? Center(child: _buildEmpty())
+                ? Center(child: _buildEmpty(context))
                 : Padding(
                     padding: const EdgeInsets.only(left: 16, right: 18),
                     child: Row(
@@ -325,14 +327,14 @@ class _SlotTile extends StatelessWidget {
     );
   }
 
-  Widget _buildEmpty() {
+  Widget _buildEmpty(BuildContext context) {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
         const Icon(Icons.add, color: AppTheme.cardBorder, size: 18),
         const SizedBox(width: 10),
         Text(
-          'NEW CHARACTER',
+          AppLocalizations.of(context).csNewCharacter,
           style: GoogleFonts.rajdhani(
             fontSize: 15,
             color: AppTheme.textMuted,
@@ -477,7 +479,7 @@ class _DeleteSwipeBackground extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text('DELETE',
+          Text(AppLocalizations.of(context).csDelete,
               style: GoogleFonts.rajdhani(
                 color: Colors.white,
                 fontSize: 13,
@@ -516,7 +518,7 @@ class _LockedSlotTile extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'LOCKED SLOT',
+                AppLocalizations.of(context).csLockedSlot,
                 style: GoogleFonts.rajdhani(
                   fontSize: 12,
                   color: AppTheme.textMuted,

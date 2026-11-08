@@ -1,0 +1,36 @@
+{
+  "@@locale": "de",
+
+  "ccForgeYourLegend": "SCHMIEDE DEINE LEGENDE",
+  "ccNameYourWarrior": "— BENENNE DEINEN KRIEGER —",
+  "ccDefaultHeroName": "Der Wächter",
+  "ccQuickStart": "SCHNELLSTART",
+  "ccQuickStartHint": "Steig sofort mit einem empfohlenen Helden ein",
+  "ccChooseClassAndRace": "KLASSE & VOLK WÄHLEN",
+
+  "ccChooseYourClass": "WÄHLE DEINE KLASSE",
+  "ccSelectYourPath": "— WÄHLE DEINEN PFAD —",
+  "ccChooseRace": "VOLK WÄHLEN",
+  "ccSelectAClass": "KLASSE WÄHLEN",
+  "ccRecommendedForBeginners": "★ EMPFOHLEN FÜR EINSTEIGER",
+  "ccComplexity": "KOMPLEXITÄT",
+
+  "ccChooseYourRace": "WÄHLE DEIN VOLK",
+  "ccHeritageDefinesYou": "— DEINE HERKUNFT PRÄGT DICH —",
+  "ccBeginYourJourney": "BEGINNE DEINE REISE",
+  "ccSelectARace": "VOLK WÄHLEN",
+
+  "ccNameNotAllowed": "Bitte wähle einen anderen Namen — dieser ist nicht erlaubt.",
+
+  "csSelectCharacter": "— CHARAKTER WÄHLEN —",
+  "csNewCharacter": "NEUER CHARAKTER",
+  "csSwipeToDelete": "Wische einen Charakter nach links zum Löschen",
+  "csDeleteTitle": "\"{name}\" löschen?",
+  "csDeleteBody": "Bist du sicher? Einmal weg, kann er nicht wiederhergestellt werden.",
+  "csCancel": "ABBRECHEN",
+  "csDelete": "LÖSCHEN",
+  "csLockedSlot": "GESPERRTER PLATZ",
+
+  "settingsLanguage": "Sprache",
+  "settingsLanguageSystem": "Systemstandard"
+}

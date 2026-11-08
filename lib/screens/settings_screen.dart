@@ -7,6 +7,8 @@ import '../core/routing/app_router.dart';
 import '../models/equipment.dart';
 import '../services/game_state.dart';
 import '../services/notification_service.dart';
+import '../services/locale_controller.dart';
+import '../l10n/app_localizations.dart';
 import '../theme/app_theme.dart';
 import '../utils/profanity_filter.dart';
 
@@ -139,6 +141,27 @@ class _SettingsScreenState extends State<SettingsScreen> {
         content: Text('No email app found. Reach us at razorintegrations@gmail.com'),
         duration: Duration(seconds: 4),
       ));
+    }
+  }
+
+  /// Subtitle for the language tile: the active language's native name, or the
+  /// localized "System default" when no override is set.
+  String _localeLabel(BuildContext context, Locale? current) {
+    if (current == null) return AppLocalizations.of(context).settingsLanguageSystem;
+    return _nativeLanguageName(current.languageCode);
+  }
+
+  /// Native name for a language code (endonym), so each option reads naturally
+  /// to a speaker of that language. Extend as locales are added.
+  String _nativeLanguageName(String code) {
+    switch (code) {
+      case 'de': return 'Deutsch';
+      case 'es': return 'Español';
+      case 'fr': return 'Français';
+      case 'pt': return 'Português';
+      case 'pl': return 'Polski';
+      case 'en': return 'English';
+      default:   return code.toUpperCase();
     }
   }
 
@@ -335,6 +358,38 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 },
                 activeColor: AppTheme.accentGold,
                 inactiveTrackColor: AppTheme.cardBorder,
+              ),
+            ),
+
+            const SizedBox(height: 16),
+
+            // Language
+            _SectionHeader(AppLocalizations.of(context).settingsLanguage.toUpperCase()),
+            ValueListenableBuilder<Locale?>(
+              valueListenable: LocaleController.instance,
+              builder: (context, current, _) => _SettingsTile(
+                title: AppLocalizations.of(context).settingsLanguage,
+                subtitle: _localeLabel(context, current),
+                trailing: DropdownButton<String>(
+                  value: current?.languageCode ?? '',
+                  dropdownColor: AppTheme.cardBg,
+                  underline: const SizedBox.shrink(),
+                  iconEnabledColor: AppTheme.accentGold,
+                  style: const TextStyle(color: AppTheme.textLight, fontSize: 16),
+                  items: [
+                    DropdownMenuItem(
+                      value: '',
+                      child: Text(AppLocalizations.of(context).settingsLanguageSystem),
+                    ),
+                    for (final loc in LocaleController.supported)
+                      DropdownMenuItem(
+                        value: loc.languageCode,
+                        child: Text(_nativeLanguageName(loc.languageCode)),
+                      ),
+                  ],
+                  onChanged: (code) => LocaleController.instance.setLocale(
+                      (code == null || code.isEmpty) ? null : Locale(code)),
+                ),
               ),
             ),
 

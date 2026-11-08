@@ -1,0 +1,8 @@
+# Flutter gen-l10n config. Generates AppLocalizations from the ARB files in
+# lib/l10n. Add a new language by dropping in app_<locale>.arb (e.g. app_es.arb)
+# with the same keys as the English template and running `flutter gen-l10n`.
+arb-dir: lib/l10n
+template-arb-file: app_en.arb
+output-localization-file: app_localizations.dart
+output-class: AppLocalizations
+nullable-getter: false

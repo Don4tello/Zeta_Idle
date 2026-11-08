@@ -8,6 +8,7 @@ import '../models/hero_model.dart' show HeroGender;
 import '../models/hero_race.dart';
 import '../models/hero_trait.dart';
 import '../services/analytics_service.dart';
+import '../l10n/app_localizations.dart';
 import '../theme/app_theme.dart';
 import '../utils/profanity_filter.dart';
 import '../widgets/battle_sprites.dart';
@@ -45,7 +46,8 @@ class CharacterCreationScreen extends StatefulWidget {
 }
 
 class _CharacterCreationScreenState extends State<CharacterCreationScreen> {
-  final _nameController = TextEditingController(text: 'The Warden');
+  final _nameController = TextEditingController();
+  bool _nameSeeded = false;
   int _step = 0;
   DndClass? _selectedClass;
   HeroRace? _selectedRace;
@@ -54,6 +56,16 @@ class _CharacterCreationScreenState extends State<CharacterCreationScreen> {
   // True when the hero was made via one-tap Quick Start (recommended defaults),
   // so the funnel can compare quick-start vs. fully-customised onboarding.
   bool _wasQuickStart = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Prefill the localized default name once (needs a context for l10n).
+    if (!_nameSeeded) {
+      _nameSeeded = true;
+      _nameController.text = AppLocalizations.of(context).ccDefaultHeroName;
+    }
+  }
 
   @override
   void dispose() {
@@ -92,11 +104,12 @@ class _CharacterCreationScreenState extends State<CharacterCreationScreen> {
 
   void _create() {
     if (_selectedClass == null || _selectedRace == null || _selectedTrait == null) return;
+    final l = AppLocalizations.of(context);
     final name = _nameController.text.trim();
     if (ProfanityFilter.isProfane(name)) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-        content: Text('Please choose a different name — that one isn\'t allowed.'),
-        backgroundColor: Color(0xFF8a2a2a),
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(l.ccNameNotAllowed),
+        backgroundColor: const Color(0xFF8a2a2a),
         behavior: SnackBarBehavior.floating,
       ));
       return;
@@ -106,7 +119,7 @@ class _CharacterCreationScreenState extends State<CharacterCreationScreen> {
     Navigator.pop(
       context,
       CharacterCreationResult(
-        name: name.isEmpty ? 'The Warden' : name,
+        name: name.isEmpty ? l.ccDefaultHeroName : name,
         heroClass: _selectedClass!,
         heroRace: _selectedRace!,
         trait: _selectedTrait!,
@@ -255,13 +268,14 @@ class _NameStep extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context);
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(60, 64, 60, 32),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           Text(
-            'FORGE YOUR LEGEND',
+            l.ccForgeYourLegend,
             style: AppTheme.pixelHeading(fontSize: 23, letterSpacing: 4),
           )
               .animate()
@@ -269,7 +283,7 @@ class _NameStep extends StatelessWidget {
               .slideY(begin: -0.1, duration: 500.ms, curve: Curves.easeOut),
           const SizedBox(height: 8),
           Text(
-            '— NAME YOUR WARRIOR —',
+            l.ccNameYourWarrior,
             style: GoogleFonts.rajdhani(
               fontSize: 12,
               color: AppTheme.textMuted,
@@ -353,7 +367,7 @@ class _NameStep extends StatelessWidget {
             child: ElevatedButton(
               onPressed: onQuickStart,
               child: Text(
-                '⚡  QUICK START',
+                '⚡  ${l.ccQuickStart}',
                 style: GoogleFonts.rajdhani(
                     fontSize: 17, fontWeight: FontWeight.bold, letterSpacing: 2),
               ),
@@ -361,7 +375,7 @@ class _NameStep extends StatelessWidget {
           ).animate(delay: 300.ms).fadeIn(duration: 400.ms),
           const SizedBox(height: 6),
           Text(
-            'Jump straight in with a recommended hero',
+            l.ccQuickStartHint,
             textAlign: TextAlign.center,
             style: GoogleFonts.rajdhani(
               fontSize: 12,
@@ -383,7 +397,7 @@ class _NameStep extends StatelessWidget {
                 foregroundColor: AppTheme.textMuted,
               ),
               child: Text(
-                'CHOOSE CLASS & RACE  →',
+                '${l.ccChooseClassAndRace}  →',
                 style: GoogleFonts.rajdhani(
                     fontSize: 14, letterSpacing: 1.5),
               ),
@@ -413,16 +427,17 @@ class _ClassStep extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context);
     return Column(
       children: [
         const SizedBox(height: 24),
         Text(
-          'CHOOSE YOUR CLASS',
+          l.ccChooseYourClass,
           style: AppTheme.pixelHeading(fontSize: 19, letterSpacing: 4),
         ).animate().fadeIn(duration: 400.ms),
         const SizedBox(height: 4),
         Text(
-          '— SELECT YOUR PATH —',
+          l.ccSelectYourPath,
           style: GoogleFonts.rajdhani(
             fontSize: 12,
             color: AppTheme.textMuted,
@@ -467,8 +482,8 @@ class _ClassStep extends StatelessWidget {
               ),
               child: Text(
                 selectedClass != null
-                    ? 'CHOOSE RACE  →'
-                    : 'SELECT A CLASS',
+                    ? '${l.ccChooseRace}  →'
+                    : l.ccSelectAClass,
                 style: GoogleFonts.rajdhani(
                     fontSize: 15, letterSpacing: 2),
               ),
@@ -607,6 +622,7 @@ class _ClassCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context);
     final info = dndClass.info;
     final pair = _elementPair;
     final stats = [info.str, info.dex, info.con, info.intelligence, info.wis, info.cha];
@@ -725,7 +741,7 @@ class _ClassCard extends StatelessWidget {
                   border: Border.all(color: const Color(0xFF44cc66).withValues(alpha: 0.6)),
                   borderRadius: BorderRadius.circular(2),
                 ),
-                child: Text('★ RECOMMENDED FOR BEGINNERS',
+                child: Text(l.ccRecommendedForBeginners,
                     textAlign: TextAlign.center,
                     style: GoogleFonts.rajdhani(
                         fontSize: 7, color: const Color(0xFF44cc66),
@@ -737,7 +753,7 @@ class _ClassCard extends StatelessWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text('COMPLEXITY',
+                Text(l.ccComplexity,
                     style: GoogleFonts.rajdhani(
                         fontSize: 7, color: AppTheme.textMuted,
                         letterSpacing: 0.5)),
@@ -865,16 +881,17 @@ class _RaceStepState extends State<_RaceStep> {
 
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context);
     return Column(
       children: [
         const SizedBox(height: 16),
         Text(
-          'CHOOSE YOUR RACE',
+          l.ccChooseYourRace,
           style: AppTheme.pixelHeading(fontSize: 19, letterSpacing: 4),
         ).animate().fadeIn(duration: 400.ms),
         const SizedBox(height: 4),
         Text(
-          '— YOUR HERITAGE DEFINES YOU —',
+          l.ccHeritageDefinesYou,
           style: GoogleFonts.rajdhani(
             fontSize: 12,
             color: AppTheme.textMuted,
@@ -909,8 +926,8 @@ class _RaceStepState extends State<_RaceStep> {
               ),
               child: Text(
                 widget.selectedRace != null
-                    ? 'BEGIN YOUR JOURNEY'
-                    : 'SELECT A RACE',
+                    ? l.ccBeginYourJourney
+                    : l.ccSelectARace,
                 style: GoogleFonts.rajdhani(fontSize: 15, letterSpacing: 2),
               ),
             ),
