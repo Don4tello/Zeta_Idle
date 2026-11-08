@@ -3,6 +3,13 @@
 Version numbers are the pubspec build number (`0.1.0+N`), which is the Play
 Store `versionCode`. Newest first.
 
+## +373 — Faster first steps
+- ⚡ New: one-tap **Quick Start** in character creation — jump straight into the action with a recommended hero, or tap "Choose class & race" for the full setup.
+- 🚀 First-time players now drop right into hero creation instead of an empty character-select screen.
+- 🔔 Smoother reminder opt-in: we now ask about notifications once you're in the game, so you don't get prompted before you've even started.
+
+---
+
 ## +372 — The Warband Update: merc parties, PvP Seasons & promo codes
 - ⚔️ Mercenaries reworked — field a 3-merc battle party, push companions past Lv5 into Star Ranks, and respec their talents.
 - 🏆 PvP Seasons — climb a persistent league ladder from Bronze all the way to Legend, with one-time promotion rewards.

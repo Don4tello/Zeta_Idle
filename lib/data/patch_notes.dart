@@ -19,6 +19,20 @@ int get kLatestPatchBuild => kPatchNotes.first.build;
 
 const kPatchNotes = <PatchNote>[
   PatchNote(
+    build: 373,
+    title: 'Faster First Steps',
+    date: '2026-11-08',
+    changes: [
+      'New: one-tap Quick Start in character creation — jump straight into the '
+          'action with a recommended hero, or tap "Choose class & race" for the '
+          'full setup.',
+      'First-time players now drop right into hero creation instead of an empty '
+          'character-select screen.',
+      'We now ask about notifications once you are in the game, not before you '
+          'have even started.',
+    ],
+  ),
+  PatchNote(
     build: 307,
     title: 'Clearer PLAY Grouping',
     date: '2026-09-25',
