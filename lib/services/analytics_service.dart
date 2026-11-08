@@ -40,6 +40,10 @@ class AnalyticsService {
     fa.logEvent(name: name, parameters: clean).catchError((_) {});
   }
 
+  // ── Onboarding (retention funnel: first_open → character_created → stage_reached) ─
+  void characterCreated(String heroClass, String race) =>
+      _log('character_created', {'hero_class': heroClass, 'race': race});
+
   // ── Progression ─────────────────────────────────────────────────────────────
   void levelUp(int level, String heroClass) =>
       _log('level_up', {'level': level, 'hero_class': heroClass});

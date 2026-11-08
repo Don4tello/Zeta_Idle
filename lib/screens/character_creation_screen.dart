@@ -7,6 +7,7 @@ import '../models/dnd_class.dart';
 import '../models/hero_model.dart' show HeroGender;
 import '../models/hero_race.dart';
 import '../models/hero_trait.dart';
+import '../services/analytics_service.dart';
 import '../theme/app_theme.dart';
 import '../utils/profanity_filter.dart';
 import '../widgets/battle_sprites.dart';
@@ -83,6 +84,8 @@ class _CharacterCreationScreenState extends State<CharacterCreationScreen> {
       ));
       return;
     }
+    AnalyticsService.instance.characterCreated(
+        _selectedClass!.name, _selectedRace!.name);
     Navigator.pop(
       context,
       CharacterCreationResult(
