@@ -41,8 +41,9 @@ class AnalyticsService {
   }
 
   // ── Onboarding (retention funnel: first_open → character_created → stage_reached) ─
-  void characterCreated(String heroClass, String race) =>
-      _log('character_created', {'hero_class': heroClass, 'race': race});
+  void characterCreated(String heroClass, String race, {bool quickStart = false}) =>
+      _log('character_created',
+          {'hero_class': heroClass, 'race': race, 'quick_start': quickStart});
 
   // ── Progression ─────────────────────────────────────────────────────────────
   void levelUp(int level, String heroClass) =>

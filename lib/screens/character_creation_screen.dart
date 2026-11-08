@@ -51,6 +51,9 @@ class _CharacterCreationScreenState extends State<CharacterCreationScreen> {
   HeroRace? _selectedRace;
   HeroTrait? _selectedTrait;
   HeroGender _selectedGender = HeroGender.male;
+  // True when the hero was made via one-tap Quick Start (recommended defaults),
+  // so the funnel can compare quick-start vs. fully-customised onboarding.
+  bool _wasQuickStart = false;
 
   @override
   void dispose() {
@@ -73,6 +76,20 @@ class _CharacterCreationScreenState extends State<CharacterCreationScreen> {
     }
   }
 
+  /// One-tap onboarding: picks a beginner-recommended class + the balanced
+  /// Human race and drops straight into the game, skipping the class/race steps.
+  /// Cuts time-to-first-fight — the main early drop-off in the retention funnel.
+  /// Players who want full control still have the step-by-step wizard.
+  void _quickStart() {
+    setState(() {
+      _wasQuickStart = true;
+      _selectedClass = _kOrderedClasses.first; // first = lowest-complexity class
+      _selectedRace = HeroRace.human;
+      _selectedTrait = HeroTrait.forRace(HeroRace.human).firstOrNull;
+    });
+    _create();
+  }
+
   void _create() {
     if (_selectedClass == null || _selectedRace == null || _selectedTrait == null) return;
     final name = _nameController.text.trim();
@@ -85,7 +102,7 @@ class _CharacterCreationScreenState extends State<CharacterCreationScreen> {
       return;
     }
     AnalyticsService.instance.characterCreated(
-        _selectedClass!.name, _selectedRace!.name);
+        _selectedClass!.name, _selectedRace!.name, quickStart: _wasQuickStart);
     Navigator.pop(
       context,
       CharacterCreationResult(
@@ -126,6 +143,7 @@ class _CharacterCreationScreenState extends State<CharacterCreationScreen> {
                       selectedGender: _selectedGender,
                       onGenderChanged: (g) => setState(() => _selectedGender = g),
                       onNext: _goToClass,
+                      onQuickStart: _quickStart,
                     ),
                   1 => _ClassStep(
                       key: const ValueKey(1),
@@ -227,11 +245,13 @@ class _NameStep extends StatelessWidget {
     required this.selectedGender,
     required this.onGenderChanged,
     required this.onNext,
+    required this.onQuickStart,
   });
   final TextEditingController controller;
   final HeroGender selectedGender;
   final ValueChanged<HeroGender> onGenderChanged;
   final VoidCallback onNext;
+  final VoidCallback onQuickStart;
 
   @override
   Widget build(BuildContext context) {
@@ -325,17 +345,50 @@ class _NameStep extends StatelessWidget {
             }).toList(),
           ).animate(delay: 250.ms).fadeIn(duration: 400.ms),
           const SizedBox(height: 36),
+          // Primary path: one tap into the game with a recommended hero. This is
+          // the fast lane that cuts time-to-first-fight for new players.
           SizedBox(
             width: double.infinity,
+            height: 54,
             child: ElevatedButton(
-              onPressed: onNext,
+              onPressed: onQuickStart,
               child: Text(
-                'CHOOSE CLASS  →',
+                '⚡  QUICK START',
                 style: GoogleFonts.rajdhani(
-                    fontSize: 15, letterSpacing: 2),
+                    fontSize: 17, fontWeight: FontWeight.bold, letterSpacing: 2),
               ),
             ),
           ).animate(delay: 300.ms).fadeIn(duration: 400.ms),
+          const SizedBox(height: 6),
+          Text(
+            'Jump straight in with a recommended hero',
+            textAlign: TextAlign.center,
+            style: GoogleFonts.rajdhani(
+              fontSize: 12,
+              color: AppTheme.textMuted,
+              letterSpacing: 0.5,
+            ),
+          ).animate(delay: 350.ms).fadeIn(duration: 400.ms),
+          const SizedBox(height: 18),
+          // Secondary path: the full step-by-step wizard for players who want to
+          // pick their own class and race.
+          SizedBox(
+            width: double.infinity,
+            height: 48,
+            child: OutlinedButton(
+              onPressed: onNext,
+              style: OutlinedButton.styleFrom(
+                side: BorderSide(
+                    color: AppTheme.cardBorder, width: 1.5),
+                foregroundColor: AppTheme.textMuted,
+              ),
+              child: Text(
+                'CHOOSE CLASS & RACE  →',
+                style: GoogleFonts.rajdhani(
+                    fontSize: 14, letterSpacing: 1.5),
+              ),
+            ),
+          ).animate(delay: 400.ms).fadeIn(duration: 400.ms),
         ],
       ),
     );

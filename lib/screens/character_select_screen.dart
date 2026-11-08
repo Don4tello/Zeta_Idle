@@ -24,6 +24,10 @@ class CharacterSelectScreen extends StatefulWidget {
 
 class _CharacterSelectScreenState extends State<CharacterSelectScreen> {
   late Future<_SelectData> _charactersFuture;
+  // First-time players (no characters yet) are dropped straight into creation,
+  // skipping this otherwise-empty select screen. Guarded so it fires once and
+  // doesn't re-trigger if they back out of the wizard.
+  bool _autoOpenedCreation = false;
 
   @override
   void initState() {
@@ -152,6 +156,17 @@ class _CharacterSelectScreenState extends State<CharacterSelectScreen> {
                   );
                 }
                 final data  = snap.data!;
+                // Brand-new player with zero characters → jump straight into the
+                // creation wizard rather than showing an empty select screen.
+                // Removes a screen + tap from onboarding (shortens time-to-first-
+                // fight). Fires once; if they back out they see this screen.
+                if (!_autoOpenedCreation &&
+                    data.characters.every((c) => c == null)) {
+                  _autoOpenedCreation = true;
+                  WidgetsBinding.instance.addPostFrameCallback((_) {
+                    if (mounted) _onSlotTapped(0, null);
+                  });
+                }
                 // Mutable copy so we can patch in live values for the active slot
                 final chars = List<CharacterSummary?>.from(data.characters);
                 // If a slot is currently loaded, its live game-state values are
