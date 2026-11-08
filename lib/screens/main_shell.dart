@@ -10,6 +10,7 @@ import '../screens/modes_screen.dart';
 import '../services/game_state.dart';
 import '../services/save_service.dart';
 import '../services/notification_service.dart';
+import '../l10n/app_localizations.dart';
 import '../data/system_tutorials.dart';
 import '../theme/app_theme.dart';
 
@@ -648,7 +649,7 @@ class _CustomBottomNav extends StatelessWidget {
               return Expanded(
                 child: _NavItem(
                   icon: _navItems[i].icon,
-                  label: _navItems[i].label,
+                  label: _navLabel(context, _navItems[i].label),
                   active: currentIndex == i,
                   badge: i < badges.length && badges[i],
                   onTap: () => onTap(i),
@@ -661,6 +662,19 @@ class _CustomBottomNav extends StatelessWidget {
           Container(height: bottomPadding, color: const Color(0xFF0E0C0A)),
       ],
     );
+  }
+}
+
+/// Localized label for a bottom-nav id (the ids stay English as stable keys).
+String _navLabel(BuildContext context, String id) {
+  final l = AppLocalizations.of(context);
+  switch (id) {
+    case 'HERO':      return l.navHero;
+    case 'PLAY':      return l.navPlay;
+    case 'INVENTORY': return l.navInventory;
+    case 'SHOP':      return l.navShop;
+    case 'GUILD':     return l.navGuild;
+    default:          return id;
   }
 }
 

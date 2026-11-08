@@ -36,6 +36,26 @@
   "csDelete": "DELETE",
   "csLockedSlot": "LOCKED SLOT",
 
+  "navHero": "HERO",
+  "navPlay": "PLAY",
+  "navInventory": "INVENTORY",
+  "navShop": "SHOP",
+  "navGuild": "GUILD",
+
+  "modeCampaign": "CAMPAIGN",
+  "modeDungeon": "DUNGEON",
+  "modeBossRush": "BOSS RUSH",
+  "modeTowerAscension": "TOWER ASCENSION",
+  "modeGauntlet": "GAUNTLET",
+  "modePvp": "PVP",
+  "modeChallenges": "CHALLENGES",
+  "modeEvents": "EVENTS",
+  "modeExpedition": "EXPEDITION",
+  "modeDaily": "DAILY",
+  "modeBounties": "BOUNTIES",
+  "modeQuests": "QUESTS",
+  "badgeNew": "NEW",
+
   "settingsLanguage": "Language",
   "settingsLanguageSystem": "System default"
 }

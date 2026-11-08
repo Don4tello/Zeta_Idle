@@ -89,6 +89,60 @@ class AppLocalizationsDe extends AppLocalizations {
   String get csLockedSlot => 'GESPERRTER PLATZ';
 
   @override
+  String get navHero => 'HELD';
+
+  @override
+  String get navPlay => 'SPIELEN';
+
+  @override
+  String get navInventory => 'INVENTAR';
+
+  @override
+  String get navShop => 'SHOP';
+
+  @override
+  String get navGuild => 'GILDE';
+
+  @override
+  String get modeCampaign => 'KAMPAGNE';
+
+  @override
+  String get modeDungeon => 'VERLIES';
+
+  @override
+  String get modeBossRush => 'BOSS-RUSH';
+
+  @override
+  String get modeTowerAscension => 'TURMAUFSTIEG';
+
+  @override
+  String get modeGauntlet => 'GAUNTLET';
+
+  @override
+  String get modePvp => 'PVP';
+
+  @override
+  String get modeChallenges => 'PRÜFUNGEN';
+
+  @override
+  String get modeEvents => 'EVENTS';
+
+  @override
+  String get modeExpedition => 'EXPEDITION';
+
+  @override
+  String get modeDaily => 'TÄGLICH';
+
+  @override
+  String get modeBounties => 'KOPFGELD';
+
+  @override
+  String get modeQuests => 'QUESTS';
+
+  @override
+  String get badgeNew => 'NEU';
+
+  @override
   String get settingsLanguage => 'Sprache';
 
   @override

@@ -31,6 +31,26 @@
   "csDelete": "LÖSCHEN",
   "csLockedSlot": "GESPERRTER PLATZ",
 
+  "navHero": "HELD",
+  "navPlay": "SPIELEN",
+  "navInventory": "INVENTAR",
+  "navShop": "SHOP",
+  "navGuild": "GILDE",
+
+  "modeCampaign": "KAMPAGNE",
+  "modeDungeon": "VERLIES",
+  "modeBossRush": "BOSS-RUSH",
+  "modeTowerAscension": "TURMAUFSTIEG",
+  "modeGauntlet": "GAUNTLET",
+  "modePvp": "PVP",
+  "modeChallenges": "PRÜFUNGEN",
+  "modeEvents": "EVENTS",
+  "modeExpedition": "EXPEDITION",
+  "modeDaily": "TÄGLICH",
+  "modeBounties": "KOPFGELD",
+  "modeQuests": "QUESTS",
+  "badgeNew": "NEU",
+
   "settingsLanguage": "Sprache",
   "settingsLanguageSystem": "Systemstandard"
 }

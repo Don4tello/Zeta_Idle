@@ -3,6 +3,7 @@ import 'dart:ui' show PointerDeviceKind;
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../services/game_state.dart';
+import '../l10n/app_localizations.dart';
 import '../theme/app_theme.dart';
 import '../widgets/game_icons.dart';
 import 'campaign_screen.dart';
@@ -14,6 +15,26 @@ import 'gauntlet_screen.dart';
 import 'boss_rush_screen.dart';
 import 'world_event_screen.dart';
 import 'expedition_screen.dart';
+
+/// Maps a stable mode-tab id (also used as a logic key) to its localized label.
+String _modeLabel(BuildContext context, String id) {
+  final l = AppLocalizations.of(context);
+  switch (id) {
+    case 'CAMPAIGN':        return l.modeCampaign;
+    case 'DUNGEON':         return l.modeDungeon;
+    case 'BOSS RUSH':       return l.modeBossRush;
+    case 'TOWER ASCENSION': return l.modeTowerAscension;
+    case 'GAUNTLET':        return l.modeGauntlet;
+    case 'PVP':             return l.modePvp;
+    case 'CHALLENGES':      return l.modeChallenges;
+    case 'EVENTS':          return l.modeEvents;
+    case 'EXPEDITION':      return l.modeExpedition;
+    case 'DAILY':           return l.modeDaily;
+    case 'BOUNTIES':        return l.modeBounties;
+    case 'QUESTS':          return l.modeQuests;
+    default:                return id;
+  }
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // ModesScreen
@@ -227,7 +248,8 @@ class _ModesScreenState extends State<ModesScreen>
                                   ? AppTheme.accentGold
                                   : AppTheme.textMuted),
                           const SizedBox(height: 3),
-                          Text(label,
+                          Text(_modeLabel(context, label),
+                              textAlign: TextAlign.center,
                               style: GoogleFonts.rajdhani(
                                 fontSize: 9,
                                 fontWeight: isActive
@@ -265,9 +287,9 @@ class _ModesScreenState extends State<ModesScreen>
                               color: const Color(0xFFee3333),
                               borderRadius: BorderRadius.circular(3),
                             ),
-                            child: const Text(
-                              'NEW',
-                              style: TextStyle(
+                            child: Text(
+                              AppLocalizations.of(context).badgeNew,
+                              style: const TextStyle(
                                 fontSize: 6,
                                 color: Colors.white,
                                 fontWeight: FontWeight.bold,

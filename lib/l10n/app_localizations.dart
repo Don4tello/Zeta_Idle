@@ -248,6 +248,114 @@ abstract class AppLocalizations {
   /// **'LOCKED SLOT'**
   String get csLockedSlot;
 
+  /// No description provided for @navHero.
+  ///
+  /// In en, this message translates to:
+  /// **'HERO'**
+  String get navHero;
+
+  /// No description provided for @navPlay.
+  ///
+  /// In en, this message translates to:
+  /// **'PLAY'**
+  String get navPlay;
+
+  /// No description provided for @navInventory.
+  ///
+  /// In en, this message translates to:
+  /// **'INVENTORY'**
+  String get navInventory;
+
+  /// No description provided for @navShop.
+  ///
+  /// In en, this message translates to:
+  /// **'SHOP'**
+  String get navShop;
+
+  /// No description provided for @navGuild.
+  ///
+  /// In en, this message translates to:
+  /// **'GUILD'**
+  String get navGuild;
+
+  /// No description provided for @modeCampaign.
+  ///
+  /// In en, this message translates to:
+  /// **'CAMPAIGN'**
+  String get modeCampaign;
+
+  /// No description provided for @modeDungeon.
+  ///
+  /// In en, this message translates to:
+  /// **'DUNGEON'**
+  String get modeDungeon;
+
+  /// No description provided for @modeBossRush.
+  ///
+  /// In en, this message translates to:
+  /// **'BOSS RUSH'**
+  String get modeBossRush;
+
+  /// No description provided for @modeTowerAscension.
+  ///
+  /// In en, this message translates to:
+  /// **'TOWER ASCENSION'**
+  String get modeTowerAscension;
+
+  /// No description provided for @modeGauntlet.
+  ///
+  /// In en, this message translates to:
+  /// **'GAUNTLET'**
+  String get modeGauntlet;
+
+  /// No description provided for @modePvp.
+  ///
+  /// In en, this message translates to:
+  /// **'PVP'**
+  String get modePvp;
+
+  /// No description provided for @modeChallenges.
+  ///
+  /// In en, this message translates to:
+  /// **'CHALLENGES'**
+  String get modeChallenges;
+
+  /// No description provided for @modeEvents.
+  ///
+  /// In en, this message translates to:
+  /// **'EVENTS'**
+  String get modeEvents;
+
+  /// No description provided for @modeExpedition.
+  ///
+  /// In en, this message translates to:
+  /// **'EXPEDITION'**
+  String get modeExpedition;
+
+  /// No description provided for @modeDaily.
+  ///
+  /// In en, this message translates to:
+  /// **'DAILY'**
+  String get modeDaily;
+
+  /// No description provided for @modeBounties.
+  ///
+  /// In en, this message translates to:
+  /// **'BOUNTIES'**
+  String get modeBounties;
+
+  /// No description provided for @modeQuests.
+  ///
+  /// In en, this message translates to:
+  /// **'QUESTS'**
+  String get modeQuests;
+
+  /// No description provided for @badgeNew.
+  ///
+  /// In en, this message translates to:
+  /// **'NEW'**
+  String get badgeNew;
+
   /// No description provided for @settingsLanguage.
   ///
   /// In en, this message translates to:

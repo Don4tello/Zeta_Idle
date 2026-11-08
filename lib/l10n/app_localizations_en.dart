@@ -87,6 +87,60 @@ class AppLocalizationsEn extends AppLocalizations {
   String get csLockedSlot => 'LOCKED SLOT';
 
   @override
+  String get navHero => 'HERO';
+
+  @override
+  String get navPlay => 'PLAY';
+
+  @override
+  String get navInventory => 'INVENTORY';
+
+  @override
+  String get navShop => 'SHOP';
+
+  @override
+  String get navGuild => 'GUILD';
+
+  @override
+  String get modeCampaign => 'CAMPAIGN';
+
+  @override
+  String get modeDungeon => 'DUNGEON';
+
+  @override
+  String get modeBossRush => 'BOSS RUSH';
+
+  @override
+  String get modeTowerAscension => 'TOWER ASCENSION';
+
+  @override
+  String get modeGauntlet => 'GAUNTLET';
+
+  @override
+  String get modePvp => 'PVP';
+
+  @override
+  String get modeChallenges => 'CHALLENGES';
+
+  @override
+  String get modeEvents => 'EVENTS';
+
+  @override
+  String get modeExpedition => 'EXPEDITION';
+
+  @override
+  String get modeDaily => 'DAILY';
+
+  @override
+  String get modeBounties => 'BOUNTIES';
+
+  @override
+  String get modeQuests => 'QUESTS';
+
+  @override
+  String get badgeNew => 'NEW';
+
+  @override
   String get settingsLanguage => 'Language';
 
   @override
