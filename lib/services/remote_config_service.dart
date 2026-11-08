@@ -53,6 +53,9 @@ class RemoteConfigService {
     //  • enemy_threat_pct — base enemy damage per hit as a fraction of the hero's
     //    max HP (per-tier ramp + boss mult in code), so fights stay threatening at
     //    any gear level without ever one-shotting.
+    // NB: the floor/ceiling anchor (avgHeroHit) runs ~2.6× under real damage/
+    // round, so target_fight_rounds is tuned ~2.6× high in RC (≈21) → ~8 real
+    // rounds. In-app default stays 8 for safety if RC is unreachable.
     'target_fight_rounds': 8.0,
     'enemy_threat_pct': 0.03,
     'top_rarity_drop_mult': 1.0,

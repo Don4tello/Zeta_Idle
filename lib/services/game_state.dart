@@ -8819,9 +8819,11 @@ class GameState extends ChangeNotifier {
   static const double kBossThreatMult     = 1.5;  // bosses hit ~50% harder
   static const double kMaxThreatPct       = 0.12; // hard cap — never one-shot
 
-  /// The hero's damage output per combat round. Telemetry shows effective
-  /// damage-per-round ≈ avgHeroHit (the per-round damage stat), so the floor
-  /// anchors directly to it — multiplying by hits/round over-scaled fights ~2.5×.
+  /// The hero's per-round anchor for the fight-length floor/ceiling. This is
+  /// avgHeroHit; NOTE post-launch telemetry showed ACTUAL damage/round ≈ 2.6×
+  /// this (crits/abilities/multi-hit), so the floor/ceiling are effectively in
+  /// "avgHeroHit units" — `target_fight_rounds` is tuned ~2.6× higher in Remote
+  /// Config to compensate (≈21 → ~8 real rounds). Tune live via RC, re-pull ZBAL.
   int get heroDmgPerRound => avgHeroHit.clamp(1, 1000000000000000);
 
   /// Minimum enemy HP for a target-length fight vs the hero's damage/round, with
