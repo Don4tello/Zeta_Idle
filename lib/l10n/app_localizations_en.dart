@@ -141,6 +141,112 @@ class AppLocalizationsEn extends AppLocalizations {
   String get badgeNew => 'NEW';
 
   @override
+  String get lootLog => 'LOOT LOG';
+
+  @override
+  String get noLootYet => 'No loot yet — go fight something!';
+
+  @override
+  String get welcomeBack => 'Welcome back!';
+
+  @override
+  String awayFor(String time) {
+    return 'You were away for $time.';
+  }
+
+  @override
+  String awayForCapped(int hours) {
+    return 'You were away for more than ${hours}h — showing the maximum idle rewards.';
+  }
+
+  @override
+  String rewardGold(String amount) {
+    return '+$amount gold';
+  }
+
+  @override
+  String rewardXp(String amount) {
+    return '+$amount XP';
+  }
+
+  @override
+  String rewardShards(String amount) {
+    return '+$amount shards';
+  }
+
+  @override
+  String expeditionsReady(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count expeditions ready!',
+      one: '$count expedition ready!',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get comebackBonus => 'Comeback bonus:';
+
+  @override
+  String get idleIncomeCollected => 'Idle income collected while you rested.';
+
+  @override
+  String get claim => 'CLAIM';
+
+  @override
+  String get milestone => 'MILESTONE';
+
+  @override
+  String get welcomeBackCaps => 'WELCOME BACK!';
+
+  @override
+  String get missedYou => 'We missed you! Here\'s a bonus\nfor your time away:';
+
+  @override
+  String get newSystemUnlocked => 'NEW SYSTEM UNLOCKED';
+
+  @override
+  String get gotIt => 'GOT IT';
+
+  @override
+  String get welcomeFightTitle => 'Fight!';
+
+  @override
+  String get welcomeFightBody =>
+      'Go to the PLAY tab and tap a stage card in CAMPAIGN to start your first battle. Keep attacking until the enemy falls!';
+
+  @override
+  String get welcomeIdleTitle => 'Earn idle gold';
+
+  @override
+  String get welcomeIdleBody =>
+      'Your hero earns gold automatically every minute, even when you\'re not fighting. Watch the gold bar on the HERO tab fill up.';
+
+  @override
+  String get welcomeStrongerTitle => 'Get stronger';
+
+  @override
+  String get welcomeStrongerBody =>
+      'Spend gold in UPGRADES to raise your stats. Open PASSIVES for permanent bonuses, and ABILITIES for powerful combat skills.';
+
+  @override
+  String get welcomeExploreTitle => 'Explore';
+
+  @override
+  String get welcomeExploreBody =>
+      'CAMPAIGN advances through 100 hand-crafted stages. TOWER ASCENSION lets you grind shards forever. The DUNGEON is a roguelite run with item drops and boss fights. More modes unlock as you progress.';
+
+  @override
+  String get navBack => 'BACK';
+
+  @override
+  String get navNext => 'NEXT';
+
+  @override
+  String get startPlaying => 'START PLAYING';
+
+  @override
   String get settingsLanguage => 'Language';
 
   @override

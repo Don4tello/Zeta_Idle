@@ -356,6 +356,174 @@ abstract class AppLocalizations {
   /// **'NEW'**
   String get badgeNew;
 
+  /// No description provided for @lootLog.
+  ///
+  /// In en, this message translates to:
+  /// **'LOOT LOG'**
+  String get lootLog;
+
+  /// No description provided for @noLootYet.
+  ///
+  /// In en, this message translates to:
+  /// **'No loot yet — go fight something!'**
+  String get noLootYet;
+
+  /// No description provided for @welcomeBack.
+  ///
+  /// In en, this message translates to:
+  /// **'Welcome back!'**
+  String get welcomeBack;
+
+  /// No description provided for @awayFor.
+  ///
+  /// In en, this message translates to:
+  /// **'You were away for {time}.'**
+  String awayFor(String time);
+
+  /// No description provided for @awayForCapped.
+  ///
+  /// In en, this message translates to:
+  /// **'You were away for more than {hours}h — showing the maximum idle rewards.'**
+  String awayForCapped(int hours);
+
+  /// No description provided for @rewardGold.
+  ///
+  /// In en, this message translates to:
+  /// **'+{amount} gold'**
+  String rewardGold(String amount);
+
+  /// No description provided for @rewardXp.
+  ///
+  /// In en, this message translates to:
+  /// **'+{amount} XP'**
+  String rewardXp(String amount);
+
+  /// No description provided for @rewardShards.
+  ///
+  /// In en, this message translates to:
+  /// **'+{amount} shards'**
+  String rewardShards(String amount);
+
+  /// No description provided for @expeditionsReady.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, one{{count} expedition ready!} other{{count} expeditions ready!}}'**
+  String expeditionsReady(int count);
+
+  /// No description provided for @comebackBonus.
+  ///
+  /// In en, this message translates to:
+  /// **'Comeback bonus:'**
+  String get comebackBonus;
+
+  /// No description provided for @idleIncomeCollected.
+  ///
+  /// In en, this message translates to:
+  /// **'Idle income collected while you rested.'**
+  String get idleIncomeCollected;
+
+  /// No description provided for @claim.
+  ///
+  /// In en, this message translates to:
+  /// **'CLAIM'**
+  String get claim;
+
+  /// No description provided for @milestone.
+  ///
+  /// In en, this message translates to:
+  /// **'MILESTONE'**
+  String get milestone;
+
+  /// No description provided for @welcomeBackCaps.
+  ///
+  /// In en, this message translates to:
+  /// **'WELCOME BACK!'**
+  String get welcomeBackCaps;
+
+  /// No description provided for @missedYou.
+  ///
+  /// In en, this message translates to:
+  /// **'We missed you! Here\'s a bonus\nfor your time away:'**
+  String get missedYou;
+
+  /// No description provided for @newSystemUnlocked.
+  ///
+  /// In en, this message translates to:
+  /// **'NEW SYSTEM UNLOCKED'**
+  String get newSystemUnlocked;
+
+  /// No description provided for @gotIt.
+  ///
+  /// In en, this message translates to:
+  /// **'GOT IT'**
+  String get gotIt;
+
+  /// No description provided for @welcomeFightTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Fight!'**
+  String get welcomeFightTitle;
+
+  /// No description provided for @welcomeFightBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Go to the PLAY tab and tap a stage card in CAMPAIGN to start your first battle. Keep attacking until the enemy falls!'**
+  String get welcomeFightBody;
+
+  /// No description provided for @welcomeIdleTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Earn idle gold'**
+  String get welcomeIdleTitle;
+
+  /// No description provided for @welcomeIdleBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Your hero earns gold automatically every minute, even when you\'re not fighting. Watch the gold bar on the HERO tab fill up.'**
+  String get welcomeIdleBody;
+
+  /// No description provided for @welcomeStrongerTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Get stronger'**
+  String get welcomeStrongerTitle;
+
+  /// No description provided for @welcomeStrongerBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Spend gold in UPGRADES to raise your stats. Open PASSIVES for permanent bonuses, and ABILITIES for powerful combat skills.'**
+  String get welcomeStrongerBody;
+
+  /// No description provided for @welcomeExploreTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Explore'**
+  String get welcomeExploreTitle;
+
+  /// No description provided for @welcomeExploreBody.
+  ///
+  /// In en, this message translates to:
+  /// **'CAMPAIGN advances through 100 hand-crafted stages. TOWER ASCENSION lets you grind shards forever. The DUNGEON is a roguelite run with item drops and boss fights. More modes unlock as you progress.'**
+  String get welcomeExploreBody;
+
+  /// No description provided for @navBack.
+  ///
+  /// In en, this message translates to:
+  /// **'BACK'**
+  String get navBack;
+
+  /// No description provided for @navNext.
+  ///
+  /// In en, this message translates to:
+  /// **'NEXT'**
+  String get navNext;
+
+  /// No description provided for @startPlaying.
+  ///
+  /// In en, this message translates to:
+  /// **'START PLAYING'**
+  String get startPlaying;
+
   /// No description provided for @settingsLanguage.
   ///
   /// In en, this message translates to:

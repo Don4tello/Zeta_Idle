@@ -51,6 +51,37 @@
   "modeQuests": "QUESTS",
   "badgeNew": "NEU",
 
+  "lootLog": "BEUTE-LOG",
+  "noLootYet": "Noch keine Beute — kämpfe gegen etwas!",
+
+  "welcomeBack": "Willkommen zurück!",
+  "awayFor": "Du warst {time} weg.",
+  "awayForCapped": "Du warst mehr als {hours} Std. weg — es werden die maximalen Idle-Belohnungen angezeigt.",
+  "rewardGold": "+{amount} Gold",
+  "rewardXp": "+{amount} EP",
+  "rewardShards": "+{amount} Splitter",
+  "expeditionsReady": "{count, plural, one{{count} Expedition bereit!} other{{count} Expeditionen bereit!}}",
+  "comebackBonus": "Rückkehr-Bonus:",
+  "idleIncomeCollected": "Idle-Einkommen gesammelt, während du geruht hast.",
+  "claim": "EINSAMMELN",
+  "milestone": "MEILENSTEIN",
+  "welcomeBackCaps": "WILLKOMMEN ZURÜCK!",
+  "missedYou": "Wir haben dich vermisst! Hier ist ein Bonus\nfür deine Zeit weg:",
+  "newSystemUnlocked": "NEUES SYSTEM FREIGESCHALTET",
+  "gotIt": "VERSTANDEN",
+
+  "welcomeFightTitle": "Kämpfe!",
+  "welcomeFightBody": "Geh zum Tab SPIELEN und tippe in der KAMPAGNE auf eine Stufenkarte, um deinen ersten Kampf zu starten. Greif weiter an, bis der Gegner fällt!",
+  "welcomeIdleTitle": "Verdiene Idle-Gold",
+  "welcomeIdleBody": "Dein Held verdient jede Minute automatisch Gold, auch wenn du nicht kämpfst. Sieh zu, wie sich die Gold-Leiste im HELD-Tab füllt.",
+  "welcomeStrongerTitle": "Werde stärker",
+  "welcomeStrongerBody": "Gib Gold in VERBESSERUNGEN aus, um deine Werte zu steigern. Öffne PASSIVE für dauerhafte Boni und FÄHIGKEITEN für mächtige Kampf-Skills.",
+  "welcomeExploreTitle": "Erkunde",
+  "welcomeExploreBody": "Die KAMPAGNE führt durch 100 handgefertigte Stufen. Im TURMAUFSTIEG farmst du endlos Splitter. Das VERLIES ist ein Roguelite-Durchgang mit Beute und Bosskämpfen. Weitere Modi schaltest du mit der Zeit frei.",
+  "navBack": "ZURÜCK",
+  "navNext": "WEITER",
+  "startPlaying": "LOSSPIELEN",
+
   "settingsLanguage": "Sprache",
   "settingsLanguageSystem": "Systemstandard"
 }

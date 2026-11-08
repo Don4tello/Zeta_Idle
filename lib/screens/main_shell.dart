@@ -41,13 +41,13 @@ void showLootLog(BuildContext ctx, GameState game) {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('LOOT LOG', style: AppTheme.pixelHeading(fontSize: 12, letterSpacing: 2, color: AppTheme.accentGold)),
+            Text(AppLocalizations.of(ctx).lootLog, style: AppTheme.pixelHeading(fontSize: 12, letterSpacing: 2, color: AppTheme.accentGold)),
             const SizedBox(height: 10),
             if (game.lootHistory.isEmpty)
-              const Padding(
-                padding: EdgeInsets.symmetric(vertical: 20),
-                child: Center(child: Text('No loot yet — go fight something!',
-                    style: TextStyle(color: AppTheme.textMuted, fontSize: 12))),
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 20),
+                child: Center(child: Text(AppLocalizations.of(ctx).noLootYet,
+                    style: const TextStyle(color: AppTheme.textMuted, fontSize: 12))),
               )
             else
               SizedBox(
@@ -189,12 +189,13 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
   }
 
   void _showOfflineDialog(GameState game) {
+    final l = AppLocalizations.of(context);
     final secs = game.offlineSecondsAway;
     final String awayLine;
     if (game.offlineWasCapped) {
       // Real time away exceeded the idle cap (24h + Deep Reserves) — don't imply
       // an exact figure, just the capped maximum.
-      awayLine = 'You were away for more than ${game.idleCapHours}h — showing the maximum idle rewards.';
+      awayLine = l.awayForCapped(game.idleCapHours);
     } else {
       final String timeLabel;
       if (secs >= 3600) {
@@ -204,7 +205,7 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
       } else {
         timeLabel = '${secs ~/ 60}m';
       }
-      awayLine = 'You were away for $timeLabel.';
+      awayLine = l.awayFor(timeLabel);
     }
     final gold = game.offlineGoldEarned;
     final goldLabel = fmtNum(gold);
@@ -219,7 +220,7 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
       builder: (_) => AlertDialog(
         backgroundColor: const Color(0xFF2A2623),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
-        title: Text('Welcome back!',
+        title: Text(l.welcomeBack,
             style: AppTheme.pixelHeading(fontSize: 14, color: AppTheme.accentGold)),
         content: Column(
           mainAxisSize: MainAxisSize.min,
@@ -227,37 +228,37 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
             Text(awayLine,
                 style: const TextStyle(fontSize: 13, color: AppTheme.textMuted)),
             const SizedBox(height: 12),
-            _offlineRow(const CurrencyIcon(id: 'gold', size: 16), '+$goldLabel gold', AppTheme.accentGold),
+            _offlineRow(const CurrencyIcon(id: 'gold', size: 16), l.rewardGold(goldLabel), AppTheme.accentGold),
             if (xp > 0) ...[
               const SizedBox(height: 6),
               _offlineRow(const GameIcon(GameIconType.star, size: 16, color: Color(0xFF88aaff)),
-                  '+${fmtNum(xp)} XP', const Color(0xFF88aaff)),
+                  l.rewardXp(fmtNum(xp)), const Color(0xFF88aaff)),
             ],
             if (ess > 0) ...[
               const SizedBox(height: 6),
               // "essence" is an alias for Shards — use the real Shards icon/label.
               _offlineRow(const CurrencyIcon(id: 'shards', size: 16),
-                  '+${fmtNum(ess)} shards', const Color(0xFF6699ff)),
+                  l.rewardShards(fmtNum(ess)), const Color(0xFF6699ff)),
             ],
             if (exps > 0) ...[
               const SizedBox(height: 6),
               _offlineRow(const GameIcon(GameIconType.compass, size: 16, color: Color(0xFF55cc88)),
-                  '$exps expedition${exps > 1 ? "s" : ""} ready!', const Color(0xFF55cc88)),
+                  l.expeditionsReady(exps), const Color(0xFF55cc88)),
             ],
             if (comeback != null) ...[
               const SizedBox(height: 10),
               const Divider(color: Colors.white12),
               const SizedBox(height: 4),
-              const Text('Comeback bonus:',
-                  style: TextStyle(fontSize: 11, color: Color(0xFF44aaff), letterSpacing: 1)),
+              Text(l.comebackBonus,
+                  style: const TextStyle(fontSize: 11, color: Color(0xFF44aaff), letterSpacing: 1)),
               const SizedBox(height: 6),
               ...comeback.entries.map((e) =>
                 _offlineRow(const GameIcon(GameIconType.gift, size: 16, color: Color(0xFF44aaff)),
                     '+${e.value} ${e.key}', const Color(0xFF44aaff))),
             ],
             const SizedBox(height: 8),
-            const Text('Idle income collected while you rested.',
-                style: TextStyle(fontSize: 12, color: AppTheme.textMuted,
+            Text(l.idleIncomeCollected,
+                style: const TextStyle(fontSize: 12, color: AppTheme.textMuted,
                     fontStyle: FontStyle.italic)),
             const SizedBox(height: 16),
             // Primary action — full-width filled button (was a small text button
@@ -276,7 +277,7 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
                   padding: const EdgeInsets.symmetric(vertical: 12),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
                 ),
-                child: Text('CLAIM',
+                child: Text(l.claim,
                     style: AppTheme.pixelHeading(fontSize: 14, color: Colors.black, letterSpacing: 2)),
               ),
             ),
@@ -337,7 +338,7 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
               borderRadius: BorderRadius.circular(8),
               side: const BorderSide(color: Color(0xFFFFD700), width: 2),
             ),
-            title: Text('MILESTONE',
+            title: Text(AppLocalizations.of(ctx).milestone,
                 textAlign: TextAlign.center,
                 style: AppTheme.pixelHeading(fontSize: 16, letterSpacing: 3, color: const Color(0xFFFFD700))),
             content: Column(
@@ -370,7 +371,7 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(ctx),
-                child: Text('CLAIM', style: AppTheme.pixelHeading(fontSize: 12, color: const Color(0xFFFFD700))),
+                child: Text(AppLocalizations.of(ctx).claim, style: AppTheme.pixelHeading(fontSize: 12, color: const Color(0xFFFFD700))),
               ),
             ],
           ),
@@ -395,15 +396,15 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
               borderRadius: BorderRadius.circular(8),
               side: const BorderSide(color: Color(0xFF44aaff), width: 2),
             ),
-            title: Text('WELCOME BACK!',
+            title: Text(AppLocalizations.of(ctx).welcomeBackCaps,
                 textAlign: TextAlign.center,
                 style: AppTheme.pixelHeading(fontSize: 16, letterSpacing: 3, color: const Color(0xFF44aaff))),
             content: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Text('We missed you! Here\'s a bonus\nfor your time away:',
+                Text(AppLocalizations.of(ctx).missedYou,
                     textAlign: TextAlign.center,
-                    style: TextStyle(fontSize: 13, color: Colors.white70)),
+                    style: const TextStyle(fontSize: 13, color: Colors.white70)),
                 const SizedBox(height: 12),
                 Container(
                   padding: const EdgeInsets.all(10),
@@ -421,7 +422,7 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
             actions: [
               TextButton(
                 onPressed: () { game.claimComebackBonus(); game.audioService.playClaim(); Navigator.pop(ctx); },
-                child: Text('CLAIM', style: AppTheme.pixelHeading(fontSize: 12, color: const Color(0xFF44aaff))),
+                child: Text(AppLocalizations.of(ctx).claim, style: AppTheme.pixelHeading(fontSize: 12, color: const Color(0xFF44aaff))),
               ),
             ],
           ),
@@ -536,7 +537,7 @@ class _SystemTutorialOverlay extends StatelessWidget {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text('NEW SYSTEM UNLOCKED',
+                              Text(AppLocalizations.of(context).newSystemUnlocked,
                                   style: TextStyle(
                                       fontSize: 8,
                                       letterSpacing: 2,
@@ -568,7 +569,7 @@ class _SystemTutorialOverlay extends StatelessWidget {
                             shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(6)),
                           ),
-                          child: Text('GOT IT',
+                          child: Text(AppLocalizations.of(context).gotIt,
                               style: AppTheme.pixelHeading(
                                   fontSize: 13,
                                   letterSpacing: 2,
@@ -787,39 +788,25 @@ class _WelcomeDialog extends StatefulWidget {
 class _WelcomeDialogState extends State<_WelcomeDialog> {
   int _page = 0;
 
-  static const _pages = [
-    (
-      icon: GameIconType.swords,
-      title: 'Fight!',
-      body: 'Go to the PLAY tab and tap a stage card in CAMPAIGN to start your first battle. '
-          'Keep attacking until the enemy falls!',
-    ),
-    (
-      icon: GameIconType.coin,
-      title: 'Earn idle gold',
-      body: 'Your hero earns gold automatically every minute, even when you\'re not fighting. '
-          'Watch the gold bar on the HERO tab fill up.',
-    ),
-    (
-      icon: GameIconType.mountain,
-      title: 'Get stronger',
-      body: 'Spend gold in UPGRADES to raise your stats. '
-          'Open PASSIVES for permanent bonuses, and ABILITIES for powerful combat skills.',
-    ),
-    (
-      icon: GameIconType.compass,
-      title: 'Explore',
-      body: 'CAMPAIGN advances through 100 hand-crafted stages. '
-          'TOWER ASCENSION lets you grind shards forever. '
-          'The DUNGEON is a roguelite run with item drops and boss fights. '
-          'More modes unlock as you progress.',
-    ),
+  // Icons are constant; the titles/bodies are pulled from localizations in build.
+  static const _icons = [
+    GameIconType.swords,
+    GameIconType.coin,
+    GameIconType.mountain,
+    GameIconType.compass,
   ];
 
   @override
   Widget build(BuildContext context) {
-    final p = _pages[_page];
-    final isLast = _page == _pages.length - 1;
+    final l = AppLocalizations.of(context);
+    final pages = [
+      (icon: _icons[0], title: l.welcomeFightTitle,    body: l.welcomeFightBody),
+      (icon: _icons[1], title: l.welcomeIdleTitle,     body: l.welcomeIdleBody),
+      (icon: _icons[2], title: l.welcomeStrongerTitle, body: l.welcomeStrongerBody),
+      (icon: _icons[3], title: l.welcomeExploreTitle,  body: l.welcomeExploreBody),
+    ];
+    final p = pages[_page];
+    final isLast = _page == pages.length - 1;
     return AlertDialog(
       backgroundColor: const Color(0xFF2A2623),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
@@ -828,7 +815,7 @@ class _WelcomeDialogState extends State<_WelcomeDialog> {
         const SizedBox(width: 10),
         Text(p.title, style: AppTheme.pixelHeading(fontSize: 15, color: AppTheme.accentGold)),
         const Spacer(),
-        Text('${_page + 1}/${_pages.length}',
+        Text('${_page + 1}/${pages.length}',
             style: const TextStyle(fontSize: 12, color: AppTheme.textMuted)),
       ]),
       content: Text(p.body,
@@ -837,11 +824,11 @@ class _WelcomeDialogState extends State<_WelcomeDialog> {
         if (_page > 0)
           TextButton(
             onPressed: () => setState(() => _page--),
-            child: Text('BACK', style: AppTheme.pixelHeading(fontSize: 11, color: AppTheme.textMuted)),
+            child: Text(l.navBack, style: AppTheme.pixelHeading(fontSize: 11, color: AppTheme.textMuted)),
           ),
         TextButton(
           onPressed: isLast ? widget.onDismiss : () => setState(() => _page++),
-          child: Text(isLast ? 'START PLAYING' : 'NEXT',
+          child: Text(isLast ? l.startPlaying : l.navNext,
               style: AppTheme.pixelHeading(fontSize: 11, color: AppTheme.accentGold)),
         ),
       ],

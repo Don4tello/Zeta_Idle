@@ -143,6 +143,114 @@ class AppLocalizationsDe extends AppLocalizations {
   String get badgeNew => 'NEU';
 
   @override
+  String get lootLog => 'BEUTE-LOG';
+
+  @override
+  String get noLootYet => 'Noch keine Beute — kämpfe gegen etwas!';
+
+  @override
+  String get welcomeBack => 'Willkommen zurück!';
+
+  @override
+  String awayFor(String time) {
+    return 'Du warst $time weg.';
+  }
+
+  @override
+  String awayForCapped(int hours) {
+    return 'Du warst mehr als $hours Std. weg — es werden die maximalen Idle-Belohnungen angezeigt.';
+  }
+
+  @override
+  String rewardGold(String amount) {
+    return '+$amount Gold';
+  }
+
+  @override
+  String rewardXp(String amount) {
+    return '+$amount EP';
+  }
+
+  @override
+  String rewardShards(String amount) {
+    return '+$amount Splitter';
+  }
+
+  @override
+  String expeditionsReady(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count Expeditionen bereit!',
+      one: '$count Expedition bereit!',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get comebackBonus => 'Rückkehr-Bonus:';
+
+  @override
+  String get idleIncomeCollected =>
+      'Idle-Einkommen gesammelt, während du geruht hast.';
+
+  @override
+  String get claim => 'EINSAMMELN';
+
+  @override
+  String get milestone => 'MEILENSTEIN';
+
+  @override
+  String get welcomeBackCaps => 'WILLKOMMEN ZURÜCK!';
+
+  @override
+  String get missedYou =>
+      'Wir haben dich vermisst! Hier ist ein Bonus\nfür deine Zeit weg:';
+
+  @override
+  String get newSystemUnlocked => 'NEUES SYSTEM FREIGESCHALTET';
+
+  @override
+  String get gotIt => 'VERSTANDEN';
+
+  @override
+  String get welcomeFightTitle => 'Kämpfe!';
+
+  @override
+  String get welcomeFightBody =>
+      'Geh zum Tab SPIELEN und tippe in der KAMPAGNE auf eine Stufenkarte, um deinen ersten Kampf zu starten. Greif weiter an, bis der Gegner fällt!';
+
+  @override
+  String get welcomeIdleTitle => 'Verdiene Idle-Gold';
+
+  @override
+  String get welcomeIdleBody =>
+      'Dein Held verdient jede Minute automatisch Gold, auch wenn du nicht kämpfst. Sieh zu, wie sich die Gold-Leiste im HELD-Tab füllt.';
+
+  @override
+  String get welcomeStrongerTitle => 'Werde stärker';
+
+  @override
+  String get welcomeStrongerBody =>
+      'Gib Gold in VERBESSERUNGEN aus, um deine Werte zu steigern. Öffne PASSIVE für dauerhafte Boni und FÄHIGKEITEN für mächtige Kampf-Skills.';
+
+  @override
+  String get welcomeExploreTitle => 'Erkunde';
+
+  @override
+  String get welcomeExploreBody =>
+      'Die KAMPAGNE führt durch 100 handgefertigte Stufen. Im TURMAUFSTIEG farmst du endlos Splitter. Das VERLIES ist ein Roguelite-Durchgang mit Beute und Bosskämpfen. Weitere Modi schaltest du mit der Zeit frei.';
+
+  @override
+  String get navBack => 'ZURÜCK';
+
+  @override
+  String get navNext => 'WEITER';
+
+  @override
+  String get startPlaying => 'LOSSPIELEN';
+
+  @override
   String get settingsLanguage => 'Sprache';
 
   @override
