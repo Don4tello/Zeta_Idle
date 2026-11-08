@@ -255,19 +255,16 @@ class _ZetaIdleAppState extends State<ZetaIdleApp> with WidgetsBindingObserver {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    // Start tavern music after the first frame so assets are ready, and ask for
-    // the notification permission now that there's a resumed Activity + UI (the
-    // Android 13+ dialog won't appear if requested before the first frame).
+    // Start tavern music after the first frame so assets are ready.
+    // NB: the notification permission is deliberately NOT requested here. Asking
+    // cold on the first frame (now the character-creation screen) gets a low
+    // opt-in rate, and a denial is permanent. Instead MainShell asks once the
+    // player is actually in the game — see _MainShellState._maybePromptNotif.
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       // Restore persisted mute settings BEFORE starting music, so a player who
       // turned music/SFX off doesn't get blasted on every launch.
       await _gameState.audioService.loadSettings();
       _gameState.audioService.startMusic();
-      try {
-        await NotificationService.instance.requestPermission();
-      } catch (e) {
-        DebugLogger.log('notif_perm', 'error: $e');
-      }
     });
   }
 

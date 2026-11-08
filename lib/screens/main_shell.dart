@@ -9,6 +9,7 @@ import '../screens/guild_screen.dart';
 import '../screens/modes_screen.dart';
 import '../services/game_state.dart';
 import '../services/save_service.dart';
+import '../services/notification_service.dart';
 import '../data/system_tutorials.dart';
 import '../theme/app_theme.dart';
 
@@ -143,11 +144,27 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
       // New character — start on Modes (Campaign) tab so they can battle immediately
       if (mounted) setState(() => _tab = 1);
       if (mounted) _showWelcomeTutorial(game);
-    } else if (game.offlineGoldEarned > 0) {
-      if (game.pendingComebackRewards != null) _comebackMerged = true;
-      _showOfflineDialog(game);
-      game.clearOfflineReport();
+    } else {
+      if (game.offlineGoldEarned > 0) {
+        if (game.pendingComebackRewards != null) _comebackMerged = true;
+        _showOfflineDialog(game);
+        game.clearOfflineReport();
+      }
+      // Returning player who's now in the game — a good moment for the one-time
+      // notification-permission ask (if they weren't prompted on an earlier run).
+      _maybePromptNotif();
     }
+  }
+
+  /// Ask for the OS notification permission exactly once, after the player is in
+  /// the game. Keeps opt-in high (vs. a cold ask on the creation screen), which
+  /// gates the whole "come back" reminder ladder that drives Day-1+ retention.
+  Future<void> _maybePromptNotif() async {
+    if (await SaveService.isNotifPrompted()) return;
+    await SaveService.markNotifPrompted();
+    try {
+      await NotificationService.instance.requestPermission();
+    } catch (_) {/* never block the UI on a permission prompt */}
   }
 
   void _showWelcomeTutorial(GameState game) {
@@ -162,6 +179,9 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
             _showOfflineDialog(game);
             game.clearOfflineReport();
           }
+          // First session is underway and the welcome is dismissed — now ask
+          // for notification permission (good context = higher opt-in).
+          _maybePromptNotif();
         },
       ),
     );

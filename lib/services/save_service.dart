@@ -36,6 +36,7 @@ class SaveService {
   static const String _savePrefix        = 'zeta_idle_save_';
   static const String _extraSlotsKey     = 'zeta_idle_extra_slots';
   static const String _welcomeSeenKey    = 'zeta_idle_welcome_seen';
+  static const String _notifPromptedKey  = 'zeta_idle_notif_prompted';
   static const String _prestigePrefix    = 'zeta_pl_';
   // Account-wide entitlements (subscriptions + real-money cosmetics/pets). Not
   // scoped to a character slot, so every character shares them.
@@ -52,6 +53,19 @@ class SaveService {
   static Future<void> markWelcomeSeen() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_welcomeSeenKey, true);
+  }
+
+  /// Whether we've already shown the OS notification-permission prompt. We ask
+  /// once, after the player is in the game (not cold on the creation screen),
+  /// so the opt-in rate for retention reminders stays high.
+  static Future<bool> isNotifPrompted() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool(_notifPromptedKey) ?? false;
+  }
+
+  static Future<void> markNotifPrompted() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_notifPromptedKey, true);
   }
 
   /// Account-wide entitlements (shared across all character slots).
