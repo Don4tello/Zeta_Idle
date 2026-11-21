@@ -8,6 +8,7 @@ import '../models/passive_tree.dart';
 import '../models/upgrade.dart';
 import '../services/game_state.dart';
 import '../theme/app_theme.dart';
+import '../l10n/app_localizations.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // StatsGridPanel
@@ -319,13 +320,13 @@ class _StatCardState extends State<_StatCard>
                       )
                     else
                       Text(
-                        'Need ${widget.upgrade?.cost} gold to upgrade',
+                        AppLocalizations.of(ctx).sgNeedGold(widget.upgrade?.cost ?? 0),
                         style: AppTheme.pixelHeading(
                             fontSize: 13, color: AppTheme.textMuted, letterSpacing: 0.5),
                       ),
                     const SizedBox(height: 10),
                   ] else ...[
-                    Text('FULLY UPGRADED',
+                    Text(AppLocalizations.of(ctx).sgFullyUpgraded,
                         style: AppTheme.pixelHeading(fontSize: 13, color: AppTheme.textMuted)),
                     const SizedBox(height: 10),
                   ],
@@ -385,12 +386,18 @@ class _StatCardState extends State<_StatCard>
               : isKey
                   ? Color.lerp(AppTheme.cardBg, widget.color, 0.05)!
                   : AppTheme.cardBg,
-          border: Border(
-            left:   BorderSide(color: widget.color, width: widget.canAfford ? 4 : isKey ? 4 : 3),
-            top:    BorderSide(color: isKey ? widget.color.withValues(alpha: 0.35) : AppTheme.cardBorder),
-            right:  BorderSide(color: isKey ? widget.color.withValues(alpha: 0.35) : AppTheme.cardBorder),
-            bottom: BorderSide(color: isKey ? widget.color.withValues(alpha: 0.35) : AppTheme.cardBorder),
+          // Rounded tile with a uniform accent border (was a square left-accent
+          // border — rounded to match the rest of the sheet; afford = full colour,
+          // key = faded colour, otherwise the neutral card border).
+          border: Border.all(
+            color: widget.canAfford
+                ? widget.color
+                : isKey
+                    ? widget.color.withValues(alpha: 0.4)
+                    : AppTheme.cardBorder,
+            width: (widget.canAfford || isKey) ? 2 : 1,
           ),
+          borderRadius: BorderRadius.circular(8),
           boxShadow: widget.canAfford
               ? [BoxShadow(color: widget.color.withValues(alpha: 0.18), blurRadius: 8, spreadRadius: 0)]
               : isKey
@@ -649,7 +656,7 @@ class CombatStatsPanel extends StatelessWidget {
           decoration: BoxDecoration(
             color: AppTheme.cardBg,
             border: Border.all(color: AppTheme.cardBorder),
-            borderRadius: BorderRadius.circular(4),
+            borderRadius: BorderRadius.circular(8),
           ),
           child: Column(
             children: List.generate(stats.length, (i) {

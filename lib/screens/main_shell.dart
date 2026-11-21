@@ -1,6 +1,9 @@
 ﻿import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
+import 'package:in_app_review/in_app_review.dart';
 import '../widgets/currency_icon.dart';
 import '../widgets/game_icons.dart';
+import '../demo_config.dart';
 import '../screens/premium_shop_screen.dart';
 import '../utils/format_number.dart';
 import '../screens/hero_hub_screen.dart';
@@ -10,8 +13,10 @@ import '../screens/modes_screen.dart';
 import '../services/game_state.dart';
 import '../services/save_service.dart';
 import '../services/notification_service.dart';
+import '../services/ad_service.dart';
 import '../l10n/app_localizations.dart';
 import '../data/system_tutorials.dart';
+import '../l10n/content_l10n.dart';
 import '../theme/app_theme.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -208,27 +213,33 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
       awayLine = l.awayFor(timeLabel);
     }
     final gold = game.offlineGoldEarned;
-    final goldLabel = fmtNum(gold);
 
     final xp      = game.offlineXpEarned;
     final ess     = game.offlineEssenceEarned;
     final exps    = game.offlineExpeditionsReady;
     final comeback = game.pendingComebackRewards;
 
+    // Flipped when the player watches the rewarded ad to double gold + essence,
+    // so the dialog re-renders the doubled figures in place (via setSB).
+    bool doubled = false;
+
     showDialog<void>(
       context: context,
       builder: (_) => AlertDialog(
         backgroundColor: const Color(0xFF2A2623),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
         title: Text(l.welcomeBack,
             style: AppTheme.pixelHeading(fontSize: 14, color: AppTheme.accentGold)),
-        content: Column(
+        content: StatefulBuilder(builder: (_, setSB) {
+          final goldShown = doubled ? gold * 2 : gold;
+          final essShown  = doubled ? ess  * 2 : ess;
+          return Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(awayLine,
                 style: const TextStyle(fontSize: 13, color: AppTheme.textMuted)),
             const SizedBox(height: 12),
-            _offlineRow(const CurrencyIcon(id: 'gold', size: 16), l.rewardGold(goldLabel), AppTheme.accentGold),
+            _offlineRow(const CurrencyIcon(id: 'gold', size: 16), l.rewardGold(fmtNum(goldShown)), AppTheme.accentGold),
             if (xp > 0) ...[
               const SizedBox(height: 6),
               _offlineRow(const GameIcon(GameIconType.star, size: 16, color: Color(0xFF88aaff)),
@@ -238,7 +249,7 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
               const SizedBox(height: 6),
               // "essence" is an alias for Shards — use the real Shards icon/label.
               _offlineRow(const CurrencyIcon(id: 'shards', size: 16),
-                  l.rewardShards(fmtNum(ess)), const Color(0xFF6699ff)),
+                  l.rewardShards(fmtNum(essShown)), const Color(0xFF6699ff)),
             ],
             if (exps > 0) ...[
               const SizedBox(height: 6),
@@ -261,6 +272,48 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
                 style: const TextStyle(fontSize: 12, color: AppTheme.textMuted,
                     fontStyle: FontStyle.italic)),
             const SizedBox(height: 16),
+            // Rewarded ad: watch to DOUBLE this idle report's gold + essence.
+            // Opt-in value exchange (store-policy safe); hidden where ads aren't
+            // supported (web/desktop).
+            if (doubled) ...[
+              Row(mainAxisAlignment: MainAxisAlignment.center, children: const [
+                Icon(Icons.check_circle, size: 16, color: Color(0xFF55cc88)),
+                SizedBox(width: 6),
+                Text('Rewards doubled!',
+                    style: TextStyle(color: Color(0xFF55cc88), fontSize: 13, fontWeight: FontWeight.bold)),
+              ]),
+              const SizedBox(height: 10),
+            ] else if (gold > 0 && AdService.instance.isSupported) ...[
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: () {
+                    AdService.instance.showRewardedAd(
+                      onRewarded: () {
+                        game.grantDoubledOfflineReport();
+                        game.audioService.playClaim();
+                        setSB(() => doubled = true);
+                      },
+                      onFailed: () {
+                        if (!mounted) return;
+                        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                          content: Text('Ad not ready — try again in a moment.'),
+                          behavior: SnackBarBehavior.floating,
+                        ));
+                      },
+                    );
+                  },
+                  icon: const Icon(Icons.play_circle_outline, size: 18),
+                  label: const Text('Double rewards — watch ad'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: const Color(0xFF55cc88),
+                    side: const BorderSide(color: Color(0xFF55cc88)),
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 10),
+            ],
             // Primary action — full-width filled button (was a small text button
             // tucked in the corner, easy to miss for the modal's only action).
             SizedBox(
@@ -275,14 +328,15 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
                   backgroundColor: AppTheme.accentGold,
                   foregroundColor: Colors.black,
                   padding: const EdgeInsets.symmetric(vertical: 12),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                 ),
                 child: Text(l.claim,
                     style: AppTheme.pixelHeading(fontSize: 14, color: Colors.black, letterSpacing: 2)),
               ),
             ),
           ],
-        ),
+          );
+        }),
         actionsPadding: EdgeInsets.zero,
       ),
     );
@@ -295,7 +349,7 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.07),
         border: Border.all(color: color.withValues(alpha: 0.4)),
-        borderRadius: BorderRadius.circular(4),
+        borderRadius: BorderRadius.circular(8),
       ),
       child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
         icon,
@@ -303,6 +357,70 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
         Text(text, style: AppTheme.pixelHeading(fontSize: 14, color: color)),
       ]),
     );
+  }
+
+  /// Central tab switch — clears the Inventory "new loot" badge on open so the
+  /// badge means "something new since you last looked", not "you own items".
+  void _selectTab(int i) {
+    if (i == 2) GameStateProvider.of(context).markLootSeen();
+    setState(() => _tab = i);
+  }
+
+  /// Compliant "rate us" flow (fired after 30 min of play). A soft-ask gate:
+  /// 👍 → the native in-app review dialog; 👎 → community feedback (keeps
+  /// 1-stars off the store). NO reward is tied to rating — store policy forbids
+  /// incentivised ratings, and the native API hides the outcome by design.
+  Future<void> _showRatingSoftAsk(GameState game) async {
+    final l = AppLocalizations.of(context);
+    final liked = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF1a1a2e),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+          side: const BorderSide(color: AppTheme.accentGold, width: 2),
+        ),
+        title: Text(l.ratingTitle,
+            textAlign: TextAlign.center,
+            style: AppTheme.pixelHeading(
+                fontSize: 16, color: AppTheme.accentGold, letterSpacing: 2)),
+        content: Text(
+          l.ratingBody,
+          textAlign: TextAlign.center,
+          style: const TextStyle(color: AppTheme.textLight, height: 1.4),
+        ),
+        actionsAlignment: MainAxisAlignment.spaceBetween,
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text(l.ratingMeh, style: const TextStyle(color: AppTheme.textMuted)),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: ElevatedButton.styleFrom(
+                backgroundColor: AppTheme.accentGold, foregroundColor: Colors.black),
+            child: Text(l.ratingLove, style: const TextStyle(fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+    // We asked — latch so we don't nag again, regardless of their answer.
+    game.markReviewPrompted();
+    if (!mounted || liked == null) return;
+    if (liked) {
+      final review = InAppReview.instance;
+      if (await review.isAvailable()) {
+        await review.requestReview();
+      } else {
+        await review.openStoreListing();
+      }
+    } else {
+      // Unhappy — route to Discord to tell us, not to a public 1-star.
+      final uri = Uri.parse('https://discord.gg/F5WcvsZV9W');
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
+      }
+    }
   }
 
   @override
@@ -319,6 +437,18 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
         if (!mounted) return;
         game.navRequestSubTab = t.subTab;
         setState(() => _tab = t.navTab);
+      });
+    }
+    // Rating soft-ask after 30 min of play — only when the shell is the topmost
+    // route (not mid-battle/dialog) and no coach is showing. Retries on a later
+    // shell build if the player is busy now.
+    if (game.reviewPromptPending &&
+        game.pendingTutorial == null &&
+        game.pendingMilestone == null &&
+        (ModalRoute.of(context)?.isCurrent ?? true)) {
+      game.reviewPromptPending = false;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _showRatingSoftAsk(game);
       });
     }
     if (game.pendingMilestone != null) {
@@ -345,8 +475,8 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
               mainAxisSize: MainAxisSize.min,
               children: [
                 ClipRRect(
-                  borderRadius: BorderRadius.circular(6),
-                  child: Image.asset('assets/images/milestone_event.png',
+                  borderRadius: BorderRadius.circular(8),
+                  child: Image.asset('assets/images/milestone_event.webp',
                       height: 120, width: double.infinity, fit: BoxFit.cover,
                       errorBuilder: (_, __, ___) => const SizedBox.shrink()),
                 ),
@@ -360,7 +490,7 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
                   decoration: BoxDecoration(
                     color: const Color(0xFF112211),
                     border: Border.all(color: const Color(0xFF44cc88).withValues(alpha: 0.5)),
-                    borderRadius: BorderRadius.circular(4),
+                    borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(rewardStr,
                       textAlign: TextAlign.center,
@@ -411,7 +541,7 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
                   decoration: BoxDecoration(
                     color: const Color(0xFF112222),
                     border: Border.all(color: const Color(0xFF44aaff).withValues(alpha: 0.5)),
-                    borderRadius: BorderRadius.circular(4),
+                    borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(rewardStr,
                       textAlign: TextAlign.center,
@@ -458,7 +588,7 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
           ),
         Expanded(child: _SwipeShell(
           tab: _tab,
-          onTabChange: (i) => setState(() => _tab = i),
+          onTabChange: _selectTab,
           showGuild: game.effectiveUnlockStage >= 14,
           onBackToSelect: widget.onBackToSelect,
         )),
@@ -468,13 +598,18 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
         top: false,
         child: _CustomBottomNav(
         currentIndex: _tab,
-        onTap: (i) => setState(() => _tab = i),
+        onTap: _selectTab,
+        // Badges light ONLY for actionable states (something to claim/spend/do)
+        // — a permanently-lit badge trains players to ignore all of them.
         badges: [
           game.hasAffordableAbilityUpgrade || game.hasAffordablePassiveNode,
-          game.hasClaimableDaily,
-          game.inventory.bag.isNotEmpty,
+          game.hasClaimableDaily || game.hasClaimableWeekly ||
+              game.bossHuntsClaimable > 0 ||
+              game.activeExpeditions.any((e) => e.isComplete),
+          game.hasUnseenLoot,
           false,
-          game.guildId != null,
+          game.guildId != null && game.guildWar != null &&
+              game.warAttacksRemaining > 0,
         ],
         showGuild: game.effectiveUnlockStage >= 14,
       )),
@@ -544,7 +679,7 @@ class _SystemTutorialOverlay extends StatelessWidget {
                                       color: AppTheme.accentGold,
                                       fontWeight: FontWeight.bold)),
                               const SizedBox(height: 2),
-                              Text(tutorial.title,
+                              Text(ContentL10n.of(context).tr('tut_${tutorial.stage}', 'title', tutorial.title),
                                   style: AppTheme.pixelHeading(
                                       fontSize: 16, letterSpacing: 1)),
                             ],
@@ -552,7 +687,7 @@ class _SystemTutorialOverlay extends StatelessWidget {
                         ),
                       ]),
                       const SizedBox(height: 12),
-                      Text(tutorial.howTo,
+                      Text(ContentL10n.of(context).tr('tut_${tutorial.stage}', 'howTo', tutorial.howTo),
                           style: const TextStyle(
                               fontSize: 13,
                               color: AppTheme.textLight,
@@ -567,7 +702,7 @@ class _SystemTutorialOverlay extends StatelessWidget {
                             foregroundColor: Colors.black,
                             padding: const EdgeInsets.symmetric(vertical: 12),
                             shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(6)),
+                                borderRadius: BorderRadius.circular(8)),
                           ),
                           child: Text(AppLocalizations.of(context).gotIt,
                               style: AppTheme.pixelHeading(
@@ -731,7 +866,8 @@ class _NavItem extends StatelessWidget {
               ),
             ),
             Padding(
-              padding: EdgeInsets.symmetric(vertical: isPhone ? 6 : 9),
+              // ≥48px total touch height on phones (padding + icon + label).
+              padding: EdgeInsets.symmetric(vertical: isPhone ? 9 : 9),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
@@ -740,11 +876,11 @@ class _NavItem extends StatelessWidget {
                     size: active ? (isPhone ? 20.0 : 24.0) : (isPhone ? 17.0 : 20.0),
                     color: color,
                   ),
-                  SizedBox(height: isPhone ? 1 : 3),
+                  SizedBox(height: isPhone ? 2 : 3),
                   AnimatedDefaultTextStyle(
                     duration: const Duration(milliseconds: 200),
                     style: AppTheme.pixelHeading(
-                      fontSize: active ? (isPhone ? 7 : 9) : (isPhone ? 6 : 8),
+                      fontSize: active ? 9 : 8,
                       color: color,
                       letterSpacing: active ? 1.5 : 1,
                     ),
@@ -809,7 +945,7 @@ class _WelcomeDialogState extends State<_WelcomeDialog> {
     final isLast = _page == pages.length - 1;
     return AlertDialog(
       backgroundColor: const Color(0xFF2A2623),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
       title: Row(children: [
         GameIcon(p.icon, size: 23, color: AppTheme.accentGold),
         const SizedBox(width: 10),
@@ -910,12 +1046,12 @@ class TutorialTip extends StatelessWidget {
             },
             child: Container(
               margin: const EdgeInsets.only(left: 10),
-              width: 40,
-              height: 40,
+              width: 48,
+              height: 48,
               decoration: BoxDecoration(
                 color: const Color(0xFF223322),
                 border: Border.all(color: const Color(0xFF44cc88), width: 1.5),
-                borderRadius: BorderRadius.circular(4),
+                borderRadius: BorderRadius.circular(8),
               ),
               child: const Icon(Icons.close, size: 20, color: Color(0xFF44cc88)),
             ),
@@ -955,9 +1091,76 @@ class _SwipeShellState extends State<_SwipeShell> {
         HeroHubScreen(onBackToSelect: widget.onBackToSelect),
         const ModesScreen(),
         const InventoryHubScreen(),
-        const PremiumShopScreen(),
+        // Demo builds can't transact (no web billing) and the rewarded-ad path
+        // would hand out free currency — so the shop is a full-game teaser.
+        kDemoBuild ? const _DemoShopTeaser() : const PremiumShopScreen(),
         if (widget.showGuild) const GuildScreen(),
       ],
+    );
+  }
+}
+
+/// Full-game teaser shown in place of the shop on demo builds — the demo has no
+/// working billing and the rewarded-ad path would grant free currency, so the
+/// shop is disabled with an upsell to the full game.
+class _DemoShopTeaser extends StatelessWidget {
+  const _DemoShopTeaser();
+
+  @override
+  Widget build(BuildContext context) {
+    const gold = AppTheme.accentGold;
+    final l = AppLocalizations.of(context);
+    return Scaffold(
+      backgroundColor: AppTheme.darkBg,
+      body: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(28),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const GameIcon(GameIconType.coinBag, size: 56,
+                  color: Color(0x80daa520)),
+              const SizedBox(height: 18),
+              Row(mainAxisSize: MainAxisSize.min, children: [
+                const Icon(Icons.lock_outline, size: 16, color: gold),
+                const SizedBox(width: 8),
+                Text(l.navShop,
+                    style: AppTheme.pixelHeading(
+                        fontSize: 16, letterSpacing: 2, color: gold)),
+              ]),
+              const SizedBox(height: 14),
+              Text(l.demoModeLocked,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                      fontSize: 14, color: AppTheme.textLight, height: 1.5)),
+              const SizedBox(height: 16),
+              Material(
+                color: gold.withValues(alpha: 0.10),
+                borderRadius: BorderRadius.circular(8),
+                child: InkWell(
+                  onTap: () => launchUrl(Uri.parse(kFullGameUrl),
+                      mode: LaunchMode.externalApplication),
+                  borderRadius: BorderRadius.circular(8),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 11),
+                    decoration: BoxDecoration(
+                      border: Border.all(color: gold.withValues(alpha: 0.5)),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Row(mainAxisSize: MainAxisSize.min, children: [
+                      const Icon(Icons.open_in_new, size: 14, color: gold),
+                      const SizedBox(width: 8),
+                      Text(l.demoFullGameCta,
+                          style: AppTheme.pixelHeading(
+                              fontSize: 11, letterSpacing: 1, color: gold)),
+                    ]),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

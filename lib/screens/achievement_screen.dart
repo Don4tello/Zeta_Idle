@@ -3,6 +3,8 @@ import '../models/achievement.dart';
 import '../services/game_state.dart';
 import '../theme/app_theme.dart';
 import 'main_shell.dart' show TutorialTip;
+import '../l10n/app_localizations.dart';
+import '../l10n/content_l10n.dart';
 
 class AchievementScreen extends StatefulWidget {
   const AchievementScreen({super.key});
@@ -61,16 +63,16 @@ class _AchievementScreenState extends State<AchievementScreen> {
       builder: (ctx) => AlertDialog(
         backgroundColor: const Color(0xFF2A2623),
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(6),
+          borderRadius: BorderRadius.circular(8),
           side: BorderSide(color: AppTheme.accentGold.withValues(alpha: 0.5)),
         ),
-        title: Text('🏆  ${s.count} ACHIEVEMENT${s.count == 1 ? '' : 'S'} CLAIMED',
+        title: Text(AppLocalizations.of(ctx).achClaimedTitle(s.count),
             style: AppTheme.pixelHeading(fontSize: 13, color: AppTheme.accentGold, letterSpacing: 1)),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('You received:',
+            Text(AppLocalizations.of(ctx).achYouReceived,
                 style: TextStyle(fontSize: 13, color: Colors.white70)),
             const SizedBox(height: 12),
             ...rewards.map((r) => Padding(
@@ -89,7 +91,7 @@ class _AchievementScreenState extends State<AchievementScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(),
-            child: Text('NICE!',
+            child: Text(AppLocalizations.of(ctx).achNice,
                 style: AppTheme.pixelHeading(fontSize: 11, color: AppTheme.accentGold)),
           ),
         ],
@@ -109,7 +111,7 @@ class _AchievementScreenState extends State<AchievementScreen> {
       backgroundColor: const Color(0xFF1B1A17),
       appBar: AppBar(
         backgroundColor: const Color(0xFF2A2623),
-        title: Text('ACHIEVEMENTS', style: AppTheme.pixelHeading(fontSize: 14, letterSpacing: 2)),
+        title: Text(AppLocalizations.of(context).hubAchievements, style: AppTheme.pixelHeading(fontSize: 14, letterSpacing: 2)),
         actions: [
           if (claimable > 0)
             Padding(
@@ -125,7 +127,7 @@ class _AchievementScreenState extends State<AchievementScreen> {
                   side: const BorderSide(color: AppTheme.accentGold),
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                 ),
-                child: Text('CLAIM ALL ($claimable)',
+                child: Text(AppLocalizations.of(context).achClaimAll(claimable),
                     style: AppTheme.pixelHeading(fontSize: 10, letterSpacing: 1,
                         color: AppTheme.accentGold)),
               ),
@@ -141,8 +143,7 @@ class _AchievementScreenState extends State<AchievementScreen> {
             TutorialTip(
               tutorialKey: 'achievements',
               game: game,
-              text: 'You defeated your first boss! 🏆 Achievements track milestones '
-                  'and reward ZCoins and Shards — claim them here and check back often.',
+              text: AppLocalizations.of(context).achTutorial,
             ),
             _SummaryBar(
               game: game,
@@ -150,7 +151,7 @@ class _AchievementScreenState extends State<AchievementScreen> {
             ),
             const SizedBox(height: 16),
             _CategorySection(
-              title: 'COMBAT',
+              title: AppLocalizations.of(context).homeSecCombat,
               achievements: game.achievements
                   .where((a) => AchievementScreen._isCombat(a.condition))
                   .toList(),
@@ -159,7 +160,7 @@ class _AchievementScreenState extends State<AchievementScreen> {
             ),
             const SizedBox(height: 14),
             _CategorySection(
-              title: 'PROGRESSION',
+              title: AppLocalizations.of(context).hubGroupProgression,
               achievements: game.achievements
                   .where((a) => AchievementScreen._isProgression(a.condition))
                   .toList(),
@@ -168,7 +169,7 @@ class _AchievementScreenState extends State<AchievementScreen> {
             ),
             const SizedBox(height: 14),
             _CategorySection(
-              title: 'ECONOMY & SYSTEMS',
+              title: AppLocalizations.of(context).achEconomy,
               achievements: game.achievements
                   .where((a) => !AchievementScreen._isCombat(a.condition) && !AchievementScreen._isProgression(a.condition))
                   .toList(),
@@ -197,14 +198,14 @@ class _SummaryBar extends StatelessWidget {
       decoration: BoxDecoration(
         color: const Color(0xFF231F1B),
         border: Border.all(color: AppTheme.cardBorder),
-        borderRadius: BorderRadius.circular(4),
+        borderRadius: BorderRadius.circular(8),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-            Text('PROGRESS', style: AppTheme.pixelHeading(fontSize: 10, letterSpacing: 2, color: AppTheme.textMuted)),
-            Text('$claimed / $total claimed',
+            Text(AppLocalizations.of(context).achProgress, style: AppTheme.pixelHeading(fontSize: 10, letterSpacing: 2, color: AppTheme.textMuted)),
+            Text(AppLocalizations.of(context).achClaimed(claimed, total),
                 style: const TextStyle(fontSize: 12, color: AppTheme.textMuted)),
           ]),
           const SizedBox(height: 6),
@@ -228,7 +229,7 @@ class _SummaryBar extends StatelessWidget {
                   decoration: const BoxDecoration(shape: BoxShape.circle, color: Color(0xFFaacc44)),
                 ),
                 const SizedBox(width: 6),
-                Text('${unlocked - claimed} achievement${unlocked - claimed == 1 ? '' : 's'} ready to claim!',
+                Text(AppLocalizations.of(context).achReady(unlocked - claimed),
                     style: const TextStyle(fontSize: 12, color: Color(0xFFaacc44))),
                 if (onScrollToClaimable != null) ...[
                   const SizedBox(width: 6),
@@ -317,7 +318,7 @@ class _AchievementTile extends StatelessWidget {
             ? AppTheme.accentGold.withValues(alpha: 0.04)
             : const Color(0xFF231F1B),
         border: Border.all(color: borderColor, width: isReady ? 1.5 : 1),
-        borderRadius: BorderRadius.circular(4),
+        borderRadius: BorderRadius.circular(8),
       ),
       child: Row(
         children: [
@@ -340,13 +341,13 @@ class _AchievementTile extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(a.name,
+                Text(ContentL10n.of(context).tr(a.id, 'title', a.name),
                     style: TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.bold,
                         color: a.claimed ? AppTheme.textMuted : AppTheme.textLight)),
                 const SizedBox(height: 2),
-                Text(a.description,
+                Text(ContentL10n.of(context).tr(a.id, 'desc', a.description),
                     style: const TextStyle(fontSize: 12, color: AppTheme.textMuted)),
                 if (!a.claimed) ...[
                   const SizedBox(height: 6),
@@ -389,7 +390,7 @@ class _AchievementTile extends StatelessWidget {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text('CLAIM', style: AppTheme.pixelHeading(fontSize: 10, color: const Color(0xFFaacc44))),
+                  Text(AppLocalizations.of(context).claim, style: AppTheme.pixelHeading(fontSize: 10, color: const Color(0xFFaacc44))),
                   Text(a.rewardLabel,
                       style: const TextStyle(fontSize: 11, color: Color(0xFFaacc44), fontWeight: FontWeight.bold)),
                 ],
@@ -415,7 +416,7 @@ class _RewardBadge extends StatelessWidget {
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.06),
         border: Border.all(color: color.withValues(alpha: a.claimed ? 0.3 : 0.6)),
-        borderRadius: BorderRadius.circular(3),
+        borderRadius: BorderRadius.circular(8),
       ),
       child: Text(a.rewardLabel,
           style: TextStyle(fontSize: 11, color: color, fontWeight: FontWeight.bold)),

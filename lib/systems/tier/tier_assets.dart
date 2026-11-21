@@ -1,6 +1,6 @@
 import 'tier_config.dart';
 
-/// Maps a tier number to its existing UI badge asset (`assets/images/tier_N.png`,
+/// Maps a tier number to its existing UI badge asset (`assets/images/tier_N.webp`,
 /// which already ship for tiers 1–10). Tier 0 falls back to tier 1's art.
 ///
 /// Usage: `Image.asset(TierAssets.badgePath(state.activeTier))`.

@@ -1,4 +1,5 @@
 import 'dart:io' show Platform, File;
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:audioplayers/audioplayers.dart';
 import 'package:path_provider/path_provider.dart';
@@ -18,7 +19,10 @@ enum SoundEffect {
   enemyUndead, enemyBeast, enemyArcane, enemyDemonic, enemyConstruct,
 }
 
-final bool _isWindows = Platform.isWindows;
+// Audio is disabled only on Windows (no reliable desktop playback). Web plays
+// via AssetSource (see _trackSource). kIsWeb short-circuits so Platform.isWindows
+// — which throws on web — is never evaluated there.
+final bool _isWindows = !kIsWeb && Platform.isWindows;
 
 // Copies an asset MP3 to the device temp dir and returns the file path.
 // DeviceFileSource is far more reliable than AssetSource for large MP3s on Android.
@@ -31,6 +35,12 @@ Future<String> _cacheAsset(String assetPath) async {
   }
   return file.path;
 }
+
+// Playable source for a bundled audio asset ([assetPath] is relative to assets/,
+// e.g. 'audio/bg_music.mp3'). Web uses AssetSource (HTML5 audio — no filesystem);
+// native caches to a temp file (DeviceFileSource is more reliable for MP3s).
+Future<Source> _trackSource(String assetPath) async =>
+    kIsWeb ? AssetSource(assetPath) : DeviceFileSource(await _cacheAsset(assetPath));
 
 class AudioService {
   // ── SFX ──────────────────────────────────────────────────────────────────────
@@ -200,7 +210,7 @@ class AudioService {
     try {
       final player = _nextSfxPlayer();
       await player.stop();
-      if (Platform.isAndroid) {
+      if (!kIsWeb && Platform.isAndroid) {
         final cached = _sfxCachePaths[sfx] ??= await _cacheAsset(_path(sfx));
         await player.play(DeviceFileSource(cached));
       } else {
@@ -270,7 +280,6 @@ class AudioService {
   bool _musicMuted = false;
   double _musicVolume = 0.35;
   bool _musicStarted = false;
-  String? _exploreCachePath;
 
   bool   get musicMuted  => _musicMuted;
   double get musicVolume => _musicVolume;
@@ -279,11 +288,11 @@ class AudioService {
     if (_musicStarted || _isWindows) return;
     _musicStarted = true;
     try {
-      _exploreCachePath ??= await _cacheAsset('audio/explore_music.mp3');
+      final src = await _trackSource('audio/explore_music.mp3');
       await _musicPlayer.setAudioContext(_kMusicContext);
       await _musicPlayer.setReleaseMode(ReleaseMode.loop);
       await _musicPlayer.setVolume(_musicMuted ? 0.0 : _musicVolume);
-      await _musicPlayer.play(DeviceFileSource(_exploreCachePath!));
+      await _musicPlayer.play(src);
     } catch (e) {
       // ignore: avoid_print
       print('[AUDIO] explore music error: $e');
@@ -326,11 +335,11 @@ class AudioService {
           await _battlePlayer.resume();
         } else if (bs == PlayerState.stopped || bs == PlayerState.completed) {
           // Audio focus was lost; restart battle music from cached file
-          _battleCachePath ??= await _cacheAsset('audio/battle_music.mp3');
+          final src = await _trackSource('audio/battle_music.mp3');
           await _battlePlayer.setAudioContext(_kMusicContext);
           await _battlePlayer.setReleaseMode(ReleaseMode.loop);
           await _battlePlayer.setVolume(_musicVolume);
-          await _battlePlayer.play(DeviceFileSource(_battleCachePath!));
+          await _battlePlayer.play(src);
         }
       } else if (_musicStarted) {
         final ms = _musicPlayer.state;
@@ -349,7 +358,6 @@ class AudioService {
   late final AudioPlayer _battlePlayer = AudioPlayer(); // lazy (see _musicPlayer)
   bool _battleMusicStarted = false;
   bool _inBattle = false;
-  String? _battleCachePath;
 
   Future<void> startBattleMusic() async {
     if (_inBattle || _isWindows) return;
@@ -359,13 +367,13 @@ class AudioService {
     } catch (_) {}
 
     try {
-      _battleCachePath ??= await _cacheAsset('audio/battle_music.mp3');
+      final src = await _trackSource('audio/battle_music.mp3');
       // Always stop so playback restarts from the beginning of every battle
       try { await _battlePlayer.stop(); } catch (_) {}
       await _battlePlayer.setAudioContext(_kMusicContext);
       await _battlePlayer.setReleaseMode(ReleaseMode.loop);
       await _battlePlayer.setVolume(_musicMuted ? 0.0 : _musicVolume);
-      await _battlePlayer.play(DeviceFileSource(_battleCachePath!));
+      await _battlePlayer.play(src);
       _battleMusicStarted = true;
     } catch (e) {
       // ignore: avoid_print
@@ -386,10 +394,10 @@ class AudioService {
           await _musicPlayer.setVolume(_musicVolume);
           await _musicPlayer.resume();
         } else if (state == PlayerState.stopped || state == PlayerState.completed) {
-          _exploreCachePath ??= await _cacheAsset('audio/explore_music.mp3');
+          final src = await _trackSource('audio/explore_music.mp3');
           await _musicPlayer.setAudioContext(_kMusicContext);
           await _musicPlayer.setVolume(_musicVolume);
-          await _musicPlayer.play(DeviceFileSource(_exploreCachePath!));
+          await _musicPlayer.play(src);
         }
       }
     } catch (_) {}

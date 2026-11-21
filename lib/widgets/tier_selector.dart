@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
+import '../l10n/app_localizations.dart';
 
 class TierSelector extends StatelessWidget {
   const TierSelector({
@@ -31,13 +32,13 @@ class TierSelector extends StatelessWidget {
       decoration: BoxDecoration(
         color: const Color(0xFF231F1B),
         border: Border.all(color: AppTheme.cardBorder),
-        borderRadius: BorderRadius.circular(4),
+        borderRadius: BorderRadius.circular(8),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(children: [
-            Text('TIER $selectedTier', style: AppTheme.pixelHeading(
+            Text(AppLocalizations.of(context).dngTierN(selectedTier), style: AppTheme.pixelHeading(
                 fontSize: 11, letterSpacing: 2, color: AppTheme.accentGold)),
             const SizedBox(width: 8),
             Text(scaling,
@@ -51,7 +52,7 @@ class TierSelector extends StatelessWidget {
                   border: Border.all(color: const Color(0xFF44cc88).withValues(alpha: 0.5)),
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: Text('CLEARED', style: AppTheme.pixelHeading(
+                child: Text(AppLocalizations.of(context).tsCleared, style: AppTheme.pixelHeading(
                     fontSize: 8, color: const Color(0xFF44cc88))),
               ),
           ]),
@@ -72,7 +73,7 @@ class TierSelector extends StatelessWidget {
                   child: Container(
                     width: 64,
                     decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(6),
+                      borderRadius: BorderRadius.circular(8),
                       border: Border.all(
                         color: isSelected
                             ? AppTheme.accentGold
@@ -93,9 +94,9 @@ class TierSelector extends StatelessWidget {
                       children: [
                         // Tier image
                         ClipRRect(
-                          borderRadius: BorderRadius.circular(5),
+                          borderRadius: BorderRadius.circular(8),
                           child: Image.asset(
-                            'assets/images/tier_$tier.png',
+                            'assets/images/tier_$tier.webp',
                             width: 64,
                             height: 72,
                             fit: BoxFit.cover,

@@ -30,16 +30,16 @@ enum LocationBiome {
   };
 
   String get imagePath => switch (this) {
-    LocationBiome.graveyard  => 'assets/images/exp_graveyard.png',
-    LocationBiome.cave       => 'assets/images/exp_cave.png',
-    LocationBiome.temple     => 'assets/images/exp_temple.png',
-    LocationBiome.fortress   => 'assets/images/exp_fortress.png',
-    LocationBiome.ruin       => 'assets/images/exp_ruin.png',
-    LocationBiome.dungeon    => 'assets/images/exp_dungeon.png',
-    LocationBiome.catacombs  => 'assets/images/exp_catacombs.png',
-    LocationBiome.sanctum    => 'assets/images/exp_sanctum.png',
-    LocationBiome.barrows    => 'assets/images/exp_barrows.png',
-    LocationBiome.highPass   => 'assets/images/exp_highpass.png',
+    LocationBiome.graveyard  => 'assets/images/exp_graveyard.webp',
+    LocationBiome.cave       => 'assets/images/exp_cave.webp',
+    LocationBiome.temple     => 'assets/images/exp_temple.webp',
+    LocationBiome.fortress   => 'assets/images/exp_fortress.webp',
+    LocationBiome.ruin       => 'assets/images/exp_ruin.webp',
+    LocationBiome.dungeon    => 'assets/images/exp_dungeon.webp',
+    LocationBiome.catacombs  => 'assets/images/exp_catacombs.webp',
+    LocationBiome.sanctum    => 'assets/images/exp_sanctum.webp',
+    LocationBiome.barrows    => 'assets/images/exp_barrows.webp',
+    LocationBiome.highPass   => 'assets/images/exp_highpass.webp',
   };
 
   String get rewardFocus => switch (this) {

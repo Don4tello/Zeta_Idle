@@ -16,8 +16,9 @@ class AdService {
   // (create them in AdMob console → your app → Ad units → Rewarded).
   static const _testRewardedIdAndroid = 'ca-app-pub-3940256099942544/5224354917';
   static const _testRewardedIdIOS     = 'ca-app-pub-3940256099942544/1712485313';
-  // TODO: replace with your real rewarded ad unit IDs from AdMob console
-  static const _realRewardedIdAndroid = 'ca-app-pub-4594124599183133/6798234837';
+  // "Zeta Idle Zcoin Rewards" rewarded unit (AdMob console, Android app
+  // ca-app-pub-4594124599183133~3343184832 — must match AndroidManifest).
+  static const _realRewardedIdAndroid = 'ca-app-pub-4594124599183133/3409384009';
   static const _realRewardedIdIOS     = 'ca-app-pub-4594124599183133/REPLACE_ME';
 
   String get _adUnitId {

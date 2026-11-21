@@ -1,5 +1,6 @@
 ﻿import 'package:flutter/material.dart';
 import '../services/game_state.dart';
+import '../l10n/app_localizations.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // BuffHud — shows active hero buffs and enemy debuffs during battle.
@@ -34,10 +35,10 @@ class BuffHud extends StatelessWidget {
       ));
 
     if (game.dodgeNextHit)
-      chips.add(const _BuffChip(
+      chips.add(_BuffChip(
         icon: Icons.directions_run,
-        color: Color(0xFF44ddcc),
-        label: 'DODGE',
+        color: const Color(0xFF44ddcc),
+        label: AppLocalizations.of(context).buffDodge,
         rounds: 1,
         isHeroBuff: true,
       ));
@@ -55,7 +56,7 @@ class BuffHud extends StatelessWidget {
       chips.add(_BuffChip(
         icon: Icons.flash_on,
         color: const Color(0xFFcc44ff),
-        label: 'STUN',
+        label: AppLocalizations.of(context).buffStun,
         rounds: game.enemyStunRounds,
         isHeroBuff: false,
       ));

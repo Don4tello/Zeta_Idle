@@ -6,6 +6,7 @@ import '../services/game_state.dart';
 import '../theme/app_theme.dart';
 import '../widgets/battle_sprites.dart';
 import '../widgets/zcoin_icon.dart';
+import '../l10n/app_localizations.dart';
 
 class BountyBoardScreen extends StatelessWidget {
   const BountyBoardScreen({super.key});
@@ -16,7 +17,7 @@ class BountyBoardScreen extends StatelessWidget {
       backgroundColor: const Color(0xFF1B1A17),
       appBar: AppBar(
         backgroundColor: const Color(0xFF2A2623),
-        title: Text('BOUNTY BOARD',
+        title: Text(AppLocalizations.of(context).homeNavBountyBoard,
             style: AppTheme.pixelHeading(fontSize: 14, letterSpacing: 2)),
       ),
       body: const BountyBoardBody(),
@@ -44,10 +45,10 @@ class BountyBoardBody extends StatelessWidget {
           child: Column(mainAxisSize: MainAxisSize.min, children: [
             const Text('☠', style: TextStyle(fontSize: 40)),
             const SizedBox(height: 12),
-            Text('BOSS BOUNTIES LOCKED',
+            Text(AppLocalizations.of(context).bbLocked,
                 style: AppTheme.pixelHeading(fontSize: 14, color: accent, letterSpacing: 1.5)),
             const SizedBox(height: 8),
-            const Text('Reach campaign stage 20 to start hunting bosses for bounty rewards.',
+            Text(AppLocalizations.of(context).bbLockedSub,
                 textAlign: TextAlign.center,
                 style: TextStyle(fontSize: 13, color: AppTheme.textMuted, height: 1.4)),
           ]),
@@ -75,7 +76,7 @@ class BountyBoardBody extends StatelessWidget {
           decoration: BoxDecoration(
             gradient: const LinearGradient(colors: [Color(0xFF2a0a12), Color(0xFF231F1B)]),
             border: Border.all(color: accent.withValues(alpha: 0.5)),
-            borderRadius: BorderRadius.circular(4),
+            borderRadius: BorderRadius.circular(8),
           ),
           child: Row(children: [
             const Text('☠', style: TextStyle(fontSize: 22)),
@@ -84,12 +85,11 @@ class BountyBoardBody extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('BOSS BOUNTIES  •  TIER ${game.activeTier}',
+                  Text(AppLocalizations.of(context).bbTitle(game.activeTier),
                       style: AppTheme.pixelHeading(
                           fontSize: 12, color: accent, letterSpacing: 1.5)),
                   const SizedBox(height: 2),
-                  const Text('Slay each campaign boss for its bounty. Reach a new '
-                      'tier for a fresh set with bigger rewards.',
+                  Text(AppLocalizations.of(context).bbDesc,
                       style: TextStyle(fontSize: 11, color: AppTheme.textMuted, height: 1.4)),
                 ],
               ),
@@ -100,11 +100,11 @@ class BountyBoardBody extends StatelessWidget {
           ]),
         ),
         if (bounties.isEmpty)
-          const Center(
+          Center(
             child: Padding(
-              padding: EdgeInsets.symmetric(vertical: 60),
-              child: Text('No bounties available.',
-                  style: TextStyle(color: AppTheme.textMuted)),
+              padding: const EdgeInsets.symmetric(vertical: 60),
+              child: Text(AppLocalizations.of(context).bbNoBounties,
+                  style: const TextStyle(color: AppTheme.textMuted)),
             ),
           )
         else
@@ -137,7 +137,7 @@ class _BossBountyCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: claimable ? const Color(0xFF2a1015) : const Color(0xFF1a1614),
         border: Border.all(color: borderColor.withValues(alpha: 0.6)),
-        borderRadius: BorderRadius.circular(4),
+        borderRadius: BorderRadius.circular(8),
       ),
       child: Row(children: [
         SizedBox(
@@ -156,11 +156,11 @@ class _BossBountyCard extends StatelessWidget {
                   fontSize: 14, fontWeight: FontWeight.bold,
                   color: claimed ? const Color(0xFF66dd88) : Colors.white)),
           const SizedBox(height: 3),
-          Text('Campaign Stage ${hunt.stageNumber}  •  Lv ${hunt.level}',
+          Text(AppLocalizations.of(context).bbStageLv(hunt.stageNumber, hunt.level),
               style: const TextStyle(fontSize: 11, color: AppTheme.textMuted)),
           const SizedBox(height: 6),
           Wrap(spacing: 6, runSpacing: 4,
-              children: _rewardChips(hunt.reward, game.bossBountyLootRarity(hunt))),
+              children: _rewardChips(context, hunt.reward, game.bossBountyLootRarity(hunt))),
         ])),
         const SizedBox(width: 8),
         if (claimed)
@@ -173,7 +173,7 @@ class _BossBountyCard extends StatelessWidget {
               final loot = game.lastBossBountyLoot;
               final lootMsg = loot != null ? '  🎁 ${loot.name}' : '';
               ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                content: Text('${hunt.name} slain!  ${hunt.reward.summary}$lootMsg',
+                content: Text(AppLocalizations.of(context).bbSlain(hunt.name, '${hunt.reward.summary}$lootMsg'),
                     style: const TextStyle(color: AppTheme.accentGold)),
                 backgroundColor: const Color(0xFF2A2623),
                 duration: const Duration(seconds: 3),
@@ -184,24 +184,24 @@ class _BossBountyCard extends StatelessWidget {
               decoration: BoxDecoration(
                 color: accent.withValues(alpha: 0.18),
                 border: Border.all(color: accent),
-                borderRadius: BorderRadius.circular(3),
+                borderRadius: BorderRadius.circular(8),
               ),
-              child: Text('CLAIM',
+              child: Text(AppLocalizations.of(context).claim,
                   style: AppTheme.pixelHeading(fontSize: 11, color: accent, letterSpacing: 1)),
             ),
           )
         else
-          Text('Stage ${hunt.stageNumber}',
+          Text(AppLocalizations.of(context).bbStage(hunt.stageNumber),
               style: const TextStyle(fontSize: 10, color: AppTheme.textMuted)),
       ]),
     );
   }
 
-  List<Widget> _rewardChips(QuestReward r, ItemRarity lootRarity) {
+  List<Widget> _rewardChips(BuildContext context, QuestReward r, ItemRarity lootRarity) {
     final chips = <Widget>[
       // Guaranteed gear drop — leads the list so the reward reads as loot-first.
       _RewardChip(
-        label: '🎁 ${_rarityName(lootRarity)} Gear',
+        label: AppLocalizations.of(context).bbGearReward(_rarityName(lootRarity)),
         color: _rarityColor(lootRarity),
       ),
     ];
@@ -251,7 +251,7 @@ class _RewardChip extends StatelessWidget {
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.10),
         border: Border.all(color: color.withValues(alpha: 0.45)),
-        borderRadius: BorderRadius.circular(3),
+        borderRadius: BorderRadius.circular(8),
       ),
       child: Row(mainAxisSize: MainAxisSize.min, children: [
         if (prefix != null) ...[prefix!, const SizedBox(width: 3)],

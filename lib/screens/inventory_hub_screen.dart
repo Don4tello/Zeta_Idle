@@ -12,6 +12,7 @@ import 'rune_screen.dart';
 import 'artifact_screen.dart';
 import 'armory_screen.dart';
 import 'main_shell.dart';
+import '../l10n/app_localizations.dart';
 
 class InventoryHubScreen extends StatefulWidget {
   const InventoryHubScreen({super.key});
@@ -82,26 +83,26 @@ class _InventoryHubScreenState extends State<InventoryHubScreen>
   Widget _buildScreen(int allIdx, GameState game) => switch (allIdx) {
     0 => Column(children: [
           TutorialTip(tutorialKey: 'gear',
-              text: 'Your first piece of gear has dropped! Equip it here to boost your stats.',
+              text: AppLocalizations.of(context).invhTutGear,
               game: game),
           const Expanded(child: InventoryScreen(embedded: true)),
         ]),
     1 => _GemCraftingTab(game: game),
     2 => Column(children: [
           TutorialTip(tutorialKey: 'forge',
-              text: 'Combine two items of the same slot to craft a higher-rarity piece, or reforge stats.',
+              text: AppLocalizations.of(context).invhTutForge,
               game: game),
           const Expanded(child: ForgeScreen(embedded: true)),
         ]),
     3 => Column(children: [
           TutorialTip(tutorialKey: 'runes',
-              text: 'Craft Runes for temporary combat buffs. Collect dust by salvaging gear.',
+              text: AppLocalizations.of(context).invhTutRunes,
               game: game),
           const Expanded(child: RuneScreen(embedded: true)),
         ]),
     4 => Column(children: [
           TutorialTip(tutorialKey: 'artifacts',
-              text: 'Place artifacts in the grid for permanent passive bonuses.',
+              text: AppLocalizations.of(context).invhTutArtifacts,
               game: game),
           const Expanded(child: ArtifactScreen(embedded: true)),
         ]),
@@ -129,16 +130,16 @@ class _InventoryHubScreenState extends State<InventoryHubScreen>
       return Scaffold(
         backgroundColor: AppTheme.darkBg,
         appBar: AppBar(
-          title: Text('INVENTORY',
+          title: Text(AppLocalizations.of(context).navInventory,
               style: AppTheme.pixelHeading(fontSize: 15, letterSpacing: 3)),
         ),
-        body: const Center(
+        body: Center(
           child: Padding(
-            padding: EdgeInsets.all(32),
+            padding: const EdgeInsets.all(32),
             child: Text(
-              'No gear yet.\nDefeat enemies to find your first item!',
+              AppLocalizations.of(context).invhNoGear,
               textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 14, color: AppTheme.textMuted, height: 1.6),
+              style: const TextStyle(fontSize: 14, color: AppTheme.textMuted, height: 1.6),
             ),
           ),
         ),
@@ -157,7 +158,7 @@ class _InventoryHubScreenState extends State<InventoryHubScreen>
             children: [
               Text(_emojis[i], style: TextStyle(fontSize: i == allIdx ? 16 : 13)),
               const SizedBox(height: 2),
-              Text(_labels[i],
+              Text([AppLocalizations.of(context).invhTabGear, AppLocalizations.of(context).invhTabGems, AppLocalizations.of(context).forgeTitle, AppLocalizations.of(context).invhTabRunes, AppLocalizations.of(context).armTabArtifacts, AppLocalizations.of(context).hubArmory][i],
                   style: GoogleFonts.rajdhani(
                     fontSize: 9,
                     fontWeight: i == allIdx ? FontWeight.bold : FontWeight.normal,
@@ -171,7 +172,7 @@ class _InventoryHubScreenState extends State<InventoryHubScreen>
     return Scaffold(
       backgroundColor: AppTheme.darkBg,
       appBar: AppBar(
-        title: Text('INVENTORY',
+        title: Text(AppLocalizations.of(context).navInventory,
             style: AppTheme.pixelHeading(fontSize: 15, letterSpacing: 3)),
         bottom: TabBar(
           controller: _ctrl,
@@ -225,7 +226,7 @@ class _GemCraftingTabState extends State<_GemCraftingTab> {
             decoration: BoxDecoration(
               color: const Color(0xFF0d1020),
               border: Border.all(color: const Color(0xFFbb88ee).withValues(alpha: 0.4)),
-              borderRadius: BorderRadius.circular(4),
+              borderRadius: BorderRadius.circular(8),
             ),
             child: Row(children: [
               const Text('💠', style: TextStyle(fontSize: 16)),
@@ -235,9 +236,9 @@ class _GemCraftingTabState extends State<_GemCraftingTab> {
                       fontSize: 17, fontWeight: FontWeight.bold,
                       color: const Color(0xFFbb88ee))),
               const SizedBox(width: 6),
-              const Text('Arcane Dust', style: TextStyle(fontSize: 12, color: AppTheme.textMuted)),
+              Text(AppLocalizations.of(context).invhArcaneDust, style: const TextStyle(fontSize: 12, color: AppTheme.textMuted)),
               const Spacer(),
-              Text('Bag: ${game.gemBag.length}/${GameState.gemBagMax}',
+              Text(AppLocalizations.of(context).invhBag(game.gemBag.length, GameState.gemBagMax),
                   style: const TextStyle(fontSize: 11, color: AppTheme.textMuted)),
             ]),
           ),
@@ -256,7 +257,7 @@ class _GemCraftingTabState extends State<_GemCraftingTab> {
           const SizedBox(height: 12),
 
           // Tier selector
-          Text('TIER', style: AppTheme.pixelHeading(fontSize: 10, letterSpacing: 2, color: AppTheme.textMuted)),
+          Text(AppLocalizations.of(context).forgeTier, style: AppTheme.pixelHeading(fontSize: 10, letterSpacing: 2, color: AppTheme.textMuted)),
           const SizedBox(height: 6),
           Row(
             children: GemTier.values.map((tier) {
@@ -273,7 +274,7 @@ class _GemCraftingTabState extends State<_GemCraftingTab> {
                       color: active ? tier.color : tier.color.withValues(alpha: 0.25),
                       width: active ? 2 : 1,
                     ),
-                    borderRadius: BorderRadius.circular(4),
+                    borderRadius: BorderRadius.circular(8),
                   ),
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
@@ -292,7 +293,7 @@ class _GemCraftingTabState extends State<_GemCraftingTab> {
           const SizedBox(height: 16),
 
           // Gem list — one per line, showing element + full DMG/RES effect
-          Text('CRAFT GEM', style: AppTheme.pixelHeading(fontSize: 10, letterSpacing: 2, color: AppTheme.textMuted)),
+          Text(AppLocalizations.of(context).invhCraftGem, style: AppTheme.pixelHeading(fontSize: 10, letterSpacing: 2, color: AppTheme.textMuted)),
           const SizedBox(height: 8),
           // Onyx (physical) removed — physical is defended by Armor, not gems.
           ...GemType.values.where((type) => type != GemType.onyx).map((type) {
@@ -317,7 +318,7 @@ class _GemCraftingTabState extends State<_GemCraftingTab> {
                           : type.color.withValues(alpha: canAfford ? 0.5 : 0.2),
                       width: isSelected ? 2 : 1,
                     ),
-                    borderRadius: BorderRadius.circular(6),
+                    borderRadius: BorderRadius.circular(8),
                   ),
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.center,
@@ -339,9 +340,9 @@ class _GemCraftingTabState extends State<_GemCraftingTab> {
                                   fontSize: 13, color: AppTheme.textMuted)),
                             ]),
                             const SizedBox(height: 3),
-                            Text('⚔ Weapon: +${gem.value}% $element damage', style: const TextStyle(
+                            Text(AppLocalizations.of(context).forgeGemWeaponDesc(gem.value, element), style: const TextStyle(
                                 fontSize: 13, color: Color(0xFFff8855))),
-                            Text('🛡 Armor: +${gem.value}% $element resistance', style: const TextStyle(
+                            Text(AppLocalizations.of(context).forgeGemArmorDesc(gem.value, element), style: const TextStyle(
                                 fontSize: 13, color: Color(0xFF66aaff))),
                           ],
                         ),
@@ -374,7 +375,7 @@ class _GemCraftingTabState extends State<_GemCraftingTab> {
                     foregroundColor: canAfford ? _selectedType!.color : AppTheme.cardBorder,
                     side: BorderSide(color: canAfford ? _selectedType!.color : AppTheme.cardBorder),
                   ),
-                  child: Text('CRAFT ${_selectedType!.label.toUpperCase()} GEM  (${_tier.shardCost} Arcane Dust)',
+                  child: Text(AppLocalizations.of(context).invhCraftTypeGem(_selectedType!.label.toUpperCase(), _tier.shardCost),
                       style: AppTheme.pixelHeading(fontSize: 11,
                           color: canAfford ? _selectedType!.color : AppTheme.cardBorder)),
                 ),
@@ -385,7 +386,7 @@ class _GemCraftingTabState extends State<_GemCraftingTab> {
 
           // Owned gems
           if (game.gemBag.isNotEmpty) ...[
-            Text('OWNED GEMS', style: AppTheme.pixelHeading(fontSize: 10, letterSpacing: 2, color: AppTheme.textMuted)),
+            Text(AppLocalizations.of(context).invhOwnedGems, style: AppTheme.pixelHeading(fontSize: 10, letterSpacing: 2, color: AppTheme.textMuted)),
             const SizedBox(height: 8),
             Wrap(
               spacing: 6,
@@ -400,12 +401,12 @@ class _GemCraftingTabState extends State<_GemCraftingTab> {
                       builder: (ctx) => AlertDialog(
                         backgroundColor: const Color(0xFF1a1a2e),
                         title: Text(gem.name, style: TextStyle(color: gem.type.color, fontSize: 14)),
-                        content: Text('${gem.bonusLabel}\n\nSocket into a WEAPON for +DMG%, or ARMOUR for +RES% of this gem\'s element.\n\nDismantle returns ${gem.tier.shardCost} Arcane Dust.',
+                        content: Text(AppLocalizations.of(ctx).invhDismantleBody(gem.bonusLabel, gem.tier.shardCost),
                             style: const TextStyle(color: Colors.white70, fontSize: 12, height: 1.4)),
                         actions: [
-                          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('CANCEL', style: TextStyle(color: AppTheme.textMuted))),
+                          TextButton(onPressed: () => Navigator.pop(ctx), child: Text(AppLocalizations.of(ctx).csCancel, style: const TextStyle(color: AppTheme.textMuted))),
                           TextButton(onPressed: () => Navigator.pop(ctx, 'dismantle'),
-                              child: Text('DISMANTLE (+${gem.tier.shardCost} Arcane Dust)', style: const TextStyle(color: Color(0xFFff6644)))),
+                              child: Text(AppLocalizations.of(ctx).invhDismantle(gem.tier.shardCost), style: const TextStyle(color: Color(0xFFff6644)))),
                         ],
                       ),
                     );
@@ -418,13 +419,13 @@ class _GemCraftingTabState extends State<_GemCraftingTab> {
                     }
                   },
                   child: Tooltip(
-                    message: '${gem.name}\n${gem.bonusLabel}\nTap to dismantle',
+                    message: AppLocalizations.of(context).invhGemTooltip(gem.name, gem.bonusLabel),
                     child: Container(
                       padding: const EdgeInsets.all(6),
                       decoration: BoxDecoration(
                         color: gem.type.color.withValues(alpha: 0.08),
                         border: Border.all(color: gem.tier.color.withValues(alpha: 0.5)),
-                        borderRadius: BorderRadius.circular(4),
+                        borderRadius: BorderRadius.circular(8),
                       ),
                       child: Column(
                         mainAxisSize: MainAxisSize.min,

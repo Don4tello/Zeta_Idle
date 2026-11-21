@@ -11,6 +11,8 @@ import '../theme/app_theme.dart';
 import '../screens/main_shell.dart';
 import '../widgets/battle_sprites.dart';
 import '../widgets/zcoin_icon.dart';
+import '../l10n/app_localizations.dart';
+import '../l10n/content_l10n.dart';
 
 class CampaignScreen extends StatelessWidget {
   const CampaignScreen({super.key});
@@ -34,15 +36,13 @@ class CampaignScreen extends StatelessWidget {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('DIFFICULTY TIER',
+                  Text(AppLocalizations.of(ctx).campaignDifficultyTier,
                       style: AppTheme.pixelHeading(
                           fontSize: 14, letterSpacing: 2, color: const Color(0xFFff8844))),
                   const SizedBox(height: 4),
-                  const Text(
-                    'Higher tiers = tougher enemies AND better loot (rarity, sets, '
-                    'artifacts). Switching down keeps all your permanent power — it '
-                    'only scales what you fight and what drops.',
-                    style: TextStyle(fontSize: 13, color: AppTheme.textMuted, height: 1.4),
+                  Text(
+                    AppLocalizations.of(ctx).campaignTierSelectorBody,
+                    style: const TextStyle(fontSize: 13, color: AppTheme.textMuted, height: 1.4),
                   ),
                   const SizedBox(height: 12),
                   ConstrainedBox(
@@ -77,7 +77,7 @@ class CampaignScreen extends StatelessWidget {
           game.setActiveTier(t);
           setSheet(() {});
         },
-        borderRadius: BorderRadius.circular(6),
+        borderRadius: BorderRadius.circular(8),
         child: Container(
           constraints: const BoxConstraints(minHeight: 56),
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
@@ -86,7 +86,7 @@ class CampaignScreen extends StatelessWidget {
             border: Border.all(
                 color: selected ? const Color(0xFFff8844) : AppTheme.cardBorder,
                 width: selected ? 2 : 1),
-            borderRadius: BorderRadius.circular(6),
+            borderRadius: BorderRadius.circular(8),
           ),
           child: Row(
             children: [
@@ -94,7 +94,7 @@ class CampaignScreen extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(t == 0 ? 'TIER 0 — Normal' : 'TIER $t',
+                    Text(t == 0 ? AppLocalizations.of(context).campaignTierNormal : AppLocalizations.of(context).campaignTierN(t),
                         style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.bold,
@@ -102,13 +102,13 @@ class CampaignScreen extends StatelessWidget {
                     const SizedBox(height: 2),
                     Text(
                       t == 0
-                          ? 'Base enemies · base loot · no Magic Find'
-                          : 'Enemies +$hpPct% HP · +$atkPct% ATK',
+                          ? AppLocalizations.of(context).campaignTierBaseDesc
+                          : AppLocalizations.of(context).campaignTierScaledDesc(hpPct, atkPct),
                       style: const TextStyle(fontSize: 12, color: AppTheme.textMuted),
                     ),
                     if (t > 0) ...[
                       const SizedBox(height: 2),
-                      Text('✦ +$mfPct% Magic Find (higher rarity, sets & artifacts)',
+                      Text(AppLocalizations.of(context).campaignTierMagicFind(mfPct),
                           style: const TextStyle(
                               fontSize: 12, color: Color(0xFFcc88ff), fontWeight: FontWeight.w600)),
                     ],
@@ -148,12 +148,12 @@ class CampaignScreen extends StatelessWidget {
               icon: Icon(Icons.tune,
                   color: game.activeTier > 0 ? const Color(0xFFff8844) : AppTheme.textMuted,
                   size: 20),
-              tooltip: 'Difficulty Tier',
+              tooltip: AppLocalizations.of(context).campaignDifficultyTierTooltip,
               onPressed: () => _showTierSelector(context, game),
             ),
           IconButton(
             icon: const Icon(Icons.leaderboard, color: AppTheme.accentGold, size: 20),
-            tooltip: 'Campaign Leaderboard',
+            tooltip: AppLocalizations.of(context).campaignLeaderboardTooltip,
             onPressed: () => context.push(Routes.leaderboard),
           ),
         ],
@@ -164,9 +164,7 @@ class CampaignScreen extends StatelessWidget {
           TutorialTip(
             tutorialKey: 'campaign',
             game: game,
-            text: 'Campaign advances stage by stage. Defeat each boss to unlock the next. '
-                'Clear the final boss to unlock the next difficulty Tier — the campaign '
-                'restarts harder with better loot, and your power carries over.',
+            text: AppLocalizations.of(context).campaignTutorial,
           ),
 
           _StarProgressRow(game: game),
@@ -178,8 +176,8 @@ class CampaignScreen extends StatelessWidget {
           // Current stage card
           _StageCard(
             stageNum: stageNum,
-            title: stage.title,
-            description: stage.description,
+            title: ContentL10n.of(context).tr(stage.id, 'title', stage.title),
+            description: ContentL10n.of(context).tr(stage.id, 'desc', stage.description),
             difficulty: stage.difficulty,
             zone: zone,
             game: game,
@@ -192,7 +190,7 @@ class CampaignScreen extends StatelessWidget {
             decoration: BoxDecoration(
               color: const Color(0xFF1a1a2e),
               border: Border.all(color: const Color(0xFF44aaff).withValues(alpha: 0.4)),
-              borderRadius: BorderRadius.circular(4),
+              borderRadius: BorderRadius.circular(8),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -220,7 +218,7 @@ class CampaignScreen extends StatelessWidget {
                     Builder(builder: (_) {
                       final rem = game.energyRechargeRemaining;
                       return Text(
-                          '+1 in ${rem.inMinutes}:${(rem.inSeconds % 60).toString().padLeft(2, '0')}',
+                          AppLocalizations.of(context).campaignEnergyRecharge('${rem.inMinutes}:${(rem.inSeconds % 60).toString().padLeft(2, '0')}'),
                           style: const TextStyle(fontSize: 9, color: AppTheme.textMuted));
                     }),
                   ],
@@ -240,10 +238,10 @@ class CampaignScreen extends StatelessWidget {
                             decoration: BoxDecoration(
                               color: const Color(0xFF44aaff).withValues(alpha: 0.15),
                               border: Border.all(color: const Color(0xFF44aaff)),
-                              borderRadius: BorderRadius.circular(3),
+                              borderRadius: BorderRadius.circular(8),
                             ),
                             child: Text(
-                                'Refill +${GameState.refillAmount}  (${GameState.maxDailyRefills - game.dailyEnergyRefillsUsed} free left)',
+                                AppLocalizations.of(context).campaignEnergyRefill(GameState.refillAmount, GameState.maxDailyRefills - game.dailyEnergyRefillsUsed),
                                 style: const TextStyle(fontSize: 10, color: Color(0xFF44aaff), fontWeight: FontWeight.bold)),
                           ),
                         ),
@@ -259,10 +257,10 @@ class CampaignScreen extends StatelessWidget {
                           decoration: BoxDecoration(
                             color: game.zcoins >= 50 ? const Color(0xFFcc88ff).withValues(alpha: 0.15) : Colors.transparent,
                             border: Border.all(color: game.zcoins >= 50 ? const Color(0xFFcc88ff) : AppTheme.cardBorder),
-                            borderRadius: BorderRadius.circular(3),
+                            borderRadius: BorderRadius.circular(8),
                           ),
                           child: Row(mainAxisSize: MainAxisSize.min, children: [
-                            Text('Buy ',
+                            Text(AppLocalizations.of(context).campaignBuy,
                                 style: TextStyle(fontSize: 10, color: game.zcoins >= 50 ? const Color(0xFFcc88ff) : AppTheme.cardBorder, fontWeight: FontWeight.bold)),
                             ZCoinIcon(size: 11, animate: false),
                             const SizedBox(width: 3),
@@ -283,9 +281,7 @@ class CampaignScreen extends StatelessWidget {
             TutorialTip(
               tutorialKey: 'energyEmpty',
               game: game,
-              text: 'Out of energy! ⚡ It refills 1 every 5 min. '
-                  'Tap the +10 button above for 3 free daily refills. '
-                  'Or buy +20 energy for 💎 50 ZCoins.',
+              text: AppLocalizations.of(context).campaignEnergyEmptyTutorial,
             ),
           // Full campaign map
           Padding(
@@ -294,7 +290,7 @@ class CampaignScreen extends StatelessWidget {
               children: [
                 const Text('🗺', style: TextStyle(fontSize: 11)),
                 const SizedBox(width: 5),
-                Text('STAGE MAP  •  tap any ✓ node to replay',
+                Text(AppLocalizations.of(context).campaignStageMap,
                     style: const TextStyle(
                         fontSize: 10, color: AppTheme.textMuted, letterSpacing: 0.5)),
               ],
@@ -359,10 +355,10 @@ class _CampaignMapState extends State<_CampaignMap> {
   void _showSimDialog(BuildContext context, int stageIdx, GameState game) {
     final maxSims = game.energy;
     if (maxSims == 0) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-        content: Text('No energy! Wait for it to refill.'),
-        duration: Duration(seconds: 2),
-        backgroundColor: Color(0xFF442222),
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(AppLocalizations.of(context).campaignNoEnergyRefill),
+        duration: const Duration(seconds: 2),
+        backgroundColor: const Color(0xFF442222),
       ));
       return;
     }
@@ -371,23 +367,23 @@ class _CampaignMapState extends State<_CampaignMap> {
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: const Color(0xFF1B1814),
-        title: Text('⚡ Simulate Stage ${stageIdx + 1}',
+        title: Text(AppLocalizations.of(ctx).campaignSimulateStage(stageIdx + 1),
             style: const TextStyle(color: Color(0xFF44aaff), fontSize: 14)),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Energy available: $maxSims',
+            Text(AppLocalizations.of(ctx).campaignEnergyAvailable(maxSims),
                 style: const TextStyle(color: AppTheme.textMuted, fontSize: 12)),
             const SizedBox(height: 4),
-            const Text('Battles run instantly. Loot goes straight to your bag.',
-                style: TextStyle(color: AppTheme.textMuted, fontSize: 11)),
+            Text(AppLocalizations.of(ctx).campaignSimInfo,
+                style: const TextStyle(color: AppTheme.textMuted, fontSize: 11)),
             const SizedBox(height: 14),
             Wrap(
               spacing: 8,
               runSpacing: 8,
               children: options.map((n) {
-                final label = n == maxSims && n > 25 ? 'ALL ($n)' : '$n×';
+                final label = n == maxSims && n > 25 ? AppLocalizations.of(ctx).campaignSimAll(n) : '$n×';
                 return ElevatedButton(
                   onPressed: () {
                     Navigator.pop(ctx);
@@ -409,7 +405,7 @@ class _CampaignMapState extends State<_CampaignMap> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('CANCEL', style: TextStyle(color: AppTheme.textMuted)),
+            child: Text(AppLocalizations.of(ctx).csCancel, style: const TextStyle(color: AppTheme.textMuted)),
           ),
         ],
       ),
@@ -422,18 +418,18 @@ class _CampaignMapState extends State<_CampaignMap> {
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: const Color(0xFF1B1814),
-        title: Text('Stage ${stageIdx + 1} — ${result.count}× Simulated',
+        title: Text(AppLocalizations.of(ctx).campaignSimResultTitle(stageIdx + 1, result.count),
             style: const TextStyle(color: Color(0xFF44aaff), fontSize: 13)),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _simRow('💰 Gold', '+${result.goldEarned}', const Color(0xFFffcc44)),
+            _simRow(AppLocalizations.of(ctx).campaignSimGold, '+${result.goldEarned}', const Color(0xFFffcc44)),
             const SizedBox(height: 4),
-            _simRow('✦ XP', '+${result.xpEarned}', const Color(0xFF88cc44)),
+            _simRow(AppLocalizations.of(ctx).campaignSimXp, '+${result.xpEarned}', const Color(0xFF88cc44)),
             if (drops.isNotEmpty) ...[
               const SizedBox(height: 10),
-              Text('Items dropped (${drops.length}):',
+              Text(AppLocalizations.of(ctx).campaignItemsDropped(drops.length),
                   style: const TextStyle(color: AppTheme.textMuted, fontSize: 11)),
               const SizedBox(height: 6),
               ...drops.map((item) => Padding(
@@ -443,8 +439,8 @@ class _CampaignMapState extends State<_CampaignMap> {
               )),
             ] else ...[
               const SizedBox(height: 8),
-              const Text('No items dropped this run.',
-                  style: TextStyle(color: AppTheme.textMuted, fontSize: 11)),
+              Text(AppLocalizations.of(ctx).campaignNoItemsDropped,
+                  style: const TextStyle(color: AppTheme.textMuted, fontSize: 11)),
             ],
           ],
         ),
@@ -456,7 +452,7 @@ class _CampaignMapState extends State<_CampaignMap> {
               foregroundColor: const Color(0xFF44aaff),
               side: const BorderSide(color: Color(0xFF44aaff)),
             ),
-            child: const Text('OK'),
+            child: Text(AppLocalizations.of(ctx).commonOk),
           ),
         ],
       ),
@@ -548,10 +544,10 @@ class _CampaignMapState extends State<_CampaignMap> {
         decoration: BoxDecoration(
           color: const Color(0xFF181614),
           border: Border.all(color: AppTheme.cardBorder),
-          borderRadius: BorderRadius.circular(4),
+          borderRadius: BorderRadius.circular(8),
         ),
         child: ClipRRect(
-        borderRadius: BorderRadius.circular(4),
+        borderRadius: BorderRadius.circular(8),
         child: Stack(
           children: [
             // ── Scrollable zone map ───────────────────────────────────────
@@ -592,10 +588,10 @@ class _CampaignMapState extends State<_CampaignMap> {
                       widget.game.startCampaignReplayBattle(stageIdx);
                     }
                     if (widget.game.currentEnemy == null) {
-                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                        content: Text('Not enough energy!'),
-                        duration: Duration(seconds: 2),
-                        backgroundColor: Color(0xFF442222),
+                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                        content: Text(AppLocalizations.of(context).campaignNotEnoughEnergy),
+                        duration: const Duration(seconds: 2),
+                        backgroundColor: const Color(0xFF442222),
                       ));
                       return;
                     }
@@ -621,7 +617,7 @@ class _CampaignMapState extends State<_CampaignMap> {
                           Expanded(child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text(enemy.name,
+                              Text(ContentL10n.of(context).tr(enemy.id, 'title', enemy.name),
                                   style: TextStyle(
                                       fontSize: 12,
                                       fontWeight: FontWeight.bold,
@@ -658,7 +654,7 @@ class _CampaignMapState extends State<_CampaignMap> {
                                 padding: const EdgeInsets.symmetric(vertical: 10),
                                 minimumSize: const Size(0, 44),
                               ),
-                              child: Text('⚔  FIGHT (−1 ⚡)',
+                              child: Text(AppLocalizations.of(context).campaignMapFight,
                                   style: AppTheme.pixelHeading(
                                       fontSize: 10, color: color)),
                             ),
@@ -668,7 +664,7 @@ class _CampaignMapState extends State<_CampaignMap> {
                             Builder(builder: (ctx) {
                               final hasPremium = widget.game.hasPremium;
                               return Tooltip(
-                                message: hasPremium ? '' : 'Requires Premium Pass subscription',
+                                message: hasPremium ? '' : AppLocalizations.of(ctx).campaignSimRequiresPremium,
                                 child: ElevatedButton(
                                   onPressed: hasPremium
                                       ? () => _showSimDialog(context, stageIdx, widget.game)
@@ -720,13 +716,13 @@ class _CampaignMapState extends State<_CampaignMap> {
                                   border: Border.all(
                                       color: const Color(0xFFcc4444)
                                           .withValues(alpha: 0.5)),
-                                  borderRadius: BorderRadius.circular(3),
+                                  borderRadius: BorderRadius.circular(8),
                                 ),
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    const Text('BOSS ENCOUNTER',
-                                        style: TextStyle(
+                                    Text(AppLocalizations.of(context).campaignBossEncounter,
+                                        style: const TextStyle(
                                             fontSize: 7,
                                             color: Color(0xFFcc4444),
                                             fontWeight: FontWeight.bold,
@@ -742,8 +738,8 @@ class _CampaignMapState extends State<_CampaignMap> {
                                     GestureDetector(
                                       onTap: () =>
                                           widget.game.markBossIntroSeen(enemy.id),
-                                      child: const Text('[ dismiss ]',
-                                          style: TextStyle(
+                                      child: Text(AppLocalizations.of(context).campaignDismiss,
+                                          style: const TextStyle(
                                               fontSize: 8,
                                               color: AppTheme.textMuted)),
                                     ),
@@ -809,7 +805,7 @@ class _ZoneRow extends StatelessWidget {
                     decoration: BoxDecoration(
                       color: zone.color.withValues(alpha: 0.18),
                       border: Border.all(color: zone.color.withValues(alpha: 0.55)),
-                      borderRadius: BorderRadius.circular(3),
+                      borderRadius: BorderRadius.circular(8),
                     ),
                     child: Text('${zone.modifier!.icon} ${zone.modifier!.label}',
                         style: TextStyle(fontSize: 9, color: zone.color, fontWeight: FontWeight.bold)),
@@ -1070,7 +1066,7 @@ class _StageCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: const Color(0xFF231F1B),
         border: Border.all(color: AppTheme.cardBorder),
-        borderRadius: BorderRadius.circular(4),
+        borderRadius: BorderRadius.circular(8),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1082,7 +1078,7 @@ class _StageCard extends StatelessWidget {
                 decoration: BoxDecoration(
                   color: zone.color.withValues(alpha: 0.12),
                   border: Border.all(color: zone.color.withValues(alpha: 0.5)),
-                  borderRadius: BorderRadius.circular(3),
+                  borderRadius: BorderRadius.circular(8),
                 ),
                 child: Text(game.campaignStageLabel,
                     style: AppTheme.pixelHeading(
@@ -1128,7 +1124,7 @@ class _StageCard extends StatelessWidget {
                 side: BorderSide(color: hasEnergy ? zone.color : AppTheme.cardBorder),
                 padding: const EdgeInsets.symmetric(vertical: 12),
                 minimumSize: const Size(0, 48),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
               ),
               child: Text(
                 hasEnergy ? '⚔  FIGHT  (−1 ⚡)' : '⚡ No energy — refills in ${game.energyRechargeRemaining.inMinutes}m',
@@ -1245,7 +1241,7 @@ class _StarProgressRow extends StatelessWidget {
       decoration: BoxDecoration(
         color: const Color(0xFF1a1a10),
         border: Border.all(color: const Color(0xFFFFD700).withValues(alpha: 0.25)),
-        borderRadius: BorderRadius.circular(4),
+        borderRadius: BorderRadius.circular(8),
       ),
       child: Row(
         children: [
@@ -1253,8 +1249,8 @@ class _StarProgressRow extends StatelessWidget {
           const SizedBox(width: 8),
           Expanded(
             child: Text(
-              '$total perfect stage${total == 1 ? '' : 's'}  '
-              '${next > 0 ? '• next milestone at $next (+mythril +Z-Coins)' : '• all milestones cleared!'}',
+              '${AppLocalizations.of(context).campaignPerfectStages(total)}  '
+              '${next > 0 ? AppLocalizations.of(context).campaignNextMilestone(next) : AppLocalizations.of(context).campaignAllMilestones}',
               style: const TextStyle(fontSize: 11, color: AppTheme.textMuted),
             ),
           ),

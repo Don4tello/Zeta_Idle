@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../data/patch_notes.dart';
 import '../theme/app_theme.dart';
+import '../l10n/app_localizations.dart';
 
 /// Scrollable "What's New" / patch-notes sheet. Latest build pinned at the top,
 /// scroll down for the full history.
@@ -42,7 +43,7 @@ class _WhatsNewSheet extends StatelessWidget {
             child: Row(children: [
               const Text('📣', style: TextStyle(fontSize: 20)),
               const SizedBox(width: 8),
-              Text("WHAT'S NEW",
+              Text(AppLocalizations.of(context).wnTitle,
                   style: AppTheme.pixelHeading(
                       fontSize: 14, letterSpacing: 2, color: AppTheme.accentGold)),
               const Spacer(),
@@ -80,7 +81,7 @@ class _PatchCard extends StatelessWidget {
             color: latest
                 ? AppTheme.accentGold.withValues(alpha: 0.5)
                 : AppTheme.cardBorder),
-        borderRadius: BorderRadius.circular(4),
+        borderRadius: BorderRadius.circular(8),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -94,8 +95,8 @@ class _PatchCard extends StatelessWidget {
                   color: AppTheme.accentGold,
                   borderRadius: BorderRadius.circular(2),
                 ),
-                child: const Text('LATEST',
-                    style: TextStyle(color: Colors.black, fontSize: 8, fontWeight: FontWeight.bold)),
+                child: Text(AppLocalizations.of(context).wnLatest,
+                    style: const TextStyle(color: Colors.black, fontSize: 8, fontWeight: FontWeight.bold)),
               ),
             Expanded(
               child: Text(note.title,

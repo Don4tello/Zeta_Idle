@@ -5,6 +5,7 @@ import '../services/game_state.dart';
 import '../theme/app_theme.dart';
 import '../widgets/currency_info.dart';
 import '../widgets/currency_icon.dart';
+import '../l10n/app_localizations.dart';
 
 class ForgeScreen extends StatefulWidget {
   const ForgeScreen({super.key, this.embedded = false});
@@ -39,24 +40,16 @@ class _ForgeScreenState extends State<ForgeScreen>
       labelStyle: AppTheme.pixelHeading(fontSize: 11, letterSpacing: 1),
       unselectedLabelColor: AppTheme.textMuted,
       indicatorColor: AppTheme.accentGold,
-      tabs: const [
+      tabs: [
         Tab(child: Tooltip(
-          message: 'Destroy items to recover Shards (◆).\n'
-              '• Common → 3 ◆\n'
-              '• Rare → 8 ◆\n'
-              '• Epic → 20 ◆\n'
-              '• Legendary → 60 ◆\n'
-              '• Set → 100 ◆',
+          message: AppLocalizations.of(context).forgeSalvageTooltip,
           preferBelow: false,
-          child: Text('SALVAGE'),
+          child: Text(AppLocalizations.of(context).forgeSalvage),
         )),
         Tab(child: Tooltip(
-          message: 'Upgrade an item from +0 to +10.\n'
-              'Each tier boosts all stats by 8%.\n'
-              'At +5 and +10 the item gains a title prefix.\n'
-              'Costs Gold + Shards per tier.',
+          message: AppLocalizations.of(context).forgeUpgradeTooltip,
           preferBelow: false,
-          child: Text('UPGRADE'),
+          child: Text(AppLocalizations.of(context).forgeUpgrade),
         )),
       ],
     );
@@ -83,7 +76,7 @@ class _ForgeScreenState extends State<ForgeScreen>
       backgroundColor: const Color(0xFF1B1A17),
       appBar: AppBar(
         backgroundColor: const Color(0xFF2A2623),
-        title: Text('FORGE', style: AppTheme.pixelHeading(fontSize: 14, letterSpacing: 2)),
+        title: Text(AppLocalizations.of(context).forgeTitle, style: AppTheme.pixelHeading(fontSize: 14, letterSpacing: 2)),
         bottom: tabBar,
       ),
       body: Column(children: [
@@ -143,7 +136,7 @@ class _CombineTabState extends State<_CombineTab> {
           const SizedBox(height: 14),
 
           // Slot picker
-          Text('SLOT', style: AppTheme.pixelHeading(fontSize: 10, letterSpacing: 2, color: AppTheme.textMuted)),
+          Text(AppLocalizations.of(context).forgeSlot, style: AppTheme.pixelHeading(fontSize: 10, letterSpacing: 2, color: AppTheme.textMuted)),
           const SizedBox(height: 6),
           Wrap(
             spacing: 6, runSpacing: 6,
@@ -157,7 +150,7 @@ class _CombineTabState extends State<_CombineTab> {
 
           // Rarity picker
           Row(children: [
-            Text('FROM  ', style: AppTheme.pixelHeading(fontSize: 10, letterSpacing: 2, color: AppTheme.textMuted)),
+            Text(AppLocalizations.of(context).forgeFrom, style: AppTheme.pixelHeading(fontSize: 10, letterSpacing: 2, color: AppTheme.textMuted)),
             _ChoiceChip(
               label: 'COMMON → RARE',
               selected: _rarity == ItemRarity.common,
@@ -236,7 +229,7 @@ class _CombineTabState extends State<_CombineTab> {
     if (result != null && context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Forged: ${result.name} (${result.rarityLabel})!',
+          content: Text(AppLocalizations.of(context).forgeForged(result.name, result.rarityLabel),
               style: const TextStyle(color: AppTheme.accentGold)),
           backgroundColor: const Color(0xFF2A2623),
           duration: const Duration(seconds: 3),
@@ -291,7 +284,7 @@ class _DisenchantTabState extends State<_DisenchantTab> {
             decoration: BoxDecoration(
               color: const Color(0xFF2A2623),
               border: Border.all(color: AppTheme.cardBorder),
-              borderRadius: BorderRadius.circular(4),
+              borderRadius: BorderRadius.circular(8),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -299,8 +292,8 @@ class _DisenchantTabState extends State<_DisenchantTab> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Text('SALVAGE RATES',
-                        style: TextStyle(fontSize: 11, color: AppTheme.textMuted,
+                    Text(AppLocalizations.of(context).forgeSalvageRates,
+                        style: const TextStyle(fontSize: 11, color: AppTheme.textMuted,
                             fontWeight: FontWeight.bold, letterSpacing: 1)),
                     if (_selected.isNotEmpty)
                       ElevatedButton(
@@ -313,7 +306,7 @@ class _DisenchantTabState extends State<_DisenchantTab> {
                           minimumSize: Size.zero,
                           tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                         ),
-                        child: Text('SALVAGE  ${_selected.length}  (+$_shardPreview ◆)',
+                        child: Text(AppLocalizations.of(context).forgeSalvageBtn(_selected.length, _shardPreview),
                             style: AppTheme.pixelHeading(fontSize: 10, letterSpacing: 1,
                                 color: const Color(0xFFcc4444))),
                       ),
@@ -336,12 +329,12 @@ class _DisenchantTabState extends State<_DisenchantTab> {
             Container(
               padding: const EdgeInsets.all(20),
               alignment: Alignment.center,
-              child: const Text('Your bag is empty.',
-                  style: TextStyle(fontSize: 13, color: AppTheme.textMuted)),
+              child: Text(AppLocalizations.of(context).forgeBagEmpty,
+                  style: const TextStyle(fontSize: 13, color: AppTheme.textMuted)),
             )
           else ...[
             Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-              Text('BAG  (${bag.length} items)',
+              Text(AppLocalizations.of(context).forgeBag(bag.length),
                   style: AppTheme.pixelHeading(fontSize: 10, letterSpacing: 2)),
               TextButton(
                 onPressed: () => setState(() {
@@ -391,7 +384,7 @@ class _DisenchantTabState extends State<_DisenchantTab> {
     if (context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Salvaged: +$earned ◆',
+          content: Text(AppLocalizations.of(context).forgeSalvaged(earned),
               style: const TextStyle(color: AppTheme.accentGold)),
           backgroundColor: const Color(0xFF2A2623),
           duration: const Duration(seconds: 2),
@@ -420,18 +413,18 @@ class _RecipeBanner extends StatelessWidget {
       decoration: BoxDecoration(
         color: const Color(0xFF2A2623),
         border: Border.all(color: AppTheme.cardBorder),
-        borderRadius: BorderRadius.circular(4),
+        borderRadius: BorderRadius.circular(8),
       ),
       child: Row(
         children: [
           _RarityDot(rarity: from),
-          Text(' ×$needed', style: const TextStyle(fontSize: 14, color: AppTheme.textLight)),
+          Text(AppLocalizations.of(context).forgeTimesN(needed), style: const TextStyle(fontSize: 14, color: AppTheme.textLight)),
           const Padding(
             padding: EdgeInsets.symmetric(horizontal: 10),
             child: Icon(Icons.arrow_forward, size: 18, color: AppTheme.textMuted),
           ),
           _RarityDot(rarity: to),
-          Text('  ×1 (random)',
+          Text(AppLocalizations.of(context).forgeTimesRandom,
               style: const TextStyle(fontSize: 13, color: AppTheme.textMuted)),
           if (hasMasterForger && from == ItemRarity.common) ...[
             const SizedBox(width: 8),
@@ -440,9 +433,9 @@ class _RecipeBanner extends StatelessWidget {
               decoration: BoxDecoration(
                 color: const Color(0xFFcc8844).withValues(alpha: 0.15),
                 border: Border.all(color: const Color(0xFFcc8844)),
-                borderRadius: BorderRadius.circular(3),
+                borderRadius: BorderRadius.circular(8),
               ),
-              child: Text('Master Forger',
+              child: Text(AppLocalizations.of(context).forgeMasterForger,
                   style: AppTheme.pixelHeading(fontSize: 9, color: const Color(0xFFcc8844))),
             ),
           ],
@@ -475,7 +468,7 @@ class _RarityDot extends StatelessWidget {
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.12),
         border: Border.all(color: color),
-        borderRadius: BorderRadius.circular(3),
+        borderRadius: BorderRadius.circular(8),
       ),
       child: Text(_labels[rarity]!, style: TextStyle(fontSize: 12, color: color)),
     );
@@ -493,8 +486,8 @@ class _SelectionProgress extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-          Text('SELECTED', style: AppTheme.pixelHeading(fontSize: 10, letterSpacing: 2)),
-          Text('$selected / $needed',
+          Text(AppLocalizations.of(context).forgeSelected, style: AppTheme.pixelHeading(fontSize: 10, letterSpacing: 2)),
+          Text(AppLocalizations.of(context).forgeSelectedCount(selected, needed),
               style: TextStyle(
                   fontSize: 13,
                   color: selected == needed ? AppTheme.accentGold : AppTheme.textMuted,
@@ -556,7 +549,7 @@ class _ForgeItemTile extends StatelessWidget {
             color: selected ? item.rarityColor : AppTheme.cardBorder,
             width: selected ? 1.5 : 1,
           ),
-          borderRadius: BorderRadius.circular(3),
+          borderRadius: BorderRadius.circular(8),
         ),
         child: Row(
           children: [
@@ -620,7 +613,7 @@ class _ChoiceChip extends StatelessWidget {
         decoration: BoxDecoration(
           color: selected ? AppTheme.accentGold.withValues(alpha: 0.12) : const Color(0xFF231F1B),
           border: Border.all(color: selected ? AppTheme.accentGold : AppTheme.cardBorder),
-          borderRadius: BorderRadius.circular(3),
+          borderRadius: BorderRadius.circular(8),
         ),
         child: Text(label,
             style: TextStyle(
@@ -683,12 +676,12 @@ class _GemsTabState extends State<_GemsTab> {
               decoration: BoxDecoration(
                 color: const Color(0xFF231F1B),
                 border: Border.all(color: const Color(0xFF6688aa)),
-                borderRadius: BorderRadius.circular(4),
+                borderRadius: BorderRadius.circular(8),
               ),
               child: Row(children: [
                 const Text('🌀', style: TextStyle(fontSize: 19)),
                 const SizedBox(width: 10),
-                Text('ARCANE DUST',
+                Text(AppLocalizations.of(context).forgeArcaneDust,
                     style: AppTheme.pixelHeading(fontSize: 11, color: const Color(0xFF88aacc), letterSpacing: 2)),
                 const Spacer(),
                 Text('${game.gemShards}',
@@ -699,7 +692,7 @@ class _GemsTabState extends State<_GemsTab> {
           const SizedBox(height: 16),
 
           // ── Gem type picker (one per line, with full description) ─────
-          Text('GEM TYPE', style: AppTheme.pixelHeading(fontSize: 10, letterSpacing: 2, color: AppTheme.textMuted)),
+          Text(AppLocalizations.of(context).forgeGemType, style: AppTheme.pixelHeading(fontSize: 10, letterSpacing: 2, color: AppTheme.textMuted)),
           const SizedBox(height: 8),
           // Onyx (physical) removed with the physical damage type — Armor is the
           // physical defence, not a gem stat.
@@ -717,7 +710,7 @@ class _GemsTabState extends State<_GemsTab> {
                   decoration: BoxDecoration(
                     color: sel ? t.color.withValues(alpha: 0.15) : const Color(0xFF231F1B),
                     border: Border.all(color: sel ? t.color : AppTheme.cardBorder, width: sel ? 1.5 : 1),
-                    borderRadius: BorderRadius.circular(4),
+                    borderRadius: BorderRadius.circular(8),
                   ),
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.center,
@@ -736,9 +729,9 @@ class _GemsTabState extends State<_GemsTab> {
                                   style: const TextStyle(fontSize: 13, color: AppTheme.textMuted)),
                             ]),
                             const SizedBox(height: 3),
-                            Text('⚔ Weapon: +$pct% ${t.damageType.label} damage',
+                            Text(AppLocalizations.of(context).forgeGemWeaponDesc(pct, t.damageType.label),
                                 style: const TextStyle(fontSize: 13, color: Color(0xFFd9a066))),
-                            Text('🛡 Armor: +$pct% ${t.damageType.label} resistance',
+                            Text(AppLocalizations.of(context).forgeGemArmorDesc(pct, t.damageType.label),
                                 style: const TextStyle(fontSize: 13, color: Color(0xFF88aacc))),
                           ],
                         ),
@@ -753,7 +746,7 @@ class _GemsTabState extends State<_GemsTab> {
           const SizedBox(height: 14),
 
           // ── Tier picker ───────────────────────────────────────────────
-          Text('TIER', style: AppTheme.pixelHeading(fontSize: 10, letterSpacing: 2, color: AppTheme.textMuted)),
+          Text(AppLocalizations.of(context).forgeTier, style: AppTheme.pixelHeading(fontSize: 10, letterSpacing: 2, color: AppTheme.textMuted)),
           const SizedBox(height: 8),
           Row(children: GemTier.values.map((t) {
             final sel = _tier == t;
@@ -767,7 +760,7 @@ class _GemsTabState extends State<_GemsTab> {
                     decoration: BoxDecoration(
                       color: sel ? t.color.withValues(alpha: 0.12) : const Color(0xFF231F1B),
                       border: Border.all(color: sel ? t.color : AppTheme.cardBorder, width: sel ? 1.5 : 1),
-                      borderRadius: BorderRadius.circular(4),
+                      borderRadius: BorderRadius.circular(8),
                     ),
                     child: Column(
                       children: [
@@ -789,7 +782,7 @@ class _GemsTabState extends State<_GemsTab> {
             decoration: BoxDecoration(
               color: const Color(0xFF231F1B),
               border: Border.all(color: _type.color.withValues(alpha: 0.5)),
-              borderRadius: BorderRadius.circular(4),
+              borderRadius: BorderRadius.circular(8),
             ),
             child: Row(children: [
               Text(_type.emoji, style: const TextStyle(fontSize: 25)),
@@ -800,12 +793,12 @@ class _GemsTabState extends State<_GemsTab> {
                   Text('${previewGem.name}  •  ${_type.elementLabel}',
                       style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: _type.color)),
                   const SizedBox(height: 4),
-                  Text('⚔ Weapon: ${previewGem.weaponEffect}',
+                  Text(AppLocalizations.of(context).forgePreviewWeapon(previewGem.weaponEffect),
                       style: const TextStyle(fontSize: 13, color: Color(0xFFd9a066))),
-                  Text('🛡 Armor: ${previewGem.armorEffect}',
+                  Text(AppLocalizations.of(context).forgePreviewArmor(previewGem.armorEffect),
                       style: const TextStyle(fontSize: 13, color: Color(0xFF88aacc))),
                   const SizedBox(height: 4),
-                  Text('${_tier.shardCost} 💠 to craft',
+                  Text(AppLocalizations.of(context).forgeToCraft(_tier.shardCost),
                       style: const TextStyle(fontSize: 12, color: AppTheme.textMuted)),
                 ],
               )),
@@ -831,10 +824,10 @@ class _GemsTabState extends State<_GemsTab> {
               ),
               child: Text(
                 game.gemBag.length >= GameState.gemBagMax
-                    ? 'GEM BAG FULL (${game.gemBag.length}/${GameState.gemBagMax})'
+                    ? AppLocalizations.of(context).forgeGemBagFull(game.gemBag.length, GameState.gemBagMax)
                     : game.gemShards < _tier.shardCost
-                        ? 'NEED ${_tier.shardCost - game.gemShards} MORE 💠'
-                        : '✦  CRAFT  ${_tier.shardCost} 💠',
+                        ? AppLocalizations.of(context).forgeNeedMore(_tier.shardCost - game.gemShards)
+                        : AppLocalizations.of(context).forgeCraft(_tier.shardCost),
                 style: AppTheme.pixelHeading(fontSize: 12, letterSpacing: 1,
                     color: canCraft ? AppTheme.accentGold : AppTheme.cardBorder),
               ),
@@ -845,9 +838,9 @@ class _GemsTabState extends State<_GemsTab> {
           // ── Gem bag ───────────────────────────────────────────────────
           if (game.gemBag.isNotEmpty) ...[
             Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-              Text('GEM BAG  (${game.gemBag.length}/${GameState.gemBagMax})',
+              Text(AppLocalizations.of(context).forgeGemBag(game.gemBag.length, GameState.gemBagMax),
                   style: AppTheme.pixelHeading(fontSize: 10, letterSpacing: 2)),
-              Text('Tap a gem to socket it into an item',
+              Text(AppLocalizations.of(context).forgeTapGem,
                   style: const TextStyle(fontSize: 11, color: AppTheme.textMuted)),
             ]),
             const SizedBox(height: 8),
@@ -864,8 +857,8 @@ class _GemsTabState extends State<_GemsTab> {
             Container(
               padding: const EdgeInsets.all(20),
               alignment: Alignment.center,
-              child: const Text('No gems crafted yet. Craft one above!',
-                  style: TextStyle(fontSize: 13, color: AppTheme.textMuted)),
+              child: Text(AppLocalizations.of(context).forgeNoGems,
+                  style: const TextStyle(fontSize: 13, color: AppTheme.textMuted)),
             ),
           ],
 
@@ -876,20 +869,15 @@ class _GemsTabState extends State<_GemsTab> {
             decoration: BoxDecoration(
               color: const Color(0xFF231F1B),
               border: Border.all(color: AppTheme.cardBorder),
-              borderRadius: BorderRadius.circular(4),
+              borderRadius: BorderRadius.circular(8),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('HOW GEMS WORK', style: AppTheme.pixelHeading(fontSize: 10, letterSpacing: 2, color: AppTheme.textMuted)),
+                Text(AppLocalizations.of(context).forgeHowGems, style: AppTheme.pixelHeading(fontSize: 10, letterSpacing: 2, color: AppTheme.textMuted)),
                 const SizedBox(height: 6),
-                const Text('• Each gem is dual-purpose — the SAME gem gives '
-                    'elemental DAMAGE in a weapon, or elemental RESISTANCE in armor / jewelry.\n'
-                    '• Gem shards drop from combat kills (25% chance) and bosses.\n'
-                    '• Each item can hold 1 gem in its socket.\n'
-                    '• Socket gems from this bag, or via the Inventory screen.\n'
-                    '• Replacing or removing a gem destroys the old one.',
-                    style: TextStyle(fontSize: 12, color: AppTheme.textMuted, height: 1.5)),
+                Text(AppLocalizations.of(context).forgeGemsInfo,
+                    style: const TextStyle(fontSize: 12, color: AppTheme.textMuted, height: 1.5)),
               ],
             ),
           ),
@@ -915,7 +903,7 @@ class _GemBagTile extends StatelessWidget {
         decoration: BoxDecoration(
           color: const Color(0xFF231F1B),
           border: Border.all(color: gem.color.withValues(alpha: 0.5)),
-          borderRadius: BorderRadius.circular(4),
+          borderRadius: BorderRadius.circular(8),
         ),
         child: Row(children: [
           Text(gem.type.emoji, style: const TextStyle(fontSize: 21)),
@@ -946,9 +934,9 @@ class _GemBagTile extends StatelessWidget {
       ...game.inventory.bag,
     ];
     if (allItems.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-        content: Text('No items to socket into.', style: TextStyle(color: AppTheme.accentGold)),
-        backgroundColor: Color(0xFF2A2623),
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(AppLocalizations.of(context).forgeNoItemsSocket, style: const TextStyle(color: AppTheme.accentGold)),
+        backgroundColor: const Color(0xFF2A2623),
       ));
       return;
     }
@@ -990,9 +978,9 @@ class _SocketPickerSheet extends StatelessWidget {
               Expanded(child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('Socket ${gem.name}',
+                  Text(AppLocalizations.of(context).forgeSocketGem(gem.name),
                       style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: gem.color)),
-                  Text('Choose an item to socket this gem into.',
+                  Text(AppLocalizations.of(context).forgeChooseItem,
                       style: const TextStyle(fontSize: 12, color: AppTheme.textMuted)),
                 ],
               )),
@@ -1023,7 +1011,7 @@ class _SocketPickerSheet extends StatelessWidget {
                     decoration: BoxDecoration(
                       color: const Color(0xFF231F1B),
                       border: Border.all(color: item.rarityColor.withValues(alpha: 0.4)),
-                      borderRadius: BorderRadius.circular(4),
+                      borderRadius: BorderRadius.circular(8),
                     ),
                     child: Row(children: [
                       Container(
@@ -1046,7 +1034,7 @@ class _SocketPickerSheet extends StatelessWidget {
                           decoration: BoxDecoration(
                             color: item.gem!.color.withValues(alpha: 0.1),
                             border: Border.all(color: item.gem!.color.withValues(alpha: 0.4)),
-                            borderRadius: BorderRadius.circular(3),
+                            borderRadius: BorderRadius.circular(8),
                           ),
                           child: Text('${item.gem!.type.emoji} ${item.gem!.tier.label}',
                               style: TextStyle(fontSize: 10, color: item.gem!.color)),
@@ -1069,17 +1057,17 @@ class _SocketPickerSheet extends StatelessWidget {
       context: context,
       builder: (_) => AlertDialog(
         backgroundColor: const Color(0xFF2A2623),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
-        title: Text('Replace Gem?',
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        title: Text(AppLocalizations.of(context).forgeReplaceGem,
             style: AppTheme.pixelHeading(fontSize: 14, color: AppTheme.accentGold)),
         content: Text(
-          '${item.gem!.name} will be destroyed and replaced with ${gem.name}. This cannot be undone.',
+          AppLocalizations.of(context).forgeReplaceBody(item.gem!.name, gem.name),
           style: const TextStyle(fontSize: 13, color: AppTheme.textLight, height: 1.4),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: Text('CANCEL', style: AppTheme.pixelHeading(fontSize: 11, color: AppTheme.textMuted)),
+            child: Text(AppLocalizations.of(context).csCancel, style: AppTheme.pixelHeading(fontSize: 11, color: AppTheme.textMuted)),
           ),
           TextButton(
             onPressed: () {
@@ -1088,7 +1076,7 @@ class _SocketPickerSheet extends StatelessWidget {
               Navigator.pop(context); // close sheet
               onDone();
             },
-            child: Text('REPLACE', style: AppTheme.pixelHeading(fontSize: 11, color: const Color(0xFFcc4444))),
+            child: Text(AppLocalizations.of(context).forgeReplace, style: AppTheme.pixelHeading(fontSize: 11, color: const Color(0xFFcc4444))),
           ),
         ],
       ),
@@ -1130,21 +1118,19 @@ class _UpgradeTabState extends State<_UpgradeTab> {
           decoration: BoxDecoration(
             color: const Color(0xFF1a1225),
             border: Border.all(color: const Color(0xFFaa66ff).withValues(alpha: 0.4)),
-            borderRadius: BorderRadius.circular(4),
+            borderRadius: BorderRadius.circular(8),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('UPGRADE', style: AppTheme.pixelHeading(fontSize: 12, color: const Color(0xFFaa66ff), letterSpacing: 2)),
+              Text(AppLocalizations.of(context).forgeUpgrade, style: AppTheme.pixelHeading(fontSize: 12, color: const Color(0xFFaa66ff), letterSpacing: 2)),
               const SizedBox(height: 6),
-              const Text(
-                'Upgrade items from +0 to +10. Each tier boosts all stats by 8%.\n'
-                'At +5 the item earns a Refined prefix.\n'
-                'At +10 it becomes Masterwork.',
-                style: TextStyle(fontSize: 11, color: AppTheme.textMuted, height: 1.4)),
+              Text(
+                AppLocalizations.of(context).forgeUpgradeInfo,
+                style: const TextStyle(fontSize: 11, color: AppTheme.textMuted, height: 1.4)),
               const SizedBox(height: 8),
               Row(children: [
-                const Text('Balance: ', style: TextStyle(fontSize: 10, color: AppTheme.textMuted)),
+                Text(AppLocalizations.of(context).forgeBalance, style: const TextStyle(fontSize: 10, color: AppTheme.textMuted)),
                 const CurrencyIcon(id: 'gold', size: 12),
                 const SizedBox(width: 3),
                 Text(AppTheme.fmtNumber(game.gold), style: const TextStyle(fontSize: 11, color: AppTheme.accentGold, fontWeight: FontWeight.bold)),
@@ -1156,15 +1142,15 @@ class _UpgradeTabState extends State<_UpgradeTab> {
         ),
 
         if (items.isEmpty)
-          const Center(
+          Center(
             child: Padding(
-              padding: EdgeInsets.all(32),
-              child: Text('No items available for upgrade.\nAll items are at +10 or bag is empty.',
+              padding: const EdgeInsets.all(32),
+              child: Text(AppLocalizations.of(context).forgeNoUpgradeItems,
                   style: TextStyle(fontSize: 13, color: AppTheme.textMuted), textAlign: TextAlign.center),
             ),
           )
         else ...[
-          Text('SELECT ITEM', style: AppTheme.pixelHeading(fontSize: 10, color: AppTheme.textMuted, letterSpacing: 1)),
+          Text(AppLocalizations.of(context).forgeSelectItem, style: AppTheme.pixelHeading(fontSize: 10, color: AppTheme.textMuted, letterSpacing: 1)),
           const SizedBox(height: 8),
           ...items.map((item) {
             final isSelected = _selected?.id == item.id;
@@ -1182,7 +1168,7 @@ class _UpgradeTabState extends State<_UpgradeTab> {
                     color: isSelected ? item.rarityColor : item.rarityColor.withValues(alpha: 0.3),
                     width: isSelected ? 1.5 : 1,
                   ),
-                  borderRadius: BorderRadius.circular(4),
+                  borderRadius: BorderRadius.circular(8),
                 ),
                 child: Row(children: [
                   Container(width: 3, height: 36,
@@ -1201,7 +1187,7 @@ class _UpgradeTabState extends State<_UpgradeTab> {
                               padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
                               decoration: BoxDecoration(
                                 color: const Color(0xFFaa66ff).withValues(alpha: 0.2),
-                                borderRadius: BorderRadius.circular(3),
+                                borderRadius: BorderRadius.circular(8),
                               ),
                               child: Text('+${item.upgradeTier}',
                                   style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFFaa66ff))),
@@ -1246,7 +1232,7 @@ class _UpgradeTabState extends State<_UpgradeTab> {
               decoration: BoxDecoration(
                 color: const Color(0xFF1a1225),
                 border: Border.all(color: const Color(0xFFaa66ff).withValues(alpha: 0.5)),
-                borderRadius: BorderRadius.circular(4),
+                borderRadius: BorderRadius.circular(8),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -1271,7 +1257,7 @@ class _UpgradeTabState extends State<_UpgradeTab> {
                           child: Container(
                             margin: const EdgeInsets.symmetric(horizontal: 1),
                             decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(3),
+                              borderRadius: BorderRadius.circular(8),
                               border: Border.all(
                                 color: isNext ? const Color(0xFFaa66ff) : reached ? const Color(0xFF44cc88).withValues(alpha: 0.5) : const Color(0xFF333333),
                                 width: isNext ? 1.5 : 0.5,
@@ -1282,7 +1268,7 @@ class _UpgradeTabState extends State<_UpgradeTab> {
                               child: Stack(
                                 fit: StackFit.expand,
                                 children: [
-                                  Image.asset('assets/images/tier_$tier.png',
+                                  Image.asset('assets/images/tier_$tier.webp',
                                     fit: BoxFit.cover,
                                     opacity: AlwaysStoppedAnimation(reached ? 1.0 : isNext ? 0.6 : 0.15),
                                     errorBuilder: (_, __, ___) => const SizedBox.shrink()),
@@ -1302,13 +1288,13 @@ class _UpgradeTabState extends State<_UpgradeTab> {
                     ),
                   ),
                   const SizedBox(height: 6),
-                  Text('All stats +8%${_selected!.baseDamage > 0 ? "  •  Weapon damage +8%" : ""}',
+                  Text('${AppLocalizations.of(context).forgeAllStats}${_selected!.baseDamage > 0 ? AppLocalizations.of(context).forgeWeaponDmgSuffix : ""}',
                       style: const TextStyle(fontSize: 10, color: Colors.white54)),
                   if (_selected!.upgradeTier + 1 == 5)
-                    const Text('🏷 Earns "Refined" prefix at +5!',
+                    Text(AppLocalizations.of(context).forgeRefinedPrefix,
                         style: TextStyle(fontSize: 10, color: Color(0xFFaa66ff))),
                   if (_selected!.upgradeTier + 1 == 10)
-                    const Text('🏷 Earns "Masterwork" prefix at +10!',
+                    Text(AppLocalizations.of(context).forgeMasterworkPrefix,
                         style: TextStyle(fontSize: 10, color: Color(0xFFFFD700))),
                 ],
               ),
@@ -1330,7 +1316,7 @@ class _UpgradeTabState extends State<_UpgradeTab> {
                   minimumSize: const Size(double.infinity, 48),
                 ),
                 child: Column(mainAxisSize: MainAxisSize.min, children: [
-                  Text('UPGRADE TO +${_selected!.upgradeTier + 1}',
+                  Text(AppLocalizations.of(context).forgeUpgradeTo(_selected!.upgradeTier + 1),
                       style: AppTheme.pixelHeading(fontSize: 12,
                           color: canAfford ? const Color(0xFFaa66ff) : AppTheme.cardBorder)),
                   const SizedBox(height: 2),

@@ -18,6 +18,8 @@ import '../widgets/battle_split_panel.dart';
 import '../widgets/tier_selector.dart';
 import '../widgets/pet_battle_sprite.dart';
 import '../widgets/zcoin_icon.dart';
+import '../l10n/app_localizations.dart';
+import '../l10n/content_l10n.dart';
 
 // -----------------------------------------------------------------------------
 // DungeonScreen
@@ -81,26 +83,26 @@ class _DungeonScreenState extends State<DungeonScreen> {
       appBar: AppBar(
         backgroundColor: const Color(0xFF2A2623),
         title: run == null
-            ? Text('THE DUNGEON', style: AppTheme.pixelHeading(fontSize: 14, letterSpacing: 2))
-            : Text('T${run.tier}  FL.${run.floor}  —  THE DUNGEON',
+            ? Text(AppLocalizations.of(context).dngTitle, style: AppTheme.pixelHeading(fontSize: 14, letterSpacing: 2))
+            : Text(AppLocalizations.of(context).dngTitleRun(run.tier, run.floor),
                 style: AppTheme.pixelHeading(fontSize: 12, letterSpacing: 1)),
         leading: run != null && !run.isOver
             ? IconButton(
                 icon: const Icon(Icons.arrow_back, size: 20),
                 onPressed: _abandon,
-                tooltip: 'Flee dungeon',
+                tooltip: AppLocalizations.of(context).dngFlee,
               )
             : null,
         actions: [
           IconButton(
             icon: Icon(Icons.assessment_outlined, size: 20,
                 color: game.lastFightSummary != null ? AppTheme.accentGold : AppTheme.textMuted),
-            tooltip: 'Last fight summary',
+            tooltip: AppLocalizations.of(context).battleLastFightSummary,
             onPressed: () {
               final s = game.lastFightSummary;
               if (s == null) {
-                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                    content: Text('No fight finished yet.'),
+                ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                    content: Text(AppLocalizations.of(context).battleNoFightYet),
                     behavior: SnackBarBehavior.floating));
                 return;
               }
@@ -111,14 +113,14 @@ class _DungeonScreenState extends State<DungeonScreen> {
           // you forgot to, or turn it off to take manual control of a run.
           IconButton(
             icon: Icon(
-              game.hasPremium ? Icons.autorenew : Icons.lock,
+              game.canAutoCampaign ? Icons.autorenew : Icons.lock,
               color: _autoRun ? const Color(0xFF44cc88) : AppTheme.textMuted,
               size: 20,
             ),
-            tooltip: game.hasPremium
-                ? (_autoRun ? 'Auto Run: ON — tap to take manual control'
-                            : 'Auto Run: OFF — tap to auto-clear')
-                : 'Auto Run (Premium)',
+            tooltip: game.canAutoCampaign
+                ? (_autoRun ? AppLocalizations.of(context).dngAutoOn
+                            : AppLocalizations.of(context).dngAutoOff)
+                : AppLocalizations.of(context).dngAutoPremium,
             onPressed: _toggleAuto,
           ),
           // Abyssal Push — opt in to descend past the clear floor into escalating
@@ -129,15 +131,15 @@ class _DungeonScreenState extends State<DungeonScreen> {
                   color: run.pushMode ? const Color(0xFFcc88ff) : AppTheme.textMuted,
                   size: 20),
               tooltip: run.pushMode
-                  ? 'Abyssal Push: ON — beat the Dungeon Lord to descend deeper'
-                  : 'Abyssal Push: OFF — run ends at the clear floor',
+                  ? AppLocalizations.of(context).dngPushOnTip
+                  : AppLocalizations.of(context).dngPushOffTip,
               onPressed: () {
                 final newOn = !run.pushMode;
                 game.setDungeonPushMode(newOn);
                 ScaffoldMessenger.of(context).showSnackBar(SnackBar(
                   content: Text(newOn
-                      ? 'Abyssal Push ON — clear the Dungeon Lord to descend into escalating abyss floors (richer Mythril + unique odds). Flee anytime to bank the clear.'
-                      : 'Abyssal Push OFF — the run ends when you clear the Dungeon Lord.'),
+                      ? AppLocalizations.of(context).dngPushOnMsg
+                      : AppLocalizations.of(context).dngPushOffMsg),
                   behavior: SnackBarBehavior.floating,
                   duration: const Duration(seconds: 3),
                 ));
@@ -146,7 +148,7 @@ class _DungeonScreenState extends State<DungeonScreen> {
           if (run == null || run.isOver)
             IconButton(
               icon: const Icon(Icons.leaderboard, color: AppTheme.accentGold, size: 20),
-              tooltip: 'Dungeon Leaderboard',
+              tooltip: AppLocalizations.of(context).dngLeaderboard,
               onPressed: () => Navigator.of(context).push(MaterialPageRoute(
                 builder: (_) => const LeaderboardScreen(board: LeaderboardBoard.dungeon),
               )),
@@ -193,11 +195,12 @@ class _DungeonScreenState extends State<DungeonScreen> {
   }
 
   void _toggleAuto() {
-    // Auto-run is a Premium subscriber perk.
-    if (!_autoRun && !GameStateProvider.of(context).hasPremium) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-        content: Text('Auto Run is a Premium subscriber feature.'),
-        duration: Duration(seconds: 2),
+    // Auto-run unlocks by progression — once you've beaten campaign stage 5
+    // (see GameState.canAutoCampaign). No longer a subscriber perk.
+    if (!_autoRun && !GameStateProvider.of(context).canAutoCampaign) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(AppLocalizations.of(context).dngAutoPremiumMsg),
+        duration: const Duration(seconds: 2),
       ));
       return;
     }
@@ -334,7 +337,7 @@ class _DungeonLobby extends StatelessWidget {
                 width: double.infinity,
                 height: 220,
                 child: Image.asset(
-                  'assets/images/dungeon_bg.png',
+                  'assets/images/dungeon_bg.webp',
                   fit: BoxFit.cover,
                   alignment: Alignment.center,
                 ),
@@ -373,9 +376,7 @@ class _DungeonLobby extends StatelessWidget {
           TutorialTip(
             tutorialKey: 'dungeon',
             game: game,
-            text: 'Choose one of two doors each floor. Slain enemies drop Bones — spend them '
-                'at the Traveling Merchant for run-long buffs. Loot is yours immediately, '
-                'even if your hero falls.',
+            text: AppLocalizations.of(context).dngTutorial,
           ),
           const SizedBox(height: 16),
           // Tier selector
@@ -412,7 +413,7 @@ class _RecordChip extends StatelessWidget {
         borderRadius: BorderRadius.circular(20),
       ),
       child: Text(
-        floor == 0 ? 'No record yet' : 'Deepest floor: $floor',
+        floor == 0 ? AppLocalizations.of(context).dngNoRecord : AppLocalizations.of(context).dngDeepestFloor(floor),
         style: AppTheme.pixelHeading(fontSize: 11, color: AppTheme.accentGold),
       ),
     );
@@ -427,23 +428,23 @@ class _InfoCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: const Color(0xFF231F1B),
         border: Border.all(color: AppTheme.cardBorder),
-        borderRadius: BorderRadius.circular(4),
+        borderRadius: BorderRadius.circular(8),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('WHAT TO EXPECT', style: AppTheme.pixelHeading(fontSize: 10, letterSpacing: 2, color: AppTheme.textMuted)),
+          Text(AppLocalizations.of(context).dngWhatToExpect, style: AppTheme.pixelHeading(fontSize: 10, letterSpacing: 2, color: AppTheme.textMuted)),
           const SizedBox(height: 10),
           for (final row in [
-            ('⚔', 'Combat — fight for gold'),
-            ('★', 'Elite — tougher foe, guaranteed item drop'),
-            ('‼', 'Ambush — enemy strikes first, high gold'),
-            ('⊕', 'Rest Site — recover 20% HP'),
-            ('✦', 'Treasure — claim gold & shards'),
-            ('✧', 'Shrine — choose a run-long blessing'),
-            ('◆', 'Locked Chest — spend shards for a rare item'),
-            ('✸', 'Trap — unavoidable damage'),
-            ('☠', 'Boss (every 5th floor) — high risk, high reward'),
+            ('⚔', AppLocalizations.of(context).dngExpCombat),
+            ('★', AppLocalizations.of(context).dngExpElite),
+            ('‼', AppLocalizations.of(context).dngExpAmbush),
+            ('⊕', AppLocalizations.of(context).dngExpRest),
+            ('✦', AppLocalizations.of(context).dngExpTreasure),
+            ('✧', AppLocalizations.of(context).dngExpShrine),
+            ('◆', AppLocalizations.of(context).dngExpChest),
+            ('✸', AppLocalizations.of(context).dngExpTrap),
+            ('☠', AppLocalizations.of(context).dngExpBoss),
           ])
             Padding(
               padding: const EdgeInsets.only(bottom: 6),
@@ -454,8 +455,8 @@ class _InfoCard extends StatelessWidget {
               ]),
             ),
           const SizedBox(height: 6),
-          const Text('Slain enemies drop Bones — spend them at the Traveling Merchant.',
-              style: TextStyle(fontSize: 12, color: AppTheme.textMuted, fontStyle: FontStyle.italic)),
+          Text(AppLocalizations.of(context).dngBonesHint,
+              style: const TextStyle(fontSize: 12, color: AppTheme.textMuted, fontStyle: FontStyle.italic)),
         ],
       ),
     );
@@ -484,26 +485,26 @@ class _LootPreviewCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: const Color(0xFF1A1510),
         border: Border.all(color: const Color(0xFF5a4a2a).withValues(alpha: 0.6)),
-        borderRadius: BorderRadius.circular(4),
+        borderRadius: BorderRadius.circular(8),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('EXPECTED LOOT', style: AppTheme.pixelHeading(fontSize: 10, letterSpacing: 2, color: AppTheme.textMuted)),
+          Text(AppLocalizations.of(context).dngExpectedLoot, style: AppTheme.pixelHeading(fontSize: 10, letterSpacing: 2, color: AppTheme.textMuted)),
           const SizedBox(height: 10),
-          _lootRow('💰', 'Gold', 'From combat, treasure rooms & rest supplies'),
+          _lootRow('💰', AppLocalizations.of(context).dngLootGold, AppLocalizations.of(context).dngLootGoldDetail),
           const SizedBox(height: 6),
-          _lootRow('◆', 'Shards', 'Treasure rooms & chests along the run'),
+          _lootRow('◆', AppLocalizations.of(context).dngLootShards, AppLocalizations.of(context).dngLootShardsDetail),
           const SizedBox(height: 6),
-          _lootRow('⚔', 'Items', 'Item tier at your depth: $tier  (elites & bosses drop better)'),
+          _lootRow('⚔', AppLocalizations.of(context).dngLootItems, AppLocalizations.of(context).dngLootItemsDetail(tier)),
           const SizedBox(height: 6),
-          _lootRow('✦', 'Mythril', '~$mythrilAt5 at floor 5  •  ~$mythrilAt10 at floor 10'),
+          _lootRow('✦', AppLocalizations.of(context).dngLootMythril, AppLocalizations.of(context).dngLootMythrilDetail(mythrilAt5, mythrilAt10)),
           if (deepestFloor > 0) ...[
             const SizedBox(height: 6),
             Row(children: [
               const Text('★', style: TextStyle(fontSize: 14)),
               const SizedBox(width: 8),
-              Text('Your best: floor $deepestFloor  •  ~${(deepestFloor / 2).floor().clamp(0, 10)} mythril',
+              Text(AppLocalizations.of(context).dngYourBest(deepestFloor, (deepestFloor / 2).floor().clamp(0, 10)),
                   style: const TextStyle(fontSize: 12, color: Color(0xFFFFCC44))),
             ]),
           ],
@@ -552,7 +553,7 @@ class _DungeonEnterSection extends StatelessWidget {
             const Icon(Icons.refresh, size: 14, color: AppTheme.textMuted),
             const SizedBox(width: 5),
             Text(
-              'Daily attempts: $remaining / ${GameState.kDungeonMaxAttempts}',
+              AppLocalizations.of(context).dngDailyAttempts(remaining, GameState.kDungeonMaxAttempts),
               style: const TextStyle(fontSize: 12, color: AppTheme.textMuted),
             ),
           ],
@@ -572,10 +573,10 @@ class _DungeonEnterSection extends StatelessWidget {
                 width: 1.5,
               ),
               padding: const EdgeInsets.symmetric(vertical: 16),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
             ),
             child: Text(
-              remaining > 0 ? 'ENTER  TIER $tier' : 'NO ATTEMPTS LEFT',
+              remaining > 0 ? AppLocalizations.of(context).dngEnterTier(tier) : AppLocalizations.of(context).dngNoAttempts,
               style: AppTheme.pixelHeading(
                 fontSize: 14, letterSpacing: 2,
                 color: remaining > 0 ? AppTheme.accentGold : Colors.white24,
@@ -597,13 +598,13 @@ class _DungeonEnterSection extends StatelessWidget {
                       : Colors.white24,
                 ),
                 padding: const EdgeInsets.symmetric(vertical: 10),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
               ),
               child: Row(mainAxisSize: MainAxisSize.min, children: [
                 ZCoinIcon(size: 13, animate: false),
                 const SizedBox(width: 5),
                 Text(
-                  '${GameState.kDungeonExtraCost} ZCoins — Buy 1 extra attempt',
+                  AppLocalizations.of(context).dngBuyExtra(GameState.kDungeonExtraCost),
                   style: TextStyle(fontSize: 12, color: canAfford ? const Color(0xFF88ccff) : Colors.white24),
                 ),
               ]),
@@ -686,7 +687,7 @@ class _HeroBar extends StatelessWidget {
                   Builder(builder: (_) {
                     final toBoss = run.floor % 5 == 0 ? 0 : 5 - (run.floor % 5);
                     return Text(
-                      toBoss == 0 ? '☠ BOSS FLOOR' : '☠ Boss in $toBoss',
+                      toBoss == 0 ? AppLocalizations.of(context).dngBossFloor : AppLocalizations.of(context).dngBossIn(toBoss),
                       style: TextStyle(
                         fontSize: 11, fontWeight: FontWeight.bold,
                         color: toBoss == 0 ? const Color(0xFFff5555)
@@ -705,7 +706,7 @@ class _HeroBar extends StatelessWidget {
                     children: [
                       ...run.blessings.map((b) => _effectChip(b.label, const Color(0xFF44cc88))),
                       ...run.shrineEffects.map((e) => _effectChip(
-                            '${e.icon} ${e.name}',
+                            '${e.icon} ${ContentL10n.of(context).tr(e.id, 'title', e.name)}',
                             e.id.startsWith('relic_') ? const Color(0xFFcc88ff)
                                 : e.isCurse ? const Color(0xFFcc4444)
                                 : const Color(0xFF44cc88),
@@ -904,7 +905,7 @@ class _RoomChoiceView extends StatelessWidget {
         Text('${theme.icon} ${theme.name.toUpperCase()}',
             style: AppTheme.pixelHeading(fontSize: 10, letterSpacing: 2, color: theme.color)),
         const SizedBox(height: 4),
-        Text('CHOOSE YOUR PATH',
+        Text(AppLocalizations.of(context).dngChoosePath,
             style: AppTheme.pixelHeading(fontSize: 13, letterSpacing: 3, color: AppTheme.accentGold)),
         if (nextIsBoss)
           Padding(
@@ -914,9 +915,9 @@ class _RoomChoiceView extends StatelessWidget {
               decoration: BoxDecoration(
                 color: const Color(0xFFcc4444).withValues(alpha: 0.12),
                 border: Border.all(color: const Color(0xFFcc4444).withValues(alpha: 0.6)),
-                borderRadius: BorderRadius.circular(3),
+                borderRadius: BorderRadius.circular(8),
               ),
-              child: const Text('☠ NEXT FLOOR: BOSS',
+              child: Text(AppLocalizations.of(context).dngNextBoss,
                   style: TextStyle(fontSize: 11, color: Color(0xFFff6666), fontWeight: FontWeight.bold, letterSpacing: 1)),
             ),
           ),
@@ -974,28 +975,31 @@ class _DoorCard extends StatelessWidget {
   };
   bool get _mystery => !room.isGoblin && _mysteryTypes.contains(room.type);
 
-  List<String> get _detailLines => room.isGoblin
+  List<String> _detailLines(BuildContext context) {
+    final l = AppLocalizations.of(context);
+    return room.isGoblin
       ? [
-          '${room.enemyMaxHp ?? '?'} HP  •  flees after 5 rounds',
-          '6× gold if you slay it in time!',
+          l.dngGoblinHp(room.enemyMaxHp ?? '?'),
+          l.dngGoblinReward,
         ]
       : switch (room.type) {
     DungeonRoomType.combat ||
     DungeonRoomType.elite ||
     DungeonRoomType.ambush ||
     DungeonRoomType.boss  => [
-        room.enemyName ?? 'Enemy',
-        '${room.enemyMaxHp ?? '?'} HP  •  ${room.enemyAtk ?? '?'} ATK',
+        room.enemyName ?? l.dngEnemy,
+        l.dngEnemyStats(room.enemyMaxHp ?? '?', room.enemyAtk ?? '?'),
         if (room.eliteTraitLabel != null) '★ ${room.eliteTraitLabel}',
-        if (room.type == DungeonRoomType.elite) 'Guaranteed item drop',
-        if (room.type == DungeonRoomType.ambush) 'Strikes first — high gold',
+        if (room.type == DungeonRoomType.elite) l.dngGuaranteedDrop,
+        if (room.type == DungeonRoomType.ambush) l.dngStrikesFirst,
       ],
-    DungeonRoomType.trap        => [room.trapName ?? 'Trap', '-${room.trapDamage ?? '?'} HP'],
-    DungeonRoomType.treasure    => ['+${room.treasureGold ?? 0} gold', '+${room.treasureShards ?? 0} shards'],
-    DungeonRoomType.shrine      => ['A blessing...', 'or a curse?'],
-    DungeonRoomType.lockedChest => ['Rare item inside', '${room.chestShardCost ?? 30} shards to open'],
-    DungeonRoomType.restSite    => ['Make camp', 'Recover HP'],
+    DungeonRoomType.trap        => [room.trapName ?? 'Trap', l.dngMinusHp(room.trapDamage ?? '?')],
+    DungeonRoomType.treasure    => [l.dngPlusGold(room.treasureGold ?? 0), l.dngPlusShards(room.treasureShards ?? 0)],
+    DungeonRoomType.shrine      => [l.dngDoorBlessing, l.dngDoorCurse],
+    DungeonRoomType.lockedChest => [l.dngRareInside, l.dngShardsToOpen(room.chestShardCost ?? 30)],
+    DungeonRoomType.restSite    => [l.dngMakeCamp, l.dngRecoverHp],
   };
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -1008,11 +1012,11 @@ class _DoorCard extends StatelessWidget {
     final icon  = mystery ? '?' : _FloorStrip._roomIcons[room.type] ?? '?';
     final showSprite = !mystery && _combatTypes.contains(room.type) && room.enemyId != null;
     final title = mystery
-        ? 'MYSTERY'
-        : room.isGoblin ? '💰 TREASURE GOBLIN' : room.typeName.toUpperCase();
+        ? AppLocalizations.of(context).dngMystery
+        : room.isGoblin ? AppLocalizations.of(context).dngGoblin : room.typeName.toUpperCase();
     final lines = mystery
-        ? const ['An unmarked door.', 'Fortune or peril?']
-        : _detailLines;
+        ? [AppLocalizations.of(context).dngMystery1, AppLocalizations.of(context).dngMystery2]
+        : _detailLines(context);
 
     return GestureDetector(
       onTap: onTap,
@@ -1024,7 +1028,7 @@ class _DoorCard extends StatelessWidget {
             colors: [color.withValues(alpha: 0.12), const Color(0xFF17140f)],
           ),
           border: Border.all(color: color.withValues(alpha: 0.65), width: 1.5),
-          borderRadius: BorderRadius.circular(6),
+          borderRadius: BorderRadius.circular(8),
           boxShadow: [BoxShadow(color: color.withValues(alpha: 0.12), blurRadius: 10)],
         ),
         padding: const EdgeInsets.fromLTRB(14, 18, 14, 16),
@@ -1074,9 +1078,9 @@ class _DoorCard extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
               decoration: BoxDecoration(
                 border: Border.all(color: color),
-                borderRadius: BorderRadius.circular(3),
+                borderRadius: BorderRadius.circular(8),
               ),
-              child: Text('ENTER',
+              child: Text(AppLocalizations.of(context).dngEnter,
                   style: AppTheme.pixelHeading(fontSize: 11, letterSpacing: 2, color: color)),
             ),
           ],
@@ -1146,7 +1150,7 @@ class _RoomDetail extends StatelessWidget {
               backgroundColor: bg,
               side: BorderSide(color: color, width: 1.5),
               padding: const EdgeInsets.symmetric(vertical: 13),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
             ),
             child: Text(label,
                 style: AppTheme.pixelHeading(fontSize: 12, letterSpacing: 1, color: color)),
@@ -1846,7 +1850,7 @@ class _AnimatedCombatRoomState extends State<_AnimatedCombatRoom> {
                 decoration: BoxDecoration(
                   color: _paused ? AppTheme.accentGold.withValues(alpha: 0.15) : Colors.transparent,
                   border: Border.all(color: _paused ? AppTheme.accentGold : AppTheme.cardBorder),
-                  borderRadius: BorderRadius.circular(3),
+                  borderRadius: BorderRadius.circular(8),
                 ),
                 child: Icon(_paused ? Icons.play_arrow : Icons.pause,
                     size: 14, color: _paused ? AppTheme.accentGold : AppTheme.textMuted),
@@ -1862,10 +1866,10 @@ class _AnimatedCombatRoomState extends State<_AnimatedCombatRoom> {
                 if (next > maxTier) next = 1;
                 g.setSpeedTier(next);
                 if (next == maxTier && maxTier < 4) {
-                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                    content: Text('Higher speed needs the Speed Boost / Premium Pass.'),
+                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                    content: Text(AppLocalizations.of(context).dngSpeedNeeds),
                     behavior: SnackBarBehavior.floating,
-                    duration: Duration(milliseconds: 1200)));
+                    duration: const Duration(milliseconds: 1200)));
                 }
                 _timer?.cancel();
                 _timer = Timer.periodic(Duration(milliseconds: g.scaledInterval(1200)), (_) {
@@ -1878,7 +1882,7 @@ class _AnimatedCombatRoomState extends State<_AnimatedCombatRoom> {
                 decoration: BoxDecoration(
                   color: g.speedTier > 1 ? const Color(0xFFffaa00).withValues(alpha: 0.15) : Colors.transparent,
                   border: Border.all(color: g.speedTier > 1 ? const Color(0xFFffaa00) : AppTheme.cardBorder),
-                  borderRadius: BorderRadius.circular(3),
+                  borderRadius: BorderRadius.circular(8),
                 ),
                 child: Text(speedLabel, style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold,
                     color: g.speedTier > 1 ? const Color(0xFFffaa00) : AppTheme.textMuted)),
@@ -1975,14 +1979,14 @@ class _TreasureDetail extends StatelessWidget {
           decoration: BoxDecoration(
             color: const Color(0xFF231F1B),
             border: Border.all(color: AppTheme.accentGold.withValues(alpha: 0.4)),
-            borderRadius: BorderRadius.circular(4),
+            borderRadius: BorderRadius.circular(8),
           ),
           child: Column(
             children: [
               const ZCoinIcon(size: 49),
               const SizedBox(height: 12),
-              const Text('Treasure Found!',
-                  style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: AppTheme.textLight)),
+              Text(AppLocalizations.of(context).dngTreasureFound,
+                  style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: AppTheme.textLight)),
               const SizedBox(height: 16),
               Row(mainAxisAlignment: MainAxisAlignment.center, children: [
                 _LootChip('💰 +${room.treasureGold ?? 0}', AppTheme.accentGold),
@@ -2009,7 +2013,7 @@ class _LootChip extends StatelessWidget {
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.08),
         border: Border.all(color: color.withValues(alpha: 0.5)),
-        borderRadius: BorderRadius.circular(4),
+        borderRadius: BorderRadius.circular(8),
       ),
       child: Text(label, style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: color)),
     );
@@ -2060,7 +2064,7 @@ class _ShrineDetailState extends State<_ShrineDetail> {
     return Column(children: [
       Text(e.icon, style: const TextStyle(fontSize: 40)),
       const SizedBox(height: 6),
-      Text(e.isCurse ? '✸ CURSED!' : '✧ BLESSED!',
+      Text(e.isCurse ? AppLocalizations.of(context).dngCursed : AppLocalizations.of(context).dngBlessed,
           style: AppTheme.pixelHeading(fontSize: 14, letterSpacing: 2, color: color)),
       const SizedBox(height: 8),
       Container(
@@ -2069,12 +2073,12 @@ class _ShrineDetailState extends State<_ShrineDetail> {
         decoration: BoxDecoration(
           color: color.withValues(alpha: 0.08),
           border: Border.all(color: color.withValues(alpha: 0.5)),
-          borderRadius: BorderRadius.circular(6),
+          borderRadius: BorderRadius.circular(8),
         ),
         child: Column(children: [
-          Text(e.name, style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: color)),
+          Text(ContentL10n.of(context).tr(e.id, 'title', e.name), style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: color)),
           const SizedBox(height: 5),
-          Text(e.description, textAlign: TextAlign.center,
+          Text(ContentL10n.of(context).tr(e.id, 'desc', e.description), textAlign: TextAlign.center,
               style: const TextStyle(fontSize: 12, color: AppTheme.textLight, height: 1.4)),
         ]),
       ),
@@ -2087,9 +2091,9 @@ class _ShrineDetailState extends State<_ShrineDetail> {
       final effects = _revealed!;
       final allCurse = effects.every((e) => e.isCurse);
       final allBless = effects.every((e) => !e.isCurse);
-      final closingLine = allCurse ? 'The darkness takes its toll...'
-          : allBless ? 'Ancient power flows through you.'
-          : 'Light and shadow bind themselves to your fate.';
+      final closingLine = allCurse ? AppLocalizations.of(context).dngDarkToll
+          : allBless ? AppLocalizations.of(context).dngAncientPower
+          : AppLocalizations.of(context).dngLightShadow;
       return Column(
         children: [
           ...effects.map((e) => Padding(
@@ -2110,7 +2114,7 @@ class _ShrineDetailState extends State<_ShrineDetail> {
                 foregroundColor: const Color(0xFFcc88ff),
                 side: const BorderSide(color: Color(0xFFcc88ff)),
               ),
-              child: Text('CONTINUE', style: AppTheme.pixelHeading(fontSize: 12, color: const Color(0xFFcc88ff))),
+              child: Text(AppLocalizations.of(context).commonContinue, style: AppTheme.pixelHeading(fontSize: 12, color: const Color(0xFFcc88ff))),
             ),
           ),
         ],
@@ -2120,10 +2124,10 @@ class _ShrineDetailState extends State<_ShrineDetail> {
     // -- Pre-entry: variant-specific narrative --------------------------------
     final variant = widget.room.shrineVariant;
     final (shrineIcon, shrineTitle, shrineFlavor, enterLabel, shrineColor) = switch (variant) {
-      ShrineVariant.corrupted  => ('☠', 'Corrupted Shrine',  'Dark energies pulse and writhe. A curse is certain — but power awaits.', 'ACCEPT THE CURSE', const Color(0xFFcc4444)),
-      ShrineVariant.benevolent => ('✧', 'Blessed Shrine',    'Warm divine light emanates from this place. A blessing is guaranteed.', 'RECEIVE BLESSING', const Color(0xFF44cc88)),
-      ShrineVariant.twin       => ('✦', 'Ancient Shrine',    'Two forces stir within — you will receive both a blessing and a curse.', 'ENTER  (2 EFFECTS)', const Color(0xFFcc88ff)),
-      ShrineVariant.normal     => ('✧', 'Ancient Shrine',    'A mysterious shrine pulses with unknown energy.\nEnter to receive a blessing... or a curse.\nYou won\'t know which until it\'s too late.', 'ENTER SHRINE', const Color(0xFFcc88ff)),
+      ShrineVariant.corrupted  => ('☠', AppLocalizations.of(context).dngShrineCorrupted,  AppLocalizations.of(context).dngShrineCorruptedFlavor, AppLocalizations.of(context).dngAcceptCurse, const Color(0xFFcc4444)),
+      ShrineVariant.benevolent => ('✧', AppLocalizations.of(context).dngShrineBlessed,    AppLocalizations.of(context).dngShrineBlessedFlavor, AppLocalizations.of(context).dngReceiveBlessing, const Color(0xFF44cc88)),
+      ShrineVariant.twin       => ('✦', AppLocalizations.of(context).dngShrineAncient,    AppLocalizations.of(context).dngShrineTwinFlavor, AppLocalizations.of(context).dngEnterTwin, const Color(0xFFcc88ff)),
+      ShrineVariant.normal     => ('✧', AppLocalizations.of(context).dngShrineAncient,    AppLocalizations.of(context).dngShrineNormalFlavor, AppLocalizations.of(context).dngEnterShrine, const Color(0xFFcc88ff)),
     };
 
     return Column(
@@ -2137,7 +2141,7 @@ class _ShrineDetailState extends State<_ShrineDetail> {
             style: const TextStyle(fontSize: 12, color: AppTheme.textMuted, height: 1.5)),
         if (widget.run.shrineEffects.isNotEmpty) ...[
           const SizedBox(height: 8),
-          Text('Active effects: ${widget.run.shrineEffects.length}',
+          Text(AppLocalizations.of(context).dngActiveEffects(widget.run.shrineEffects.length),
               style: const TextStyle(fontSize: 10, color: AppTheme.textMuted)),
         ],
         const SizedBox(height: 16),
@@ -2166,7 +2170,7 @@ class _ShrineDetailState extends State<_ShrineDetail> {
                   foregroundColor: AppTheme.textMuted,
                   side: const BorderSide(color: AppTheme.cardBorder),
                 ),
-                child: Text('SKIP', style: AppTheme.pixelHeading(fontSize: 12, color: AppTheme.textMuted)),
+                child: Text(AppLocalizations.of(context).dngSkip, style: AppTheme.pixelHeading(fontSize: 12, color: AppTheme.textMuted)),
               ),
             ),
           ),
@@ -2186,7 +2190,7 @@ class _ShrineDetailState extends State<_ShrineDetail> {
                 side: const BorderSide(color: Color(0xFF44cc88)),
               ),
               child: Text(
-                '✧  GUARANTEE BLESSING  (${GameState.shrineBlissCost} ◆)',
+                AppLocalizations.of(context).dngGuaranteeBless(GameState.shrineBlissCost),
                 style: const TextStyle(fontSize: 11, color: Color(0xFF44cc88), fontWeight: FontWeight.bold),
               ),
             ),
@@ -2228,12 +2232,12 @@ class _TrapDetail extends StatelessWidget {
           decoration: BoxDecoration(
             color: const Color(0xFF231F1B),
             border: Border.all(color: trapColor.withValues(alpha: 0.6)),
-            borderRadius: BorderRadius.circular(4),
+            borderRadius: BorderRadius.circular(8),
           ),
           child: Column(
             children: [
               ClipRRect(
-                borderRadius: BorderRadius.circular(4),
+                borderRadius: BorderRadius.circular(8),
                 child: CustomPaint(
                   size: const Size(200, 100),
                   painter: _TrapScenePainter(name),
@@ -2246,7 +2250,7 @@ class _TrapDetail extends StatelessWidget {
               Builder(builder: (_) {
                 final dmg = room.trapDamage ?? 0;
                 final pct = run.heroMaxHp > 0 ? (dmg * 100 / run.heroMaxHp).round() : 0;
-                return Text('You will take $dmg damage ($pct% of max HP).',
+                return Text(AppLocalizations.of(context).dngTrapDamage(dmg, pct),
                     style: const TextStyle(fontSize: 14, color: AppTheme.textLight));
               }),
             ],
@@ -2539,7 +2543,7 @@ class _LockedChestDetailState extends State<_LockedChestDetail>
           decoration: BoxDecoration(
             color: const Color(0xFF231F1B),
             border: Border.all(color: const Color(0xFF88aaff).withValues(alpha: 0.5)),
-            borderRadius: BorderRadius.circular(4),
+            borderRadius: BorderRadius.circular(8),
           ),
           child: Column(children: [
             // Chest visual — pixel art style
@@ -2563,24 +2567,24 @@ class _LockedChestDetailState extends State<_LockedChestDetail>
               ),
             ),
             const SizedBox(height: 12),
-            const Text('Locked Chest',
-                style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: AppTheme.textLight)),
+            Text(AppLocalizations.of(context).dngLockedChest,
+                style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: AppTheme.textLight)),
             const SizedBox(height: 6),
-            const Text('Contains a rare or epic item.',
-                style: TextStyle(fontSize: 13, color: AppTheme.textMuted)),
+            Text(AppLocalizations.of(context).dngChestContains,
+                style: const TextStyle(fontSize: 13, color: AppTheme.textMuted)),
             const SizedBox(height: 14),
             // Shard option
             Row(mainAxisAlignment: MainAxisAlignment.center, children: [
               const Text('◆', style: TextStyle(fontSize: 17, color: Color(0xFF88aaff))),
               const SizedBox(width: 6),
-              Text('$cost shards',
+              Text(AppLocalizations.of(context).dngCostShards(cost),
                   style: TextStyle(
                     fontSize: 14, fontWeight: FontWeight.bold,
                     color: canAffordShards ? const Color(0xFF88aaff) : const Color(0xFF556677),
                   )),
               if (!canAffordShards) ...[
                 const SizedBox(width: 8),
-                Text('(have ${widget.game.shards})',
+                Text(AppLocalizations.of(context).dngHave(widget.game.shards),
                     style: const TextStyle(fontSize: 11, color: Color(0xFFcc4444))),
               ],
             ]),
@@ -2592,14 +2596,14 @@ class _LockedChestDetailState extends State<_LockedChestDetail>
               Row(mainAxisAlignment: MainAxisAlignment.center, children: [
                 const ZCoinIcon(size: 17, animate: false),
                 const SizedBox(width: 6),
-                Text('${GameState.chestCrystalCost} ZCoins',
+                Text(AppLocalizations.of(context).dngCostZcoins(GameState.chestCrystalCost),
                     style: TextStyle(
                       fontSize: 14, fontWeight: FontWeight.bold,
                       color: canAffordCrystals ? const Color(0xFFffcc44) : const Color(0xFF556677),
                     )),
                 if (!canAffordCrystals) ...[
                   const SizedBox(width: 8),
-                  Text('(have ${widget.game.zcoins})',
+                  Text(AppLocalizations.of(context).dngHave(widget.game.zcoins),
                       style: const TextStyle(fontSize: 11, color: Color(0xFFcc4444))),
                 ],
               ]),
@@ -2692,7 +2696,7 @@ class _RestSiteDetailState extends State<_RestSiteDetail> {
           decoration: BoxDecoration(
             color: const Color(0xFF231F1B),
             border: Border.all(color: accentColor.withValues(alpha: 0.5)),
-            borderRadius: BorderRadius.circular(4),
+            borderRadius: BorderRadius.circular(8),
           ),
           child: Column(children: [
             Text(icon, style: const TextStyle(fontSize: 49)),
@@ -2736,7 +2740,7 @@ class _RestSiteDetailState extends State<_RestSiteDetail> {
           decoration: BoxDecoration(
             color: const Color(0xFF231F1B),
             border: Border.all(color: accent.withValues(alpha: 0.5)),
-            borderRadius: BorderRadius.circular(4),
+            borderRadius: BorderRadius.circular(8),
           ),
           child: Column(children: [
             const Text('⊕', style: TextStyle(fontSize: 40)),
@@ -2749,8 +2753,8 @@ class _RestSiteDetailState extends State<_RestSiteDetail> {
                   style: const TextStyle(fontSize: 12, color: AppTheme.textMuted, height: 1.5),
                   textAlign: TextAlign.center),
             const SizedBox(height: 4),
-            const Text('"Bones for trinkets, traveller. More bones, finer wares."',
-                style: TextStyle(fontSize: 11, color: AppTheme.textMuted, fontStyle: FontStyle.italic, height: 1.4),
+            Text(AppLocalizations.of(context).dngMerchantQuote,
+                style: const TextStyle(fontSize: 11, color: AppTheme.textMuted, fontStyle: FontStyle.italic, height: 1.4),
                 textAlign: TextAlign.center),
             const SizedBox(height: 12),
             Container(
@@ -2758,9 +2762,9 @@ class _RestSiteDetailState extends State<_RestSiteDetail> {
               decoration: BoxDecoration(
                 color: const Color(0xFF0e0c08),
                 border: Border.all(color: const Color(0xFFccbb99).withValues(alpha: 0.5)),
-                borderRadius: BorderRadius.circular(3),
+                borderRadius: BorderRadius.circular(8),
               ),
-              child: Text('🦴  ${run.bones} Bones',
+              child: Text(AppLocalizations.of(context).dngBones(run.bones),
                   style: const TextStyle(
                       fontSize: 14, color: Color(0xFFe8dcc0), fontWeight: FontWeight.bold)),
             ),
@@ -2808,7 +2812,7 @@ class _MerchantItemRow extends StatelessWidget {
               ? Colors.white12
               : const Color(0xFFddaa44).withValues(alpha: 0.35),
         ),
-        borderRadius: BorderRadius.circular(4),
+        borderRadius: BorderRadius.circular(8),
       ),
       child: Row(children: [
         Text(item.icon,
@@ -2818,7 +2822,7 @@ class _MerchantItemRow extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(item.name,
+              Text(ContentL10n.of(context).tr(item.id, 'title', item.name),
                   style: TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.bold,
@@ -2848,9 +2852,9 @@ class _MerchantItemRow extends StatelessWidget {
                       ? AppTheme.accentGold.withValues(alpha: 0.7)
                       : Colors.white12,
                 ),
-                borderRadius: BorderRadius.circular(3),
+                borderRadius: BorderRadius.circular(8),
               ),
-              child: Text('${item.boneCost} 🦴',
+              child: Text(AppLocalizations.of(context).dngBoneCost(item.boneCost),
                   style: TextStyle(
                       fontSize: 12,
                       color: canAfford
@@ -2876,7 +2880,7 @@ class _RelicPicker extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Text('☠ BOSS SLAIN — CLAIM A RELIC',
+        Text(AppLocalizations.of(context).dngClaimRelic,
             textAlign: TextAlign.center,
             style: AppTheme.pixelHeading(fontSize: 12, letterSpacing: 2, color: const Color(0xFFcc88ff))),
         const SizedBox(height: 8),
@@ -2891,7 +2895,7 @@ class _RelicPicker extends StatelessWidget {
                 decoration: BoxDecoration(
                   color: const Color(0xFF1a0a2a).withValues(alpha: 0.6),
                   border: Border.all(color: const Color(0xFFcc88ff).withValues(alpha: 0.6)),
-                  borderRadius: BorderRadius.circular(4),
+                  borderRadius: BorderRadius.circular(8),
                 ),
                 child: Row(children: [
                   Text(relic.icon, style: const TextStyle(fontSize: 22)),
@@ -2900,10 +2904,10 @@ class _RelicPicker extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(relic.name,
+                        Text(ContentL10n.of(context).tr(relic.id, 'title', relic.name),
                             style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFFdd99ff))),
                         const SizedBox(height: 2),
-                        Text(relic.description,
+                        Text(ContentL10n.of(context).tr(relic.id, 'desc', relic.description),
                             style: const TextStyle(fontSize: 12, color: AppTheme.textLight)),
                       ],
                     ),
@@ -2917,7 +2921,7 @@ class _RelicPicker extends StatelessWidget {
         Center(
           child: TextButton(
             onPressed: () => game.skipDungeonRelic(),
-            child: Text('SKIP — DESCEND',
+            child: Text(AppLocalizations.of(context).dngSkipDescend,
                 style: AppTheme.pixelHeading(fontSize: 11, color: AppTheme.textMuted)),
           ),
         ),
@@ -2954,9 +2958,9 @@ class _RoomResult extends StatelessWidget {
                       backgroundColor: const Color(0xFF2A2623),
                       side: const BorderSide(color: AppTheme.cardBorder),
                       padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                     ),
-                    child: Text('RETURN',
+                    child: Text(AppLocalizations.of(context).dngReturn,
                         style: AppTheme.pixelHeading(fontSize: 14, letterSpacing: 1, color: AppTheme.textMuted)),
                   ),
                 )
@@ -2967,14 +2971,14 @@ class _RoomResult extends StatelessWidget {
                       child: ElevatedButton.icon(
                         onPressed: onNext,
                         icon: const Text('⚔', style: TextStyle(fontSize: 16)),
-                        label: Text('DESCEND TO FLOOR ${run.floor + 1}',
+                        label: Text(AppLocalizations.of(context).dngDescendTo(run.floor + 1),
                             style: AppTheme.pixelHeading(fontSize: 13, letterSpacing: 1, color: const Color(0xFF44cc88))),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color(0xFF0d1e14),
                           foregroundColor: const Color(0xFF44cc88),
                           side: const BorderSide(color: Color(0xFF44cc88), width: 1.5),
                           padding: const EdgeInsets.symmetric(vertical: 14),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                         ),
                       ),
                     ),
@@ -2993,22 +2997,22 @@ class _RoomResult extends StatelessWidget {
                     border: Border.all(
                       color: isDead ? const Color(0xFFcc4444) : const Color(0xFF44cc88),
                     ),
-                    borderRadius: BorderRadius.circular(4),
+                    borderRadius: BorderRadius.circular(8),
                   ),
                   child: Column(
                     children: [
                       if (room.type == DungeonRoomType.combat || room.type == DungeonRoomType.boss ||
                           room.type == DungeonRoomType.elite || room.type == DungeonRoomType.ambush) ...[
-                        Text(isDead ? '☠ Fallen'
-                                : room.goblinEscaped ? '💰 It got away!'
-                                : '✓ Victory',
+                        Text(isDead ? AppLocalizations.of(context).dngFallen
+                                : room.goblinEscaped ? AppLocalizations.of(context).dngGotAway
+                                : AppLocalizations.of(context).dngVictory,
                             style: TextStyle(fontSize: 19, fontWeight: FontWeight.bold,
                                 color: isDead ? const Color(0xFFcc4444)
                                     : room.goblinEscaped ? const Color(0xFFffcc33)
                                     : const Color(0xFF44cc88))),
                         if (run.ambushPreHit > 0 && isDead) ...[
                           const SizedBox(height: 4),
-                          Text('Ambush hit dealt ${run.ambushPreHit} before the fight.',
+                          Text(AppLocalizations.of(context).dngAmbushHit(run.ambushPreHit),
                               style: const TextStyle(fontSize: 12, color: Color(0xFFcc8833)),
                               textAlign: TextAlign.center),
                         ],
@@ -3028,22 +3032,22 @@ class _RoomResult extends StatelessWidget {
                               decoration: BoxDecoration(
                                 color: game.dungeonLastDrop!.rarityColor.withValues(alpha: 0.08),
                                 border: Border.all(color: game.dungeonLastDrop!.rarityColor.withValues(alpha: 0.5)),
-                                borderRadius: BorderRadius.circular(4),
+                                borderRadius: BorderRadius.circular(8),
                               ),
-                              child: Text('✦ ${game.dungeonLastDrop!.name} (${game.dungeonLastDrop!.rarityLabel}) → Bag',
+                              child: Text(AppLocalizations.of(context).dngItemToBag(game.dungeonLastDrop!.name, game.dungeonLastDrop!.rarityLabel),
                                   style: TextStyle(fontSize: 12, color: game.dungeonLastDrop!.rarityColor,
                                       fontWeight: FontWeight.bold)),
                             ),
                           ],
                         ],
                       ] else if (room.type == DungeonRoomType.restSite) ...[
-                        const Text('⊕ Rested',
-                            style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: Color(0xFF44cc88))),
+                        Text(AppLocalizations.of(context).dngRested,
+                            style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: Color(0xFF44cc88))),
                         const SizedBox(height: 8),
                         _LootChip('⊕ +${room.restoreHp} HP', const Color(0xFF44cc88)),
                       ] else if (room.type == DungeonRoomType.treasure) ...[
-                        const Text('✦ Treasure collected',
-                            style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: Color(0xFF44cc88))),
+                        Text(AppLocalizations.of(context).dngTreasureCollected,
+                            style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: Color(0xFF44cc88))),
                         const SizedBox(height: 8),
                         Row(mainAxisAlignment: MainAxisAlignment.center, children: [
                           _LootChip('💰 +${room.treasureGold}', AppTheme.accentGold),
@@ -3051,8 +3055,8 @@ class _RoomResult extends StatelessWidget {
                           _LootChip('◆ +${room.treasureShards}', const Color(0xFF88aaff)),
                         ]),
                       ] else if (room.type == DungeonRoomType.shrine) ...[
-                        const Text('✧ Blessing received',
-                            style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: Color(0xFF44cc88))),
+                        Text(AppLocalizations.of(context).dngBlessingReceived,
+                            style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: Color(0xFF44cc88))),
                         if (run.blessings.isNotEmpty)
                           Padding(
                             padding: const EdgeInsets.only(top: 8),
@@ -3060,17 +3064,17 @@ class _RoomResult extends StatelessWidget {
                                 style: const TextStyle(fontSize: 14, color: Color(0xFF44cc88))),
                           ),
                       ] else if (room.type == DungeonRoomType.trap) ...[
-                        Text(isDead ? '☠ Slain by the trap' : '✸ Trap survived',
+                        Text(isDead ? AppLocalizations.of(context).dngSlainTrap : AppLocalizations.of(context).dngTrapSurvived,
                             style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold,
                                 color: isDead ? const Color(0xFFcc4444) : const Color(0xFF44cc88))),
                         Padding(
                           padding: const EdgeInsets.only(top: 6),
-                          child: Text('-${room.trapDamage} HP',
+                          child: Text(AppLocalizations.of(context).dngMinusHp(room.trapDamage ?? 0),
                               style: const TextStyle(fontSize: 14, color: Color(0xFFcc8833))),
                         ),
                       ] else if (room.type == DungeonRoomType.lockedChest) ...[
-                        const Text('◆ Chest opened',
-                            style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: Color(0xFF44cc88))),
+                        Text(AppLocalizations.of(context).dngChestOpened,
+                            style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: Color(0xFF44cc88))),
                         if (game.dungeonLastDrop != null) ...[
                           const SizedBox(height: 8),
                           Container(
@@ -3078,9 +3082,9 @@ class _RoomResult extends StatelessWidget {
                             decoration: BoxDecoration(
                               color: game.dungeonLastDrop!.rarityColor.withValues(alpha: 0.08),
                               border: Border.all(color: game.dungeonLastDrop!.rarityColor.withValues(alpha: 0.5)),
-                              borderRadius: BorderRadius.circular(4),
+                              borderRadius: BorderRadius.circular(8),
                             ),
-                            child: Text('✦ ${game.dungeonLastDrop!.name} (${game.dungeonLastDrop!.rarityLabel}) → Bag',
+                            child: Text(AppLocalizations.of(context).dngItemToBag(game.dungeonLastDrop!.name, game.dungeonLastDrop!.rarityLabel),
                                 style: TextStyle(fontSize: 12, color: game.dungeonLastDrop!.rarityColor,
                                     fontWeight: FontWeight.bold)),
                           ),
@@ -3097,9 +3101,9 @@ class _RoomResult extends StatelessWidget {
                     decoration: BoxDecoration(
                       color: const Color(0xFF231F1B),
                       border: Border.all(color: AppTheme.cardBorder),
-                      borderRadius: BorderRadius.circular(4),
+                      borderRadius: BorderRadius.circular(8),
                     ),
-                    child: Text('Your loot has already been added to your account.',
+                    child: Text(AppLocalizations.of(context).dngLootAdded,
                         style: const TextStyle(fontSize: 12, color: AppTheme.textMuted),
                         textAlign: TextAlign.center),
                   ),
@@ -3165,16 +3169,16 @@ class _DungeonSummary extends StatelessWidget {
                     : AppTheme.accentGold,
                 width: 1.5,
               ),
-              borderRadius: BorderRadius.circular(4),
+              borderRadius: BorderRadius.circular(8),
             ),
             child: Column(
               children: [
                 Text(run.isDead ? '☠' : '★', style: const TextStyle(fontSize: 49)),
                 const SizedBox(height: 8),
                 Text(
-                  run.isDead ? 'YOU HAVE FALLEN'
-                      : run.isCleared ? 'DUNGEON CLEARED!'
-                      : 'RUN ENDED',
+                  run.isDead ? AppLocalizations.of(context).dngYouFallen
+                      : run.isCleared ? AppLocalizations.of(context).dngCleared
+                      : AppLocalizations.of(context).dngRunEnded,
                   style: AppTheme.pixelHeading(
                     fontSize: 15, letterSpacing: 2,
                     color: run.isDead ? const Color(0xFFcc4444)
@@ -3189,31 +3193,31 @@ class _DungeonSummary extends StatelessWidget {
                     decoration: BoxDecoration(
                       color: const Color(0xFF44cc88).withValues(alpha: 0.10),
                       border: Border.all(color: const Color(0xFF44cc88).withValues(alpha: 0.5)),
-                      borderRadius: BorderRadius.circular(3),
+                      borderRadius: BorderRadius.circular(8),
                     ),
                     child: Text(
-                      'The Dungeon Lord has fallen!\n+5 mythril  •  +${2 * run.tier} Z-Coins  •  +${500 * run.tier} gold  •  bonus item',
+                      AppLocalizations.of(context).dngLordFallen(2 * run.tier, 500 * run.tier),
                       textAlign: TextAlign.center,
                       style: const TextStyle(fontSize: 12, color: Color(0xFF66ddaa), height: 1.5),
                     ),
                   ),
                 ],
                 const SizedBox(height: 4),
-                Text('TIER ${run.tier}',
+                Text(AppLocalizations.of(context).dngTierN(run.tier),
                     style: AppTheme.pixelHeading(fontSize: 11, color: AppTheme.textMuted, letterSpacing: 2)),
                 const SizedBox(height: 16),
                 Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                  _SummaryPill('FLOOR', '${run.floor}', AppTheme.textLight),
+                  _SummaryPill(AppLocalizations.of(context).dngFloor, '${run.floor}', AppTheme.textLight),
                   const SizedBox(width: 12),
-                  _SummaryPill('ROOMS', '${run.roomsCleared}', AppTheme.textMuted),
+                  _SummaryPill(AppLocalizations.of(context).dngRooms, '${run.roomsCleared}', AppTheme.textMuted),
                   const SizedBox(width: 12),
-                  _SummaryPill('BOSSES', '${run.bossesDefeated}', const Color(0xFFcc4444)),
+                  _SummaryPill(AppLocalizations.of(context).dngBosses, '${run.bossesDefeated}', const Color(0xFFcc4444)),
                 ]),
                 const SizedBox(height: 10),
                 Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                  _SummaryPill('GOLD', '+${run.goldEarned}', AppTheme.accentGold),
+                  _SummaryPill(AppLocalizations.of(context).dngGold, '+${run.goldEarned}', AppTheme.accentGold),
                   const SizedBox(width: 16),
-                  _SummaryPill('SHARDS', '+${run.shardsEarned}', const Color(0xFF88aaff)),
+                  _SummaryPill(AppLocalizations.of(context).dngShards, '+${run.shardsEarned}', const Color(0xFF88aaff)),
                 ]),
                 if (tierCleared && run.tier > (game.dungeonHighestTier - 1)) ...[
                   const SizedBox(height: 12),
@@ -3224,7 +3228,7 @@ class _DungeonSummary extends StatelessWidget {
                       border: Border.all(color: const Color(0xFF44cc88).withValues(alpha: 0.5)),
                       borderRadius: BorderRadius.circular(20),
                     ),
-                    child: Text('✓ Tier ${run.tier} cleared — AUTO unlocked!',
+                    child: Text(AppLocalizations.of(context).dngTierCleared(run.tier),
                         style: AppTheme.pixelHeading(fontSize: 11, color: const Color(0xFF44cc88))),
                   ),
                 ],
@@ -3237,13 +3241,13 @@ class _DungeonSummary extends StatelessWidget {
                       border: Border.all(color: AppTheme.accentGold.withValues(alpha: 0.5)),
                       borderRadius: BorderRadius.circular(20),
                     ),
-                    child: Text('★ New record!',
+                    child: Text(AppLocalizations.of(context).dngNewRecord,
                         style: AppTheme.pixelHeading(fontSize: 11, color: AppTheme.accentGold)),
                   ),
                 ],
                 const SizedBox(height: 4),
-                const Text('All loot has been added to your account.',
-                    style: TextStyle(fontSize: 12, color: AppTheme.textMuted, fontStyle: FontStyle.italic)),
+                Text(AppLocalizations.of(context).dngAllLootAdded,
+                    style: const TextStyle(fontSize: 12, color: AppTheme.textMuted, fontStyle: FontStyle.italic)),
               ],
             ),
           ),
@@ -3263,10 +3267,10 @@ class _DungeonSummary extends StatelessWidget {
                       width: 1.5,
                     ),
                     padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                   ),
                   child: Text(
-                    !game.hasPremium ? '🔒 AUTO' : autoRun ? '◉ STOP' : '✦ AUTO',
+                    !game.hasPremium ? AppLocalizations.of(context).dngAutoLocked : autoRun ? AppLocalizations.of(context).dngStop : AppLocalizations.of(context).dngAuto,
                     style: AppTheme.pixelHeading(
                       fontSize: 13, letterSpacing: 1,
                       color: autoRun ? const Color(0xFF44cc88) : AppTheme.textMuted,
@@ -3284,9 +3288,9 @@ class _DungeonSummary extends StatelessWidget {
                   disabledBackgroundColor: const Color(0xFF1a1510),
                   side: BorderSide(color: autoRun ? AppTheme.cardBorder : AppTheme.accentGold, width: 1.5),
                   padding: const EdgeInsets.symmetric(vertical: 14),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                 ),
-                child: Text('RUN AGAIN',
+                child: Text(AppLocalizations.of(context).dngRunAgain,
                     style: AppTheme.pixelHeading(fontSize: 13, letterSpacing: 1,
                         color: autoRun ? AppTheme.cardBorder : AppTheme.accentGold)),
               ),
@@ -3301,9 +3305,9 @@ class _DungeonSummary extends StatelessWidget {
                 backgroundColor: const Color(0xFF2A2623),
                 side: const BorderSide(color: AppTheme.cardBorder),
                 padding: const EdgeInsets.symmetric(vertical: 14),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
               ),
-              child: Text('RETURN TO HALL',
+              child: Text(AppLocalizations.of(context).dngReturnHall,
                   style: AppTheme.pixelHeading(fontSize: 13, letterSpacing: 1, color: AppTheme.textMuted)),
             ),
           ),

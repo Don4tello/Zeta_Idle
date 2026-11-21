@@ -3,6 +3,8 @@ import '../data/class_quest_data.dart';
 import '../models/class_quest.dart';
 import '../services/game_state.dart';
 import '../theme/app_theme.dart';
+import '../l10n/app_localizations.dart';
+import '../l10n/content_l10n.dart';
 
 class QuestScreen extends StatelessWidget {
   const QuestScreen({super.key});
@@ -16,7 +18,7 @@ class QuestScreen extends StatelessWidget {
       backgroundColor: const Color(0xFF1B1A17),
       appBar: AppBar(
         backgroundColor: const Color(0xFF2A2623),
-        title: Text('QUESTLINES', style: AppTheme.pixelHeading(fontSize: 14, letterSpacing: 2)),
+        title: Text(AppLocalizations.of(context).questTitle, style: AppTheme.pixelHeading(fontSize: 14, letterSpacing: 2)),
         actions: [
           if (game.hasClaimableQuest)
             Padding(
@@ -29,9 +31,9 @@ class QuestScreen extends StatelessWidget {
                     decoration: BoxDecoration(
                       color: const Color(0xFF1a1428),
                       border: Border.all(color: const Color(0xFFcc88ff)),
-                      borderRadius: BorderRadius.circular(3),
+                      borderRadius: BorderRadius.circular(8),
                     ),
-                    child: Text('CLAIM ALL',
+                    child: Text(AppLocalizations.of(context).dailyClaimAll,
                         style: AppTheme.pixelHeading(
                             fontSize: 9, color: const Color(0xFFcc88ff))),
                   ),
@@ -47,7 +49,7 @@ class QuestScreen extends StatelessWidget {
                   decoration: BoxDecoration(
                     color: AppTheme.accentGold.withValues(alpha: 0.12),
                     border: Border.all(color: AppTheme.accentGold.withValues(alpha: 0.6)),
-                    borderRadius: BorderRadius.circular(3),
+                    borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text('"${game.heroTitle}"',
                       style: AppTheme.pixelHeading(
@@ -69,17 +71,17 @@ class QuestScreen extends StatelessWidget {
                 colors: [Color(0xFF1a1a2e), Color(0xFF231F1B)],
               ),
               border: Border.all(color: const Color(0xFFcc88ff).withValues(alpha: 0.5)),
-              borderRadius: BorderRadius.circular(4),
+              borderRadius: BorderRadius.circular(8),
             ),
             child: Row(children: [
               const Text('📜', style: TextStyle(fontSize: 20)),
               const SizedBox(width: 10),
               Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text('ADVENTURE QUESTLINE',
+                Text(AppLocalizations.of(context).questAdventure,
                     style: AppTheme.pixelHeading(
                         fontSize: 12, color: const Color(0xFFcc88ff), letterSpacing: 2)),
                 const SizedBox(height: 2),
-                Text('Learn every game system on the road to stage 100.',
+                Text(AppLocalizations.of(context).questAdventureSub,
                     style: const TextStyle(fontSize: 10, color: AppTheme.textMuted)),
               ])),
               Text('${AdventureQuest.allQuests.where((q) => game.questsClaimed[q.id] == true).length}/${AdventureQuest.allQuests.length}',
@@ -101,12 +103,12 @@ class QuestScreen extends StatelessWidget {
               decoration: BoxDecoration(
                 color: const Color(0xFF141210),
                 border: Border.all(color: const Color(0xFF3a3020)),
-                borderRadius: BorderRadius.circular(4),
+                borderRadius: BorderRadius.circular(8),
               ),
               child: Row(children: [
                 const Icon(Icons.lock_outline, size: 16, color: Color(0xFF888866)),
                 const SizedBox(width: 10),
-                Text('Unlocks at Level 30  (current: ${game.hero.level})',
+                Text(AppLocalizations.of(context).questUnlocksLv30(game.hero.level),
                     style: const TextStyle(fontSize: 12, color: Color(0xFF888866))),
               ]),
             )
@@ -118,16 +120,16 @@ class QuestScreen extends StatelessWidget {
                 decoration: BoxDecoration(
                   color: const Color(0xFF1a1200),
                   border: Border.all(color: AppTheme.accentGold),
-                  borderRadius: BorderRadius.circular(4),
+                  borderRadius: BorderRadius.circular(8),
                 ),
                 child: Row(children: [
                   const Text('⚡', style: TextStyle(fontSize: 18)),
                   const SizedBox(width: 10),
                   Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    Text('ULTIMATE ABILITY UNLOCKED',
+                    Text(AppLocalizations.of(context).questUltUnlocked,
                         style: AppTheme.pixelHeading(fontSize: 10, color: AppTheme.accentGold, letterSpacing: 2)),
                     const SizedBox(height: 3),
-                    Text('${game.hero.heroClass.displayName} ultimate is now available in battle.',
+                    Text(AppLocalizations.of(context).questUltAvailable(game.hero.heroClass.displayName),
                         style: const TextStyle(fontSize: 11, color: AppTheme.textMuted)),
                   ])),
                 ]),
@@ -163,12 +165,12 @@ class _AdventureQuestCard extends StatelessWidget {
         decoration: BoxDecoration(
           color: const Color(0xFF141210),
           border: Border.all(color: const Color(0xFF222222)),
-          borderRadius: BorderRadius.circular(4),
+          borderRadius: BorderRadius.circular(8),
         ),
         child: Row(children: [
           const Icon(Icons.lock_outline, size: 14, color: Color(0xFF444444)),
           const SizedBox(width: 10),
-          Text(quest.title, style: const TextStyle(fontSize: 12, color: Color(0xFF444444))),
+          Text(ContentL10n.of(context).tr(quest.id, 'title', quest.title), style: const TextStyle(fontSize: 12, color: Color(0xFF444444))),
         ]),
       );
     }
@@ -189,7 +191,7 @@ class _AdventureQuestCard extends StatelessWidget {
                 ? const Color(0xFF1a1428)
                 : const Color(0xFF1a1816),
         border: Border.all(color: accentColor.withValues(alpha: claimed ? 0.5 : 0.3)),
-        borderRadius: BorderRadius.circular(4),
+        borderRadius: BorderRadius.circular(8),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -201,7 +203,7 @@ class _AdventureQuestCard extends StatelessWidget {
               Text('${quest.questIndex + 1}. ',
                   style: TextStyle(fontSize: 11, color: accentColor, fontWeight: FontWeight.bold)),
             Expanded(
-              child: Text(quest.title,
+              child: Text(ContentL10n.of(context).tr(quest.id, 'title', quest.title),
                   style: TextStyle(
                     fontSize: 13, fontWeight: FontWeight.bold,
                     color: claimed ? const Color(0xFF44cc88) : Colors.white,
@@ -211,14 +213,14 @@ class _AdventureQuestCard extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
               decoration: BoxDecoration(
                 color: accentColor.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(3),
+                borderRadius: BorderRadius.circular(8),
               ),
-              child: Text(quest.chapter,
+              child: Text(ContentL10n.of(context).tr('chapter', quest.chapter, quest.chapter),
                   style: TextStyle(fontSize: 8, color: accentColor, fontWeight: FontWeight.bold)),
             ),
           ]),
           const SizedBox(height: 4),
-          Text(quest.description,
+          Text(ContentL10n.of(context).tr(quest.id, 'desc', quest.description),
               style: const TextStyle(fontSize: 11, color: AppTheme.textMuted, height: 1.3)),
           if (!claimed) ...[
             const SizedBox(height: 3),
@@ -261,9 +263,9 @@ class _AdventureQuestCard extends StatelessWidget {
                   decoration: BoxDecoration(
                     color: const Color(0xFF2a1a44),
                     border: Border.all(color: const Color(0xFFcc88ff)),
-                    borderRadius: BorderRadius.circular(3),
+                    borderRadius: BorderRadius.circular(8),
                   ),
-                  child: Text('CLAIM', style: AppTheme.pixelHeading(
+                  child: Text(AppLocalizations.of(context).claim, style: AppTheme.pixelHeading(
                       fontSize: 10, color: const Color(0xFFcc88ff))),
                 ),
               ),
@@ -334,7 +336,7 @@ class _QuestCard extends StatelessWidget {
           border: Border.all(
               color: borderColor,
               width: claimable ? 1.5 : 1),
-          borderRadius: BorderRadius.circular(4),
+          borderRadius: BorderRadius.circular(8),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -346,7 +348,7 @@ class _QuestCard extends StatelessWidget {
               Expanded(child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(quest.title,
+                  Text(ContentL10n.of(context).tr(quest.id, 'title', quest.title),
                       style: TextStyle(
                           fontSize: 15,
                           fontWeight: FontWeight.bold,
@@ -354,7 +356,7 @@ class _QuestCard extends StatelessWidget {
                               ? const Color(0xFF44cc66)
                               : unlocked ? Colors.white : Colors.white38)),
                   const SizedBox(height: 2),
-                  Text(quest.description,
+                  Text(ContentL10n.of(context).tr(quest.id, 'desc', quest.description),
                       style: TextStyle(
                           fontSize: 11,
                           color: unlocked ? AppTheme.textMuted : Colors.white24,
@@ -393,13 +395,13 @@ class _QuestCard extends StatelessWidget {
                       fontWeight: condMet ? FontWeight.bold : FontWeight.normal)),
             ]),
             const SizedBox(height: 4),
-            Text('${_conditionLabels[quest.condition] ?? 'Progress'}',
+            Text(_conditionLabels[quest.condition] ?? AppLocalizations.of(context).questProgressLabel,
                 style: const TextStyle(fontSize: 10, color: Colors.white24)),
 
             // Lock message
             if (!unlocked) ...[
               const SizedBox(height: 6),
-              Text('Complete quest ${quest.questIndex} first to unlock.',
+              Text(AppLocalizations.of(context).questCompleteFirst(quest.questIndex),
                   style: const TextStyle(fontSize: 11, color: Colors.white30,
                       fontStyle: FontStyle.italic)),
             ],
@@ -422,7 +424,7 @@ class _QuestCard extends StatelessWidget {
                     shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
                   ),
                   onPressed: () => game.claimQuest(quest),
-                  child: Text('CLAIM REWARD',
+                  child: Text(AppLocalizations.of(context).questClaimReward,
                       style: AppTheme.pixelHeading(
                           fontSize: 12, color: AppTheme.accentGold, letterSpacing: 1)),
                 ),
@@ -479,7 +481,7 @@ class _RewardRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Row(children: [
-      const Text('Reward: ',
+      Text(AppLocalizations.of(context).questRewardLabel,
           style: TextStyle(fontSize: 11, color: Colors.white38)),
       Expanded(child: Wrap(spacing: 8, runSpacing: 4, children: [
         if (reward.gold > 0) _Chip('💰 ${reward.gold}g', const Color(0xFFFFD700)),
@@ -517,17 +519,17 @@ class _ClassQuestlineHeader extends StatelessWidget {
       decoration: BoxDecoration(
         color: const Color(0xFF231F1B),
         border: Border.all(color: AppTheme.accentGold.withValues(alpha: ultUnlocked ? 0.9 : 0.4)),
-        borderRadius: BorderRadius.circular(4),
+        borderRadius: BorderRadius.circular(8),
       ),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [
           Icon(cls.info.icon, color: AppTheme.accentGold, size: 22),
           const SizedBox(width: 12),
           Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text('${cls.displayName.toUpperCase()} QUESTLINE',
+            Text(AppLocalizations.of(context).questClassQuestline(cls.displayName.toUpperCase()),
                 style: AppTheme.pixelHeading(fontSize: 12, color: AppTheme.accentGold, letterSpacing: 2)),
             const SizedBox(height: 2),
-            Text('Complete 5 quests to unlock the Ultimate Ability.',
+            Text(AppLocalizations.of(context).questComplete5,
                 style: const TextStyle(fontSize: 10, color: AppTheme.textMuted)),
           ])),
           Text('$claimedCount / 5',
@@ -622,7 +624,7 @@ class _Chip extends StatelessWidget {
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.10),
         border: Border.all(color: color.withValues(alpha: 0.5)),
-        borderRadius: BorderRadius.circular(3),
+        borderRadius: BorderRadius.circular(8),
       ),
       child: Text(label,
           style: TextStyle(

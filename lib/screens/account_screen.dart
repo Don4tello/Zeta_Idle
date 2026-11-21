@@ -1,6 +1,7 @@
 ﻿import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show SystemNavigator;
 import '../services/game_state.dart';
+import '../l10n/app_localizations.dart';
 
 class AccountScreen extends StatefulWidget {
   const AccountScreen({super.key});
@@ -19,7 +20,7 @@ class _AccountScreenState extends State<AccountScreen> {
       setState(() => _loading = false);
       if (!ok) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Sign-in cancelled or failed.')),
+          SnackBar(content: Text(AppLocalizations.of(context).acctSignInFailed)),
         );
       }
     }
@@ -30,21 +31,21 @@ class _AccountScreenState extends State<AccountScreen> {
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: const Color(0xFF1a1a2e),
-        title: const Text('Sign out?',
+        title: Text(AppLocalizations.of(ctx).acctSignOutTitle,
             style: TextStyle(color: Colors.white)),
-        content: const Text(
-          'Your local save is kept. Cloud sync will pause until you sign in again.',
+        content: Text(
+          AppLocalizations.of(ctx).acctSignOutBody,
           style: TextStyle(color: Color(0xFFaaaaaa)),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Cancel',
-                style: TextStyle(color: Color(0xFF888888))),
+            child: Text(AppLocalizations.of(ctx).commonCancel,
+                style: const TextStyle(color: Color(0xFF888888))),
           ),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Sign out',
+            child: Text(AppLocalizations.of(ctx).acctSignOut,
                 style: TextStyle(color: Color(0xFFff6644))),
           ),
         ],
@@ -64,22 +65,20 @@ class _AccountScreenState extends State<AccountScreen> {
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: const Color(0xFF1a1a2e),
-        title: const Text('Delete account & data?',
+        title: Text(AppLocalizations.of(ctx).acctDeleteTitle,
             style: TextStyle(color: Color(0xFFff6644), fontWeight: FontWeight.bold)),
-        content: const Text(
-          'This permanently deletes your account and ALL data — every character, '
-          'your cloud save, PvP standing, and leaderboard entries. '
-          'This cannot be undone.',
+        content: Text(
+          AppLocalizations.of(ctx).acctDeleteBody,
           style: TextStyle(color: Color(0xFFcccccc)),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Cancel', style: TextStyle(color: Color(0xFF888888))),
+            child: Text(AppLocalizations.of(ctx).commonCancel, style: const TextStyle(color: Color(0xFF888888))),
           ),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('DELETE EVERYTHING',
+            child: Text(AppLocalizations.of(ctx).acctDeleteAll,
                 style: TextStyle(color: Color(0xFFff4444), fontWeight: FontWeight.bold)),
           ),
         ],
@@ -95,16 +94,16 @@ class _AccountScreenState extends State<AccountScreen> {
       barrierDismissible: false,
       builder: (ctx) => AlertDialog(
         backgroundColor: const Color(0xFF1a1a2e),
-        title: const Text('Account deleted',
+        title: Text(AppLocalizations.of(ctx).acctDeleted,
             style: TextStyle(color: Colors.white)),
-        content: const Text(
-          'Your account and all data have been removed. The app will now close.',
+        content: Text(
+          AppLocalizations.of(ctx).acctDeletedBody,
           style: TextStyle(color: Color(0xFFcccccc)),
         ),
         actions: [
           TextButton(
             onPressed: () => SystemNavigator.pop(),
-            child: const Text('Close', style: TextStyle(color: Color(0xFF66aaff))),
+            child: Text(AppLocalizations.of(ctx).acctClose, style: const TextStyle(color: Color(0xFF66aaff))),
           ),
         ],
       ),
@@ -122,7 +121,7 @@ class _AccountScreenState extends State<AccountScreen> {
       backgroundColor: const Color(0xFF181614),
       appBar: AppBar(
         backgroundColor: const Color(0xFF1a1a2e),
-        title: const Text('ACCOUNT',
+        title: Text(AppLocalizations.of(context).setSecAccount,
             style: TextStyle(
                 color: Colors.white,
                 fontWeight: FontWeight.bold,
@@ -137,21 +136,21 @@ class _AccountScreenState extends State<AccountScreen> {
                 if (signedIn) ...[
                   _AvatarTile(
                     photoUrl:    auth.userPhotoUrl,
-                    displayName: auth.userDisplayName ?? 'Player',
+                    displayName: auth.userDisplayName ?? AppLocalizations.of(context).acctPlayer,
                     email:       auth.userEmail       ?? '',
                   ),
                   const SizedBox(height: 24),
                   _SyncStatus(lastSyncAt: game.lastCloudSyncAt),
                   const SizedBox(height: 16),
                   _ActionButton(
-                    label: 'SYNC NOW',
+                    label: AppLocalizations.of(context).acctSyncNow,
                     color: const Color(0xFF44ccaa),
                     icon:  Icons.cloud_upload_outlined,
                     onTap: () => _forceSync(game),
                   ),
                   const SizedBox(height: 12),
                   _ActionButton(
-                    label: 'SIGN OUT',
+                    label: AppLocalizations.of(context).acctSignOutBtn,
                     color: const Color(0xFFff6644),
                     icon:  Icons.logout,
                     onTap: () => _signOut(game),
@@ -160,7 +159,7 @@ class _AccountScreenState extends State<AccountScreen> {
                   const _SignedOutHero(),
                   const SizedBox(height: 32),
                   _ActionButton(
-                    label: 'SIGN IN WITH GOOGLE',
+                    label: AppLocalizations.of(context).acctSignInGoogle,
                     color: const Color(0xFF66aaff),
                     icon:  Icons.login,
                     onTap: () => _signIn(game),
@@ -171,18 +170,18 @@ class _AccountScreenState extends State<AccountScreen> {
                 const SizedBox(height: 32),
                 const Divider(color: Color(0xFF33313a)),
                 const SizedBox(height: 12),
-                const Text('DANGER ZONE',
+                Text(AppLocalizations.of(context).setSecDanger,
                     style: TextStyle(
                         color: Color(0xFF886666), fontSize: 11,
                         fontWeight: FontWeight.bold, letterSpacing: 2)),
                 const SizedBox(height: 4),
-                const Text(
-                  'Permanently delete your account and all associated data.',
-                  style: TextStyle(color: Color(0xFF888888), fontSize: 12),
+                Text(
+                  AppLocalizations.of(context).acctDangerSub,
+                  style: const TextStyle(color: Color(0xFF888888), fontSize: 12),
                 ),
                 const SizedBox(height: 12),
                 _ActionButton(
-                  label: 'DELETE ACCOUNT',
+                  label: AppLocalizations.of(context).acctDeleteAccount,
                   color: const Color(0xFFcc3333),
                   icon:  Icons.delete_forever,
                   onTap: () => _deleteAccount(game),
@@ -233,12 +232,12 @@ class _AvatarTile extends StatelessWidget {
                   style: const TextStyle(
                       color: Color(0xFF888888), fontSize: 14)),
               const SizedBox(height: 4),
-              const Row(
+              Row(
                 children: [
-                  Icon(Icons.cloud_done, color: Color(0xFF44ccaa), size: 14),
-                  SizedBox(width: 4),
-                  Text('Google account linked',
-                      style: TextStyle(
+                  const Icon(Icons.cloud_done, color: Color(0xFF44ccaa), size: 14),
+                  const SizedBox(width: 4),
+                  Text(AppLocalizations.of(context).acctLinked,
+                      style: const TextStyle(
                           color: Color(0xFF44ccaa), fontSize: 13)),
                 ],
               ),
@@ -257,7 +256,7 @@ class _SyncStatus extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final label = lastSyncAt == null
-        ? 'Not synced yet this session'
+        ? AppLocalizations.of(context).acctNotSynced
         : 'Last synced: ${_fmt(lastSyncAt!)}';
     return Container(
       padding: const EdgeInsets.all(12),
@@ -304,7 +303,7 @@ class _SignedOutHero extends StatelessWidget {
               color: Color(0xFF444466), size: 56),
         ),
         const SizedBox(height: 20),
-        const Text('No account linked',
+        Text(AppLocalizations.of(context).acctNoAccount,
             style: TextStyle(
                 color: Colors.white,
                 fontSize: 19,
@@ -363,7 +362,7 @@ class _InfoSection extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('ABOUT CLOUD SAVES',
+        Text(AppLocalizations.of(context).acctAboutCloud,
             style: TextStyle(
                 color: Color(0xFF888888),
                 fontSize: 12,
@@ -371,11 +370,11 @@ class _InfoSection extends StatelessWidget {
                 fontWeight: FontWeight.bold)),
         const SizedBox(height: 8),
         _InfoRow(Icons.sync,
-            'Your progress syncs automatically every 5 minutes when signed in.'),
+            AppLocalizations.of(context).acctCloud1),
         _InfoRow(Icons.devices,
-            'Play on any Windows device with the same Google account.'),
+            AppLocalizations.of(context).acctCloud2),
         _InfoRow(Icons.shield_outlined,
-            'Cloud saves are stored securely with your Google account.'),
+            AppLocalizations.of(context).acctCloud3),
       ],
     );
   }

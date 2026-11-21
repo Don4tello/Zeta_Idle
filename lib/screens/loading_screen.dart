@@ -128,7 +128,7 @@ class _LoadingScreenState extends State<LoadingScreen>
                 // colour if the asset is ever missing, so loading never breaks.
                 Positioned.fill(
                   child: Image.asset(
-                    'assets/images/loading_bg.jpg',
+                    'assets/images/loading_bg.webp',
                     fit: BoxFit.cover,
                     alignment: Alignment.center,
                     // Cap the decoded/GPU texture size — an oversized image

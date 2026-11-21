@@ -6,6 +6,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../core/routing/app_router.dart';
 import '../models/equipment.dart';
 import '../services/game_state.dart';
+import '../widgets/battle_speed_menu.dart';
 import '../services/notification_service.dart';
 import '../services/locale_controller.dart';
 import '../l10n/app_localizations.dart';
@@ -61,7 +62,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: const Color(0xFF231F1B),
-        title: Text('RENAME HERO',
+        title: Text(AppLocalizations.of(ctx).setRenameHeroTitle,
             style: AppTheme.pixelHeading(fontSize: 14, letterSpacing: 1)),
         content: Column(
           mainAxisSize: MainAxisSize.min,
@@ -72,35 +73,35 @@ class _SettingsScreenState extends State<SettingsScreen> {
               maxLength: 20,
               autofocus: true,
               style: const TextStyle(color: AppTheme.textLight, fontSize: 18),
-              decoration: const InputDecoration(
-                hintText: 'Enter a hero name',
-                counterStyle: TextStyle(color: AppTheme.textMuted),
+              decoration: InputDecoration(
+                hintText: AppLocalizations.of(ctx).setHeroNameHint,
+                counterStyle: const TextStyle(color: AppTheme.textMuted),
               ),
             ),
-            Text('Cost: ${game.renameHeroCost} 🪙   (you have ${game.zcoins})',
+            Text(AppLocalizations.of(ctx).setRenameCost(game.renameHeroCost, game.zcoins),
                 style: const TextStyle(color: AppTheme.textMuted, fontSize: 12)),
           ],
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('CANCEL', style: TextStyle(color: AppTheme.textMuted)),
+            child: Text(AppLocalizations.of(ctx).csCancel, style: const TextStyle(color: AppTheme.textMuted)),
           ),
           TextButton(
             onPressed: () {
               final name = controller.text.trim();
               if (name.isEmpty) return;
               if (ProfanityFilter.isProfane(name)) {
-                ScaffoldMessenger.of(ctx).showSnackBar(const SnackBar(
-                  content: Text('Please choose a different name — that one isn\'t allowed.'),
-                  backgroundColor: Color(0xFF8a2a2a),
+                ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(
+                  content: Text(AppLocalizations.of(ctx).ccNameNotAllowed),
+                  backgroundColor: const Color(0xFF8a2a2a),
                   behavior: SnackBarBehavior.floating,
                 ));
                 return;
               }
               if (game.zcoins < game.renameHeroCost) {
                 ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(
-                  content: Text('Not enough Z-Coins — rename costs ${game.renameHeroCost} 🪙.'),
+                  content: Text(AppLocalizations.of(ctx).setRenameNotEnough(game.renameHeroCost)),
                   backgroundColor: const Color(0xFF8a2a2a),
                   behavior: SnackBarBehavior.floating,
                 ));
@@ -111,7 +112,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 setState(() {});
               }
             },
-            child: const Text('SAVE', style: TextStyle(color: Color(0xFF66aaff))),
+            child: Text(AppLocalizations.of(ctx).setSave, style: const TextStyle(color: Color(0xFF66aaff))),
           ),
         ],
       ),
@@ -137,9 +138,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
     final ok = await launchUrl(uri, mode: LaunchMode.externalApplication);
     if (!ok && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-        content: Text('No email app found. Reach us at razorintegrations@gmail.com'),
-        duration: Duration(seconds: 4),
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(AppLocalizations.of(context).setNoEmailApp),
+        duration: const Duration(seconds: 4),
       ));
     }
   }
@@ -173,7 +174,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       backgroundColor: const Color(0xFF1B1A17),
       appBar: AppBar(
         backgroundColor: const Color(0xFF2A2623),
-        title: Text('SETTINGS', style: AppTheme.pixelHeading(fontSize: 14, letterSpacing: 2)),
+        title: Text(AppLocalizations.of(context).setTitle, style: AppTheme.pixelHeading(fontSize: 14, letterSpacing: 2)),
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
@@ -181,19 +182,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Account section
-            _SectionHeader('ACCOUNT'),
+            _SectionHeader(AppLocalizations.of(context).setSecAccount),
             _SettingsTile(
               title: game.authService.isGoogleSignedIn
-                  ? (game.authService.userDisplayName ?? 'Google Account')
-                  : 'Sign in with Google',
+                  ? (game.authService.userDisplayName ?? AppLocalizations.of(context).setGoogleAccount)
+                  : AppLocalizations.of(context).setSignInGoogle,
               subtitle: game.authService.isGoogleSignedIn
-                  ? (game.authService.userEmail ?? 'Signed in')
-                  : 'Sync saves across devices',
+                  ? (game.authService.userEmail ?? AppLocalizations.of(context).setSignedIn)
+                  : AppLocalizations.of(context).setSyncSaves,
               trailing: game.authService.isGoogleSignedIn
                 ? TextButton(
                     onPressed: () => context.push(Routes.account),
-                    child: const Text('MANAGE',
-                        style: TextStyle(color: Color(0xFF66aaff))),
+                    child: Text(AppLocalizations.of(context).setManage,
+                        style: const TextStyle(color: Color(0xFF66aaff))),
                   )
                 : ElevatedButton.icon(
                     onPressed: () async {
@@ -202,7 +203,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     },
                     icon: const Text('G', style: TextStyle(
                         fontWeight: FontWeight.bold, color: Color(0xFF4285F4))),
-                    label: const Text('SIGN IN'),
+                    label: Text(AppLocalizations.of(context).setSignIn),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFF2a2a3a),
                       foregroundColor: Colors.white,
@@ -213,28 +214,28 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ),
             ),
             _SettingsTile(
-              title: 'Hero Name',
+              title: AppLocalizations.of(context).setHeroName,
               subtitle: game.hero.name,
               trailing: TextButton(
                 onPressed: () => _showRenameDialog(game),
-                child: Text('RENAME (${game.renameHeroCost} 🪙)',
+                child: Text(AppLocalizations.of(context).setRename(game.renameHeroCost),
                     style: const TextStyle(color: Color(0xFF66aaff))),
               ),
             ),
             const SizedBox(height: 16),
 
             // Promo code section
-            _SectionHeader('PROMO CODE'),
+            _SectionHeader(AppLocalizations.of(context).setSecPromo),
             Container(
               margin: const EdgeInsets.only(top: 6),
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
                 color: const Color(0xFF231F1B),
                 border: Border.all(color: AppTheme.cardBorder),
-                borderRadius: BorderRadius.circular(4),
+                borderRadius: BorderRadius.circular(8),
               ),
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                const Text('Got a code? Redeem it here for rewards.',
+                Text(AppLocalizations.of(context).setPromoHint,
                     style: TextStyle(fontSize: 12, color: AppTheme.textMuted)),
                 const SizedBox(height: 10),
                 Row(children: [
@@ -244,7 +245,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       textCapitalization: TextCapitalization.characters,
                       style: const TextStyle(color: AppTheme.textLight, fontSize: 14, letterSpacing: 1),
                       decoration: InputDecoration(
-                        hintText: 'ENTER CODE',
+                        hintText: AppLocalizations.of(context).setEnterCode,
                         hintStyle: const TextStyle(color: AppTheme.textDisabled, letterSpacing: 1),
                         isDense: true,
                         contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
@@ -263,7 +264,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
                       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
                     ),
-                    child: Text('REDEEM', style: AppTheme.pixelHeading(fontSize: 12, color: Colors.black)),
+                    child: Text(AppLocalizations.of(context).setRedeem, style: AppTheme.pixelHeading(fontSize: 12, color: Colors.black)),
                   ),
                 ]),
                 if (_promoMsg != null) ...[
@@ -279,7 +280,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             const SizedBox(height: 16),
 
             // Audio section
-            _SectionHeader('AUDIO'),
+            _SectionHeader(AppLocalizations.of(context).setSecAudio),
             _SettingsTile(
               title: 'Sound Effects',
               subtitle: game.audioService.sfxMuted ? 'Muted' : 'On',
@@ -303,7 +304,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
               child: Row(children: [
-                const Text('Volume', style: TextStyle(fontSize: 13, color: AppTheme.textMuted)),
+                Text(AppLocalizations.of(context).setVolume, style: const TextStyle(fontSize: 13, color: AppTheme.textMuted)),
                 Expanded(
                   child: Slider(
                     value: game.audioService.musicVolume,
@@ -322,12 +323,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
             const SizedBox(height: 16),
 
             // Haptics
-            _SectionHeader('HAPTICS'),
+            _SectionHeader(AppLocalizations.of(context).setSecHaptics),
             _SettingsTile(
-              title: 'Vibration',
+              title: AppLocalizations.of(context).setVibration,
               subtitle: game.hapticsEnabled
-                  ? 'Vibrates on crits, level-ups, victories & rewards'
-                  : 'Off',
+                  ? AppLocalizations.of(context).setVibrationOn
+                  : AppLocalizations.of(context).setOff,
               trailing: Switch(
                 value: game.hapticsEnabled,
                 onChanged: (_) => setState(() => game.toggleHaptics()),
@@ -339,12 +340,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
             const SizedBox(height: 16),
 
             // Notifications
-            _SectionHeader('NOTIFICATIONS'),
+            _SectionHeader(AppLocalizations.of(context).setSecNotifications),
             _SettingsTile(
-              title: 'Reminders',
+              title: AppLocalizations.of(context).setReminders,
               subtitle: game.notificationsEnabled
-                  ? 'Get "come back" reminders while you\'re away'
-                  : 'Off',
+                  ? AppLocalizations.of(context).setRemindersOn
+                  : AppLocalizations.of(context).setOff,
               trailing: Switch(
                 value: game.notificationsEnabled,
                 onChanged: (_) async {
@@ -396,12 +397,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
             const SizedBox(height: 16),
 
             // Display
-            _SectionHeader('DISPLAY'),
+            _SectionHeader(AppLocalizations.of(context).setSecDisplay),
             _SettingsTile(
-              title: 'Damage Numbers',
+              title: AppLocalizations.of(context).setDamageNumbers,
               subtitle: game.showDamageNumbers
-                  ? 'Floating numbers shown in battle'
-                  : 'Hidden',
+                  ? AppLocalizations.of(context).setDamageOn
+                  : AppLocalizations.of(context).setHidden,
               trailing: Switch(
                 value: game.showDamageNumbers,
                 onChanged: (_) => setState(() => game.toggleDamageNumbers()),
@@ -410,10 +411,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
             ),
             _SettingsTile(
-              title: 'Reduced Particles',
+              title: AppLocalizations.of(context).setReducedParticles,
               subtitle: game.reducedParticles
-                  ? 'Fewer background effects (better performance)'
-                  : 'Full effects',
+                  ? AppLocalizations.of(context).setParticlesOn
+                  : AppLocalizations.of(context).setParticlesOff,
               trailing: Switch(
                 value: game.reducedParticles,
                 onChanged: (_) => setState(() => game.toggleReducedParticles()),
@@ -425,9 +426,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
             const SizedBox(height: 16),
 
             // Stats
-            _SectionHeader('STATS'),
+            _SectionHeader(AppLocalizations.of(context).setSecStats),
             _SettingsTile(
-              title: 'Total Playtime',
+              title: AppLocalizations.of(context).setTotalPlaytime,
               subtitle: game.playtimeLabel,
               trailing: const SizedBox.shrink(),
             ),
@@ -435,12 +436,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
             const SizedBox(height: 16),
 
             // Auto-Loot
-            _SectionHeader('AUTO-LOOT'),
+            _SectionHeader(AppLocalizations.of(context).setSecAutoLoot),
             _SettingsTile(
-              title: 'Auto-Salvage',
+              title: AppLocalizations.of(context).setAutoSalvage,
               subtitle: game.autoSalvageThreshold == null
-                  ? 'Tap to enable auto-salvage for drops'
-                  : 'Auto-salvages ${_salvageLabel(game.autoSalvageThreshold!)} and below',
+                  ? AppLocalizations.of(context).setSalvageOff
+                  : AppLocalizations.of(context).setSalvageOn(_salvageLabel(game.autoSalvageThreshold!)),
               trailing: GestureDetector(
                 onTap: () { setState(() { game.cycleAutoSalvageThreshold(); }); game.audioService.playUiClick(); },
                 child: Container(
@@ -454,11 +455,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           ? AppTheme.cardBorder
                           : _salvageColor(game.autoSalvageThreshold!),
                     ),
-                    borderRadius: BorderRadius.circular(4),
+                    borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(
                     game.autoSalvageThreshold == null
-                        ? 'OFF'
+                        ? AppLocalizations.of(context).setOffCaps
                         : '≤ ${_salvageLabel(game.autoSalvageThreshold!)}',
                     style: TextStyle(
                       fontSize: 12,
@@ -472,8 +473,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
             ),
             _SettingsTile(
-              title: 'Auto-Equip Upgrades',
-              subtitle: 'Automatically equip items better than current gear',
+              title: AppLocalizations.of(context).setAutoEquip,
+              subtitle: AppLocalizations.of(context).setAutoEquipSub,
               trailing: Switch(
                 value: game.autoEquipUpgrades,
                 onChanged: (_) { setState(() => game.toggleAutoEquipUpgrades()); game.audioService.playUiClick(); },
@@ -485,40 +486,33 @@ class _SettingsScreenState extends State<SettingsScreen> {
             const SizedBox(height: 16),
 
             // Battle
-            _SectionHeader('BATTLE'),
+            _SectionHeader(AppLocalizations.of(context).setSecBattle),
             _SettingsTile(
-              title: 'Battle Speed',
+              title: AppLocalizations.of(context).setBattleSpeed,
               subtitle: game.battleSpeedLabel,
               trailing: TextButton(
-                onPressed: () { setState(() => game.cycleBattleSpeed()); game.audioService.playUiClick(); },
-                child: Text(game.battleSpeedLabel,
-                    style: AppTheme.pixelHeading(fontSize: 14, color: AppTheme.accentGold)),
+                onPressed: () {
+                  game.audioService.playUiClick();
+                  showBattleSpeedMenu(context, game);
+                },
+                child: Row(mainAxisSize: MainAxisSize.min, children: [
+                  Text(game.battleSpeedLabel,
+                      style: AppTheme.pixelHeading(fontSize: 14, color: AppTheme.accentGold)),
+                  const Icon(Icons.arrow_drop_down, size: 18, color: AppTheme.accentGold),
+                ]),
               ),
             ),
-            _SettingsTile(
-              title: 'Auto-Campaign',
-              subtitle: game.canAutoCampaign
-                  ? 'Automatically fight campaign battles in the background'
-                  : '🔒 Speed Boost / Premium Pass subscribers only',
-              trailing: Switch(
-                value: game.autoCampaign && game.canAutoCampaign,
-                onChanged: game.canAutoCampaign
-                    ? (_) { setState(() => game.toggleAutoCampaign()); game.audioService.playUiClick(); }
-                    : null,
-                activeColor: const Color(0xFF44cc88),
-                inactiveTrackColor: AppTheme.cardBorder,
-              ),
-            ),
+            // Auto-Campaign is now an always-on default feature (no toggle).
 
             const SizedBox(height: 16),
 
             // Daily Reset
-            _SectionHeader('DAILY RESET'),
+            _SectionHeader(AppLocalizations.of(context).setSecDailyReset),
             _SettingsTile(
-              title: 'Reset Time',
+              title: AppLocalizations.of(context).setResetTime,
               subtitle: game.canChangeResetHour
-                  ? 'Daily limits reset at ${_formatResetHour(game.resetHour)}. Tap to change (once per year).'
-                  : 'Resets at ${_formatResetHour(game.resetHour)} · Already changed this year.',
+                  ? AppLocalizations.of(context).setResetTimeOn(_formatResetHour(game.resetHour))
+                  : AppLocalizations.of(context).setResetTimeLocked(_formatResetHour(game.resetHour)),
               trailing: game.canChangeResetHour
                   ? TextButton(
                       onPressed: () => _showResetHourPicker(context, game),
@@ -528,7 +522,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                         minimumSize: const Size(64, 44),
                       ),
-                      child: Text('CHANGE', style: AppTheme.pixelHeading(
+                      child: Text(AppLocalizations.of(context).hubChange, style: AppTheme.pixelHeading(
                           fontSize: 10, color: AppTheme.accentGold)),
                     )
                   : const SizedBox.shrink(),
@@ -537,18 +531,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
             const SizedBox(height: 16),
 
             // Save section
-            _SectionHeader('SAVE'),
+            _SectionHeader(AppLocalizations.of(context).setSecSave),
             _SettingsTile(
-              title: 'Cloud Save',
-              subtitle: 'Sync your progress to the cloud',
+              title: AppLocalizations.of(context).setCloudSave,
+              subtitle: AppLocalizations.of(context).setCloudSaveSub,
               trailing: TextButton(
                 onPressed: () async {
                   await game.saveToCloud();
                   if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                      content: Text('Cloud save complete.'),
-                      duration: Duration(seconds: 2),
-                      backgroundColor: Color(0xFF2A2623),
+                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                      content: Text(AppLocalizations.of(context).setCloudSaveComplete),
+                      duration: const Duration(seconds: 2),
+                      backgroundColor: const Color(0xFF2A2623),
                     ));
                   }
                 },
@@ -558,13 +552,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                   minimumSize: const Size(64, 44),
                 ),
-                child: Text('SAVE', style: AppTheme.pixelHeading(fontSize: 10,
+                child: Text(AppLocalizations.of(context).setSave, style: AppTheme.pixelHeading(fontSize: 10,
                     color: const Color(0xFF6699ff))),
               ),
             ),
             _SettingsTile(
-              title: 'Load from Cloud',
-              subtitle: 'Overwrite local save with cloud data',
+              title: AppLocalizations.of(context).setLoadCloud,
+              subtitle: AppLocalizations.of(context).setLoadCloudSub,
               trailing: TextButton(
                 onPressed: () => _confirmCloudLoad(context, game),
                 style: TextButton.styleFrom(
@@ -573,17 +567,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                   minimumSize: const Size(64, 44),
                 ),
-                child: Text('LOAD', style: AppTheme.pixelHeading(fontSize: 10,
+                child: Text(AppLocalizations.of(context).setLoad, style: AppTheme.pixelHeading(fontSize: 10,
                     color: AppTheme.textMuted)),
               ),
             ),
             const SizedBox(height: 16),
 
             // Danger zone
-            _SectionHeader('DANGER ZONE', color: const Color(0xFFcc4444)),
+            _SectionHeader(AppLocalizations.of(context).setSecDanger, color: const Color(0xFFcc4444)),
             _SettingsTile(
-              title: 'Reset Progress',
-              subtitle: 'Delete all save data for this slot. Irreversible.',
+              title: AppLocalizations.of(context).setResetProgress,
+              subtitle: AppLocalizations.of(context).setResetProgressSub,
               trailing: TextButton(
                 onPressed: () => _confirmReset(context, game),
                 style: TextButton.styleFrom(
@@ -592,17 +586,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                   minimumSize: const Size(64, 44),
                 ),
-                child: Text('RESET', style: AppTheme.pixelHeading(fontSize: 10,
+                child: Text(AppLocalizations.of(context).setReset, style: AppTheme.pixelHeading(fontSize: 10,
                     color: const Color(0xFFcc4444))),
               ),
             ),
             const SizedBox(height: 24),
 
             // Help
-            _SectionHeader('HELP'),
+            _SectionHeader(AppLocalizations.of(context).setSecHelp),
             _SettingsTile(
-              title: 'Knowledge Base',
-              subtitle: 'Keywords, systems, currencies explained',
+              title: AppLocalizations.of(context).setKnowledgeBase,
+              subtitle: AppLocalizations.of(context).setKnowledgeBaseSub,
               trailing: TextButton(
                 onPressed: () => context.push(Routes.knowledgeBase),
                 style: TextButton.styleFrom(
@@ -618,14 +612,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
             const SizedBox(height: 16),
 
             // About
-            _SectionHeader('ABOUT'),
+            _SectionHeader(AppLocalizations.of(context).setSecAbout),
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
                 color: const Color(0xFF231F1B),
                 border: Border.all(color: AppTheme.cardBorder),
-                borderRadius: BorderRadius.circular(4),
+                borderRadius: BorderRadius.circular(8),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -634,29 +628,29 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       style: AppTheme.pixelHeading(fontSize: 15, letterSpacing: 2,
                           color: AppTheme.accentGold)),
                   const SizedBox(height: 6),
-                  const Text('A dark medieval idle RPG.',
+                  Text(AppLocalizations.of(context).setTagline,
                       style: TextStyle(fontSize: 14, color: AppTheme.textMuted,
                           fontStyle: FontStyle.italic)),
                   const SizedBox(height: 10),
                   const Divider(color: AppTheme.cardBorder, height: 1),
                   const SizedBox(height: 10),
-                  _AboutRow('Hero', game.hero.name),
-                  _AboutRow('Class', game.hero.heroClass.displayName),
-                  _AboutRow('Level', '${game.hero.level}'),
-                  _AboutRow('Prestige', 'Lv ${game.prestigeLevel}'),
-                  _AboutRow('Achievements', '${game.achievements.where((a) => a.claimed).length} / ${game.achievements.length}'),
+                  _AboutRow(AppLocalizations.of(context).setAboutHero, game.hero.name),
+                  _AboutRow(AppLocalizations.of(context).setAboutClass, game.hero.heroClass.displayName),
+                  _AboutRow(AppLocalizations.of(context).setAboutLevel, '${game.hero.level}'),
+                  _AboutRow(AppLocalizations.of(context).setAboutPrestige, 'Lv ${game.prestigeLevel}'),
+                  _AboutRow(AppLocalizations.of(context).setAboutAchievements, '${game.achievements.where((a) => a.claimed).length} / ${game.achievements.length}'),
                   const SizedBox(height: 10),
                   const Divider(color: AppTheme.cardBorder, height: 1),
                   const SizedBox(height: 10),
-                  _AboutRow('Developer', 'Razor Integrations'),
-                  _AboutRow('Contact', 'razorintegrations@gmail.com'),
+                  _AboutRow(AppLocalizations.of(context).setAboutDeveloper, 'Razor Integrations'),
+                  _AboutRow(AppLocalizations.of(context).setAboutContact, 'razorintegrations@gmail.com'),
                 ],
               ),
             ),
             const SizedBox(height: 10),
             _SettingsTile(
-              title: 'Privacy Policy',
-              subtitle: 'How we handle your data',
+              title: AppLocalizations.of(context).setPrivacy,
+              subtitle: AppLocalizations.of(context).setPrivacySub,
               trailing: TextButton(
                 onPressed: () => context.push(Routes.privacyPolicy),
                 style: TextButton.styleFrom(
@@ -665,14 +659,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                   minimumSize: const Size(64, 44),
                 ),
-                child: Text('VIEW', style: AppTheme.pixelHeading(
+                child: Text(AppLocalizations.of(context).setView, style: AppTheme.pixelHeading(
                     fontSize: 10, color: AppTheme.textMuted)),
               ),
             ),
             const SizedBox(height: 10),
             _SettingsTile(
-              title: 'Report a Bug / Feedback',
-              subtitle: 'Email us — device info is added automatically',
+              title: AppLocalizations.of(context).setReportBug,
+              subtitle: AppLocalizations.of(context).setReportBugSub,
               trailing: TextButton(
                 onPressed: () => _sendFeedback(game),
                 style: TextButton.styleFrom(
@@ -681,20 +675,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                   minimumSize: const Size(64, 44),
                 ),
-                child: Text('EMAIL', style: AppTheme.pixelHeading(
+                child: Text(AppLocalizations.of(context).setEmail, style: AppTheme.pixelHeading(
                     fontSize: 10, color: const Color(0xFF66aaff))),
               ),
             ),
             const SizedBox(height: 10),
             _SettingsTile(
-              title: 'Replay Tips',
-              subtitle: 'Show the in-game tutorial tips again',
+              title: AppLocalizations.of(context).setReplayTips,
+              subtitle: AppLocalizations.of(context).setReplayTipsSub,
               trailing: TextButton(
                 onPressed: () {
                   game.resetTutorials();
-                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                    content: Text('Tutorial tips reset — they\'ll reappear as you explore.'),
-                    duration: Duration(seconds: 3),
+                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                    content: Text(AppLocalizations.of(context).setTipsReset),
+                    duration: const Duration(seconds: 3),
                   ));
                 },
                 style: TextButton.styleFrom(
@@ -703,7 +697,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                   minimumSize: const Size(64, 44),
                 ),
-                child: Text('RESET', style: AppTheme.pixelHeading(
+                child: Text(AppLocalizations.of(context).setReset, style: AppTheme.pixelHeading(
                     fontSize: 10, color: const Color(0xFF44cc88))),
               ),
             ),
@@ -811,14 +805,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setLocal) => AlertDialog(
           backgroundColor: const Color(0xFF2A2623),
-          title: Text('Daily Reset Time',
+          title: Text(AppLocalizations.of(ctx).setDailyResetTitle,
               style: AppTheme.pixelHeading(fontSize: 14, color: AppTheme.accentGold)),
           content: SizedBox(
             width: 240,
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Text('Choose the hour when daily limits reset.',
+                Text(AppLocalizations.of(ctx).setDailyResetHint,
                     style: const TextStyle(fontSize: 13, color: Colors.white70)),
                 const SizedBox(height: 12),
                 DropdownButton<int>(
@@ -833,7 +827,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   onChanged: (v) { if (v != null) setLocal(() => selected = v); },
                 ),
                 const SizedBox(height: 8),
-                const Text('Warning: you can only change this once per year.',
+                Text(AppLocalizations.of(ctx).setDailyResetWarning,
                     style: TextStyle(fontSize: 11, color: Colors.redAccent)),
               ],
             ),
@@ -841,14 +835,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(ctx),
-              child: const Text('CANCEL', style: TextStyle(fontSize: 12, color: Colors.white54)),
+              child: Text(AppLocalizations.of(ctx).csCancel, style: const TextStyle(fontSize: 12, color: Colors.white54)),
             ),
             TextButton(
               onPressed: () {
                 game.setResetHour(selected);
                 Navigator.pop(ctx);
               },
-              child: Text('CONFIRM', style: TextStyle(fontSize: 12, color: AppTheme.accentGold)),
+              child: Text(AppLocalizations.of(ctx).setConfirm, style: const TextStyle(fontSize: 12, color: AppTheme.accentGold)),
             ),
           ],
         ),
@@ -861,21 +855,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
       context: context,
       builder: (_) => AlertDialog(
         backgroundColor: const Color(0xFF2A2623),
-        title: Text('Load from Cloud?',
+        title: Text(AppLocalizations.of(context).setLoadCloudTitle,
             style: AppTheme.pixelHeading(fontSize: 14, color: AppTheme.accentGold)),
-        content: const Text(
-          'This will overwrite your local save with cloud data. Local progress not yet synced will be lost.',
+        content: Text(
+          AppLocalizations.of(context).setLoadCloudBody,
           style: TextStyle(fontSize: 15, color: AppTheme.textLight),
         ),
         actions: [
           TextButton(onPressed: () => Navigator.pop(context),
-              child: Text('CANCEL', style: AppTheme.pixelHeading(fontSize: 14, color: AppTheme.textMuted))),
+              child: Text(AppLocalizations.of(context).csCancel, style: AppTheme.pixelHeading(fontSize: 14, color: AppTheme.textMuted))),
           TextButton(
             onPressed: () async {
               Navigator.pop(context);
               await game.loadFromCloud();
             },
-            child: Text('LOAD', style: AppTheme.pixelHeading(fontSize: 14, color: AppTheme.accentGold)),
+            child: Text(AppLocalizations.of(context).setLoad, style: AppTheme.pixelHeading(fontSize: 14, color: AppTheme.accentGold)),
           ),
         ],
       ),
@@ -888,18 +882,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
       context: context,
       builder: (_) => AlertDialog(
         backgroundColor: const Color(0xFF2A2623),
-        title: Text('Reset all progress?',
+        title: Text(AppLocalizations.of(context).setResetAllTitle,
             style: AppTheme.pixelHeading(fontSize: 14, color: const Color(0xFFcc4444))),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              'All progress, gold, items, prestige levels, and achievements will be permanently deleted. This cannot be undone.',
+            Text(
+              AppLocalizations.of(context).setResetAllBody,
               style: TextStyle(fontSize: 15, color: AppTheme.textLight),
             ),
             const SizedBox(height: 14),
-            const Text('New hero name:', style: TextStyle(fontSize: 14, color: AppTheme.textMuted)),
+            Text(AppLocalizations.of(context).setNewHeroName, style: const TextStyle(fontSize: 14, color: AppTheme.textMuted)),
             const SizedBox(height: 6),
             TextField(
               controller: nameController,
@@ -919,7 +913,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         actions: [
           TextButton(
             onPressed: () { nameController.dispose(); Navigator.pop(context); },
-            child: Text('CANCEL', style: AppTheme.pixelHeading(fontSize: 14, color: AppTheme.textMuted)),
+            child: Text(AppLocalizations.of(context).csCancel, style: AppTheme.pixelHeading(fontSize: 14, color: AppTheme.textMuted)),
           ),
           TextButton(
             onPressed: () {
@@ -929,7 +923,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               Navigator.pop(context);
               game.loadSlot(0, newName: name);
             },
-            child: Text('RESET', style: AppTheme.pixelHeading(fontSize: 14, color: const Color(0xFFcc4444))),
+            child: Text(AppLocalizations.of(context).setReset, style: AppTheme.pixelHeading(fontSize: 14, color: const Color(0xFFcc4444))),
           ),
         ],
       ),
@@ -967,7 +961,7 @@ class _SettingsTile extends StatelessWidget {
       decoration: BoxDecoration(
         color: const Color(0xFF231F1B),
         border: Border.all(color: AppTheme.cardBorder),
-        borderRadius: BorderRadius.circular(4),
+        borderRadius: BorderRadius.circular(8),
       ),
       child: Row(
         children: [

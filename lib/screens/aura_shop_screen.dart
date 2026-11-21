@@ -10,6 +10,8 @@ import '../services/save_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/battle_sprites.dart';
 import '../widgets/zcoin_icon.dart';
+import '../l10n/app_localizations.dart';
+import '../l10n/content_l10n.dart';
 
 
 // ─── Small "bonuses stack" info banner ───────────────────────────────────────
@@ -24,7 +26,7 @@ class _StackNote extends StatelessWidget {
       decoration: BoxDecoration(
         color: const Color(0xFF44cc66).withValues(alpha: 0.08),
         border: Border.all(color: const Color(0xFF44cc66).withValues(alpha: 0.4)),
-        borderRadius: BorderRadius.circular(6),
+        borderRadius: BorderRadius.circular(8),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -54,11 +56,10 @@ class CosmeticsAurasSection extends StatelessWidget {
     final col = Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const _StackNote('Bonuses from every aura you OWN stack automatically — '
-            'you keep them all. Equip one just to choose which glow you show.'),
+        _StackNote(AppLocalizations.of(context).auraStackAuras),
         const SizedBox(height: 12),
         if (game.equippedAuraId != null) ...[
-          Text('EQUIPPED', style: AppTheme.pixelHeading(fontSize: 11, letterSpacing: 2, color: AppTheme.accentGold)),
+          Text(AppLocalizations.of(context).auraEquipped, style: AppTheme.pixelHeading(fontSize: 11, letterSpacing: 2, color: AppTheme.accentGold)),
           const SizedBox(height: 8),
           _buildAuraCard(context, kAuraCatalog.firstWhere((a) => a.id == game.equippedAuraId)),
           const SizedBox(height: 16),
@@ -66,7 +67,7 @@ class CosmeticsAurasSection extends StatelessWidget {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text('ALL AURAS', style: AppTheme.pixelHeading(fontSize: 11, letterSpacing: 2)),
+            Text(AppLocalizations.of(context).auraAllAuras, style: AppTheme.pixelHeading(fontSize: 11, letterSpacing: 2)),
             if (game.equippedAuraId != null)
               TextButton(
                 onPressed: () => game.equipAura(null),
@@ -76,7 +77,7 @@ class CosmeticsAurasSection extends StatelessWidget {
                   minimumSize: Size.zero,
                   tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                 ),
-                child: Text('Remove aura', style: const TextStyle(fontSize: 11, color: AppTheme.textMuted)),
+                child: Text(AppLocalizations.of(context).auraRemoveAura, style: const TextStyle(fontSize: 11, color: AppTheme.textMuted)),
               ),
           ],
         ),
@@ -104,7 +105,7 @@ class CosmeticsAurasSection extends StatelessWidget {
           color: equipped ? aura.color : AppTheme.cardBorder,
           width: equipped ? 1.5 : 1,
         ),
-        borderRadius: BorderRadius.circular(4),
+        borderRadius: BorderRadius.circular(8),
       ),
       child: Row(
         children: [
@@ -116,7 +117,7 @@ class CosmeticsAurasSection extends StatelessWidget {
               children: [
                 Row(
                   children: [
-                    Text(aura.name,
+                    Text(ContentL10n.of(context).tr(aura.id, 'title', aura.name),
                         style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: aura.color)),
                     if (equipped) ...[
                       const SizedBox(width: 8),
@@ -125,15 +126,15 @@ class CosmeticsAurasSection extends StatelessWidget {
                         decoration: BoxDecoration(
                           color: aura.color.withValues(alpha: 0.15),
                           border: Border.all(color: aura.color, width: 1),
-                          borderRadius: BorderRadius.circular(3),
+                          borderRadius: BorderRadius.circular(8),
                         ),
-                        child: Text('ON', style: TextStyle(fontSize: 9, color: aura.color)),
+                        child: Text(AppLocalizations.of(context).auraOn, style: TextStyle(fontSize: 9, color: aura.color)),
                       ),
                     ],
                   ],
                 ),
                 const SizedBox(height: 3),
-                Text(aura.description,
+                Text(ContentL10n.of(context).tr(aura.id, 'desc', aura.description),
                     style: const TextStyle(fontSize: 14, color: AppTheme.textMuted)),
                 const SizedBox(height: 5),
                 Container(
@@ -141,7 +142,7 @@ class CosmeticsAurasSection extends StatelessWidget {
                   decoration: BoxDecoration(
                     color: aura.color.withValues(alpha: 0.10),
                     border: Border.all(color: aura.color.withValues(alpha: 0.4)),
-                    borderRadius: BorderRadius.circular(3),
+                    borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(
                     '✦ ${aura.bonusLabel}',
@@ -151,7 +152,7 @@ class CosmeticsAurasSection extends StatelessWidget {
                 const SizedBox(height: 8),
                 if (owned)
                   _ActionButton(
-                    label: equipped ? 'EQUIPPED' : 'EQUIP',
+                    label: equipped ? AppLocalizations.of(context).auraEquipped : AppLocalizations.of(context).auraEquip,
                     color: equipped ? AppTheme.textMuted : AppTheme.accentGold,
                     onTap: equipped ? null : () => game.equipAura(aura.id),
                   )
@@ -161,7 +162,7 @@ class CosmeticsAurasSection extends StatelessWidget {
                       _CrystalCost(zcoins: aura.zcoinCost, affordable: canAfford),
                       const SizedBox(width: 10),
                       _ActionButton(
-                        label: 'UNLOCK',
+                        label: AppLocalizations.of(context).auraUnlock,
                         color: canAfford ? aura.color : AppTheme.cardBorder,
                         onTap: canAfford
                             ? () => _confirmPurchase(context, aura)
@@ -182,21 +183,21 @@ class CosmeticsAurasSection extends StatelessWidget {
       context: context,
       builder: (_) => AlertDialog(
         backgroundColor: const Color(0xFF2A2623),
-        title: Text('Unlock ${aura.name}?',
+        title: Text(AppLocalizations.of(context).auraUnlockTitle(ContentL10n.of(context).tr(aura.id, 'title', aura.name)),
             style: AppTheme.pixelHeading(fontSize: 14, color: aura.color)),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             _AuraOrb(aura: aura, size: 72),
             const SizedBox(height: 12),
-            Text('Cost: ${aura.zcoinCost} zcoins',
+            Text(AppLocalizations.of(context).auraCost(aura.zcoinCost),
                 style: const TextStyle(color: AppTheme.textLight, fontSize: 14)),
           ],
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: Text('CANCEL', style: AppTheme.pixelHeading(fontSize: 11, color: AppTheme.textMuted)),
+            child: Text(AppLocalizations.of(context).csCancel, style: AppTheme.pixelHeading(fontSize: 11, color: AppTheme.textMuted)),
           ),
           TextButton(
             onPressed: () {
@@ -204,7 +205,7 @@ class CosmeticsAurasSection extends StatelessWidget {
               game.purchaseAura(aura.id);
               game.audioService.playClaim();
             },
-            child: Text('CONFIRM', style: AppTheme.pixelHeading(fontSize: 11, color: AppTheme.accentGold)),
+            child: Text(AppLocalizations.of(context).setConfirm, style: AppTheme.pixelHeading(fontSize: 11, color: AppTheme.accentGold)),
           ),
         ],
       ),
@@ -224,11 +225,10 @@ class CosmeticsSkinsSection extends StatelessWidget {
     final col = Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const _StackNote('Bonuses from every skin you OWN stack automatically — '
-            'you keep them all. Equip one just to choose which look you wear.'),
+        _StackNote(AppLocalizations.of(context).auraStackSkins),
         const SizedBox(height: 12),
         if (game.equippedSkinId != null) ...[
-          Text('EQUIPPED', style: AppTheme.pixelHeading(fontSize: 11, letterSpacing: 2, color: AppTheme.accentGold)),
+          Text(AppLocalizations.of(context).auraEquipped, style: AppTheme.pixelHeading(fontSize: 11, letterSpacing: 2, color: AppTheme.accentGold)),
           const SizedBox(height: 8),
           _buildSkinCard(context, kSkinCatalog.firstWhere((s) => s.id == game.equippedSkinId)),
           const SizedBox(height: 16),
@@ -236,7 +236,7 @@ class CosmeticsSkinsSection extends StatelessWidget {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text('ALL SKINS', style: AppTheme.pixelHeading(fontSize: 11, letterSpacing: 2)),
+            Text(AppLocalizations.of(context).auraAllSkins, style: AppTheme.pixelHeading(fontSize: 11, letterSpacing: 2)),
             if (game.equippedSkinId != null)
               TextButton(
                 onPressed: () => game.equipSkin(null),
@@ -246,7 +246,7 @@ class CosmeticsSkinsSection extends StatelessWidget {
                   minimumSize: Size.zero,
                   tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                 ),
-                child: const Text('Remove skin', style: TextStyle(fontSize: 11, color: AppTheme.textMuted)),
+                child: Text(AppLocalizations.of(context).auraRemoveSkin, style: const TextStyle(fontSize: 11, color: AppTheme.textMuted)),
               ),
           ],
         ),
@@ -274,7 +274,7 @@ class CosmeticsSkinsSection extends StatelessWidget {
           color: equipped ? AppTheme.accentGold : AppTheme.cardBorder,
           width: equipped ? 1.5 : 1,
         ),
-        borderRadius: BorderRadius.circular(4),
+        borderRadius: BorderRadius.circular(8),
       ),
       child: Row(
         children: [
@@ -296,9 +296,9 @@ class CosmeticsSkinsSection extends StatelessWidget {
                         decoration: BoxDecoration(
                           color: AppTheme.accentGold.withValues(alpha: 0.15),
                           border: Border.all(color: AppTheme.accentGold),
-                          borderRadius: BorderRadius.circular(3),
+                          borderRadius: BorderRadius.circular(8),
                         ),
-                        child: Text('ON', style: AppTheme.pixelHeading(fontSize: 9, color: AppTheme.accentGold)),
+                        child: Text(AppLocalizations.of(context).auraOn, style: AppTheme.pixelHeading(fontSize: 9, color: AppTheme.accentGold)),
                       ),
                     ],
                   ],
@@ -312,7 +312,7 @@ class CosmeticsSkinsSection extends StatelessWidget {
                   decoration: BoxDecoration(
                     color: skin.previewColor.withValues(alpha: 0.12),
                     border: Border.all(color: skin.previewColor.withValues(alpha: 0.5)),
-                    borderRadius: BorderRadius.circular(3),
+                    borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(
                     '✦ ${skin.bonusLabel}',
@@ -322,7 +322,7 @@ class CosmeticsSkinsSection extends StatelessWidget {
                 const SizedBox(height: 8),
                 if (owned)
                   _ActionButton(
-                    label: equipped ? 'EQUIPPED' : 'EQUIP',
+                    label: equipped ? AppLocalizations.of(context).auraEquipped : AppLocalizations.of(context).auraEquip,
                     color: equipped ? AppTheme.textMuted : AppTheme.accentGold,
                     onTap: equipped ? null : () => game.equipSkin(skin.id),
                   )
@@ -332,7 +332,7 @@ class CosmeticsSkinsSection extends StatelessWidget {
                       _CrystalCost(zcoins: skin.zcoinCost, affordable: canAfford),
                       const SizedBox(width: 10),
                       _ActionButton(
-                        label: 'UNLOCK',
+                        label: AppLocalizations.of(context).auraUnlock,
                         color: canAfford ? skin.previewColor : AppTheme.cardBorder,
                         onTap: canAfford ? () => _confirmPurchase(context, skin) : null,
                       ),
@@ -351,21 +351,21 @@ class CosmeticsSkinsSection extends StatelessWidget {
       context: context,
       builder: (_) => AlertDialog(
         backgroundColor: const Color(0xFF2A2623),
-        title: Text('Unlock ${skin.name}?',
+        title: Text(AppLocalizations.of(context).auraUnlockTitle(skin.name),
             style: AppTheme.pixelHeading(fontSize: 14, color: skin.previewColor)),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             _SkinPreview(spriteId: game.hero.spriteId, skin: skin, showLabel: true),
             const SizedBox(height: 12),
-            Text('Cost: ${skin.zcoinCost} zcoins',
+            Text(AppLocalizations.of(context).auraCost(skin.zcoinCost),
                 style: const TextStyle(color: AppTheme.textLight, fontSize: 14)),
           ],
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: Text('CANCEL', style: AppTheme.pixelHeading(fontSize: 11, color: AppTheme.textMuted)),
+            child: Text(AppLocalizations.of(context).csCancel, style: AppTheme.pixelHeading(fontSize: 11, color: AppTheme.textMuted)),
           ),
           TextButton(
             onPressed: () {
@@ -373,7 +373,7 @@ class CosmeticsSkinsSection extends StatelessWidget {
               game.purchaseSkin(skin.id);
               game.audioService.playClaim();
             },
-            child: Text('CONFIRM', style: AppTheme.pixelHeading(fontSize: 11, color: AppTheme.accentGold)),
+            child: Text(AppLocalizations.of(context).setConfirm, style: AppTheme.pixelHeading(fontSize: 11, color: AppTheme.accentGold)),
           ),
         ],
       ),
@@ -406,7 +406,7 @@ class _SkinPreview extends StatelessWidget {
           ],
         ),
         const SizedBox(height: 4),
-        const Text('Before / After', style: TextStyle(fontSize: 10, color: AppTheme.textMuted)),
+        Text(AppLocalizations.of(context).auraBeforeAfter, style: const TextStyle(fontSize: 10, color: AppTheme.textMuted)),
       ],
     );
   }
@@ -450,7 +450,7 @@ class CosmeticsPetsSection extends StatelessWidget {
         ),
         const SizedBox(height: 12),
         if (game.equippedPetId != null) ...[
-          Text('BATTLE COMPANION', style: AppTheme.pixelHeading(fontSize: 11, letterSpacing: 2, color: AppTheme.accentGold)),
+          Text(AppLocalizations.of(context).auraBattleCompanion, style: AppTheme.pixelHeading(fontSize: 11, letterSpacing: 2, color: AppTheme.accentGold)),
           const SizedBox(height: 8),
           _buildPetCard(context, kPetCatalog.firstWhere((p) => p.id == game.equippedPetId)),
           const SizedBox(height: 16),
@@ -458,7 +458,7 @@ class CosmeticsPetsSection extends StatelessWidget {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text('ALL PETS', style: AppTheme.pixelHeading(fontSize: 11, letterSpacing: 2)),
+            Text(AppLocalizations.of(context).auraAllPets, style: AppTheme.pixelHeading(fontSize: 11, letterSpacing: 2)),
             if (game.equippedPetId != null)
               TextButton(
                 onPressed: () => game.equipPet(null),
@@ -468,12 +468,12 @@ class CosmeticsPetsSection extends StatelessWidget {
                   minimumSize: Size.zero,
                   tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                 ),
-                child: const Text('Dismiss pet', style: TextStyle(fontSize: 11, color: AppTheme.textMuted)),
+                child: Text(AppLocalizations.of(context).auraDismissPet, style: const TextStyle(fontSize: 11, color: AppTheme.textMuted)),
               ),
           ],
         ),
         const SizedBox(height: 4),
-        Text('One companion can be active at a time. Each grants a small passive bonus.',
+        Text(AppLocalizations.of(context).auraCompanionNote,
             style: const TextStyle(fontSize: 12, color: AppTheme.textMuted)),
         const SizedBox(height: 12),
         ...kPetCatalog.map((pet) => Padding(
@@ -499,7 +499,7 @@ class CosmeticsPetsSection extends StatelessWidget {
           color: equipped ? pet.color : AppTheme.cardBorder,
           width: equipped ? 1.5 : 1,
         ),
-        borderRadius: BorderRadius.circular(4),
+        borderRadius: BorderRadius.circular(8),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -523,9 +523,9 @@ class CosmeticsPetsSection extends StatelessWidget {
                         decoration: BoxDecoration(
                           color: pet.color.withValues(alpha: 0.15),
                           border: Border.all(color: pet.color),
-                          borderRadius: BorderRadius.circular(3),
+                          borderRadius: BorderRadius.circular(8),
                         ),
-                        child: Text('ON', style: TextStyle(fontSize: 9, color: pet.color)),
+                        child: Text(AppLocalizations.of(context).auraOn, style: TextStyle(fontSize: 9, color: pet.color)),
                       ),
                   ],
                 ),
@@ -542,7 +542,7 @@ class CosmeticsPetsSection extends StatelessWidget {
                   decoration: BoxDecoration(
                     color: pet.color.withValues(alpha: 0.10),
                     border: Border.all(color: pet.color.withValues(alpha: 0.45)),
-                    borderRadius: BorderRadius.circular(3),
+                    borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(
                     '✦ ${pet.bonusLabel}',
@@ -552,7 +552,7 @@ class CosmeticsPetsSection extends StatelessWidget {
                 const SizedBox(height: 8),
                 if (owned) ...[
                   _ActionButton(
-                    label: equipped ? 'ACTIVE' : 'SEND OUT',
+                    label: equipped ? AppLocalizations.of(context).auraActive : AppLocalizations.of(context).auraSendOut,
                     color: equipped ? AppTheme.textMuted : pet.color,
                     onTap: equipped ? null : () => game.equipPet(pet.id),
                   ),
@@ -563,7 +563,7 @@ class CosmeticsPetsSection extends StatelessWidget {
                       _CrystalCost(zcoins: pet.zcoinCost, affordable: canAfford),
                       const SizedBox(width: 10),
                       _ActionButton(
-                        label: 'ADOPT',
+                        label: AppLocalizations.of(context).auraAdopt,
                         color: canAfford ? pet.color : AppTheme.cardBorder,
                         onTap: canAfford ? () => _confirmAdopt(context, pet) : null,
                       ),
@@ -582,7 +582,7 @@ class CosmeticsPetsSection extends StatelessWidget {
       context: context,
       builder: (_) => AlertDialog(
         backgroundColor: const Color(0xFF2A2623),
-        title: Text('Adopt ${pet.name}?',
+        title: Text(AppLocalizations.of(context).auraAdoptTitle(pet.name),
             style: AppTheme.pixelHeading(fontSize: 14, color: pet.color)),
         content: Column(
           mainAxisSize: MainAxisSize.min,
@@ -594,27 +594,27 @@ class CosmeticsPetsSection extends StatelessWidget {
               decoration: BoxDecoration(
                 color: pet.color.withValues(alpha: 0.08),
                 border: Border.all(color: pet.color.withValues(alpha: 0.4)),
-                borderRadius: BorderRadius.circular(3),
+                borderRadius: BorderRadius.circular(8),
               ),
-              child: Text('✦ ${pet.bonusLabel}',
+              child: Text(AppLocalizations.of(context).auraPetBonus(pet.bonusLabel),
                   style: TextStyle(fontSize: 13, color: pet.color, fontWeight: FontWeight.bold)),
             ),
             const SizedBox(height: 12),
-            Text('Cost: ${pet.zcoinCost} zcoins',
+            Text(AppLocalizations.of(context).auraCost(pet.zcoinCost),
                 style: const TextStyle(color: AppTheme.textLight, fontSize: 14)),
           ],
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: Text('CANCEL', style: AppTheme.pixelHeading(fontSize: 11, color: AppTheme.textMuted)),
+            child: Text(AppLocalizations.of(context).csCancel, style: AppTheme.pixelHeading(fontSize: 11, color: AppTheme.textMuted)),
           ),
           TextButton(
             onPressed: () {
               Navigator.pop(context);
               if (game.purchasePet(pet.id)) game.audioService.playCoin();
             },
-            child: Text('ADOPT', style: AppTheme.pixelHeading(fontSize: 11, color: pet.color)),
+            child: Text(AppLocalizations.of(context).auraAdopt, style: AppTheme.pixelHeading(fontSize: 11, color: pet.color)),
           ),
         ],
       ),
@@ -638,7 +638,7 @@ class _PetAvatar extends StatelessWidget {
           color: pet.color.withValues(alpha: equipped ? 0.8 : 0.4),
           width: equipped ? 1.5 : 1,
         ),
-        borderRadius: BorderRadius.circular(6),
+        borderRadius: BorderRadius.circular(8),
       ),
       child: Center(
         child: Text(pet.emoji, style: const TextStyle(fontSize: 29)),
@@ -774,7 +774,7 @@ class _PetEvolutionRow extends StatelessWidget {
     if (evo >= 2) {
       return Padding(
         padding: const EdgeInsets.only(top: 6),
-        child: Text('★★ MAX EVOLUTION',
+        child: Text(AppLocalizations.of(context).auraMaxEvolution,
             style: TextStyle(fontSize: 10, color: petColor, fontWeight: FontWeight.bold)),
       );
     }
@@ -793,7 +793,7 @@ class _PetEvolutionRow extends StatelessWidget {
         _CrystalCost(zcoins: cost, affordable: canAfford),
         const SizedBox(width: 6),
         _ActionButton(
-          label: 'EVOLVE',
+          label: AppLocalizations.of(context).auraEvolve,
           color: canAfford ? petColor : AppTheme.cardBorder,
           onTap: canAfford
               ? () { if (game.evolvePet(petId)) game.audioService.playCoin(); }
@@ -817,7 +817,7 @@ class CosmeticsBoostsSection extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         // ── Waystones ─────────────────────────────────────────────────────
-        Text('WAYSTONES', style: AppTheme.pixelHeading(fontSize: 11, letterSpacing: 2, color: AppTheme.accentGold)),
+        Text(AppLocalizations.of(context).auraWaystones, style: AppTheme.pixelHeading(fontSize: 11, letterSpacing: 2, color: AppTheme.accentGold)),
         const SizedBox(height: 4),
         const Text(
           'Multiply idle gold income while active. Activate one before closing '
@@ -850,7 +850,7 @@ class AttackEffectsSection extends StatelessWidget {
     final col = Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('ATTACK EFFECTS', style: AppTheme.pixelHeading(fontSize: 11, letterSpacing: 2, color: AppTheme.accentGold)),
+        Text(AppLocalizations.of(context).auraAttackEffects, style: AppTheme.pixelHeading(fontSize: 11, letterSpacing: 2, color: AppTheme.accentGold)),
         const SizedBox(height: 4),
         const Text(
           'Replace your basic attack with a flashy elemental effect — shown in '
@@ -881,7 +881,7 @@ class CosmeticsMiscSection extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         // ── Extra Character Slots ──────────────────────────────────────────
-        Text('CHARACTER SLOTS', style: AppTheme.pixelHeading(fontSize: 11, letterSpacing: 2, color: AppTheme.accentGold)),
+        Text(AppLocalizations.of(context).auraCharSlots, style: AppTheme.pixelHeading(fontSize: 11, letterSpacing: 2, color: AppTheme.accentGold)),
         const SizedBox(height: 4),
         Text(
           'Unlock additional character save slots. You currently have '
@@ -895,12 +895,12 @@ class CosmeticsMiscSection extends StatelessWidget {
             decoration: BoxDecoration(
               color: const Color(0xFF231F1B),
               border: Border.all(color: const Color(0xFF44cc66).withValues(alpha: 0.4)),
-              borderRadius: BorderRadius.circular(4),
+              borderRadius: BorderRadius.circular(8),
             ),
-            child: Row(children: const [
-              Text('✓ ', style: TextStyle(color: Color(0xFF44cc66))),
-              Text('All 12 slots unlocked.',
-                  style: TextStyle(fontSize: 12, color: Color(0xFF44cc66))),
+            child: Row(children: [
+              const Text('✓ ', style: TextStyle(color: Color(0xFF44cc66))),
+              Text(AppLocalizations.of(context).auraAllSlots,
+                  style: const TextStyle(fontSize: 12, color: Color(0xFF44cc66))),
             ]),
           )
         else
@@ -926,7 +926,7 @@ class _WaystoneActiveBanner extends StatelessWidget {
       decoration: BoxDecoration(
         color: const Color(0xFF66aaff).withValues(alpha: 0.08),
         border: Border.all(color: const Color(0xFF66aaff).withValues(alpha: 0.5)),
-        borderRadius: BorderRadius.circular(4),
+        borderRadius: BorderRadius.circular(8),
       ),
       child: Row(children: [
         const Text('🌀', style: TextStyle(fontSize: 17)),
@@ -960,7 +960,7 @@ class _WaystoneCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: const Color(0xFF231F1B),
         border: Border.all(color: AppTheme.cardBorder),
-        borderRadius: BorderRadius.circular(4),
+        borderRadius: BorderRadius.circular(8),
       ),
       child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Text(waystone.icon, style: const TextStyle(fontSize: 25)),
@@ -971,18 +971,18 @@ class _WaystoneCard extends StatelessWidget {
               Text(waystone.name,
                   style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: waystone.color)),
               const Spacer(),
-              Text('Owned: $count',
+              Text(AppLocalizations.of(context).auraOwned(count),
                   style: const TextStyle(fontSize: 11, color: AppTheme.textMuted)),
             ]),
             const SizedBox(height: 2),
-            Text('${waystone.durationHours}h  ·  ${waystone.multiplier.toStringAsFixed(1)}× idle income',
+            Text(AppLocalizations.of(context).auraWaystoneDesc(waystone.durationHours, waystone.multiplier.toStringAsFixed(1)),
                 style: const TextStyle(fontSize: 11, color: AppTheme.textMuted)),
             const SizedBox(height: 8),
             Row(children: [
               _CrystalCost(zcoins: waystone.zcoinCost, affordable: canBuy),
               const SizedBox(width: 8),
               _ActionButton(
-                label: 'BUY',
+                label: AppLocalizations.of(context).auraBuy,
                 color: canBuy ? waystone.color : AppTheme.cardBorder,
                 onTap: canBuy ? () => game.buyWaystone(grand: isGrand) : null,
               ),
@@ -1020,7 +1020,7 @@ class _AttackEffectCard extends StatelessWidget {
         border: Border.all(
             color: equipped ? effect.color.withValues(alpha: 0.6) : AppTheme.cardBorder,
             width: equipped ? 1.5 : 1),
-        borderRadius: BorderRadius.circular(4),
+        borderRadius: BorderRadius.circular(8),
       ),
       child: Row(children: [
         Text(effect.icon, style: const TextStyle(fontSize: 23)),
@@ -1030,14 +1030,14 @@ class _AttackEffectCard extends StatelessWidget {
             Text(effect.name,
                 style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: effect.color)),
             const SizedBox(height: 2),
-            Text('"${effect.hitText}" on every hit',
+            Text(AppLocalizations.of(context).auraHitEvery(effect.hitText),
                 style: const TextStyle(fontSize: 11, color: AppTheme.textMuted, fontStyle: FontStyle.italic)),
           ]),
         ),
         const SizedBox(width: 8),
         if (owned)
           _ActionButton(
-            label: equipped ? 'ACTIVE' : 'EQUIP',
+            label: equipped ? AppLocalizations.of(context).auraActive : AppLocalizations.of(context).auraEquip,
             color: equipped ? AppTheme.textMuted : effect.color,
             onTap: equipped ? null : () => game.equipAttackEffect(effect.id),
           )
@@ -1046,7 +1046,7 @@ class _AttackEffectCard extends StatelessWidget {
             _CrystalCost(zcoins: effect.zcoinCost, affordable: canBuy),
             const SizedBox(width: 6),
             _ActionButton(
-              label: 'BUY',
+              label: AppLocalizations.of(context).auraBuy,
               color: canBuy ? effect.color : AppTheme.cardBorder,
               onTap: canBuy ? () => game.buyAttackEffect(effect.id) : null,
             ),
@@ -1069,24 +1069,24 @@ class _SlotUnlockCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: const Color(0xFF231F1B),
         border: Border.all(color: AppTheme.cardBorder),
-        borderRadius: BorderRadius.circular(4),
+        borderRadius: BorderRadius.circular(8),
       ),
       child: Row(children: [
         const Text('🔓', style: TextStyle(fontSize: 23)),
         const SizedBox(width: 12),
         Expanded(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text('Slot ${4 + game.extraCharacterSlots}',
+            Text(AppLocalizations.of(context).auraSlotN(4 + game.extraCharacterSlots),
                 style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.white70)),
             const SizedBox(height: 2),
-            const Text('Add one more character save slot.',
+            Text(AppLocalizations.of(context).auraAddSlot,
                 style: TextStyle(fontSize: 11, color: AppTheme.textMuted)),
             const SizedBox(height: 8),
             Row(children: [
               _CrystalCost(zcoins: cost, affordable: canAfford),
               const SizedBox(width: 8),
               _ActionButton(
-                label: 'UNLOCK',
+                label: AppLocalizations.of(context).auraUnlock,
                 color: canAfford ? AppTheme.accentGold : AppTheme.cardBorder,
                 onTap: canAfford ? () {
                   game.buyExtraCharacterSlot();

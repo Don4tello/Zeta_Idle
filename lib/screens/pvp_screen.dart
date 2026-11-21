@@ -7,6 +7,7 @@ import '../models/shop_catalog.dart';
 import '../models/subclass.dart';
 import '../services/auth_service.dart';
 import '../services/game_state.dart';
+import '../services/ad_service.dart';
 import '../widgets/fight_summary_sheet.dart';
 import '../services/pvp_service.dart';
 import '../theme/app_theme.dart';
@@ -17,6 +18,7 @@ import '../widgets/empty_state.dart';
 import '../widgets/battle_split_panel.dart' show BattleIconBar;
 import '../widgets/zcoin_icon.dart';
 import 'pvp_sim_screen.dart';
+import '../l10n/app_localizations.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // PvpScreen
@@ -129,8 +131,8 @@ class _PvpScreenState extends State<PvpScreen> {
       BuildContext ctx, GameState game, PvpSnapshot opponent) async {
     if (!game.spendPvpStamina()) {
       if (ctx.mounted) {
-        ScaffoldMessenger.of(ctx).showSnackBar(const SnackBar(
-          content: Text('No stamina! Recharges 1 every 45 minutes.'),
+        ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(
+          content: Text(AppLocalizations.of(ctx).pvpNoStamina),
           duration: Duration(seconds: 2),
         ));
       }
@@ -149,8 +151,8 @@ class _PvpScreenState extends State<PvpScreen> {
     if (_matchBusy) return;
     if (!game.spendPvpStamina()) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('No stamina! Recharges 1 every 45 minutes.'),
+        SnackBar(
+          content: Text(AppLocalizations.of(context).pvpNoStamina),
           duration: Duration(seconds: 2),
         ),
       );
@@ -228,7 +230,7 @@ class _PvpScreenState extends State<PvpScreen> {
       backgroundColor: const Color(0xFF1B1A17),
       appBar: AppBar(
         backgroundColor: const Color(0xFF2A2623),
-        title: Text('PVP ARENA',
+        title: Text(AppLocalizations.of(context).pvpTitle,
             style: AppTheme.pixelHeading(
                 fontSize: 14, letterSpacing: 2, color: AppTheme.accentGold)),
         actions: [
@@ -236,12 +238,12 @@ class _PvpScreenState extends State<PvpScreen> {
             icon: Icon(Icons.assessment_outlined, size: 20,
                 color: game.lastFightSummary != null
                     ? AppTheme.accentGold : AppTheme.textMuted),
-            tooltip: 'Last fight summary',
+            tooltip: AppLocalizations.of(context).battleLastFightSummary,
             onPressed: () {
               final s = game.lastFightSummary;
               if (s == null) {
-                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                    content: Text('No fight finished yet.'),
+                ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                    content: Text(AppLocalizations.of(context).battleNoFightYet),
                     behavior: SnackBarBehavior.floating));
                 return;
               }
@@ -250,13 +252,13 @@ class _PvpScreenState extends State<PvpScreen> {
           ),
           IconButton(
             icon: const Icon(Icons.science, size: 18, color: AppTheme.textMuted),
-            tooltip: 'Sim Lab',
+            tooltip: AppLocalizations.of(context).pvpSimLab,
             onPressed: () => Navigator.push(context,
                 MaterialPageRoute(builder: (_) => const PvpSimScreen())),
           ),
           IconButton(
             icon: const Icon(Icons.refresh, size: 18, color: AppTheme.textMuted),
-            tooltip: 'Refresh leaderboard',
+            tooltip: AppLocalizations.of(context).pvpRefresh,
             onPressed: _boardLoading ? null : _loadBoard,
           ),
         ],
@@ -270,13 +272,13 @@ class _PvpScreenState extends State<PvpScreen> {
               rivals: _getNearbyRivals(),
               onChallenge: (opp) => _challengePlayer(context, game, opp),
             ),
-          const Padding(
-            padding: EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
             child: Row(children: [
-              Expanded(child: Divider(color: AppTheme.cardBorder)),
+              const Expanded(child: Divider(color: AppTheme.cardBorder)),
               Padding(
-                padding: EdgeInsets.symmetric(horizontal: 10),
-                child: Text('LEADERBOARD',
+                padding: const EdgeInsets.symmetric(horizontal: 10),
+                child: Text(AppLocalizations.of(context).pvpLeaderboard,
                     style: TextStyle(
                         fontSize: 11,
                         color: AppTheme.textMuted,
@@ -297,16 +299,16 @@ class _PvpScreenState extends State<PvpScreen> {
               border: Border.all(color: game.pvpDailyRank > 0
                   ? const Color(0xFF44cc88).withValues(alpha: 0.5)
                   : AppTheme.cardBorder),
-              borderRadius: BorderRadius.circular(4),
+              borderRadius: BorderRadius.circular(8),
             ),
             child: Row(children: [
               Expanded(child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('TODAY: ${game.pvpDailyRankLabel}',
+                  Text(AppLocalizations.of(context).pvpToday(game.pvpDailyRankLabel),
                       style: AppTheme.pixelHeading(fontSize: 11, letterSpacing: 1,
                           color: game.pvpDailyRank > 0 ? const Color(0xFF44cc88) : AppTheme.textMuted)),
-                  Text('${game.pvpDailyWins} wins today  •  ${game.pvpDailyDamage} total dmg',
+                  Text(AppLocalizations.of(context).pvpWinsToday(game.pvpDailyWins, game.pvpDailyDamage),
                       style: const TextStyle(fontSize: 10, color: AppTheme.textMuted)),
                 ],
               )),
@@ -318,14 +320,14 @@ class _PvpScreenState extends State<PvpScreen> {
                     decoration: BoxDecoration(
                       color: const Color(0xFF44cc88).withValues(alpha: 0.12),
                       border: Border.all(color: const Color(0xFF44cc88)),
-                      borderRadius: BorderRadius.circular(3),
+                      borderRadius: BorderRadius.circular(8),
                     ),
-                    child: Text('CLAIM', style: AppTheme.pixelHeading(
+                    child: Text(AppLocalizations.of(context).claim, style: AppTheme.pixelHeading(
                         fontSize: 10, color: const Color(0xFF44cc88))),
                   ),
                 )
               else if (game.pvpDailyRewardClaimed)
-                Text('✓ CLAIMED', style: AppTheme.pixelHeading(
+                Text(AppLocalizations.of(context).pvpClaimed, style: AppTheme.pixelHeading(
                     fontSize: 10, color: const Color(0xFF44cc88))),
             ]),
           ),
@@ -367,6 +369,29 @@ class _PvpScreenState extends State<PvpScreen> {
                   ),
                 ),
               ],
+              if (game.pvpStamina <= 0 && AdService.instance.isSupported) ...[
+                const SizedBox(height: 8),
+                SizedBox(
+                  width: double.infinity,
+                  height: 48,
+                  child: OutlinedButton.icon(
+                    onPressed: () {
+                      AdService.instance.showRewardedAd(
+                        onRewarded: () { game.grantAdPvpStamina(); setState(() {}); },
+                        onFailed: () {
+                          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                            content: Text('Ad not ready — try again in a moment.'),
+                            behavior: SnackBarBehavior.floating));
+                        },
+                      );
+                    },
+                    icon: const Icon(Icons.play_circle_outline, size: 16, color: Color(0xFF55cc88)),
+                    label: Text('FREE +3 STAMINA  (watch ad)',
+                        style: AppTheme.pixelHeading(fontSize: 12, letterSpacing: 1, color: const Color(0xFF55cc88))),
+                    style: OutlinedButton.styleFrom(side: const BorderSide(color: Color(0xFF55cc88))),
+                  ),
+                ),
+              ],
             ]),
           ),
         ],
@@ -397,10 +422,10 @@ class _PvpScreenState extends State<PvpScreen> {
     }
     final board = _board ?? [];
     if (board.isEmpty) {
-      return const EmptyState(
+      return EmptyState(
         icon: '⚔',
-        title: 'NO CHALLENGERS YET',
-        subtitle: 'Fight a match to join the leaderboard\nand see how you stack up.',
+        title: AppLocalizations.of(context).pvpNoChallengers,
+        subtitle: AppLocalizations.of(context).pvpNoChallengersSub,
       );
     }
     return ListView.builder(
@@ -424,7 +449,7 @@ class _PvpScreenState extends State<PvpScreen> {
             border: Border.all(
               color: isMe ? AppTheme.accentGold : classColor.withValues(alpha: 0.4),
             ),
-            borderRadius: BorderRadius.circular(4),
+            borderRadius: BorderRadius.circular(8),
           ),
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
@@ -510,7 +535,7 @@ class _PvpScreenState extends State<PvpScreen> {
                             fontSize: 15,
                             color: AppTheme.accentGold,
                             fontWeight: FontWeight.bold)),
-                    Text('HP:${p.maxHp}  AC:${p.armorClass}',
+                    Text(AppLocalizations.of(context).pvpHpAc(p.maxHp, p.armorClass),
                         style: const TextStyle(
                             fontSize: 10, color: AppTheme.textMuted)),
                   ],
@@ -547,7 +572,7 @@ class _StaminaBar extends StatelessWidget {
       ),
       child: Row(
         children: [
-          Text('STAMINA  ',
+          Text(AppLocalizations.of(context).pvpStamina,
               style: AppTheme.pixelHeading(
                   fontSize: 10, color: AppTheme.textMuted, letterSpacing: 2)),
           ...List.generate(
@@ -565,7 +590,7 @@ class _StaminaBar extends StatelessWidget {
           ),
           const Spacer(),
           Tooltip(
-            message: 'Stamina recovers 1 heart every 45 minutes.',
+            message: AppLocalizations.of(context).pvpStaminaTip,
             child: Text(
               game.pvpStamina >= GameState.pvpMaxStamina
                   ? 'FULL'
@@ -593,7 +618,7 @@ class _RatingCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: const Color(0xFF231F1B),
         border: Border.all(color: AppTheme.accentGold.withValues(alpha: 0.4)),
-        borderRadius: BorderRadius.circular(4),
+        borderRadius: BorderRadius.circular(8),
       ),
       child: Column(children: [
         _LeagueBanner(game: game),
@@ -601,13 +626,13 @@ class _RatingCard extends StatelessWidget {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceAround,
           children: [
-            _Stat(label: 'RATING', value: '★${game.pvpRating}',
+            _Stat(label: AppLocalizations.of(context).pvpRating, value: '★${game.pvpRating}',
                 color: AppTheme.accentGold),
-            _Stat(label: 'WINS',   value: '${game.pvpWins}',
+            _Stat(label: AppLocalizations.of(context).pvpWins,   value: '${game.pvpWins}',
                 color: const Color(0xFF44dd88)),
-            _Stat(label: 'LOSSES', value: '${game.pvpLosses}',
+            _Stat(label: AppLocalizations.of(context).pvpLosses, value: '${game.pvpLosses}',
                 color: const Color(0xFFcc4444)),
-            _Stat(label: 'W/L',
+            _Stat(label: AppLocalizations.of(context).pvpWL,
                 value: game.pvpWins + game.pvpLosses == 0
                     ? '—'
                     : '${(game.pvpWins / (game.pvpWins + game.pvpLosses) * 100).toStringAsFixed(0)}%',
@@ -644,7 +669,7 @@ class _LeagueBanner extends StatelessWidget {
       Row(mainAxisAlignment: MainAxisAlignment.center, children: [
         Icon(Icons.shield, size: 16, color: c),
         const SizedBox(width: 6),
-        Text('${game.pvpLeagueName.toUpperCase()} LEAGUE',
+        Text(AppLocalizations.of(context).pvpLeague(game.pvpLeagueName.toUpperCase()),
             style: AppTheme.pixelHeading(fontSize: 12, letterSpacing: 2, color: c)),
       ]),
       const SizedBox(height: 4),
@@ -703,13 +728,13 @@ class _NearbyRivalsPanel extends StatelessWidget {
             child: Row(children: [
               const Text('🎯', style: TextStyle(fontSize: 12)),
               const SizedBox(width: 6),
-              Text('NEAR YOUR RANK',
+              Text(AppLocalizations.of(context).pvpNearRank,
                   style: AppTheme.pixelHeading(
                       fontSize: 10,
                       letterSpacing: 2,
                       color: const Color(0xFFcc4444))),
               const SizedBox(width: 6),
-              Text('— players just above you',
+              Text(AppLocalizations.of(context).pvpPlayersAbove,
                   style: const TextStyle(fontSize: 9, color: AppTheme.textMuted)),
             ]),
           ),
@@ -746,7 +771,7 @@ class _RivalCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: const Color(0xFF1e1818),
         border: Border.all(color: const Color(0xFFcc4444).withValues(alpha: 0.35)),
-        borderRadius: BorderRadius.circular(4),
+        borderRadius: BorderRadius.circular(8),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -770,7 +795,7 @@ class _RivalCard extends StatelessWidget {
                           color: AppTheme.textLight),
                       overflow: TextOverflow.ellipsis,
                       maxLines: 1),
-                  Text('$cls  Lv${snap.level}',
+                  Text(AppLocalizations.of(context).pvpClassLv(cls, snap.level),
                       style: const TextStyle(fontSize: 9, color: AppTheme.textMuted)),
                   if (subclassById(snap.subclassId ?? '') != null)
                     Text(subclassById(snap.subclassId ?? '')!.name,
@@ -799,9 +824,9 @@ class _RivalCard extends StatelessWidget {
                 side: BorderSide(
                     color: const Color(0xFFcc4444).withValues(alpha: 0.7), width: 1),
                 padding: EdgeInsets.zero,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(3)),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
               ),
-              child: Text('CHALLENGE',
+              child: Text(AppLocalizations.of(context).pvpChallenge,
                   style: AppTheme.pixelHeading(
                       fontSize: 9, color: const Color(0xFFcc4444))),
             ),
@@ -839,7 +864,7 @@ class _MatchButton extends StatelessWidget {
           border: Border.all(
             color: canFight ? const Color(0xFFcc2222) : AppTheme.cardBorder,
           ),
-          borderRadius: BorderRadius.circular(4),
+          borderRadius: BorderRadius.circular(8),
         ),
         child: Center(
           child: busy
@@ -973,12 +998,12 @@ class _PvpBattleFullScreenState extends State<_PvpBattleFullScreen>
       context: context,
       builder: (_) => AlertDialog(
         backgroundColor: const Color(0xFF14121c),
-        title: Text('BATTLE LOG',
+        title: Text(AppLocalizations.of(context).pvpBattleLog,
             style: AppTheme.pixelHeading(fontSize: 13, color: AppTheme.accentGold, letterSpacing: 2)),
         content: SizedBox(
           width: double.maxFinite,
           child: lines.isEmpty
-              ? const Text('No combat yet.', style: TextStyle(fontSize: 12, color: AppTheme.textMuted))
+              ? Text(AppLocalizations.of(context).pvpNoCombat, style: const TextStyle(fontSize: 12, color: AppTheme.textMuted))
               : ListView(
                   shrinkWrap: true,
                   children: [
@@ -993,7 +1018,7 @@ class _PvpBattleFullScreenState extends State<_PvpBattleFullScreen>
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: Text('CLOSE', style: AppTheme.pixelHeading(fontSize: 12, color: AppTheme.accentGold)),
+            child: Text(AppLocalizations.of(context).pvpClose, style: AppTheme.pixelHeading(fontSize: 12, color: AppTheme.accentGold)),
           ),
         ],
       ),
@@ -1010,7 +1035,7 @@ class _PvpBattleFullScreenState extends State<_PvpBattleFullScreen>
     return Scaffold(
       backgroundColor: AppTheme.darkBg,
       appBar: AppBar(
-        title: Text('PVP  —  ${widget.game.hero.name} vs ${opp.heroName}',
+        title: Text(AppLocalizations.of(context).pvpVs(widget.game.hero.name, opp.heroName),
             style: AppTheme.pixelHeading(fontSize: 11, letterSpacing: 1)),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
@@ -1026,7 +1051,7 @@ class _PvpBattleFullScreenState extends State<_PvpBattleFullScreen>
           // Battle log
           IconButton(
             icon: const Icon(Icons.receipt_long, size: 20, color: AppTheme.accentGold),
-            tooltip: 'Battle log',
+            tooltip: AppLocalizations.of(context).pvpBattleLogTip,
             onPressed: _showPvpLog,
           ),
           // Speed — capped by the account's paid tier (same as every mode).
@@ -1040,8 +1065,8 @@ class _PvpBattleFullScreenState extends State<_PvpBattleFullScreen>
                 if (next > maxTier) next = 1;
                 g.setSpeedTier(next);
                 if (next == maxTier && maxTier < 4) {
-                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                    content: Text('Higher speed needs the Speed Boost / Premium Pass.'),
+                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                    content: Text(AppLocalizations.of(context).dngSpeedNeeds),
                     behavior: SnackBarBehavior.floating,
                     duration: Duration(milliseconds: 1200)));
                 }
@@ -1143,7 +1168,7 @@ class _PvpBattleFullScreenState extends State<_PvpBattleFullScreen>
                     decoration: BoxDecoration(
                       color: color.withValues(alpha: 0.10),
                       border: Border.all(color: color.withValues(alpha: 0.5)),
-                      borderRadius: BorderRadius.circular(4),
+                      borderRadius: BorderRadius.circular(8),
                     ),
                     child: Text(
                       'Rating: ${widget.game.pvpRating}  ($ratingDelta)',
@@ -1161,7 +1186,7 @@ class _PvpBattleFullScreenState extends State<_PvpBattleFullScreen>
                         side: BorderSide(color: color),
                         padding: const EdgeInsets.symmetric(vertical: 14),
                       ),
-                      child: Text('RETURN TO ARENA',
+                      child: Text(AppLocalizations.of(context).pvpReturnArena,
                           style: AppTheme.pixelHeading(fontSize: 13, letterSpacing: 1, color: color)),
                     ),
                   ),
@@ -1175,7 +1200,7 @@ class _PvpBattleFullScreenState extends State<_PvpBattleFullScreen>
               padding: const EdgeInsets.symmetric(vertical: 10),
               color: const Color(0xFF0a0e1f),
               child: Center(
-                child: const Text('Fighting...',
+                child: Text(AppLocalizations.of(context).pvpFighting,
                     style: const TextStyle(fontSize: 11, color: AppTheme.textMuted, letterSpacing: 1)),
               ),
             ),

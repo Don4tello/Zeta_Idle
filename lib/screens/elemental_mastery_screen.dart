@@ -6,6 +6,7 @@ import '../widgets/currency_icon.dart';
 import '../widgets/currency_info.dart';
 import '../widgets/element_icon.dart';
 import '../widgets/hold_repeat_button.dart';
+import '../l10n/app_localizations.dart';
 
 class ElementalMasteryScreen extends StatelessWidget {
   const ElementalMasteryScreen({super.key, this.embedded = false});
@@ -22,7 +23,7 @@ class ElementalMasteryScreen extends StatelessWidget {
       children: [
         if (embedded) ...[
           Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-            Text('ELEMENTAL MASTERY',
+            Text(AppLocalizations.of(context).emTitle,
                 style: AppTheme.pixelHeading(
                     fontSize: 11, letterSpacing: 2, color: _accent)),
             Row(children: [
@@ -59,7 +60,7 @@ class ElementalMasteryScreen extends StatelessWidget {
       backgroundColor: const Color(0xFF1B1A17),
       appBar: AppBar(
         backgroundColor: const Color(0xFF1a1030),
-        title: Text('ELEMENTAL MASTERY',
+        title: Text(AppLocalizations.of(context).emTitle,
             style: AppTheme.pixelHeading(fontSize: 13, letterSpacing: 2, color: _accent)),
         actions: [
           Padding(
@@ -86,12 +87,12 @@ class _ShardBadge extends StatelessWidget {
         decoration: BoxDecoration(
           color: const Color(0xFF001133).withValues(alpha: 0.5),
           border: Border.all(color: const Color(0xFF66aaff).withValues(alpha: 0.7)),
-          borderRadius: BorderRadius.circular(3),
+          borderRadius: BorderRadius.circular(8),
         ),
         child: Row(mainAxisSize: MainAxisSize.min, children: [
           const Text('🔮', style: TextStyle(fontSize: 12)),
           const SizedBox(width: 4),
-          Text('$shards Shards',
+          Text(AppLocalizations.of(context).emShards(shards),
               style: AppTheme.pixelHeading(fontSize: 11, color: const Color(0xFF88ccff))),
         ]),
       ),
@@ -111,7 +112,7 @@ class _InfoBanner extends StatelessWidget {
       decoration: BoxDecoration(
         color: const Color(0xFF221100).withValues(alpha: 0.6),
         border: Border.all(color: const Color(0xFFff8844).withValues(alpha: 0.3)),
-        borderRadius: BorderRadius.circular(4),
+        borderRadius: BorderRadius.circular(8),
       ),
       child: locked
           ? Text(
@@ -153,7 +154,7 @@ class _ElementCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: type.color.withValues(alpha: 0.05),
         border: Border.all(color: type.color.withValues(alpha: locked ? 0.2 : 0.45)),
-        borderRadius: BorderRadius.circular(4),
+        borderRadius: BorderRadius.circular(8),
       ),
       child: Row(children: [
         ElementIcon(type: type, size: 28),
@@ -165,7 +166,7 @@ class _ElementCard extends StatelessWidget {
                   style: AppTheme.pixelHeading(
                       fontSize: 12, letterSpacing: 1, color: type.color)),
               const SizedBox(width: 8),
-              Text('Rank $rank',
+              Text(AppLocalizations.of(context).prgRank(rank),
                   style: TextStyle(
                       color: type.color.withValues(alpha: 0.7), fontSize: 12)),
             ]),
@@ -194,10 +195,10 @@ class _ElementCard extends StatelessWidget {
                 color: canAfford ? type.color.withValues(alpha: 0.25) : const Color(0xFF2a2016),
                 border: Border.all(
                     color: canAfford ? type.color.withValues(alpha: 0.6) : const Color(0xFF443322)),
-                borderRadius: BorderRadius.circular(3),
+                borderRadius: BorderRadius.circular(8),
               ),
               alignment: Alignment.center,
-              child: Text('UP',
+              child: Text(AppLocalizations.of(context).emUp,
                   style: AppTheme.pixelHeading(
                       fontSize: 11,
                       color: canAfford ? type.color : const Color(0xFF665544))),

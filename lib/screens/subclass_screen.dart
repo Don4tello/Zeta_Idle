@@ -3,6 +3,7 @@ import '../models/subclass.dart';
 import '../services/game_state.dart';
 import '../theme/app_theme.dart';
 import '../widgets/battle_sprites.dart';
+import '../l10n/app_localizations.dart';
 
 class SubclassScreen extends StatelessWidget {
   const SubclassScreen({super.key, this.embedded = false});
@@ -20,7 +21,7 @@ class SubclassScreen extends StatelessWidget {
       backgroundColor: const Color(0xFF1B1A17),
       appBar: AppBar(
         backgroundColor: const Color(0xFF2A2623),
-        title: Text('SPECIALIZATION',
+        title: Text(AppLocalizations.of(context).subTitle,
             style: AppTheme.pixelHeading(fontSize: 14, letterSpacing: 2)),
       ),
       body: body,
@@ -44,18 +45,16 @@ class SubclassScreen extends StatelessWidget {
             decoration: BoxDecoration(
               color: const Color(0xFF2A2623),
               border: Border.all(color: AppTheme.accentGold.withValues(alpha: 0.5)),
-              borderRadius: BorderRadius.circular(4),
+              borderRadius: BorderRadius.circular(8),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('LEVEL 50 SPECIALIZATION',
+                Text(AppLocalizations.of(context).subLevel50,
                     style: AppTheme.pixelHeading(fontSize: 11, letterSpacing: 2, color: AppTheme.accentGold)),
                 const SizedBox(height: 6),
                 Text(
-                  'Choose a specialization for your ${game.hero.heroClass.displayName}. '
-                  'It grants a powerful capstone bonus plus stat bonuses, applied immediately. '
-                  'You can change it later for ${GameState.kSubclassRespecCost} ZCoins.',
+                  AppLocalizations.of(context).subChooseBody(game.hero.heroClass.displayName, GameState.kSubclassRespecCost),
                   style: const TextStyle(fontSize: 13, color: AppTheme.textLight),
                 ),
               ],
@@ -63,7 +62,7 @@ class SubclassScreen extends StatelessWidget {
           ),
           const SizedBox(height: 16),
         ],
-        Text('${game.hero.heroClass.displayName.toUpperCase()} SPECIALIZATIONS  (${options.length})',
+        Text(AppLocalizations.of(context).subClassSpecs(game.hero.heroClass.displayName.toUpperCase(), options.length),
             style: AppTheme.pixelHeading(fontSize: 11, letterSpacing: 2)),
         const SizedBox(height: 10),
         ...options.map((sub) => Padding(
@@ -86,7 +85,7 @@ class SubclassScreen extends StatelessWidget {
     // Guard the level gate up front so tapping CONFIRM never silently no-ops.
     if (!game.subclassUnlocked) {
       messenger.showSnackBar(SnackBar(
-        content: Text('Specialization unlocks at Level ${GameState.kSubclassUnlockLevel}.'),
+        content: Text(AppLocalizations.of(context).subUnlocksAt(GameState.kSubclassUnlockLevel)),
         duration: const Duration(seconds: 2),
       ));
       return;
@@ -95,7 +94,7 @@ class SubclassScreen extends StatelessWidget {
       context: context,
       builder: (_) => AlertDialog(
         backgroundColor: const Color(0xFF2A2623),
-        title: Text('Choose ${sub.name}?',
+        title: Text(AppLocalizations.of(context).subChooseTitle(sub.name),
             style: AppTheme.pixelHeading(fontSize: 14, color: AppTheme.accentGold)),
         content: Column(
           mainAxisSize: MainAxisSize.min,
@@ -106,27 +105,27 @@ class SubclassScreen extends StatelessWidget {
                     fontStyle: FontStyle.italic)),
             const SizedBox(height: 12),
             if (sub.statLine.isNotEmpty) ...[
-              Text('STAT BONUSES',
+              Text(AppLocalizations.of(context).subStatBonuses,
                   style: AppTheme.pixelHeading(fontSize: 10, letterSpacing: 2, color: AppTheme.textMuted)),
               const SizedBox(height: 4),
               Text(sub.statLine,
                   style: const TextStyle(fontSize: 14, color: AppTheme.accentGold, fontWeight: FontWeight.bold)),
               const SizedBox(height: 8),
             ],
-            Text(sub.bonusSummary.isNotEmpty ? 'CAPSTONE BONUS' : 'SPECIAL EFFECT',
+            Text(sub.bonusSummary.isNotEmpty ? AppLocalizations.of(context).subCapstone : AppLocalizations.of(context).subSpecialEffect,
                 style: AppTheme.pixelHeading(fontSize: 10, letterSpacing: 2, color: AppTheme.textMuted)),
             const SizedBox(height: 4),
             Text(sub.bonusSummary.isNotEmpty ? sub.bonusSummary : sub.effectLabel,
                 style: const TextStyle(fontSize: 14, color: AppTheme.textLight)),
             const SizedBox(height: 12),
-            Text('You can change this later for ${GameState.kSubclassRespecCost} ZCoins.',
+            Text(AppLocalizations.of(context).subChangeLater(GameState.kSubclassRespecCost),
                 style: const TextStyle(fontSize: 12, color: AppTheme.textMuted)),
           ],
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: Text('CANCEL',
+            child: Text(AppLocalizations.of(context).csCancel,
                 style: AppTheme.pixelHeading(fontSize: 11, color: AppTheme.textMuted)),
           ),
           TextButton(
@@ -134,13 +133,13 @@ class SubclassScreen extends StatelessWidget {
               final ok = game.pickSubclass(sub.id);
               Navigator.pop(context); // close the dialog; screen rebuilds
               if (!ok) {
-                messenger.showSnackBar(const SnackBar(
-                  content: Text('Could not set specialization — try again.'),
-                  duration: Duration(seconds: 2),
+                messenger.showSnackBar(SnackBar(
+                  content: Text(AppLocalizations.of(context).subCouldNotSet),
+                  duration: const Duration(seconds: 2),
                 ));
               }
             },
-            child: Text('CONFIRM',
+            child: Text(AppLocalizations.of(context).setConfirm,
                 style: AppTheme.pixelHeading(fontSize: 11, color: AppTheme.accentGold)),
           ),
         ],
@@ -165,7 +164,7 @@ class _RespecButton extends StatelessWidget {
           side: BorderSide(color: canAfford ? const Color(0xFF335577) : AppTheme.cardBorder),
           padding: const EdgeInsets.symmetric(vertical: 10),
         ),
-        child: Text('CHANGE SPECIALIZATION  —  ${GameState.kSubclassRespecCost} ZCoins',
+        child: Text(AppLocalizations.of(context).subChangeSpec(GameState.kSubclassRespecCost),
             style: AppTheme.pixelHeading(fontSize: 10, letterSpacing: 1,
                 color: canAfford ? const Color(0xFF66aaff) : AppTheme.textMuted)),
       ),
@@ -181,17 +180,16 @@ class _RespecButton extends StatelessWidget {
       context: context,
       builder: (dialogContext) => AlertDialog(
         backgroundColor: const Color(0xFF2A2623),
-        title: Text('Change specialization?',
+        title: Text(AppLocalizations.of(context).subChangeTitle,
             style: AppTheme.pixelHeading(fontSize: 14, color: const Color(0xFF66aaff))),
         content: Text(
-          'Spend ${GameState.kSubclassRespecCost} ZCoins to clear your current specialization '
-          'and choose a new one?\n\nYour ZCoins: ${game.zcoins}',
+          AppLocalizations.of(context).subChangeBody(GameState.kSubclassRespecCost, game.zcoins),
           style: const TextStyle(fontSize: 13, color: AppTheme.textLight),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(dialogContext),
-            child: Text('CANCEL',
+            child: Text(AppLocalizations.of(context).csCancel,
                 style: AppTheme.pixelHeading(fontSize: 11, color: AppTheme.textMuted)),
           ),
           TextButton(
@@ -199,13 +197,13 @@ class _RespecButton extends StatelessWidget {
               Navigator.pop(dialogContext);
               final ok = game.respecSubclass();
               if (!ok) {
-                messenger.showSnackBar(const SnackBar(
-                  content: Text('Not enough ZCoins to respec.'),
-                  duration: Duration(seconds: 2),
+                messenger.showSnackBar(SnackBar(
+                  content: Text(AppLocalizations.of(context).subNotEnough),
+                  duration: const Duration(seconds: 2),
                 ));
               }
             },
-            child: Text('CONFIRM',
+            child: Text(AppLocalizations.of(context).setConfirm,
                 style: AppTheme.pixelHeading(fontSize: 11, color: const Color(0xFF66aaff))),
           ),
         ],
@@ -228,13 +226,13 @@ class _ChosenBanner extends StatelessWidget {
       decoration: BoxDecoration(
         color: AppTheme.accentGold.withValues(alpha: 0.08),
         border: Border.all(color: AppTheme.accentGold, width: 1.5),
-        borderRadius: BorderRadius.circular(4),
+        borderRadius: BorderRadius.circular(8),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(children: [
-            Text('ACTIVE SUBCLASS',
+            Text(AppLocalizations.of(context).subActiveSubclass,
                 style: AppTheme.pixelHeading(fontSize: 10, letterSpacing: 2, color: AppTheme.textMuted)),
             const Spacer(),
             Container(
@@ -242,9 +240,9 @@ class _ChosenBanner extends StatelessWidget {
               decoration: BoxDecoration(
                 color: AppTheme.accentGold.withValues(alpha: 0.15),
                 border: Border.all(color: AppTheme.accentGold),
-                borderRadius: BorderRadius.circular(3),
+                borderRadius: BorderRadius.circular(8),
               ),
-              child: Text('CHOSEN',
+              child: Text(AppLocalizations.of(context).subChosen,
                   style: AppTheme.pixelHeading(fontSize: 9, color: AppTheme.accentGold)),
             ),
           ]),
@@ -296,7 +294,7 @@ class _SubclassCard extends StatelessWidget {
         decoration: BoxDecoration(
           color: const Color(0xFF231F1B),
           border: Border.all(color: borderColor, width: chosen ? 1.5 : 1),
-          borderRadius: BorderRadius.circular(4),
+          borderRadius: BorderRadius.circular(8),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -309,7 +307,7 @@ class _SubclassCard extends StatelessWidget {
                   decoration: BoxDecoration(
                     color: sub.spriteSwatch.withValues(alpha: 0.12),
                     border: Border.all(color: sub.spriteSwatch.withValues(alpha: 0.5)),
-                    borderRadius: BorderRadius.circular(4),
+                    borderRadius: BorderRadius.circular(8),
                   ),
                   alignment: Alignment.center,
                   child: StaticEnemySprite(
@@ -328,9 +326,9 @@ class _SubclassCard extends StatelessWidget {
                     decoration: BoxDecoration(
                       color: AppTheme.accentGold.withValues(alpha: 0.15),
                       border: Border.all(color: AppTheme.accentGold),
-                      borderRadius: BorderRadius.circular(3),
+                      borderRadius: BorderRadius.circular(8),
                     ),
-                    child: Text('ACTIVE',
+                    child: Text(AppLocalizations.of(context).subActive,
                         style: AppTheme.pixelHeading(fontSize: 9, color: AppTheme.accentGold)),
                   ),
               ],
@@ -346,7 +344,7 @@ class _SubclassCard extends StatelessWidget {
               decoration: BoxDecoration(
                 color: const Color(0xFF17150E),
                 border: Border.all(color: const Color(0xFF3344aa)),
-                borderRadius: BorderRadius.circular(3),
+                borderRadius: BorderRadius.circular(8),
               ),
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -376,7 +374,7 @@ class _SubclassCard extends StatelessWidget {
                     side: const BorderSide(color: AppTheme.accentGold),
                     padding: const EdgeInsets.symmetric(vertical: 10),
                   ),
-                  child: Text('CHOOSE THIS PATH',
+                  child: Text(AppLocalizations.of(context).subChoosePath,
                       style: AppTheme.pixelHeading(fontSize: 12, letterSpacing: 1,
                           color: AppTheme.accentGold)),
                 ),

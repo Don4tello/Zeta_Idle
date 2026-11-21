@@ -35,7 +35,9 @@ class SystemTutorial {
 
   static const all = <SystemTutorial>[
     SystemTutorial(
-      stage: 3, navTab: 0, subTab: 'SCORES', icon: '🔥',
+      // Was stage 3, but the SCORES tab it navigates to doesn't unlock until
+      // stage 4 — moved to 6 so the coach can actually open its target tab.
+      stage: 6, navTab: 0, subTab: 'SCORES', icon: '🔥',
       title: 'Damage Types',
       howTo: 'Your attacks deal a damage TYPE — Physical, Fire, Cold, Lightning, '
           'Poison or Void. Enemies resist some types and are weak to others: a '
@@ -45,7 +47,10 @@ class SystemTutorial {
           'enemy\'s weakness.',
     ),
     SystemTutorial(
-      stage: 14, navTab: 0, subTab: 'ABILITIES', icon: '❄️',
+      // Moved 14 → 16 to free stage 14 for the Guilds coach (Guilds unlock at
+      // stage 14 — see main_shell showGuild). This combat primer isn't tied to a
+      // specific stage, so it rides a free slot just after.
+      stage: 16, navTab: 0, subTab: 'ABILITIES', icon: '❄️',
       title: 'Status Ailments',
       howTo: 'Some abilities inflict a status tied to their element. Frozen (Cold) '
           'and Shocked (Lightning) make the enemy skip its turn — Shocked also '
@@ -56,7 +61,9 @@ class SystemTutorial {
           'be locked down forever.',
     ),
     SystemTutorial(
-      stage: 33, navTab: 0, subTab: null, icon: '🏰',
+      // Guilds unlock (the GUILD button) at stage 14 — coach here, not at 33
+      // where it sat 19 stages after the feature appeared.
+      stage: 14, navTab: 0, subTab: null, icon: '🏰',
       title: 'Guilds',
       howTo: 'Tap the GUILD button to join or create a Guild and team up with other '
           'players. Guilds gain levels from member activity, unlock shared perks, '

@@ -26,6 +26,7 @@ import '../widgets/tier_selector.dart';
 import '../widgets/battle_split_panel.dart';
 import '../widgets/pet_battle_sprite.dart';
 import '../widgets/zcoin_icon.dart';
+import '../l10n/app_localizations.dart';
 
 const _kGauntletEnemies = 10;
 const _kMaxModifiers = 3;
@@ -577,19 +578,19 @@ class _GauntletScreenState extends State<GauntletScreen> {
       backgroundColor: const Color(0xFF1B1A17),
       appBar: AppBar(
         backgroundColor: const Color(0xFF2A2623),
-        title: Text('CHALLENGE GAUNTLET',
+        title: Text(AppLocalizations.of(context).homeNavChallengeGauntlet,
             style: AppTheme.pixelHeading(fontSize: 13, letterSpacing: 2)),
         actions: [
           IconButton(
             icon: Icon(Icons.assessment_outlined, size: 20,
                 color: GameStateProvider.of(context).lastFightSummary != null
                     ? AppTheme.accentGold : AppTheme.textMuted),
-            tooltip: 'Last fight summary',
+            tooltip: AppLocalizations.of(context).battleLastFightSummary,
             onPressed: () {
               final s = GameStateProvider.of(context).lastFightSummary;
               if (s == null) {
-                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                    content: Text('No fight finished yet.'),
+                ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                    content: Text(AppLocalizations.of(context).battleNoFightYet),
                     behavior: SnackBarBehavior.floating));
                 return;
               }
@@ -599,7 +600,7 @@ class _GauntletScreenState extends State<GauntletScreen> {
           if (_phase != _Phase.battle)
             IconButton(
               icon: const Icon(Icons.leaderboard, color: AppTheme.accentGold, size: 20),
-              tooltip: 'Gauntlet Leaderboard',
+              tooltip: AppLocalizations.of(context).gauLeaderboard,
               onPressed: () => Navigator.of(context).push(MaterialPageRoute(
                 builder: (_) => const LeaderboardScreen(board: LeaderboardBoard.gauntlet),
               )),
@@ -633,7 +634,7 @@ class _GauntletScreenState extends State<GauntletScreen> {
             SizedBox(
               width: double.infinity,
               height: 220,
-              child: Image.asset('assets/images/gauntlet_bg.png',
+              child: Image.asset('assets/images/gauntlet_bg.webp',
                   fit: BoxFit.cover, alignment: Alignment.center),
             ),
             Positioned.fill(
@@ -731,12 +732,12 @@ class _GauntletScreenState extends State<GauntletScreen> {
       decoration: BoxDecoration(
         color: const Color(0xFF231F1B),
         border: Border.all(color: AppTheme.cardBorder),
-        borderRadius: BorderRadius.circular(4),
+        borderRadius: BorderRadius.circular(8),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('REWARD PREVIEW (on clear)',
+          Text(AppLocalizations.of(context).gauRewardPreview,
               style: AppTheme.pixelHeading(
                   fontSize: 10, letterSpacing: 1, color: AppTheme.textMuted)),
           const SizedBox(height: 10),
@@ -871,10 +872,10 @@ class _GauntletScreenState extends State<GauntletScreen> {
               decoration: BoxDecoration(
                 color: const Color(0xFF44dd88).withValues(alpha: 0.10),
                 border: Border.all(color: const Color(0xFF44dd88).withValues(alpha: 0.4)),
-                borderRadius: BorderRadius.circular(4),
+                borderRadius: BorderRadius.circular(8),
               ),
               child: Center(
-                child: Text('AUTO — restarting with your modifiers—',
+                child: Text(AppLocalizations.of(context).gauAutoRestart,
                     style: AppTheme.pixelHeading(
                         fontSize: 10, color: const Color(0xFF44dd88), letterSpacing: 1)),
               ),
@@ -902,7 +903,7 @@ class _GauntletScreenState extends State<GauntletScreen> {
                             : const Color(0xFF44dd88)),
                     padding: const EdgeInsets.symmetric(vertical: 14),
                     shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(4)),
+                        borderRadius: BorderRadius.circular(8)),
                   ),
                   child: Text(_autoRepeat ? 'STOP AUTO' : 'AUTO',
                       style: AppTheme.pixelHeading(
@@ -927,9 +928,9 @@ class _GauntletScreenState extends State<GauntletScreen> {
                   side: const BorderSide(color: AppTheme.accentGold),
                   padding: const EdgeInsets.symmetric(vertical: 14),
                   shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(4)),
+                      borderRadius: BorderRadius.circular(8)),
                 ),
-                child: Text('BACK TO GAUNTLET',
+                child: Text(AppLocalizations.of(context).gauBackToGauntlet,
                     style: AppTheme.pixelHeading(
                         fontSize: 12, color: AppTheme.accentGold)),
               ),
@@ -979,11 +980,11 @@ class _WaveProgressHeaderState extends State<_WaveProgressHeader>
         children: [
           // -- Top row: label + kill count ---------------------------------
           Row(children: [
-            Text('WAVE ${widget.waveIndex + 1} / ${widget.totalWaves}',
+            Text(AppLocalizations.of(context).gauWave(widget.waveIndex + 1, widget.totalWaves),
                 style: AppTheme.pixelHeading(
                     fontSize: 11, color: AppTheme.accentGold, letterSpacing: 2)),
             const Spacer(),
-            Text('${widget.kills} KILLS',
+            Text(AppLocalizations.of(context).gauKills(widget.kills),
                 style: AppTheme.pixelHeading(
                     fontSize: 11, color: AppTheme.textMuted)),
           ]),
@@ -1016,7 +1017,7 @@ class _WaveProgressHeaderState extends State<_WaveProgressHeader>
                         decoration: BoxDecoration(
                           color: bg,
                           border: Border.all(color: border, width: active ? 1.5 : 1),
-                          borderRadius: BorderRadius.circular(3),
+                          borderRadius: BorderRadius.circular(8),
                           boxShadow: active
                               ? [BoxShadow(
                                   color: AppTheme.accentGold.withValues(alpha: _pulse.value * 0.4),
@@ -1109,7 +1110,7 @@ class _ModifierPickCard extends StatelessWidget {
                       ? AppTheme.cardBorder
                       : AppTheme.cardBorder.withValues(alpha: 0.4),
             ),
-            borderRadius: BorderRadius.circular(4),
+            borderRadius: BorderRadius.circular(8),
           ),
           child: Row(children: [
             Text(mod.icon,
@@ -1140,7 +1141,7 @@ class _ModifierPickCard extends StatelessWidget {
                               : AppTheme.textMuted.withValues(alpha: 0.5),
                           height: 1.3)),
                   const SizedBox(height: 6),
-                  Text('+${mod.rewardPctBonus}% essence',
+                  Text(AppLocalizations.of(context).gauEssenceBonus(mod.rewardPctBonus),
                       style: TextStyle(
                           fontSize: 10,
                           color: enabled
@@ -1172,7 +1173,7 @@ class _RewardChip extends StatelessWidget {
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.10),
         border: Border.all(color: color.withValues(alpha: 0.5)),
-        borderRadius: BorderRadius.circular(3),
+        borderRadius: BorderRadius.circular(8),
       ),
       child: Row(mainAxisSize: MainAxisSize.min, children: [
         if (prefix != null) ...[prefix!, const SizedBox(width: 3)],
@@ -1242,7 +1243,7 @@ class _GauntletStartSection extends StatelessWidget {
             disabledBackgroundColor: const Color(0xFF1a1410),
             disabledForegroundColor: Colors.white24,
             padding: const EdgeInsets.symmetric(vertical: 14),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
           ),
           child: Text(
             remaining > 0 ? 'START GAUNTLET' : 'NO ATTEMPTS LEFT',
@@ -1267,7 +1268,7 @@ class _GauntletStartSection extends StatelessWidget {
                     : Colors.white24,
               ),
               padding: const EdgeInsets.symmetric(vertical: 10),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
             ),
             child: Row(mainAxisSize: MainAxisSize.min, children: [
               ZCoinIcon(size: 13, animate: false),
@@ -1318,7 +1319,7 @@ class _InlineSpeedButton extends StatelessWidget {
               color: _active ? const Color(0xFF44cc44) : const Color(0xFF334466),
               width: 1.5,
             ),
-            borderRadius: BorderRadius.circular(3),
+            borderRadius: BorderRadius.circular(8),
           ),
           child: Text(
             _label,

@@ -4,6 +4,7 @@ import '../theme/app_theme.dart';
 import '../widgets/currency_icon.dart';
 import '../widgets/hold_repeat_button.dart';
 import '../widgets/stat_emblem.dart';
+import '../l10n/app_localizations.dart';
 
 class AbilityScoresScreen extends StatelessWidget {
   const AbilityScoresScreen({super.key, this.embedded = false});
@@ -30,12 +31,12 @@ class AbilityScoresScreen extends StatelessWidget {
         '+0.5% AC Rating per rank'),
   ];
 
-  Widget _body(GameState game) => ListView(
+  Widget _body(BuildContext context, GameState game) => ListView(
         padding: const EdgeInsets.all(16),
         children: [
           if (embedded) ...[
             Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-              Text('ABILITY SCORES',
+              Text(AppLocalizations.of(context).absTitle,
                   style: AppTheme.pixelHeading(
                       fontSize: 11, letterSpacing: 2, color: _accent)),
               _GoldBadge(gold: game.gold),
@@ -55,13 +56,13 @@ class AbilityScoresScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final game = GameStateProvider.of(context);
     if (embedded) {
-      return ColoredBox(color: const Color(0xFF1B1A17), child: _body(game));
+      return ColoredBox(color: const Color(0xFF1B1A17), child: _body(context, game));
     }
     return Scaffold(
       backgroundColor: const Color(0xFF1B1A17),
       appBar: AppBar(
         backgroundColor: const Color(0xFF1a1030),
-        title: Text('ABILITY SCORES',
+        title: Text(AppLocalizations.of(context).absTitle,
             style:
                 AppTheme.pixelHeading(fontSize: 13, letterSpacing: 2, color: _accent)),
         actions: [
@@ -71,7 +72,7 @@ class AbilityScoresScreen extends StatelessWidget {
           ),
         ],
       ),
-      body: _body(game),
+      body: _body(context, game),
     );
   }
 }
@@ -97,7 +98,7 @@ class _GoldBadge extends StatelessWidget {
       decoration: BoxDecoration(
         color: const Color(0xFF221100).withValues(alpha: 0.5),
         border: Border.all(color: const Color(0xFFffcc44).withValues(alpha: 0.7)),
-        borderRadius: BorderRadius.circular(3),
+        borderRadius: BorderRadius.circular(8),
       ),
       child: Row(mainAxisSize: MainAxisSize.min, children: [
         const CurrencyIcon(id: 'gold', size: 14),
@@ -117,12 +118,11 @@ class _InfoBanner extends StatelessWidget {
       decoration: BoxDecoration(
         color: const Color(0xFF001122).withValues(alpha: 0.6),
         border: Border.all(color: const Color(0xFF66ccff).withValues(alpha: 0.3)),
-        borderRadius: BorderRadius.circular(4),
+        borderRadius: BorderRadius.circular(8),
       ),
-      child: const Text(
-        'Ability Scores are permanent upgrades purchased with gold.\n'
-        'Upgrade any score freely — gold is the only requirement.',
-        style: TextStyle(color: Color(0xFFbbccdd), fontSize: 13, height: 1.5),
+      child: Text(
+        AppLocalizations.of(context).absBanner,
+        style: const TextStyle(color: Color(0xFFbbccdd), fontSize: 13, height: 1.5),
       ),
     );
   }
@@ -163,7 +163,7 @@ class _StatCard extends StatelessWidget {
         color: stat.color.withValues(alpha: gateMet ? 0.04 : 0.02),
         border: Border.all(
             color: stat.color.withValues(alpha: gateMet ? 0.35 : 0.15)),
-        borderRadius: BorderRadius.circular(4),
+        borderRadius: BorderRadius.circular(8),
       ),
       child: Row(children: [
         Opacity(
@@ -184,7 +184,7 @@ class _StatCard extends StatelessWidget {
                       color: stat.color.withValues(alpha: gateMet ? 0.7 : 0.3),
                       fontSize: 12)),
               const Spacer(),
-              Text(atCap ? 'MAX' : 'Rank $rank / ${GameState.kAbilityScoreMaxRank}',
+              Text(atCap ? 'MAX' : AppLocalizations.of(context).absRankOf(rank, GameState.kAbilityScoreMaxRank),
                   style: TextStyle(
                       color: atCap
                           ? const Color(0xFFffdd44)
@@ -205,7 +205,7 @@ class _StatCard extends StatelessWidget {
                       fontSize: 12, fontWeight: FontWeight.bold)),
               const Spacer(),
               if (atCap)
-                _TierChip(label: 'MAXED', color: const Color(0xFFffdd44))
+                _TierChip(label: AppLocalizations.of(context).absMaxed, color: const Color(0xFFffdd44))
               else if (!gateMet)
                 _TierChip(
                   label: '$tierLabel  •  Tier $rebirthNeeded required',
@@ -217,7 +217,7 @@ class _StatCard extends StatelessWidget {
             ]),
             if (!atCap && gateMet) ...[
               const SizedBox(height: 4),
-              Text('Next: ${AppTheme.fmtNumber(cost)} gold',
+              Text(AppLocalizations.of(context).absNext(AppTheme.fmtNumber(cost)),
                   style: TextStyle(
                       color: canAfford
                           ? const Color(0xFFffcc88)
@@ -251,14 +251,14 @@ class _StatCard extends StatelessWidget {
                             : canAfford
                                 ? stat.color.withValues(alpha: 0.6)
                                 : const Color(0xFF332211)),
-                borderRadius: BorderRadius.circular(3),
+                borderRadius: BorderRadius.circular(8),
               ),
               alignment: Alignment.center,
               child: atCap
                   ? const Icon(Icons.check, size: 18, color: Color(0xFF554400))
                   : !gateMet
                       ? const Icon(Icons.lock, size: 18, color: Color(0xFF885544))
-                      : Text('UP',
+                      : Text(AppLocalizations.of(context).emUp,
                           style: AppTheme.pixelHeading(
                               fontSize: 11,
                               color: canAfford
@@ -285,7 +285,7 @@ class _TierChip extends StatelessWidget {
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.08),
         border: Border.all(color: color.withValues(alpha: 0.35)),
-        borderRadius: BorderRadius.circular(3),
+        borderRadius: BorderRadius.circular(8),
       ),
       child: Row(mainAxisSize: MainAxisSize.min, children: [
         if (icon != null) ...[

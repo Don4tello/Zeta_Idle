@@ -81,7 +81,13 @@ class EnemyData {
     // Slope 2.0 → 2.5 (build 287+): paired with the kRecoveryMult cut, frontier
     // bosses need a firmer HP wall so a sustain-capped hero faces a real DPS
     // check at the finale instead of a coin-flip. Still saturates at ×13.
-    return (1.0 + 2.5 * over).clamp(1.0, 13.0); // T4 ×3.5 · T5 ×6 · T7 ×11 · T10 ×13
+    //
+    // Slope 2.5 → 2.0 (build 349): telemetry showed the ×13 saturation held but
+    // the ×2.5 slope overshot current hero sustain at the mid-frontier — T5/T7
+    // fights ran 50-96 rounds (DPS≈enemy recovery stalemate, read as a slog not
+    // a challenge). Easing the slope shortens the mid-frontier HP wall while the
+    // deepest tiers (T9/T10, over≥6) still saturate at ×13 — unchanged.
+    return (1.0 + 2.0 * over).clamp(1.0, 13.0); // T4 ×3 · T5 ×5 · T7 ×9 · T10 ×13
   }
 
   // ATK 1.09 → 1.20 (T10 ≈ ×2.37 → ×6.2). Telemetry (build 230): with healing +
@@ -131,8 +137,8 @@ class EnemyData {
   // full progression stack — so both HP and ATK ramp here to keep fights lethal
   // and long enough that the hero's stacked DPS doesn't trivialise them.
   //
-  //   ATK step (lethality):  +22%/system → up to ×4.74 at 17 systems.
-  //   HP  step (durability): +19.5%/system → up to ×4.32 at 17 systems.
+  //   ATK step (lethality):  +22%/system → up to ×4.96 at 18 systems.
+  //   HP  step (durability): +19.5%/system → up to ×4.51 at 18 systems.
   //
   // Live testing (a level-77 hero in tier 1) showed the earlier ×2.87 steepeners
   // were far too soft: enemies hit for ~3% of the hero's HP pool and died in a
@@ -168,6 +174,15 @@ class EnemyData {
   // can't run away. Tunable.
   static const double kOverLevelStep = 0.03; // +3% enemy HP per level over
   static const int    kOverLevelCap  = 50;   // …counted up to a 50-level gap
+  // Under-level relief (build 349): the mirror of the above. Unlocking a new
+  // tier vaults enemy LEVEL well ahead of the hero (kTierLevelStep), and
+  // telemetry showed heroes 38-103 levels UNDER the enemy getting wall-slammed
+  // at a fresh tier's bosses. Scale enemy HP DOWN in proportion to the deficit
+  // so the gate is a climb, not a brick wall. Gentler slope than the over-level
+  // bite and capped, so it can only soften the gate — never trivialise it.
+  // HP ONLY (same invariant as over-level: ATK stays on its designed curve).
+  static const double kUnderLevelStep = 0.01; // −1% enemy HP per level under
+  static const int    kUnderLevelCap  = 40;   // …counted up to a 40-level gap (max −40%)
   static const List<int> _systemUnlockStages =
       [2, 5, 8, 10, 12, 15, 18, 20, 22, 25, 28, 30, 35, 38, 40, 45, 50, 55];
   static int systemsUnlockedBy(int tier, int stage) => tier > 0
@@ -1197,8 +1212,14 @@ class EnemyData {
     // has out-levelled it. 1.0 when the hero is on-level (or heroLevel unset).
     double overLevelMult(int enemyLevel) {
       if (heroLevel <= 0) return 1.0;
-      final gap = (heroLevel - enemyLevel).clamp(0, kOverLevelCap);
-      return 1.0 + gap * kOverLevelStep;
+      final gap = heroLevel - enemyLevel;
+      if (gap >= 0) {
+        // Hero out-levels the enemy → tougher (self-correcting faceroll fix).
+        return 1.0 + gap.clamp(0, kOverLevelCap) * kOverLevelStep;
+      }
+      // Hero is UNDER the enemy's level (fresh-tier gate) → partial HP relief.
+      final under = (-gap).clamp(0, kUnderLevelCap);
+      return 1.0 - under * kUnderLevelStep;
     }
     if (stage < kCampaignLength) {
       final bossId = _bossOrder[stage];
@@ -1241,7 +1262,17 @@ class EnemyData {
       // frontierBossHpMult. (Non-frontier tiers → ×1, so this is a no-op there.)
       final frontierBoss = isBoss ? frontierBossHpMult(prestigeLevel) : 1.0;
       final bossHpMult  = isBoss ? (1.4 + 1.1 * bossPhase) * frontierBoss : 1.0; // 1.4 → 2.5, ×frontier
-      final bossAtkMult = isBoss ? 1.6 + 1.9 * bossPhase : 1.0; // 1.6 → 3.5
+      // T0 onboarding bosses (st15/25/35 — Pharaoh/Lich Emperor/Shadow King)
+      // over-spiked brand-new players: build 349 telemetry showed on-/over-level
+      // heroes (L8-L24) dying at 0% HP purely to the 2.5-3.5× ATK premium, not
+      // HP (fights were only 10-18 rounds). Soften the ATK phase-in for TIER 0
+      // ONLY so the onboarding bosses threaten without wiping a learning hero.
+      // bossPhase is stage-based (shared across tiers), so gate on prestigeLevel
+      // to leave every T1+ boss exactly as-is.
+      final bossAtkMult = isBoss
+          ? (prestigeLevel == 0 ? 1.4 + 1.2 * bossPhase   // T0: 1.4 → 2.6
+                                : 1.6 + 1.9 * bossPhase)   // T1+: 1.6 → 3.5
+          : 1.0;
       final enemyLevel = base.level + prestigeLevel * kTierLevelStep;
       // Over-level catch-up hits HP only — "flying through" is a fight-LENGTH
       // problem. Enemy ATK already stacks bossAtkMult × the system steepener, so

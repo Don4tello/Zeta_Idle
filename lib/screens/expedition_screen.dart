@@ -5,6 +5,7 @@ import '../models/expedition.dart';
 import '../models/npc_ally.dart';
 import '../services/game_state.dart';
 import '../theme/app_theme.dart';
+import '../l10n/app_localizations.dart';
 
 // ── Location scene widget ─────────────────────────────────────────────────────
 
@@ -88,7 +89,7 @@ class _ExpeditionScreenState extends State<ExpeditionScreen> {
       backgroundColor: const Color(0xFF1B1A17),
       appBar: AppBar(
         backgroundColor: const Color(0xFF2A2623),
-        title: Text('EXPEDITIONS',
+        title: Text(AppLocalizations.of(context).expTitle,
             style: AppTheme.pixelHeading(fontSize: 14, letterSpacing: 2)),
         actions: [
           if (game.activeExpeditions.any((e) {
@@ -97,7 +98,7 @@ class _ExpeditionScreenState extends State<ExpeditionScreen> {
           }))
             TextButton(
               onPressed: () { game.collectAllExpeditions(); game.audioService.playClaimAll(); setState(() {}); },
-              child: Text('COLLECT ALL',
+              child: Text(AppLocalizations.of(context).expCollectAll,
                   style: AppTheme.pixelHeading(fontSize: 10, color: const Color(0xFF55cc88))),
             ),
           if (mercs.any((m) => game.expeditionForMerc(m.id) == null))
@@ -112,7 +113,7 @@ class _ExpeditionScreenState extends State<ExpeditionScreen> {
                 game.audioService.playClaimAll();
                 setState(() {});
               },
-              child: Text('DISPATCH ALL',
+              child: Text(AppLocalizations.of(context).expDispatchAll,
                   style: AppTheme.pixelHeading(fontSize: 10, color: const Color(0xFF8aba50))),
             ),
         ],
@@ -139,11 +140,11 @@ class _ExpeditionScreenState extends State<ExpeditionScreen> {
           children: [
             const Text('⚔️', style: TextStyle(fontSize: 40)),
             const SizedBox(height: 14),
-            Text('No Mercenaries Yet',
+            Text(AppLocalizations.of(context).expNoMercs,
                 style: AppTheme.pixelHeading(fontSize: 14, letterSpacing: 1)),
             const SizedBox(height: 8),
-            const Text(
-              'Recruit mercenaries from the MERCS tab in Hero Hub to send them on expeditions.',
+            Text(
+              AppLocalizations.of(context).expNoMercsSub,
               style: TextStyle(
                   fontSize: 13, color: AppTheme.textMuted, height: 1.5),
               textAlign: TextAlign.center,
@@ -159,11 +160,11 @@ class _ExpeditionScreenState extends State<ExpeditionScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(children: [
-          Text("TODAY'S LOCATIONS",
+          Text(AppLocalizations.of(context).expTodayLocations,
               style: AppTheme.pixelHeading(
                   fontSize: 10, color: AppTheme.textMuted, letterSpacing: 1)),
           const Spacer(),
-          Text('🔄 ${_timeUntilRefresh()}',
+          Text(AppLocalizations.of(context).expRefreshIn(_timeUntilRefresh()),
               style: GoogleFonts.rajdhani(
                   fontSize: 10, color: const Color(0xFF666055))),
         ]),
@@ -188,7 +189,7 @@ class _ExpeditionScreenState extends State<ExpeditionScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('YOUR PARTY',
+        Text(AppLocalizations.of(context).expYourParty,
             style: AppTheme.pixelHeading(
                 fontSize: 10, color: AppTheme.textMuted, letterSpacing: 1)),
         const SizedBox(height: 10),
@@ -246,7 +247,7 @@ class _LocationCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: const Color(0xFF1E1C18),
         border: Border.all(color: const Color(0xFF3a3530)),
-        borderRadius: BorderRadius.circular(4),
+        borderRadius: BorderRadius.circular(8),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -309,7 +310,7 @@ class _IdleMercCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: const Color(0xFF1E1C18),
         border: Border.all(color: const Color(0xFF3a3530)),
-        borderRadius: BorderRadius.circular(4),
+        borderRadius: BorderRadius.circular(8),
       ),
       child: Row(children: [
         Text(merc.icon, style: const TextStyle(fontSize: 28)),
@@ -335,9 +336,9 @@ class _IdleMercCard extends StatelessWidget {
             decoration: BoxDecoration(
               color: const Color(0xFF2a3020),
               border: Border.all(color: const Color(0xFF6a9040)),
-              borderRadius: BorderRadius.circular(3),
+              borderRadius: BorderRadius.circular(8),
             ),
-            child: Text('DISPATCH',
+            child: Text(AppLocalizations.of(context).expDispatch,
                 style: AppTheme.pixelHeading(
                     fontSize: 10,
                     color: const Color(0xFF8aba50),
@@ -394,7 +395,7 @@ class _ActiveMercCard extends StatelessWidget {
         border: Border.all(
             color: done ? color : color.withValues(alpha: 0.35),
             width: done ? 1.5 : 1),
-        borderRadius: BorderRadius.circular(4),
+        borderRadius: BorderRadius.circular(8),
       ),
       child: Column(
         children: [
@@ -423,9 +424,9 @@ class _ActiveMercCard extends StatelessWidget {
                   decoration: BoxDecoration(
                     color: color.withValues(alpha: 0.15),
                     border: Border.all(color: color),
-                    borderRadius: BorderRadius.circular(3),
+                    borderRadius: BorderRadius.circular(8),
                   ),
-                  child: Text('DONE',
+                  child: Text(AppLocalizations.of(context).expDone,
                       style: AppTheme.pixelHeading(fontSize: 9, color: color)),
                 )
               else
@@ -498,7 +499,7 @@ class _ActiveMercCard extends StatelessWidget {
                       }
                     : null,
                 child: Text(
-                  done ? 'COLLECT REWARDS' : 'IN PROGRESS...',
+                  done ? AppLocalizations.of(context).expCollectRewards : AppLocalizations.of(context).expInProgress,
                   style: AppTheme.pixelHeading(
                       fontSize: 11,
                       color: done ? color : Colors.white24),
@@ -520,7 +521,7 @@ class _ActiveMercCard extends StatelessWidget {
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: const Color(0xFF1B1814),
-        title: Text('${merc.name} returned!',
+        title: Text(AppLocalizations.of(context).expReturned(merc.name),
             style: TextStyle(color: color, fontWeight: FontWeight.bold)),
         content: Column(
           mainAxisSize: MainAxisSize.min,
@@ -537,12 +538,12 @@ class _ActiveMercCard extends StatelessWidget {
                   color: const Color(0xFF1a1428),
                   border: Border.all(
                       color: const Color(0xFFaa77ff).withValues(alpha: 0.5)),
-                  borderRadius: BorderRadius.circular(4),
+                  borderRadius: BorderRadius.circular(8),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text('✦  DISCOVERY',
+                    Text(AppLocalizations.of(context).expDiscovery,
                         style: TextStyle(
                             fontSize: 10,
                             fontWeight: FontWeight.bold,
@@ -568,7 +569,7 @@ class _ActiveMercCard extends StatelessWidget {
                 foregroundColor: color,
                 side: BorderSide(color: color)),
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('GREAT'),
+            child: Text(AppLocalizations.of(context).expGreat),
           ),
         ],
       ),
@@ -650,7 +651,7 @@ class _DispatchSheetState extends State<_DispatchSheet> {
               Text(widget.merc.icon, style: const TextStyle(fontSize: 26)),
               const SizedBox(width: 10),
               Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text('DISPATCH ${widget.merc.name.toUpperCase()}',
+                Text(AppLocalizations.of(context).expDispatchMerc(widget.merc.name.toUpperCase()),
                     style: AppTheme.pixelHeading(
                         fontSize: 12, letterSpacing: 1)),
                 Text(widget.merc.title,
@@ -659,7 +660,7 @@ class _DispatchSheetState extends State<_DispatchSheet> {
               ]),
             ]),
             const SizedBox(height: 18),
-            Text('CHOOSE LOCATION',
+            Text(AppLocalizations.of(context).expChooseLocation,
                 style: AppTheme.pixelHeading(
                     fontSize: 9, color: AppTheme.textMuted, letterSpacing: 1)),
             const SizedBox(height: 8),
@@ -681,7 +682,7 @@ class _DispatchSheetState extends State<_DispatchSheet> {
                     decoration: BoxDecoration(
                       border: Border.all(
                           color: borderColor, width: sel ? 2 : 1),
-                      borderRadius: BorderRadius.circular(4),
+                      borderRadius: BorderRadius.circular(8),
                     ),
                     child: Column(children: [
                       Expanded(
@@ -716,7 +717,7 @@ class _DispatchSheetState extends State<_DispatchSheet> {
               }).toList(),
             ),
             const SizedBox(height: 18),
-            Text('DURATION',
+            Text(AppLocalizations.of(context).expDuration,
                 style: AppTheme.pixelHeading(
                     fontSize: 9, color: AppTheme.textMuted, letterSpacing: 1)),
             const SizedBox(height: 8),
@@ -738,7 +739,7 @@ class _DispatchSheetState extends State<_DispatchSheet> {
                                 ? const Color(0xFF6a9040)
                                 : const Color(0xFF3a3530),
                             width: sel ? 1.5 : 1),
-                        borderRadius: BorderRadius.circular(3),
+                        borderRadius: BorderRadius.circular(8),
                       ),
                       child: Text(
                         dur.label,
@@ -757,7 +758,7 @@ class _DispatchSheetState extends State<_DispatchSheet> {
             }).toList()),
             if (preview != null) ...[
               const SizedBox(height: 16),
-              Text('ESTIMATED REWARDS',
+              Text(AppLocalizations.of(context).expEstRewards,
                   style: AppTheme.pixelHeading(
                       fontSize: 9, color: AppTheme.textMuted, letterSpacing: 1)),
               const SizedBox(height: 8),
@@ -798,7 +799,7 @@ class _DispatchSheetState extends State<_DispatchSheet> {
                     : null,
                 child: Text(
                   _selectedLoc != null
-                      ? 'SEND ON EXPEDITION'
+                      ? AppLocalizations.of(context).expSend
                       : 'SELECT A LOCATION',
                   style: AppTheme.pixelHeading(
                       fontSize: 12,
@@ -846,7 +847,7 @@ class _RewardChip extends StatelessWidget {
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.08),
         border: Border.all(color: color.withValues(alpha: 0.35)),
-        borderRadius: BorderRadius.circular(3),
+        borderRadius: BorderRadius.circular(8),
       ),
       child: Text(
         '$icon ${AppTheme.fmtNumber(amount)} $resourceKey',

@@ -117,7 +117,7 @@ class _CharacterSelectScreenState extends State<CharacterSelectScreen> {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Image.asset(
-                'assets/zeta_icon.png',
+                'assets/zeta_icon.webp',
                 width: 54,
                 height: 54,
                 filterQuality: FilterQuality.none,
@@ -274,6 +274,7 @@ class _SlotTile extends StatelessWidget {
         height: 88,
         decoration: BoxDecoration(
           color: isEmpty ? AppTheme.darkBg : AppTheme.cardBg,
+          borderRadius: BorderRadius.circular(8),
           // Equipped premium frame recolours the whole card outline; otherwise
           // the default gold border is used.
           border: Border.all(
@@ -475,6 +476,7 @@ class _DeleteSwipeBackground extends StatelessWidget {
       decoration: BoxDecoration(
         color: AppTheme.accentRed.withValues(alpha: 0.85),
         border: Border.all(color: AppTheme.accentRed, width: 2),
+        borderRadius: BorderRadius.circular(8),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -507,6 +509,7 @@ class _LockedSlotTile extends StatelessWidget {
         border: Border.all(
           color: AppTheme.cardBorder.withValues(alpha: 0.3),
         ),
+        borderRadius: BorderRadius.circular(8),
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,

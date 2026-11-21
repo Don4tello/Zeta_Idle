@@ -16,25 +16,32 @@ import 'login_streak_screen.dart' show RewardIcon, loginRewardLabel;
 import 'package:go_router/go_router.dart';
 import '../core/routing/app_router.dart';
 import 'main_shell.dart' show TutorialTip, MainShell;
+import '../l10n/app_localizations.dart';
+import '../l10n/content_l10n.dart';
 
 class DashboardScreen extends StatelessWidget {
   const DashboardScreen({
     super.key,
     this.onBackToSelect,
     this.embedded = false,
+    this.topBanners,
   });
 
   final VoidCallback? onBackToSelect;
   final bool embedded;
+  // Widgets rendered at the top of the sheet's SCROLL (e.g. the hub's next-goal
+  // + Season Pass nudges), so they scroll with the content instead of being
+  // pinned above the tab strip.
+  final List<Widget>? topBanners;
 
   @override
   Widget build(BuildContext context) {
-    final body = const _SheetLayout();
+    final body = _SheetLayout(topBanners: topBanners);
     if (embedded) return body;
     return Scaffold(
       backgroundColor: AppTheme.darkBg,
       appBar: AppBar(
-        title: const Text('CHARACTER SHEET'),
+        title: Text(AppLocalizations.of(context).dashTitle),
         actions: [
           if (onBackToSelect != null)
             TextButton(
@@ -56,7 +63,9 @@ class DashboardScreen extends StatelessWidget {
 }
 
 class _SheetLayout extends StatelessWidget {
-  const _SheetLayout();
+  const _SheetLayout({this.topBanners});
+
+  final List<Widget>? topBanners;
 
   @override
   Widget build(BuildContext context) {
@@ -65,6 +74,7 @@ class _SheetLayout extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          ...?topBanners,
           const _LoginRewardBanner(),
           Builder(builder: (ctx) {
             final game = GameStateProvider.of(ctx);
@@ -128,15 +138,15 @@ class _SmartNextActionPanel extends StatelessWidget {
   // Both null → informational, not tappable.
   //   route — a go_router path to push (for screens that aren't a shell/hub tab,
   //     e.g. the Daily challenges screen). Takes priority when set.
-  static (String, String, Color, int?, int?, String?)? _getAction(GameState game) {
+  static (String, String, Color, int?, int?, String?)? _getAction(BuildContext context, GameState game) {
     if (game.hasClaimableDaily && game.effectiveUnlockStage >= 5) {
       // Go straight to the Daily challenges screen, not the PLAY mode sheet.
-      return ('🎯', 'Daily challenge ready to claim!',
+      return ('🎯', AppLocalizations.of(context).dashDailyReady,
           const Color(0xFFffaa44), null, null, Routes.daily);
     }
     if (game.achievementsClaimable > 0 && game.campaignStageIndex >= 5) {
       return ('🏆',
-          '${game.achievementsClaimable} achievement${game.achievementsClaimable > 1 ? 's' : ''} ready to claim!',
+          AppLocalizations.of(context).achReady(game.achievementsClaimable),
           const Color(0xFFffcc44), 3, null, null);
     }
     final ready = game.activeExpeditions.where((e) {
@@ -145,21 +155,21 @@ class _SmartNextActionPanel extends StatelessWidget {
     }).toList();
     if (ready.isNotEmpty) {
       return ('🗺️',
-          '${ready.length} expedition${ready.length > 1 ? 's' : ''} ready to collect!',
+          AppLocalizations.of(context).dashExpReady(ready.length),
           const Color(0xFF55cc88), null, null, Routes.expedition);
     }
     // Only suggest a hero-hub tab once it's actually unlocked/reachable —
     // otherwise switchTo() has no tab to navigate to and the tap does nothing.
     if (game.hasAffordableAbilityUpgrade && game.effectiveUnlockStage >= 2) {
-      return ('⚔', 'Ability upgrade affordable — visit ABILITIES',
+      return ('⚔', AppLocalizations.of(context).dashAbilityAfford,
           const Color(0xFF66aaff), 2, null, null);
     }
     if (game.hasAffordablePassiveNode && game.effectiveUnlockStage >= 8) {
-      return ('🌿', 'Passive upgrade affordable — visit PASSIVES',
+      return ('🌿', AppLocalizations.of(context).dashPassiveAfford,
           const Color(0xFF55ee88), 4, null, null);
     }
     if (game.hasAffordableEndlessUpgrade && game.upgradesTabUnlocked) {
-      return ('🔮', 'Endless upgrade affordable — visit UPGRADES',
+      return ('🔮', AppLocalizations.of(context).dashEndlessAfford,
           const Color(0xFF8866ff), 11, null, null);
     }
     final idleMercs = NpcAllyDef.all
@@ -167,7 +177,7 @@ class _SmartNextActionPanel extends StatelessWidget {
         .toList();
     if (idleMercs.isNotEmpty) {
       return ('🧙',
-          '${idleMercs.length} merc${idleMercs.length > 1 ? 's' : ''} idle — dispatch on an expedition',
+          AppLocalizations.of(context).dashMercsIdle(idleMercs.length),
           const Color(0xFFffaa44), null, null, Routes.expedition);
     }
     return null;
@@ -176,7 +186,7 @@ class _SmartNextActionPanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final game = GameStateProvider.of(context);
-    final action = _getAction(game);
+    final action = _getAction(context, game);
     if (action == null) return const SizedBox.shrink();
     final (emoji, text, color, heroHubIdx, shellIdx, route) = action;
     final htc = HeroTabController.maybeOf(context);
@@ -187,7 +197,7 @@ class _SmartNextActionPanel extends StatelessWidget {
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.07),
         border: Border.all(color: color.withValues(alpha: 0.5)),
-        borderRadius: BorderRadius.circular(3),
+        borderRadius: BorderRadius.circular(8),
       ),
       child: Row(
         children: [
@@ -198,7 +208,7 @@ class _SmartNextActionPanel extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
-                Text('NEXT ACTION',
+                Text(AppLocalizations.of(context).dashNextAction,
                     style: AppTheme.pixelHeading(
                         fontSize: 8, letterSpacing: 2,
                         color: color.withValues(alpha: 0.7))),
@@ -259,7 +269,7 @@ class _IncomePanel extends StatelessWidget {
       decoration: BoxDecoration(
         color: const Color(0xFF13110E),
         border: Border.all(color: const Color(0xFF3a3020)),
-        borderRadius: BorderRadius.circular(3),
+        borderRadius: BorderRadius.circular(8),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -267,21 +277,21 @@ class _IncomePanel extends StatelessWidget {
           Row(children: [
             const Text('📊', style: TextStyle(fontSize: 13)),
             const SizedBox(width: 6),
-            Text('INCOME SUMMARY',
+            Text(AppLocalizations.of(context).dashIncomeSummary,
                 style: AppTheme.pixelHeading(
                     fontSize: 9, letterSpacing: 2, color: AppTheme.accentGold)),
           ]),
           const SizedBox(height: 10),
           Row(children: [
-            _IncomeRow('💰', 'Idle gold', hourlyLabel, const Color(0xFFffd700),
+            _IncomeRow('💰', AppLocalizations.of(context).dashIdleGold, hourlyLabel, const Color(0xFFffd700),
                 iconWidget: const CurrencyIcon(id: 'gold', size: 12)),
             const SizedBox(width: 16),
-            _IncomeRow('⚔', 'Battle/kill',
+            _IncomeRow('⚔', AppLocalizations.of(context).dashBattleKill,
                 '${AppTheme.fmtNumber(game.hero.level * 50 + 100)}g avg',
                 const Color(0xFFff8866)),
             if (expRewards > 0) ...[
               const SizedBox(width: 16),
-              _IncomeRow('🗺️', 'Expeditions',
+              _IncomeRow('🗺️', AppLocalizations.of(context).dashExpeditions,
                   '${AppTheme.fmtNumber(expRewards)}g pending',
                   const Color(0xFF55cc88)),
             ],
@@ -360,7 +370,7 @@ class _AchievementProximityPanel extends StatelessWidget {
       decoration: BoxDecoration(
         color: const Color(0xFF13110E),
         border: Border.all(color: const Color(0xFF3a2820)),
-        borderRadius: BorderRadius.circular(3),
+        borderRadius: BorderRadius.circular(8),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -368,7 +378,7 @@ class _AchievementProximityPanel extends StatelessWidget {
           Row(children: [
             const Text('🏆', style: TextStyle(fontSize: 13)),
             const SizedBox(width: 6),
-            Text('ACHIEVEMENTS NEARBY',
+            Text(AppLocalizations.of(context).dashAchievementsNearby,
                 style: AppTheme.pixelHeading(
                     fontSize: 9, letterSpacing: 2, color: const Color(0xFFffcc44))),
           ]),
@@ -404,7 +414,7 @@ class _AchievementBar extends StatelessWidget {
           Row(children: [
             Text('${a.emoji} ', style: const TextStyle(fontSize: 12)),
             Expanded(
-              child: Text(a.name,
+              child: Text(ContentL10n.of(context).tr(a.id, 'title', a.name),
                   style: const TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w600,
@@ -452,7 +462,7 @@ class _LoginRewardBanner extends StatelessWidget {
           decoration: BoxDecoration(
             color: const Color(0xFFff8800).withValues(alpha: 0.08),
             border: Border.all(color: const Color(0xFFff8800), width: 1.5),
-            borderRadius: BorderRadius.circular(6),
+            borderRadius: BorderRadius.circular(8),
           ),
           child: Row(children: [
             RewardIcon(reward: reward, size: 24),
@@ -460,7 +470,7 @@ class _LoginRewardBanner extends StatelessWidget {
             Expanded(child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('DAY $day LOGIN REWARD',
+                Text(AppLocalizations.of(context).dashDayLoginReward(day),
                     style: AppTheme.pixelHeading(fontSize: 11, letterSpacing: 1, color: const Color(0xFFff8800))),
                 const SizedBox(height: 2),
                 Text(loginRewardLabel(game, reward),
@@ -472,9 +482,9 @@ class _LoginRewardBanner extends StatelessWidget {
               decoration: BoxDecoration(
                 color: const Color(0xFFff8800).withValues(alpha: 0.15),
                 border: Border.all(color: const Color(0xFFff8800)),
-                borderRadius: BorderRadius.circular(4),
+                borderRadius: BorderRadius.circular(8),
               ),
-              child: Text('CLAIM', style: AppTheme.pixelHeading(
+              child: Text(AppLocalizations.of(context).claim, style: AppTheme.pixelHeading(
                   fontSize: 10, color: const Color(0xFFff8800))),
             ),
           ]),

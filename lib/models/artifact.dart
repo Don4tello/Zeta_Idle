@@ -42,16 +42,16 @@ extension ArtifactBaseTypeExt on ArtifactBaseType {
   // Cross uses hand-supplied artwork with mixed extensions (cross_1.png,
   // cross_2.jpg, …). Rarity is spread across the set for visible variety.
   static const _crossFiles = <String>[
-    'assets/images/cross_1.png',
-    'assets/images/cross_2.jpg',
-    'assets/images/cross_3.png',
-    'assets/images/cross_4.jpg',
-    'assets/images/cross_5.png',
+    'assets/images/cross_1.webp',
+    'assets/images/cross_2.webp',
+    'assets/images/cross_3.webp',
+    'assets/images/cross_4.webp',
+    'assets/images/cross_5.webp',
   ];
 
   String get imagePath => this == ArtifactBaseType.cross
       ? _crossFiles.first
-      : 'assets/images/artifact_${name}_1.png';
+      : 'assets/images/artifact_${name}_1.webp';
 
   String imagePathForRarity(ArtifactRarity rarity) {
     // Six rarities map onto the 1–3 art variants via the rarity's [artVariant].
@@ -65,7 +65,7 @@ extension ArtifactBaseTypeExt on ArtifactBaseType {
     final count = _imageCount[this] ?? 0;
     if (count == 0) return imagePath; // will trigger errorBuilder fallback
     final idx = rarity.artVariant.clamp(1, count);
-    return 'assets/images/artifact_${name}_$idx.png';
+    return 'assets/images/artifact_${name}_$idx.webp';
   }
 }
 

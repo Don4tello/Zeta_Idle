@@ -1,7 +1,7 @@
 name: zeta_idle
 description: A dark medieval idle RPG prototype.
 publish_to: 'none'
-version: 0.1.0+373
+version: 0.1.0+406
 environment:
   sdk: '>=3.0.0 <4.0.0'
   flutter: '>=3.0.0'
@@ -28,14 +28,19 @@ dependencies:
   firebase_analytics: ^12.4.5
   firebase_app_check: ^0.4.5+2
   url_launcher: ^6.3.2
+  in_app_review: ^2.0.10
   flutter_local_notifications: ^22.2.0
   timezone: ^0.11.1
   firebase_remote_config: ">=6.0.0 <7.0.0"
 dependency_overrides:
   path_provider_foundation: ">=2.3.2 <2.6.0"
-  # Pin firebase_core to the +17 train — core 4.13.0 breaks app_check 0.4.5+2's
-  # native code (FlutterFirebaseAppRegistrar). Keeps the whole suite consistent.
-  firebase_core: 4.12.1
+  # Keep firebase_core in lockstep with the rest of the FlutterFire suite. The
+  # caret ranges above floated app_check→0.4.9 / auth→6.7.1 / firestore→6.10.2,
+  # which require firebase_core ^4.15.x; an older pin (was 4.12.1) pulls a stale
+  # Firebase Android BoM and fails :firebase_app_check:compileReleaseKotlin with
+  # `Unresolved reference 'FlutterFirebaseAppRegistrar'` / `customAuthDomain`.
+  # The whole suite must move together — bump this if the plugins float again.
+  firebase_core: ^4.15.2
 
 dev_dependencies:
   flutter_test:

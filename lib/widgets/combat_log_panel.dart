@@ -2,6 +2,7 @@
 import 'package:google_fonts/google_fonts.dart';
 import '../services/game_state.dart';
 import '../theme/app_theme.dart';
+import '../l10n/app_localizations.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // CombatLogPanel
@@ -66,7 +67,7 @@ class _CombatLogPanelState extends State<CombatLogPanel> {
                 const Icon(Icons.history_edu_outlined,
                     size: 12, color: AppTheme.accentGold),
                 const SizedBox(width: 8),
-                Text('BATTLE LOG',
+                Text(AppLocalizations.of(context).battleLog,
                     style: AppTheme.pixelHeading(fontSize: 11, letterSpacing: 2)),
                 const Spacer(),
                 Text(

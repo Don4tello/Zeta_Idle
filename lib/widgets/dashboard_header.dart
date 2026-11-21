@@ -5,6 +5,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../models/passive_tree.dart';
 import '../services/game_state.dart';
 import '../theme/app_theme.dart';
+import '../l10n/app_localizations.dart';
 import '../models/hero_race.dart';
 import '../models/hero_trait.dart';
 import '../models/shop_catalog.dart';
@@ -56,7 +57,7 @@ class _DashboardHeaderState extends State<DashboardHeader>
       builder: (_) => Dialog(
         backgroundColor: AppTheme.panelBg,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(4),
+          borderRadius: BorderRadius.circular(8),
           side: BorderSide(color: info.color.withValues(alpha: 0.6)),
         ),
         child: Padding(
@@ -84,7 +85,7 @@ class _DashboardHeaderState extends State<DashboardHeader>
                   decoration: BoxDecoration(
                     color: info.color.withValues(alpha: 0.07),
                     border: Border.all(color: info.color.withValues(alpha: 0.3)),
-                    borderRadius: BorderRadius.circular(3),
+                    borderRadius: BorderRadius.circular(8),
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -122,7 +123,7 @@ class _DashboardHeaderState extends State<DashboardHeader>
                 child: TextButton(
                   onPressed: () => Navigator.pop(ctx),
                   style: TextButton.styleFrom(foregroundColor: info.color),
-                  child: const Text('CLOSE'),
+                  child: Text(AppLocalizations.of(ctx).wClose),
                 ),
               ),
             ],
@@ -183,10 +184,16 @@ class _DashboardHeaderState extends State<DashboardHeader>
                 bottom: const BorderSide(color: AppTheme.cardBorder),
               );
 
-        return Container(
-          padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(color: bgColor, border: border),
-          child: child,
+        // Rounded to match the rest of the UI. The border is non-uniform (thick
+        // coloured left accent), so BorderRadius can't go on the BoxDecoration
+        // directly (Flutter asserts) — clip the whole card to a rounded rect.
+        return ClipRRect(
+          borderRadius: BorderRadius.circular(8),
+          child: Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(color: bgColor, border: border),
+            child: child,
+          ),
         );
       },
       child: Column(
@@ -216,7 +223,7 @@ class _DashboardHeaderState extends State<DashboardHeader>
                   padding: const EdgeInsets.all(3),
                   decoration: BoxDecoration(
                     border: Border.all(color: frameColor, width: 2),
-                    borderRadius: BorderRadius.circular(4),
+                    borderRadius: BorderRadius.circular(8),
                     boxShadow: [BoxShadow(color: frameColor.withValues(alpha: 0.5), blurRadius: 8)],
                   ),
                   child: sprite,
@@ -358,13 +365,13 @@ class _DashboardHeaderState extends State<DashboardHeader>
                     // Medieval Power
                     const SizedBox(height: 3),
                     Tooltip(
-                      message: 'Medieval Power — combined score of all your upgrades,\ngear, passives, prestige, artifacts, and allies.',
+                      message: AppLocalizations.of(context).dhPowerTip,
                       child: Container(
                         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                         decoration: BoxDecoration(
                           color: game.medievalPowerColor.withValues(alpha: 0.10),
                           border: Border.all(color: game.medievalPowerColor.withValues(alpha: 0.5)),
-                          borderRadius: BorderRadius.circular(3),
+                          borderRadius: BorderRadius.circular(8),
                         ),
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
@@ -401,7 +408,7 @@ class _DashboardHeaderState extends State<DashboardHeader>
 
                     // HP bar
                     Tooltip(
-                      message: 'Health Points — reach 0 and you lose the battle.\nRegen: ${game.hero.constitution * 3 + game.passiveTree.totalOf(PassiveEffect.regenFlat)} HP/round',
+                      message: AppLocalizations.of(context).dhHpTip(game.hero.constitution * 3 + game.passiveTree.totalOf(PassiveEffect.regenFlat)),
                       child: _BarLabel(
                         label: 'HP',
                         current: hero.currentHealth,
@@ -427,7 +434,7 @@ class _DashboardHeaderState extends State<DashboardHeader>
 
                     // XP bar
                     Tooltip(
-                      message: 'Experience — reach ${hero.experienceToNextLevel} to level up.\nLevel ${hero.level} → ${hero.level + 1}',
+                      message: AppLocalizations.of(context).dhXpTip(hero.experienceToNextLevel, hero.level, hero.level + 1),
                       child: _BarLabel(
                         label: 'XP',
                         current: hero.experience,
@@ -645,7 +652,7 @@ class _IdleProgressPanelState extends State<_IdleProgressPanel>
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(ctx),
-              child: Text('NICE', style: AppTheme.pixelHeading(fontSize: 11, color: const Color(0xFFdaa520))),
+              child: Text(AppLocalizations.of(ctx).dhNice, style: AppTheme.pixelHeading(fontSize: 11, color: const Color(0xFFdaa520))),
             ),
           ],
         ),

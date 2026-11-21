@@ -2,11 +2,14 @@
 import '../models/daily_challenge.dart';
 import '../models/weekly_challenge.dart';
 import '../services/game_state.dart';
+import '../services/ad_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/section_card.dart';
 import '../widgets/zcoin_icon.dart';
 import 'main_shell.dart' show TutorialTip;
 import 'bounty_board_screen.dart' show BountyBoardBody;
+import '../l10n/app_localizations.dart';
+import '../l10n/content_l10n.dart';
 
 class DailyScreen extends StatelessWidget {
   const DailyScreen({super.key});
@@ -20,7 +23,7 @@ class DailyScreen extends StatelessWidget {
         backgroundColor: const Color(0xFF1B1A17),
         appBar: AppBar(
           backgroundColor: const Color(0xFF2A2623),
-          title: Text('CHALLENGES',
+          title: Text(AppLocalizations.of(context).modeChallenges,
               style: AppTheme.pixelHeading(fontSize: 14, letterSpacing: 2)),
           bottom: TabBar(
             indicatorColor: AppTheme.accentGold,
@@ -28,9 +31,9 @@ class DailyScreen extends StatelessWidget {
             unselectedLabelColor: AppTheme.textMuted,
             labelStyle: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, letterSpacing: 1.5),
             tabs: [
-              _DotTab(label: 'DAILY', showDot: game.hasClaimableDaily),
-              _DotTab(label: 'WEEKLY', showDot: game.hasClaimableWeekly),
-              _DotTab(label: 'BOUNTIES', showDot: game.bossHuntsClaimable > 0),
+              _DotTab(label: AppLocalizations.of(context).modeDaily, showDot: game.hasClaimableDaily),
+              _DotTab(label: AppLocalizations.of(context).dailyWeekly, showDot: game.hasClaimableWeekly),
+              _DotTab(label: AppLocalizations.of(context).modeBounties, showDot: game.bossHuntsClaimable > 0),
             ],
           ),
         ),
@@ -110,8 +113,7 @@ class _DailyTab extends StatelessWidget {
             TutorialTip(
               tutorialKey: 'daily',
               game: game,
-              text: 'Complete daily challenges to earn gold, shards, essence, and ZCoins. '
-                  'All 7 challenges reset each day. Complete them all for a bonus chest!',
+              text: AppLocalizations.of(context).dailyTutorial,
             ),
             Row(
               mainAxisAlignment: MainAxisAlignment.end,
@@ -129,9 +131,9 @@ class _DailyTab extends StatelessWidget {
                       decoration: BoxDecoration(
                         color: const Color(0xFF1a3020),
                         border: Border.all(color: const Color(0xFF55cc88)),
-                        borderRadius: BorderRadius.circular(3),
+                        borderRadius: BorderRadius.circular(8),
                       ),
-                      child: Text('CLAIM ALL',
+                      child: Text(AppLocalizations.of(context).dailyClaimAll,
                           style: AppTheme.pixelHeading(fontSize: 9, color: const Color(0xFF55cc88))),
                     ),
                   ),
@@ -155,18 +157,18 @@ class _DailyTab extends StatelessWidget {
             )),
             const SizedBox(height: 8),
             SectionCard(
-              title: 'How It Works',
-              child: const Column(
+              title: AppLocalizations.of(context).dailyHowItWorks,
+              child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _HintRow('Kill enemies',  'Fight in Campaign or Endless mode'),
-                  _HintRow('Win battles',   'Defeating an enemy counts as a win'),
-                  _HintRow('Defeat boss',   'Stage 5, 10, 15, 20, 25 or Endless every 5th'),
-                  _HintRow('Use abilities', 'Active abilities fire automatically in battle'),
-                  _HintRow('Equip item',    'Tap a bag item → Equip in Inventory'),
-                  _HintRow('Reach gold',    'Just have that much gold in your stash'),
-                  _HintRow('Deal damage',   'Cumulative damage dealt in any mode'),
-                  _HintRow('Collect idle',  'Tap the idle reward on the home screen'),
+                  _HintRow(AppLocalizations.of(context).dailyHintKill,  AppLocalizations.of(context).dailyHintKillD),
+                  _HintRow(AppLocalizations.of(context).dailyHintWin,   AppLocalizations.of(context).dailyHintWinD),
+                  _HintRow(AppLocalizations.of(context).dailyHintBoss,   AppLocalizations.of(context).dailyHintBossD),
+                  _HintRow(AppLocalizations.of(context).dailyHintAbility, AppLocalizations.of(context).dailyHintAbilityD),
+                  _HintRow(AppLocalizations.of(context).dailyHintEquip,    AppLocalizations.of(context).dailyHintEquipD),
+                  _HintRow(AppLocalizations.of(context).dailyHintGold,    AppLocalizations.of(context).dailyHintGoldD),
+                  _HintRow(AppLocalizations.of(context).dailyHintDamage,   AppLocalizations.of(context).dailyHintDamageD),
+                  _HintRow(AppLocalizations.of(context).dailyHintIdle,  AppLocalizations.of(context).dailyHintIdleD),
                 ],
               ),
             ),
@@ -209,11 +211,11 @@ class _WeeklyTab extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text("THIS WEEK'S CHALLENGES",
+                Text(AppLocalizations.of(context).dailyThisWeek,
                     style: AppTheme.pixelHeading(
                         fontSize: 10, color: AppTheme.textMuted, letterSpacing: 1.5)),
                 const SizedBox(height: 4),
-                Text('$claimed / $total completed',
+                Text(AppLocalizations.of(context).dailyCompleted(claimed, total),
                     style: TextStyle(
                         fontSize: 12,
                         color: claimed == total ? AppTheme.accentGold : AppTheme.textMuted)),
@@ -227,9 +229,9 @@ class _WeeklyTab extends StatelessWidget {
                       decoration: BoxDecoration(
                         color: const Color(0xFF1a2a1a),
                         border: Border.all(color: const Color(0xFFcc7722)),
-                        borderRadius: BorderRadius.circular(3),
+                        borderRadius: BorderRadius.circular(8),
                       ),
-                      child: Text('CLAIM ALL',
+                      child: Text(AppLocalizations.of(context).dailyClaimAll,
                           style: AppTheme.pixelHeading(fontSize: 9, color: const Color(0xFFcc7722))),
                     ),
                   ),
@@ -257,10 +259,10 @@ class _WeeklyTab extends StatelessWidget {
           ),
           const SizedBox(height: 14),
           if (challenges.isEmpty)
-            const Center(
+            Center(
               child: Padding(
-                padding: EdgeInsets.symmetric(vertical: 40),
-                child: Text('Weekly challenges loading...',
+                padding: const EdgeInsets.symmetric(vertical: 40),
+                child: Text(AppLocalizations.of(context).dailyWeeklyLoading,
                     style: TextStyle(color: AppTheme.textMuted, fontSize: 13)),
               ),
             )
@@ -280,14 +282,14 @@ class _WeeklyTab extends StatelessWidget {
             }),
           const SizedBox(height: 8),
           SectionCard(
-            title: 'About Weekly Challenges',
-            child: const Column(
+            title: AppLocalizations.of(context).dailyAboutWeekly,
+            child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _HintRow('Resets',   'Every Monday — 5 new challenges each week'),
-                _HintRow('Rewards',  'Larger than daily: essence, mythril, ZCoins'),
-                _HintRow('Season XP','+50 season XP per claimed weekly challenge'),
-                _HintRow('Progress', 'Counts from Monday midnight, not from claim'),
+                _HintRow(AppLocalizations.of(context).dailyHintResets,   AppLocalizations.of(context).dailyHintResetsD),
+                _HintRow(AppLocalizations.of(context).dailyHintRewards,  AppLocalizations.of(context).dailyHintRewardsD),
+                _HintRow(AppLocalizations.of(context).dailyHintSeasonXp,AppLocalizations.of(context).dailyHintSeasonXpD),
+                _HintRow(AppLocalizations.of(context).dailyHintProgress, AppLocalizations.of(context).dailyHintProgressD),
               ],
             ),
           ),
@@ -354,7 +356,7 @@ class _WeeklyChallengeCard extends StatelessWidget {
                   : AppTheme.cardBorder,
           width: isComplete && !challenge.claimed ? 1.5 : 1,
         ),
-        borderRadius: BorderRadius.circular(4),
+        borderRadius: BorderRadius.circular(8),
       ),
       padding: const EdgeInsets.all(14),
       child: Column(
@@ -378,7 +380,7 @@ class _WeeklyChallengeCard extends StatelessWidget {
                           ? _amber
                           : AppTheme.textMuted.withValues(alpha: 0.4),
                 ),
-                borderRadius: BorderRadius.circular(3),
+                borderRadius: BorderRadius.circular(8),
               ),
               child: challenge.claimed
                   ? const Icon(Icons.check, size: 14, color: Color(0xFF55cc55))
@@ -390,16 +392,16 @@ class _WeeklyChallengeCard extends StatelessWidget {
             ),
             const SizedBox(width: 10),
             Expanded(
-              child: Text(challenge.name,
+              child: Text(ContentL10n.of(context).tr(challenge.id, 'title', challenge.name),
                   style: AppTheme.pixelHeading(fontSize: 14, letterSpacing: 0.5)),
             ),
             if (isComplete && !challenge.claimed)
-              Text('READY',
+              Text(AppLocalizations.of(context).dailyReady,
                   style: AppTheme.pixelHeading(
                       fontSize: 10, color: _amber, letterSpacing: 1)),
           ]),
           const SizedBox(height: 8),
-          Text(challenge.description,
+          Text(ContentL10n.of(context).tr(challenge.id, 'desc', challenge.description),
               style: const TextStyle(fontSize: 13, color: AppTheme.textLight)),
           const SizedBox(height: 10),
           Text(
@@ -448,7 +450,7 @@ class _WeeklyChallengeCard extends StatelessWidget {
                   minimumSize: Size.zero,
                   tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                 ),
-                child: Text('CLAIM',
+                child: Text(AppLocalizations.of(context).claim,
                     style: AppTheme.pixelHeading(
                         fontSize: 11,
                         color: isComplete ? _amber : AppTheme.cardBorder,
@@ -476,7 +478,7 @@ class _OverallProgress extends StatelessWidget {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text('TODAY\'S PROGRESS',
+            Text(AppLocalizations.of(context).dailyTodayProgress,
                 style: AppTheme.pixelHeading(
                     fontSize: 10, color: AppTheme.textMuted, letterSpacing: 2)),
             Text('$claimed / $total',
@@ -517,7 +519,7 @@ class _DailyChestCard extends StatelessWidget {
   final GameState game;
   final int claimed, total;
 
-  void _showChestReward(BuildContext context) {
+  void _showChestReward(BuildContext context, {bool doubled = false}) {
     showDialog<void>(
       context: context,
       barrierDismissible: true,
@@ -544,23 +546,36 @@ class _DailyChestCard extends StatelessWidget {
               decoration: BoxDecoration(
                 color: const Color(0xFF241910),
                 border: Border.all(color: AppTheme.accentGold, width: 2),
-                borderRadius: BorderRadius.circular(6),
+                borderRadius: BorderRadius.circular(8),
               ),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   const Text('🎁', style: TextStyle(fontSize: 38)),
                   const SizedBox(height: 8),
-                  Text('DAILY CHEST',
+                  Text(AppLocalizations.of(context).dailyChest,
                       style: AppTheme.pixelHeading(fontSize: 22, letterSpacing: 3, color: AppTheme.accentGold)),
+                  if (doubled) ...[
+                    const SizedBox(height: 6),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF55cc88).withValues(alpha: 0.18),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: const Text('×2 DOUBLED',
+                          style: TextStyle(color: Color(0xFF55cc88), fontSize: 11,
+                              fontWeight: FontWeight.bold, letterSpacing: 1)),
+                    ),
+                  ],
                   const SizedBox(height: 20),
-                  _chestRow('💰', '+1,000 GOLD', const Color(0xFFffd700)),
+                  _chestRow('💰', doubled ? '+2,000 GOLD' : '+1,000 GOLD', const Color(0xFFffd700)),
                   const SizedBox(height: 8),
-                  _chestRow(const ZCoinIcon(size: 16), '+50 ZCOINS', const Color(0xFF44ddcc)),
+                  _chestRow(const ZCoinIcon(size: 16), doubled ? '+100 ZCOINS' : '+50 ZCOINS', const Color(0xFF44ddcc)),
                   const SizedBox(height: 8),
-                  _chestRow('◆', '+75 SHARDS', const Color(0xFF6699ff)),
+                  _chestRow('◆', doubled ? '+150 SHARDS' : '+75 SHARDS', const Color(0xFF6699ff)),
                   const SizedBox(height: 8),
-                  _chestRow('✦', '+50 ESSENCE', const Color(0xFFE07A6E)),
+                  _chestRow('✦', doubled ? '+100 ESSENCE' : '+50 ESSENCE', const Color(0xFFE07A6E)),
                   const SizedBox(height: 20),
                   ElevatedButton(
                     onPressed: () => Navigator.pop(dialogCtx),
@@ -569,7 +584,7 @@ class _DailyChestCard extends StatelessWidget {
                       foregroundColor: Colors.black,
                       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
                     ),
-                    child: const Text('COLLECT',
+                    child: Text(AppLocalizations.of(context).shopCollect,
                         style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, letterSpacing: 1)),
                   ),
                 ],
@@ -612,7 +627,7 @@ class _DailyChestCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: const Color(0xFF231F1B),
         border: Border.all(color: borderColor, width: ready ? 1.5 : 1),
-        borderRadius: BorderRadius.circular(4),
+        borderRadius: BorderRadius.circular(8),
       ),
       child: Row(
         children: [
@@ -638,7 +653,7 @@ class _DailyChestCard extends StatelessWidget {
                 const SizedBox(height: 4),
                 Text(
                   gotChest
-                      ? 'Claimed! Come back tomorrow.'
+                      ? AppLocalizations.of(context).dailyClaimedTomorrow
                       : 'Complete all 7 tasks to unlock.',
                   style: const TextStyle(
                       fontSize: 12, color: AppTheme.textMuted),
@@ -668,13 +683,47 @@ class _DailyChestCard extends StatelessWidget {
                 decoration: BoxDecoration(
                   color: AppTheme.accentGold.withValues(alpha: 0.15),
                   border: Border.all(color: AppTheme.accentGold),
-                  borderRadius: BorderRadius.circular(3),
+                  borderRadius: BorderRadius.circular(8),
                 ),
-                child: Text('CLAIM',
+                child: Text(AppLocalizations.of(context).claim,
                     style: AppTheme.pixelHeading(
                         fontSize: 12, color: AppTheme.accentGold)),
               ),
             ),
+          if (ready && AdService.instance.isSupported) ...[
+            const SizedBox(width: 8),
+            GestureDetector(
+              onTap: () {
+                AdService.instance.showRewardedAd(
+                  onRewarded: () {
+                    game.claimDailyChestDoubled();
+                    game.audioService.playClaim();
+                    if (context.mounted) _showChestReward(context, doubled: true);
+                  },
+                  onFailed: () {
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                        content: Text('Ad not ready — try again in a moment.'),
+                        behavior: SnackBarBehavior.floating));
+                    }
+                  },
+                );
+              },
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF55cc88).withValues(alpha: 0.15),
+                  border: Border.all(color: const Color(0xFF55cc88)),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Row(mainAxisSize: MainAxisSize.min, children: [
+                  const Icon(Icons.play_circle_outline, size: 14, color: Color(0xFF55cc88)),
+                  const SizedBox(width: 4),
+                  Text('×2', style: AppTheme.pixelHeading(fontSize: 12, color: const Color(0xFF55cc88))),
+                ]),
+              ),
+            ),
+          ],
         ],
       ),
     );
@@ -712,7 +761,7 @@ class _ChallengeCard extends StatelessWidget {
                   : AppTheme.cardBorder,
           width: isComplete && !challenge.claimed ? 1.5 : 1,
         ),
-        borderRadius: BorderRadius.circular(4),
+        borderRadius: BorderRadius.circular(8),
       ),
       padding: const EdgeInsets.all(14),
       child: Column(
@@ -737,7 +786,7 @@ class _ChallengeCard extends StatelessWidget {
                             ? AppTheme.accentGold
                             : AppTheme.textMuted.withValues(alpha: 0.4),
                   ),
-                  borderRadius: BorderRadius.circular(3),
+                  borderRadius: BorderRadius.circular(8),
                 ),
                 child: challenge.claimed
                     ? const Icon(Icons.check, size: 14,
@@ -753,12 +802,12 @@ class _ChallengeCard extends StatelessWidget {
               const SizedBox(width: 10),
               Expanded(
                 child: Text(
-                  challenge.title,
+                  ContentL10n.of(context).tr('dailyTitle', challenge.title, challenge.title),
                   style: AppTheme.pixelHeading(fontSize: 14, letterSpacing: 0.5),
                 ),
               ),
               if (isComplete && !challenge.claimed)
-                Text('READY',
+                Text(AppLocalizations.of(context).dailyReady,
                     style: AppTheme.pixelHeading(
                         fontSize: 10,
                         color: AppTheme.accentGold,
@@ -766,7 +815,7 @@ class _ChallengeCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 8),
-          Text(challenge.description,
+          Text(ContentL10n.of(context).trN('dailyDesc', challenge.type.name, challenge.description, challenge.target),
               style: const TextStyle(fontSize: 13, color: AppTheme.textLight)),
           const SizedBox(height: 10),
           Row(
@@ -828,7 +877,7 @@ class _ChallengeCard extends StatelessWidget {
                     minimumSize: Size.zero,
                     tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                   ),
-                  child: Text('CLAIM',
+                  child: Text(AppLocalizations.of(context).claim,
                       style: AppTheme.pixelHeading(
                           fontSize: 11,
                           color: isComplete
@@ -857,7 +906,7 @@ class _RewardChip extends StatelessWidget {
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.1),
         border: Border.all(color: color.withValues(alpha: 0.5), width: 1),
-        borderRadius: BorderRadius.circular(3),
+        borderRadius: BorderRadius.circular(8),
       ),
       child: Row(mainAxisSize: MainAxisSize.min, children: [
         if (prefix != null) ...[prefix!, const SizedBox(width: 3)],

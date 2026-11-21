@@ -12,13 +12,13 @@ class CurrencyIcon extends StatelessWidget {
   /// Currencies with a custom art asset (transparent PNG) override the built-in
   /// pixel painter. Keyed by the in-game currency id → asset path.
   static const Map<String, String> _assetFor = {
-    'gold':    'assets/gold.png',
-    'shards':  'assets/shard.png',
-    'echoes':  'assets/echo.png',
-    'mythril': 'assets/mythril.png',
-    'essence': 'assets/essence.png',
-    'paragonPoints': 'assets/paragon.png',
-    'xp': 'assets/xp.png',
+    'gold':    'assets/gold.webp',
+    'shards':  'assets/shard.webp',
+    'echoes':  'assets/echo.webp',
+    'mythril': 'assets/mythril.webp',
+    'essence': 'assets/essence.webp',
+    'paragonPoints': 'assets/paragon.webp',
+    'xp': 'assets/xp.webp',
   };
 
   @override

@@ -27,6 +27,7 @@ import '../widgets/pet_battle_sprite.dart';
 import '../widgets/tier_selector.dart';
 import '../widgets/zcoin_icon.dart';
 import 'main_shell.dart' show TutorialTip;
+import '../l10n/app_localizations.dart';
 
 // The 5 boss source-stages for a given Boss Rush tier. Tier 1 stays shallow so
 // it's a genuine ~level-20 checkpoint (tops out at the stage-14 boss); each
@@ -545,7 +546,7 @@ class _BossRushScreenState extends State<BossRushScreen> {
       backgroundColor: const Color(0xFF1B1A17),
       appBar: AppBar(
         backgroundColor: const Color(0xFF2A2623),
-        title: Text('BOSS RUSH',
+        title: Text(AppLocalizations.of(context).modeBossRush,
             style: AppTheme.pixelHeading(fontSize: 14, letterSpacing: 2)),
         leading: _running && !_done
             ? IconButton(
@@ -559,12 +560,12 @@ class _BossRushScreenState extends State<BossRushScreen> {
             icon: Icon(Icons.assessment_outlined, size: 20,
                 color: GameStateProvider.of(context).lastFightSummary != null
                     ? AppTheme.accentGold : AppTheme.textMuted),
-            tooltip: 'Last fight summary',
+            tooltip: AppLocalizations.of(context).battleLastFightSummary,
             onPressed: () {
               final s = GameStateProvider.of(context).lastFightSummary;
               if (s == null) {
-                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                    content: Text('No fight finished yet.'),
+                ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                    content: Text(AppLocalizations.of(context).battleNoFightYet),
                     behavior: SnackBarBehavior.floating));
                 return;
               }
@@ -574,7 +575,7 @@ class _BossRushScreenState extends State<BossRushScreen> {
           if (!_running && !_done)
             IconButton(
               icon: const Icon(Icons.leaderboard, color: AppTheme.accentGold, size: 20),
-              tooltip: 'Boss Rush Leaderboard',
+              tooltip: AppLocalizations.of(context).brLeaderboard,
               onPressed: () => Navigator.of(context).push(MaterialPageRoute(
                 builder: (_) => const LeaderboardScreen(board: LeaderboardBoard.bossRush),
               )),
@@ -612,7 +613,7 @@ class _BossRushScreenState extends State<BossRushScreen> {
               SizedBox(
                 width: double.infinity,
                 height: 220,
-                child: Image.asset('assets/images/boss_rush_bg.png',
+                child: Image.asset('assets/images/boss_rush_bg.webp',
                     fit: BoxFit.cover, alignment: Alignment.center),
               ),
               Positioned.fill(
@@ -651,7 +652,7 @@ class _BossRushScreenState extends State<BossRushScreen> {
             decoration: BoxDecoration(
               color: const Color(0xFF1a1816),
               border: Border.all(color: AppTheme.accentGold.withValues(alpha: 0.4)),
-              borderRadius: BorderRadius.circular(4),
+              borderRadius: BorderRadius.circular(8),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -667,7 +668,7 @@ class _BossRushScreenState extends State<BossRushScreen> {
           const SizedBox(height: 16),
           if (game.bossRushBestScore > 0) ...[
             Row(children: [
-              Text('BEST SCORE: ',
+              Text(AppLocalizations.of(context).brBestScore,
                   style: AppTheme.pixelHeading(
                       fontSize: 11, color: AppTheme.textMuted, letterSpacing: 1)),
               Text('${game.bossRushBestScore}',
@@ -715,10 +716,10 @@ class _BossRushScreenState extends State<BossRushScreen> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text('TIER $_selectedTier',
+                Text(AppLocalizations.of(context).dngTierN(_selectedTier),
                     style: AppTheme.pixelHeading(
                         fontSize: 12, color: AppTheme.accentGold, letterSpacing: 2)),
-                Text('BOSS ${_bossIndex + 1} / ${_stages.length}',
+                Text(AppLocalizations.of(context).brBossProgress(_bossIndex + 1, _stages.length),
                     style: AppTheme.pixelHeading(
                         fontSize: 11, color: AppTheme.textMuted)),
               ],
@@ -877,7 +878,7 @@ class _BossRushScreenState extends State<BossRushScreen> {
                       foregroundColor: Colors.black,
                       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
                     ),
-                    child: const Text('PLAY AGAIN',
+                    child: Text(AppLocalizations.of(context).brPlayAgain,
                         style: TextStyle(
                             fontSize: 14,
                             fontWeight: FontWeight.bold,
@@ -911,7 +912,7 @@ class _BossRushScreenState extends State<BossRushScreen> {
                   side: const BorderSide(color: AppTheme.cardBorder),
                   shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
                 ),
-                child: Text('BACK',
+                child: Text(AppLocalizations.of(context).navBack,
                     style: AppTheme.pixelHeading(fontSize: 14, letterSpacing: 2, color: AppTheme.textMuted)),
               ),
             ),
@@ -1037,7 +1038,7 @@ class _BossNode extends StatelessWidget {
                     color: borderColor,
                     width: active ? 2 : 1,
                   ),
-                  borderRadius: BorderRadius.circular(6),
+                  borderRadius: BorderRadius.circular(8),
                   boxShadow: active
                       ? [BoxShadow(
                           color: AppTheme.accentGold.withValues(alpha: glow),
@@ -1185,20 +1186,20 @@ class _BossRushStartSection extends StatelessWidget {
         decoration: BoxDecoration(
           color: const Color(0xFF14100a),
           border: Border.all(color: AppTheme.accentGold.withValues(alpha: 0.35)),
-          borderRadius: BorderRadius.circular(4),
+          borderRadius: BorderRadius.circular(8),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('POSSIBLE REWARDS',
+            Text(AppLocalizations.of(context).brPossibleRewards,
                 style: AppTheme.pixelHeading(
                     fontSize: 11, letterSpacing: 2, color: AppTheme.accentGold)),
             const SizedBox(height: 8),
-            const _RewardRow(currencyId: 'shards', label: 'Shards', detail: '10 per boss  ·  +30 on full clear'),
-            const _RewardRow(currencyId: 'echoes', label: 'Echoes', detail: '6 per boss  ·  +25 on full clear'),
-            const _RewardRow(currencyId: 'zcoins', label: 'ZCoins', detail: '15 on a full clear'),
-            const _RewardRow(currencyId: 'mythril', label: 'Mythril', detail: 'Scaled by final rank'),
-            const _RewardRow(icon: '🏺', label: 'Artifact', detail: 'Chance drop on A / S-rank clears'),
+            _RewardRow(currencyId: 'shards', label: AppLocalizations.of(context).brRewShards, detail: AppLocalizations.of(context).brRewShardsD),
+            _RewardRow(currencyId: 'echoes', label: AppLocalizations.of(context).brRewEchoes, detail: AppLocalizations.of(context).brRewEchoesD),
+            _RewardRow(currencyId: 'zcoins', label: AppLocalizations.of(context).brRewZcoins, detail: AppLocalizations.of(context).brRewZcoinsD),
+            _RewardRow(currencyId: 'mythril', label: AppLocalizations.of(context).brRewMythril, detail: AppLocalizations.of(context).brRewMythrilD),
+            _RewardRow(icon: '🏺', label: AppLocalizations.of(context).brRewArtifact, detail: AppLocalizations.of(context).brRewArtifactD),
           ],
         ),
       ),
@@ -1244,7 +1245,7 @@ class _BossRushStartSection extends StatelessWidget {
                     : Colors.white24,
               ),
               padding: const EdgeInsets.symmetric(vertical: 10),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
             ),
             child: Row(mainAxisSize: MainAxisSize.min, children: [
               ZCoinIcon(size: 13, animate: false),
@@ -1331,7 +1332,7 @@ class _InlineSpeedButton extends StatelessWidget {
               color: _active ? const Color(0xFF44cc44) : const Color(0xFF334466),
               width: 1.5,
             ),
-            borderRadius: BorderRadius.circular(3),
+            borderRadius: BorderRadius.circular(8),
           ),
           child: Text(
             _label,

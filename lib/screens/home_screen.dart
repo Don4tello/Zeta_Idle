@@ -12,6 +12,8 @@ import '../widgets/section_card.dart';
 import '../widgets/zcoin_icon.dart';
 import '../widgets/currency_icon.dart';
 import '../theme/app_theme.dart';
+import '../l10n/app_localizations.dart';
+import '../l10n/content_l10n.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key, required this.onBackToSelect});
@@ -28,7 +30,7 @@ class HomeScreen extends StatelessWidget {
       if (stage < unlock) return null;
       final isNew = game.campaignStageIndex < unlock + 3 && game.prestigeLevel == 0;
       return _buildModeButtonBadged(
-        context, isNew ? '$label  NEW' : label, onTap, badge: badge || isNew);
+        context, isNew ? '$label  ${AppLocalizations.of(context).badgeNew}' : label, onTap, badge: badge || isNew);
     }
 
     // Renders a section with header only when at least one child is visible.
@@ -58,12 +60,12 @@ class HomeScreen extends StatelessWidget {
           IconButton(
             icon: const Icon(Icons.help_outline, color: AppTheme.textMuted),
             onPressed: () => context.push(Routes.knowledgeBase),
-            tooltip: 'Knowledge Base',
+            tooltip: AppLocalizations.of(context).setKnowledgeBase,
           ),
           IconButton(
             icon: const Icon(Icons.settings, color: AppTheme.textMuted),
             onPressed: () => context.push(Routes.settings),
-            tooltip: 'Settings',
+            tooltip: AppLocalizations.of(context).hubSettings,
           ),
         ],
       ),
@@ -168,7 +170,7 @@ class HomeScreen extends StatelessWidget {
                                 mainAxisAlignment:
                                     MainAxisAlignment.spaceBetween,
                                 children: [
-                                  Text('EXP',
+                                  Text(AppLocalizations.of(context).homeExp,
                                       style: AppTheme.pixelHeading(
                                           fontSize: 10, letterSpacing: 1)),
                                   Text(
@@ -207,45 +209,45 @@ class HomeScreen extends StatelessWidget {
 
             // ── Resources ────────────────────────────────────────────────────
             SectionCard(
-              title: 'Resources',
+              title: AppLocalizations.of(context).homeResources,
               child: Column(children: [
                 Row(children: [
                   Expanded(
                       child: _buildResourceBox(
-                          null, 'GOLD', AppTheme.fmtNumber(game.gold),
+                          null, AppLocalizations.of(context).homeGold, AppTheme.fmtNumber(game.gold),
                           accent: AppTheme.accentGold,
                           iconWidget: const CurrencyIcon(id: 'gold', size: 19),
-                          tooltip: 'Gold\nEarned from battles and idle income.\nSpend in Upgrades and the Shop.')),
+                          tooltip: AppLocalizations.of(context).homeGoldTip)),
                   const SizedBox(width: 8),
                   Expanded(
                       child: _buildResourceBox(
-                          null, 'SHARDS', AppTheme.fmtNumber(game.shards),
+                          null, AppLocalizations.of(context).homeShards, AppTheme.fmtNumber(game.shards),
                           accent: const Color(0xFF6699ff),
                           iconWidget: const CurrencyIcon(id: 'shards', size: 19),
-                          tooltip: 'Shards\nEarned from enemy kills, Dungeons, Expeditions, and Gauntlet.\nSpend on ability upgrades, item upgrades, and Passive Tree nodes.')),
+                          tooltip: AppLocalizations.of(context).homeShardsTip)),
                   const SizedBox(width: 8),
                   Expanded(
                       child: _buildResourceBox(
-                          null, 'ZCOINS', '${game.zcoins}',
+                          null, AppLocalizations.of(context).homeZcoins, '${game.zcoins}',
                           accent: const Color(0xFFAA66FF),
                           iconWidget: const ZCoinIcon(size: 19),
-                          tooltip: 'ZCoins\nEarned from achievements and daily chests.\nSpend in the Aura Shop for skins, pets, and auras.')),
+                          tooltip: AppLocalizations.of(context).homeZcoinsTip)),
                 ]),
                 const SizedBox(height: 8),
                 Row(children: [
                   Expanded(
                       child: _buildResourceBox(
-                          null, 'MYTHRIL', '${game.mythril}',
+                          null, AppLocalizations.of(context).homeMythril, '${game.mythril}',
                           accent: const Color(0xFF6FAEEA),
                           iconWidget: const CurrencyIcon(id: 'mythril', size: 19),
-                          tooltip: 'Mythril\nEarned from Dungeons, Boss Rush, and prestige milestones.\nSpend on Artifact upgrades, dungeon affix rerolls, and shrine blessings.')),
+                          tooltip: AppLocalizations.of(context).homeMythrilTip)),
                   const SizedBox(width: 8),
                   Expanded(
                       child: _buildResourceBox(
-                          GameIconType.bolt, 'IDLE/min',
+                          GameIconType.bolt, AppLocalizations.of(context).homeIdleMin,
                           '${game.idleGoldPerMinute}',
                           accent: const Color(0xFFFFAA44),
-                          tooltip: 'Idle Gold / min\nGold earned automatically every minute while offline.\nIncreases with hero level, passive upgrades, and pets.')),
+                          tooltip: AppLocalizations.of(context).homeIdleTip)),
                 ]),
               ]),
             )
@@ -259,11 +261,11 @@ class HomeScreen extends StatelessWidget {
 
             // ── Campaign status ───────────────────────────────────────────────
             SectionCard(
-              title: 'Current Campaign',
+              title: AppLocalizations.of(context).homeCurrentCampaign,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('STAGE ${game.campaignStageIndex + 1}',
+                  Text(AppLocalizations.of(context).homeStage(game.campaignStageIndex + 1),
                       style: AppTheme.pixelHeading(
                           fontSize: 13, letterSpacing: 1)),
                   const SizedBox(height: 12),
@@ -273,13 +275,13 @@ class HomeScreen extends StatelessWidget {
                       color: AppTheme.darkBg,
                       border: Border.all(
                           color: AppTheme.cardBorder, width: 1),
-                      borderRadius: BorderRadius.circular(4),
+                      borderRadius: BorderRadius.circular(8),
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          game.currentCampaignStage.title,
+                          ContentL10n.of(context).tr(game.currentCampaignStage.id, 'title', game.currentCampaignStage.title),
                           style: GoogleFonts.rajdhani(
                             fontWeight: FontWeight.bold,
                             color: AppTheme.textLight,
@@ -295,6 +297,12 @@ class HomeScreen extends StatelessWidget {
                       ],
                     ),
                   ),
+                  // Next-goal banner: a visible target for every session so
+                  // players have a reason to push past the current fight.
+                  if (game.nextGoal != null) ...[
+                    const SizedBox(height: 12),
+                    _NextGoalBanner(game: game),
+                  ],
                 ],
               ),
             )
@@ -326,41 +334,41 @@ class HomeScreen extends StatelessWidget {
             ],
 
             // ── Combat ────────────────────────────────────────────────────────
-            sec(GameIconType.swords, 'COMBAT', const Color(0xFFff6644), [
-              btn('CAMPAIGN',           0,  () => context.push(Routes.campaign)),
-              btn('DUNGEON',            12, () => context.push(Routes.dungeon),
+            sec(GameIconType.swords, AppLocalizations.of(context).homeSecCombat, const Color(0xFFff6644), [
+              btn(AppLocalizations.of(context).modeCampaign,           0,  () => context.push(Routes.campaign)),
+              btn(AppLocalizations.of(context).modeDungeon,            12, () => context.push(Routes.dungeon),
                   badge: game.dungeonAttemptsRemaining > 0),
-              btn('CHALLENGE GAUNTLET', 11, () => context.push(Routes.gauntlet)),
-              btn('BOSS RUSH',          15, () => context.push(Routes.bossRush),
+              btn(AppLocalizations.of(context).homeNavChallengeGauntlet, 11, () => context.push(Routes.gauntlet)),
+              btn(AppLocalizations.of(context).modeBossRush,          15, () => context.push(Routes.bossRush),
                   badge: game.bossRushAttemptsRemaining > 0),
-              btn('DAILY CHALLENGES',   5,  () => context.push(Routes.daily),
+              btn(AppLocalizations.of(context).defeatDailyTitle,   5,  () => context.push(Routes.daily),
                   badge: game.hasClaimableDaily),
               stage >= 8 ? _LoginStreakButton() : null,
-              btn('BOUNTY BOARD',       8,  () => context.push(Routes.bounties),
+              btn(AppLocalizations.of(context).homeNavBountyBoard,       8,  () => context.push(Routes.bounties),
                   badge: game.bossHuntsClaimable > 0),
             ]),
 
             // ── Hero Hub ──────────────────────────────────────────────────────
-            sec(GameIconType.armor, 'HERO', const Color(0xFF66aaff), [
+            sec(GameIconType.armor, AppLocalizations.of(context).navHero, const Color(0xFF66aaff), [
               _HeroHubCard(),
             ]),
 
             // ── Progression ───────────────────────────────────────────────────
-            sec(GameIconType.mountain, 'PROGRESSION', const Color(0xFFaa88ff), [
-              btn('SEASON PASS',  5,  () => context.push(Routes.seasonPass),
+            sec(GameIconType.mountain, AppLocalizations.of(context).hubGroupProgression, const Color(0xFFaa88ff), [
+              btn(AppLocalizations.of(context).homeNavSeasonPass,  5,  () => context.push(Routes.seasonPass),
                   badge: game.seasonUnclaimedCount > 0),
-              btn('ACHIEVEMENTS', 5,  () => context.push(Routes.achievements),
+              btn(AppLocalizations.of(context).hubAchievements, 5,  () => context.push(Routes.achievements),
                   badge: game.achievementsClaimable > 0),
-              btn('PARAGON',       20, () => context.push(Routes.prestige)),
-              btn('WORLD EVENT',   16, () => context.push(Routes.worldEvent)),
+              btn(AppLocalizations.of(context).hubParagon,       20, () => context.push(Routes.prestige)),
+              btn(AppLocalizations.of(context).homeNavWorldEvent,   16, () => context.push(Routes.worldEvent)),
               // ASCENSION hidden during the tier rework (a new path is coming).
             ]),
 
             // ── Social ───────────────────────────────────────────────────────
-            sec(GameIconType.castle, 'SOCIAL', const Color(0xFF44ccaa), [
-              btn('GUILD',               15, () => context.push(Routes.guild)),
-              btn('LEADERBOARD',         15, () => context.push(Routes.leaderboard)),
-              btn('CHALLENGE MODIFIERS', 25, () => context.push(Routes.challengeMods)),
+            sec(GameIconType.castle, AppLocalizations.of(context).homeSecSocial, const Color(0xFF44ccaa), [
+              btn(AppLocalizations.of(context).navGuild,               15, () => context.push(Routes.guild)),
+              btn(AppLocalizations.of(context).homeNavLeaderboard,         15, () => context.push(Routes.leaderboard)),
+              btn(AppLocalizations.of(context).homeNavChallengeModifiers, 25, () => context.push(Routes.challengeMods)),
             ]),
 
             // ── Last action bar ───────────────────────────────────────────────
@@ -369,7 +377,7 @@ class HomeScreen extends StatelessWidget {
               decoration: BoxDecoration(
                 color: AppTheme.cardBg,
                 border: Border.all(color: AppTheme.cardBorder, width: 1),
-                borderRadius: BorderRadius.circular(4),
+                borderRadius: BorderRadius.circular(8),
               ),
               child: Row(children: [
                 const Icon(Icons.info_outline,
@@ -534,7 +542,7 @@ class HomeScreen extends StatelessWidget {
           right:  BorderSide(color: AppTheme.cardBorder, width: 1),
           bottom: BorderSide(color: AppTheme.cardBorder, width: 1),
         ),
-        borderRadius: BorderRadius.circular(4),
+        borderRadius: BorderRadius.circular(8),
       ),
       child: Column(children: [
         iconWidget ?? (icon != null ? GameIcon(icon, size: 19, color: c) : const SizedBox(width: 19, height: 19)),
@@ -569,7 +577,7 @@ class HomeScreen extends StatelessWidget {
       color: Colors.transparent,
       child: InkWell(
         onTap: onPressed,
-        borderRadius: BorderRadius.circular(4),
+        borderRadius: BorderRadius.circular(8),
         child: Container(
           padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
           decoration: BoxDecoration(
@@ -588,7 +596,7 @@ class HomeScreen extends StatelessWidget {
               right:  BorderSide(color: AppTheme.cardBorder, width: 1),
               bottom: BorderSide(color: AppTheme.cardBorder, width: 1),
             ),
-            borderRadius: BorderRadius.circular(4),
+            borderRadius: BorderRadius.circular(8),
           ),
           child: Row(children: [
             Expanded(
@@ -624,11 +632,11 @@ class _QuickAccessGrid extends StatelessWidget {
   Widget build(BuildContext context) {
     final stage = game.effectiveUnlockStage;
     final all = [
-      _QuickItem(GameIconType.scroll,   'CAMPAIGN',  0,  () => context.push(Routes.campaign)),
-      _QuickItem(GameIconType.armor,    'HERO',      0,  () => context.push(Routes.heroHub)),
-      _QuickItem(GameIconType.key,      'DUNGEON',   8,  () => context.push(Routes.dungeon)),
-      _QuickItem(GameIconType.gauntlet, 'GAUNTLET', 11,  () => context.push(Routes.gauntlet)),
-      _QuickItem(GameIconType.skull,    'BOSS RUSH', 15, () => context.push(Routes.bossRush)),
+      _QuickItem(GameIconType.scroll,   AppLocalizations.of(context).modeCampaign,  0,  () => context.push(Routes.campaign)),
+      _QuickItem(GameIconType.armor,    AppLocalizations.of(context).navHero,      0,  () => context.push(Routes.heroHub)),
+      _QuickItem(GameIconType.key,      AppLocalizations.of(context).modeDungeon,   8,  () => context.push(Routes.dungeon)),
+      _QuickItem(GameIconType.gauntlet, AppLocalizations.of(context).modeGauntlet, 11,  () => context.push(Routes.gauntlet)),
+      _QuickItem(GameIconType.skull,    AppLocalizations.of(context).modeBossRush, 15, () => context.push(Routes.bossRush)),
     ];
     final items = all.where((i) => stage >= i.unlock).toList();
 
@@ -650,7 +658,7 @@ class _QuickAccessGrid extends StatelessWidget {
     }
 
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      Text('QUICK ACCESS',
+      Text(AppLocalizations.of(context).homeQuickAccess,
           style: AppTheme.pixelHeading(
               fontSize: 10, letterSpacing: 2, color: AppTheme.textMuted)),
       const SizedBox(height: 8),
@@ -659,6 +667,84 @@ class _QuickAccessGrid extends StatelessWidget {
         if (i < rows.length - 1) const SizedBox(height: 8),
       ],
     ]);
+  }
+}
+
+/// "Next goal" banner on the hub — shows the nearest upcoming unlock milestone
+/// and a progress bar toward it, and taps straight into battle. Gives every
+/// session a visible target so players push past the current fight instead of
+/// bouncing (telemetry 2026-11-15: 44% of sessions ended inside 2 fights).
+class _NextGoalBanner extends StatelessWidget {
+  const _NextGoalBanner({required this.game});
+  final GameState game;
+
+  @override
+  Widget build(BuildContext context) {
+    final goal = game.nextGoal;
+    if (goal == null) return const SizedBox.shrink();
+
+    final current = game.campaignStageIndex;
+    final span = (goal.toStage - goal.fromStage).clamp(1, 1 << 30);
+    final progress = ((current - goal.fromStage) / span).clamp(0.0, 1.0);
+    final remaining = (goal.toStage - current).clamp(0, 1 << 30);
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () => context.push(Routes.battle),
+        borderRadius: BorderRadius.circular(8),
+        child: Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [
+                AppTheme.accentGold.withValues(alpha: 0.16),
+                AppTheme.accentGold.withValues(alpha: 0.05),
+              ],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            border: Border.all(
+                color: AppTheme.accentGold.withValues(alpha: 0.5), width: 1),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Text('🎯', style: const TextStyle(fontSize: 14)),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      AppLocalizations.of(context).homeNextGoal(goal.reward),
+                      style: AppTheme.pixelHeading(
+                          fontSize: 10, letterSpacing: 1, color: AppTheme.accentGold),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: LinearProgressIndicator(
+                  value: progress,
+                  minHeight: 7,
+                  backgroundColor: AppTheme.darkBg,
+                  valueColor:
+                      const AlwaysStoppedAnimation<Color>(AppTheme.accentGold),
+                ),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                AppLocalizations.of(context).homeNextGoalProgress(remaining, goal.stage),
+                style: const TextStyle(fontSize: 11, color: AppTheme.textMuted),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }
 
@@ -672,7 +758,7 @@ class _QuickTile extends StatelessWidget {
       color: Colors.transparent,
       child: InkWell(
         onTap: item.onTap,
-        borderRadius: BorderRadius.circular(6),
+        borderRadius: BorderRadius.circular(8),
         child: Container(
           padding: const EdgeInsets.symmetric(vertical: 14),
           decoration: BoxDecoration(
@@ -687,7 +773,7 @@ class _QuickTile extends StatelessWidget {
               right:  BorderSide(color: AppTheme.accentGold.withValues(alpha: 0.25), width: 1),
               bottom: BorderSide(color: AppTheme.accentGold.withValues(alpha: 0.25), width: 1),
             ),
-            borderRadius: BorderRadius.circular(6),
+            borderRadius: BorderRadius.circular(8),
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -753,7 +839,7 @@ class _GettingStartedCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: const Color(0xFF13110D),
         border: Border.all(color: AppTheme.accentGold.withValues(alpha: 0.35)),
-        borderRadius: BorderRadius.circular(3),
+        borderRadius: BorderRadius.circular(8),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -761,31 +847,31 @@ class _GettingStartedCard extends StatelessWidget {
           Row(children: [
             const GameIcon(GameIconType.flag, size: 13, color: AppTheme.accentGold),
             const SizedBox(width: 6),
-            Text('GETTING STARTED',
+            Text(AppLocalizations.of(context).homeGettingStarted,
                 style: AppTheme.pixelHeading(
                     fontSize: 9, letterSpacing: 2, color: AppTheme.accentGold)),
           ]),
           const SizedBox(height: 10),
           _StepRow(
             done: stage > 0,
-            label: 'Win your first Campaign battle',
+            label: AppLocalizations.of(context).homeStep1,
             onTap: () => context.push(Routes.campaign),
           ),
           _StepRow(
             done: game.hero.level >= 2,
-            label: 'Level up your hero — visit Character Sheet',
+            label: AppLocalizations.of(context).homeStep2,
             onTap: () => context.go(Routes.shell),
           ),
           _StepRow(
             done: game.abilityScoreRank('pwr') > 0 ||
                   game.abilityScoreRank('vit') > 0 ||
                   game.abilityScoreRank('agi') > 0,
-            label: 'Open HERO and buy your first Ability Score upgrade',
+            label: AppLocalizations.of(context).homeStep3,
             onTap: () => context.push(Routes.heroHub),
           ),
           _StepRow(
             done: stage >= 5,
-            label: 'Reach Stage 5 — Abilities and Daily Challenges unlock!',
+            label: AppLocalizations.of(context).homeStep4,
             onTap: stage >= 5 ? null : () => context.push(Routes.campaign),
           ),
         ],
@@ -848,7 +934,7 @@ class _HeroHubCard extends StatelessWidget {
       color: Colors.transparent,
       child: InkWell(
         onTap: () => context.push(Routes.heroHub),
-        borderRadius: BorderRadius.circular(4),
+        borderRadius: BorderRadius.circular(8),
         child: Container(
           padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
           decoration: BoxDecoration(
@@ -867,18 +953,18 @@ class _HeroHubCard extends StatelessWidget {
               right:  BorderSide(color: AppTheme.cardBorder, width: 1),
               bottom: BorderSide(color: AppTheme.cardBorder, width: 1),
             ),
-            borderRadius: BorderRadius.circular(4),
+            borderRadius: BorderRadius.circular(8),
           ),
           child: Row(children: [
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('HERO',
+                  Text(AppLocalizations.of(context).navHero,
                       style: AppTheme.pixelHeading(
                           fontSize: 13, letterSpacing: 1, color: accent)),
                   const SizedBox(height: 5),
-                  Text('UPGRADES  •  ARMORY  •  ALLIES  •  CODEX',
+                  Text(AppLocalizations.of(context).homeHeroSubtitle,
                       style: AppTheme.pixelHeading(
                           fontSize: 9,
                           letterSpacing: 0.5,
@@ -909,7 +995,7 @@ class _LoginStreakButton extends StatelessWidget {
           color: Colors.transparent,
           child: InkWell(
             onTap: () => context.push(Routes.loginStreak),
-            borderRadius: BorderRadius.circular(4),
+            borderRadius: BorderRadius.circular(8),
             child: Container(
               padding:
                   const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
@@ -923,7 +1009,7 @@ class _LoginStreakButton extends StatelessWidget {
                       : AppTheme.accentGold,
                   width: unclaimed ? 1.5 : 1,
                 ),
-                borderRadius: BorderRadius.circular(4),
+                borderRadius: BorderRadius.circular(8),
               ),
               child: Row(children: [
                 Expanded(
@@ -968,7 +1054,7 @@ class _LoginStreakButton extends StatelessWidget {
               final nextDay = ((game.loginStreak) % LoginReward.cycle.length) + 1;
               final next = LoginReward.forDay(nextDay);
               return Row(mainAxisSize: MainAxisSize.min, children: [
-                const Text('Tomorrow: ',
+                Text(AppLocalizations.of(context).homeTomorrow,
                     style: TextStyle(fontSize: 8, color: AppTheme.textMuted)),
                 RewardIcon(reward: next, size: 10),
                 const SizedBox(width: 3),

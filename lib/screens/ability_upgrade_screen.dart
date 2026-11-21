@@ -10,6 +10,8 @@ import '../models/passive_tree.dart';
 import '../services/game_state.dart';
 import '../theme/app_theme.dart';
 import 'main_shell.dart' show TutorialTip;
+import '../l10n/app_localizations.dart';
+import '../l10n/content_l10n.dart';
 
 class AbilityUpgradeScreen extends StatelessWidget {
   const AbilityUpgradeScreen({super.key, this.embedded = false});
@@ -192,7 +194,7 @@ class AbilityUpgradeScreen extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 4),
-          const Text('shards', style: TextStyle(color: Colors.white38, fontSize: 12)),
+          Text(AppLocalizations.of(context).auShards, style: const TextStyle(color: Colors.white38, fontSize: 12)),
           const Spacer(),
           GestureDetector(
             onTap: () async {
@@ -200,20 +202,18 @@ class AbilityUpgradeScreen extends StatelessWidget {
                 context: context,
                 builder: (ctx) => AlertDialog(
                   backgroundColor: const Color(0xFF1a1a2e),
-                  title: Text('Respec Abilities?', style: AppTheme.pixelHeading(fontSize: 14, color: AppTheme.accentGold)),
+                  title: Text(AppLocalizations.of(ctx).auRespecTitle, style: AppTheme.pixelHeading(fontSize: 14, color: AppTheme.accentGold)),
                   content: Text(
-                    'Reset all ability ranks and milestone choices.\n'
-                    'All shards spent will be refunded.\n\n'
-                    'Cost: ${GameState.abilityRespecCost} ZCoins',
+                    AppLocalizations.of(ctx).auRespecBody(GameState.abilityRespecCost),
                     style: const TextStyle(fontSize: 12, color: Colors.white70, height: 1.5),
                   ),
                   actions: [
                     TextButton(onPressed: () => Navigator.pop(ctx, false),
-                        child: const Text('CANCEL', style: TextStyle(color: AppTheme.textMuted))),
+                        child: Text(AppLocalizations.of(ctx).csCancel, style: const TextStyle(color: AppTheme.textMuted))),
                     TextButton(
                       onPressed: game.zcoins >= GameState.abilityRespecCost
                           ? () => Navigator.pop(ctx, true) : null,
-                      child: Text('RESPEC (${GameState.abilityRespecCost} ZC)',
+                      child: Text(AppLocalizations.of(ctx).auRespecConfirm(GameState.abilityRespecCost),
                           style: TextStyle(color: game.zcoins >= GameState.abilityRespecCost
                               ? AppTheme.accentGold : AppTheme.cardBorder)),
                     ),
@@ -226,9 +226,9 @@ class AbilityUpgradeScreen extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
               decoration: BoxDecoration(
                 border: Border.all(color: AppTheme.accentGold.withValues(alpha: 0.4)),
-                borderRadius: BorderRadius.circular(3),
+                borderRadius: BorderRadius.circular(8),
               ),
-              child: Text('RESPEC', style: AppTheme.pixelHeading(
+              child: Text(AppLocalizations.of(context).auRespec, style: AppTheme.pixelHeading(
                   fontSize: 8, color: AppTheme.accentGold.withValues(alpha: 0.7), letterSpacing: 1)),
             ),
           ),
@@ -243,7 +243,7 @@ class AbilityUpgradeScreen extends StatelessWidget {
           TutorialTip(
             tutorialKey: 'abilities',
             game: game,
-            text: 'You earned Shards ◆ — spend them here to unlock and upgrade class abilities that fire automatically in every battle.',
+            text: AppLocalizations.of(context).auTutorial,
           ),
         Text(
           game.hero.heroClass.displayName.toUpperCase(),
@@ -254,9 +254,9 @@ class AbilityUpgradeScreen extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 4),
-        const Text(
-          'Spend shards to empower your abilities. Milestones at ranks 5, 10 and 15. Tier up after rank 15 — each tier unlocks with your difficulty Tier.',
-          style: TextStyle(color: Colors.white38, fontSize: 14),
+        Text(
+          AppLocalizations.of(context).auIntro,
+          style: const TextStyle(color: Colors.white38, fontSize: 14),
         ),
         const SizedBox(height: 16),
         ...allAbilities.map((a) => _AbilityCard(
@@ -296,7 +296,7 @@ class AbilityUpgradeScreen extends StatelessWidget {
     return Scaffold(
       backgroundColor: AppTheme.darkBg,
       appBar: AppBar(
-        title: const Text('ABILITY UPGRADES'),
+        title: Text(AppLocalizations.of(context).auTitle),
         actions: [
           Padding(
             padding: const EdgeInsets.only(right: 16),
@@ -314,8 +314,8 @@ class AbilityUpgradeScreen extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(width: 4),
-                const Text('shards',
-                    style: TextStyle(color: Colors.white38, fontSize: 12)),
+                Text(AppLocalizations.of(context).auShards,
+                    style: const TextStyle(color: Colors.white38, fontSize: 12)),
               ],
             ),
           ),
@@ -378,6 +378,7 @@ class _AbilityCard extends StatelessWidget {
                 : (tier > 0 ? tierColor.withOpacity(0.5) : effectColor.withOpacity(0.4)),
             width: 1.5,
           ),
+          borderRadius: BorderRadius.circular(8),
         ),
         padding: const EdgeInsets.all(14),
         child: Column(
@@ -426,7 +427,7 @@ class _AbilityCard extends StatelessWidget {
                 // Tier badge image
                 if (!locked && tier > 0) ...[
                   Image.asset(
-                    'assets/images/tier_$tier.png',
+                    'assets/images/tier_$tier.webp',
                     width: 18, height: 18,
                     errorBuilder: (_, __, ___) => const SizedBox.shrink(),
                   ),
@@ -464,7 +465,7 @@ class _AbilityCard extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        ability.name,
+                        ContentL10n.of(context).tr(ability.id, 'title', ability.name),
                         style: TextStyle(
                           color: locked ? Colors.white30 : Colors.white,
                           fontSize: 16,
@@ -473,7 +474,7 @@ class _AbilityCard extends StatelessWidget {
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        ability.description,
+                        ContentL10n.of(context).tr(ability.id, 'desc', ability.description),
                         style: const TextStyle(color: Colors.white54, fontSize: 14),
                       ),
                     ],
@@ -512,9 +513,9 @@ class _AbilityCard extends StatelessWidget {
             // Bottom action area
             if (!locked) ...[
               if (maxed)
-                const Padding(
-                  padding: EdgeInsets.only(top: 8),
-                  child: Text('MAX TIER  ✦', style: TextStyle(
+                Padding(
+                  padding: const EdgeInsets.only(top: 8),
+                  child: Text(AppLocalizations.of(context).auMaxTier, style: const TextStyle(
                     color: AppTheme.accentGold, fontSize: 11,
                     fontWeight: FontWeight.bold, letterSpacing: 1.5,
                   )),
@@ -527,19 +528,19 @@ class _AbilityCard extends StatelessWidget {
                     padding: const EdgeInsets.symmetric(vertical: 11),
                     decoration: BoxDecoration(
                       border: Border.all(color: Colors.white24),
-                      borderRadius: BorderRadius.circular(3),
+                      borderRadius: BorderRadius.circular(8),
                     ),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Image.asset(
-                          'assets/images/tier_${tier + 1}.png',
+                          'assets/images/tier_${tier + 1}.webp',
                           width: 16, height: 16,
                           errorBuilder: (_, __, ___) => const Icon(Icons.lock, size: 14, color: Colors.white30),
                         ),
                         const SizedBox(width: 8),
                         Text(
-                          'TIER ${tier + 1}  —  Requires Difficulty Tier ${game.abilityNextTierPrestige(ability.id)}',
+                          AppLocalizations.of(context).auTierLockedLabel(tier + 1, game.abilityNextTierPrestige(ability.id)),
                           style: const TextStyle(
                             color: Colors.white30,
                             fontSize: 13,
@@ -577,7 +578,7 @@ class _AbilityCard extends StatelessWidget {
                       children: [
                         if (isTierUp) ...[
                           Image.asset(
-                            'assets/images/tier_${tier + 1}.png',
+                            'assets/images/tier_${tier + 1}.webp',
                             width: 14, height: 14,
                             errorBuilder: (_, __, ___) => const Icon(Icons.upgrade, size: 13),
                           ),
@@ -654,7 +655,7 @@ class _AbilityAscendRow extends StatelessWidget {
       decoration: BoxDecoration(
         color: const Color(0xFF1a160f),
         border: Border.all(color: gold.withValues(alpha: 0.35)),
-        borderRadius: BorderRadius.circular(3),
+        borderRadius: BorderRadius.circular(8),
       ),
       child: Row(children: [
         const Text('✦', style: TextStyle(color: gold, fontSize: 16)),
@@ -664,23 +665,23 @@ class _AbilityAscendRow extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Row(children: [
-                const Text('ASCENSION',
-                    style: TextStyle(color: gold, fontSize: 11,
+                Text(AppLocalizations.of(context).auAscension,
+                    style: const TextStyle(color: gold, fontSize: 11,
                         fontWeight: FontWeight.bold, letterSpacing: 1)),
                 const SizedBox(width: 6),
                 Text('$tier / ${GameState.kAbilityAscendMaxTier}',
                     style: const TextStyle(color: Colors.white70, fontSize: 11)),
                 const Spacer(),
-                Text('Tier $cap unlocked',
+                Text(AppLocalizations.of(context).auTierUnlocked(cap),
                     style: const TextStyle(color: Colors.white38, fontSize: 11)),
               ]),
               Text(
                 maxed
-                    ? 'Fully ascended  ·  +$curPct% ability power'
+                    ? AppLocalizations.of(context).auAscFullyAscended(curPct)
                     : tierLocked
-                        ? '+$curPct% power  ·  Unlock difficulty Tier ${tier + 1} (rebirth) to ascend further'
-                        : '+$curPct%  →  +$nextPct% power  ·  costs $cost ✦ Paragon'
-                            '${afford ? '' : '  (you have ${game.prestigeSouls})'}',
+                        ? AppLocalizations.of(context).auAscTierLocked(curPct, tier + 1)
+                        : AppLocalizations.of(context).auAscUpgrade(curPct, nextPct, cost)
+                            + (afford ? '' : AppLocalizations.of(context).auAscYouHave(game.prestigeSouls)),
                 style: const TextStyle(color: Colors.white38, fontSize: 11),
               ),
             ],
@@ -688,8 +689,8 @@ class _AbilityAscendRow extends StatelessWidget {
         ),
         const SizedBox(width: 8),
         if (maxed)
-          const Text('MAX',
-              style: TextStyle(color: gold, fontSize: 12, fontWeight: FontWeight.bold))
+          Text(AppLocalizations.of(context).auMax,
+              style: const TextStyle(color: gold, fontSize: 12, fontWeight: FontWeight.bold))
         else
           OutlinedButton(
             onPressed: canAscend
@@ -701,7 +702,7 @@ class _AbilityAscendRow extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
               minimumSize: const Size(0, 34),
             ),
-            child: Text(tierLocked ? 'LOCKED' : 'ASCEND  $cost ✦',
+            child: Text(tierLocked ? AppLocalizations.of(context).auLocked : AppLocalizations.of(context).auAscendBtn(cost),
                 style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, letterSpacing: 1)),
           ),
       ]),
@@ -742,6 +743,7 @@ class _UltimateTeaserCard extends StatelessWidget {
         decoration: BoxDecoration(
           color: const Color(0xFF17131F),
           border: Border.all(color: _ultColor.withOpacity(0.45), width: 1.5),
+          borderRadius: BorderRadius.circular(8),
         ),
         padding: const EdgeInsets.all(14),
         child: Column(
@@ -752,15 +754,15 @@ class _UltimateTeaserCard extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                 color: _ultColor.withOpacity(0.18),
-                child: const Text('ULTIMATE',
-                    style: TextStyle(color: _ultColor, fontSize: 9,
+                child: Text(AppLocalizations.of(context).auUltimate,
+                    style: const TextStyle(color: _ultColor, fontSize: 9,
                         fontWeight: FontWeight.bold, letterSpacing: 1)),
               ),
               const SizedBox(width: 8),
               Row(children: [
                 const Icon(Icons.lock, size: 12, color: Colors.white38),
                 const SizedBox(width: 3),
-                Text('UNLOCKS LV ${ultimate.levelRequired}',
+                Text(AppLocalizations.of(context).auUnlocksLv(ultimate.levelRequired),
                     style: const TextStyle(color: Colors.white38, fontSize: 10,
                         fontWeight: FontWeight.bold)),
               ]),
@@ -776,11 +778,11 @@ class _UltimateTeaserCard extends StatelessWidget {
               Expanded(child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(ultimate.name,
+                  Text(ContentL10n.of(context).tr(ultimate.id, 'title', ultimate.name),
                       style: const TextStyle(color: Colors.white38, fontSize: 16,
                           fontWeight: FontWeight.bold)),
                   const SizedBox(height: 4),
-                  Text(ultimate.description,
+                  Text(ContentL10n.of(context).tr(ultimate.id, 'desc', ultimate.description),
                       style: const TextStyle(color: Colors.white38, fontSize: 14)),
                 ],
               )),
@@ -793,19 +795,20 @@ class _UltimateTeaserCard extends StatelessWidget {
               decoration: BoxDecoration(
                 color: Colors.black.withOpacity(0.25),
                 border: Border.all(color: _ultColor.withOpacity(0.25)),
+                borderRadius: BorderRadius.circular(8),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text('🔒 Finish your class questline to unlock',
-                      style: TextStyle(color: _ultColor, fontSize: 14,
+                  Text(AppLocalizations.of(context).auFinishQuestline,
+                      style: const TextStyle(color: _ultColor, fontSize: 14,
                           fontWeight: FontWeight.bold)),
                   const SizedBox(height: 4),
-                  req(atLevel, 'Reach Level ${ultimate.levelRequired}  (you: Lv ${game.hero.level})'),
-                  req(claimed >= 5, 'Complete all 5 ${game.hero.heroClass.displayName} class quests  ($claimed / 5)'),
+                  req(atLevel, AppLocalizations.of(context).auReachLevel(ultimate.levelRequired, game.hero.level)),
+                  req(claimed >= 5, AppLocalizations.of(context).auCompleteQuests(game.hero.heroClass.displayName, claimed)),
                   const SizedBox(height: 6),
-                  const Text('Track your quests in the Quests tab.',
-                      style: TextStyle(color: Colors.white38, fontSize: 13,
+                  Text(AppLocalizations.of(context).auTrackQuests,
+                      style: const TextStyle(color: Colors.white38, fontSize: 13,
                           fontStyle: FontStyle.italic)),
                 ],
               ),
@@ -946,6 +949,7 @@ class _MilestoneRow extends StatelessWidget {
               children: [
                 Expanded(child: _ChoiceOption(
                   choice: milestone.a,
+                  l10nKey: '$abilityId.m${milestone.rank}a',
                   effectNote: _milestoneEffectNote(milestone.a, ability, game),
                   effectColor: effectColor,
                   onChoose: () {
@@ -956,6 +960,7 @@ class _MilestoneRow extends StatelessWidget {
                 const SizedBox(width: 8),
                 Expanded(child: _ChoiceOption(
                   choice: milestone.b,
+                  l10nKey: '$abilityId.m${milestone.rank}b',
                   effectNote: _milestoneEffectNote(milestone.b, ability, game),
                   effectColor: effectColor,
                   onChoose: () {
@@ -968,6 +973,7 @@ class _MilestoneRow extends StatelessWidget {
           else
             _ChosenBadge(
               choice: chosen == 'a' ? milestone.a : milestone.b,
+              l10nKey: '$abilityId.m${milestone.rank}$chosen',
               effectNote: _milestoneEffectNote(
                   chosen == 'a' ? milestone.a : milestone.b, ability, game),
               effectColor: effectColor,
@@ -981,12 +987,14 @@ class _MilestoneRow extends StatelessWidget {
 class _ChoiceOption extends StatelessWidget {
   const _ChoiceOption({
     required this.choice,
+    required this.l10nKey,
     required this.effectNote,
     required this.effectColor,
     required this.onChoose,
   });
 
   final AbilityChoice  choice;
+  final String         l10nKey;
   final String?        effectNote;
   final Color          effectColor;
   final VoidCallback   onChoose;
@@ -998,18 +1006,18 @@ class _ChoiceOption extends StatelessWidget {
       decoration: BoxDecoration(
         color: const Color(0xFF231F1B),
         border: Border.all(color: effectColor.withOpacity(0.35)),
-        borderRadius: BorderRadius.circular(3),
+        borderRadius: BorderRadius.circular(8),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(choice.name,
+          Text(ContentL10n.of(context).tr(l10nKey, 'title', choice.name),
               style: TextStyle(
                   color: effectColor,
                   fontSize: 12,
                   fontWeight: FontWeight.bold)),
           const SizedBox(height: 4),
-          Text(choice.description,
+          Text(ContentL10n.of(context).tr(l10nKey, 'desc', choice.description),
               style: const TextStyle(
                   color: Colors.white54, fontSize: 12, height: 1.3)),
           if (effectNote != null) ...[
@@ -1030,7 +1038,7 @@ class _ChoiceOption extends StatelessWidget {
                 side: BorderSide(color: effectColor.withOpacity(0.7)),
                 foregroundColor: effectColor,
               ),
-              child: Text('CHOOSE',
+              child: Text(AppLocalizations.of(context).auChoose,
                   style: TextStyle(
                       fontSize: 13,
                       fontWeight: FontWeight.bold,
@@ -1045,9 +1053,10 @@ class _ChoiceOption extends StatelessWidget {
 }
 
 class _ChosenBadge extends StatelessWidget {
-  const _ChosenBadge({required this.choice, required this.effectNote, required this.effectColor});
+  const _ChosenBadge({required this.choice, required this.l10nKey, required this.effectNote, required this.effectColor});
 
   final AbilityChoice choice;
+  final String l10nKey;
   final String?       effectNote;
   final Color         effectColor;
 
@@ -1058,7 +1067,7 @@ class _ChosenBadge extends StatelessWidget {
       decoration: BoxDecoration(
         color: effectColor.withOpacity(0.08),
         border: Border.all(color: effectColor.withOpacity(0.5)),
-        borderRadius: BorderRadius.circular(3),
+        borderRadius: BorderRadius.circular(8),
       ),
       child: Row(children: [
         Icon(Icons.check_circle_outline, color: effectColor, size: 14),
@@ -1066,13 +1075,13 @@ class _ChosenBadge extends StatelessWidget {
         Expanded(child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(choice.name,
+            Text(ContentL10n.of(context).tr(l10nKey, 'title', choice.name),
                 style: TextStyle(
                     color: effectColor,
                     fontSize: 12,
                     fontWeight: FontWeight.bold)),
             const SizedBox(height: 2),
-            Text(choice.description,
+            Text(ContentL10n.of(context).tr(l10nKey, 'desc', choice.description),
                 style:
                     const TextStyle(color: Colors.white38, fontSize: 11)),
             if (effectNote != null)

@@ -8,6 +8,7 @@ import '../theme/app_theme.dart';
 import '../widgets/item_sprites.dart';
 import '../widgets/currency_icon.dart';
 import '../widgets/zcoin_icon.dart';
+import '../l10n/app_localizations.dart';
 
 class InventoryScreen extends StatefulWidget {
   const InventoryScreen({super.key, this.embedded = false});
@@ -60,7 +61,7 @@ class _InventoryScreenState extends State<InventoryScreen>
       color: const Color(0xFF211E1A),
       padding: const EdgeInsets.fromLTRB(12, 6, 12, 6),
       child: Row(children: [
-        Text('(${bag.length}/$cap)',
+        Text(AppLocalizations.of(context).invBagCount(bag.length, cap),
             style: AppTheme.pixelHeading(
                 fontSize: 11, letterSpacing: 1, color: AppTheme.accentGold)),
         const Spacer(),
@@ -76,12 +77,12 @@ class _InventoryScreenState extends State<InventoryScreen>
                 color: const Color(0xFF44ddcc).withValues(alpha: 0.1),
                 border: Border.all(
                     color: const Color(0xFF44ddcc).withValues(alpha: 0.6)),
-                borderRadius: BorderRadius.circular(3),
+                borderRadius: BorderRadius.circular(8),
               ),
               child: Row(mainAxisSize: MainAxisSize.min, children: [
                 const ZCoinIcon(size: 11, animate: false),
                 const SizedBox(width: 4),
-                Text('+ TAB  ${game.nextStashTabCost}',
+                Text(AppLocalizations.of(context).invBuyTab(game.nextStashTabCost ?? 0),
                     style: AppTheme.pixelHeading(
                         fontSize: 9, color: const Color(0xFF44ddcc))),
               ]),
@@ -100,9 +101,9 @@ class _InventoryScreenState extends State<InventoryScreen>
               color: AppTheme.accentGold.withValues(alpha: 0.08),
               border:
                   Border.all(color: AppTheme.accentGold.withValues(alpha: 0.5)),
-              borderRadius: BorderRadius.circular(3),
+              borderRadius: BorderRadius.circular(8),
             ),
-            child: Text('AUTO EQUIP',
+            child: Text(AppLocalizations.of(context).invAutoEquip,
                 style: AppTheme.pixelHeading(
                     fontSize: 9, color: AppTheme.accentGold)),
           ),
@@ -167,7 +168,7 @@ class _InventoryScreenState extends State<InventoryScreen>
             tabs: List.generate(tabCount, (i) {
               final start = i * 20;
               final end = (start + 20).clamp(0, bag.length);
-              return Tab(text: 'TAB ${i + 1}  (${end - start})');
+              return Tab(text: AppLocalizations.of(context).invTabN(i + 1, end - start));
             }),
           )
         : null;
@@ -201,8 +202,8 @@ class _InventoryScreenState extends State<InventoryScreen>
           unselectedLabelColor: AppTheme.textMuted,
           indicatorColor: AppTheme.accentGold,
           tabs: [
-            const Tab(text: 'EQUIPMENT'),
-            Tab(text: 'BAG  (${bag.length}/$cap)'),
+            Tab(text: AppLocalizations.of(context).invEquipment),
+            Tab(text: AppLocalizations.of(context).invBag(bag.length, cap)),
           ],
         ),
       ),
@@ -240,7 +241,7 @@ class _InventoryScreenState extends State<InventoryScreen>
       backgroundColor: const Color(0xFF1B1A17),
       appBar: AppBar(
         backgroundColor: const Color(0xFF2A2623),
-        title: Text('INVENTORY',
+        title: Text(AppLocalizations.of(context).navInventory,
             style: AppTheme.pixelHeading(fontSize: 15, letterSpacing: 2)),
         actions: [
           Padding(
@@ -256,9 +257,9 @@ class _InventoryScreenState extends State<InventoryScreen>
                   color: AppTheme.accentGold.withValues(alpha: 0.08),
                   border: Border.all(
                       color: AppTheme.accentGold.withValues(alpha: 0.5)),
-                  borderRadius: BorderRadius.circular(3),
+                  borderRadius: BorderRadius.circular(8),
                 ),
-                child: Text('AUTO EQUIP',
+                child: Text(AppLocalizations.of(context).invAutoEquip,
                     style: AppTheme.pixelHeading(
                         fontSize: 10, color: AppTheme.accentGold)),
               ),
@@ -279,12 +280,12 @@ class _InventoryScreenState extends State<InventoryScreen>
                     color: const Color(0xFF44ddcc).withValues(alpha: 0.1),
                     border: Border.all(
                         color: const Color(0xFF44ddcc).withValues(alpha: 0.6)),
-                    borderRadius: BorderRadius.circular(3),
+                    borderRadius: BorderRadius.circular(8),
                   ),
                   child: Row(mainAxisSize: MainAxisSize.min, children: [
                     const ZCoinIcon(size: 12, animate: false),
                     const SizedBox(width: 4),
-                    Text('+ TAB  ${game.nextStashTabCost}',
+                    Text(AppLocalizations.of(context).invBuyTab(game.nextStashTabCost ?? 0),
                         style: AppTheme.pixelHeading(
                             fontSize: 10, color: const Color(0xFF44ddcc))),
                   ]),
@@ -343,8 +344,8 @@ class _EquippedGrid extends StatelessWidget {
             // Background image
             Positioned.fill(
               child: ClipRRect(
-                borderRadius: BorderRadius.circular(6),
-                child: Image.asset('assets/images/equipment_layout.png',
+                borderRadius: BorderRadius.circular(8),
+                child: Image.asset('assets/images/equipment_layout.webp',
                     fit: BoxFit.fill,
                     errorBuilder: (_, __, ___) =>
                         Container(color: const Color(0xFF1a1816))),
@@ -389,7 +390,7 @@ class _EquippedGrid extends StatelessWidget {
         game: game,
         actions: [
           _SheetAction(
-            label: 'Unequip',
+            label: AppLocalizations.of(context).invUnequip,
             color: AppTheme.textMuted,
             onTap: () {
               game.unequipSlot(slot);
@@ -418,7 +419,7 @@ class _PaperDollSlot extends StatelessWidget {
                 color: item!.rarityColor.withValues(alpha: 0.7),
                 width: 1,
               ),
-              borderRadius: BorderRadius.circular(3),
+              borderRadius: BorderRadius.circular(8),
             ),
             child: Center(
               child: FractionallySizedBox(
@@ -460,7 +461,7 @@ class _BagGrid extends StatelessWidget {
       return Center(
         child: Padding(
           padding: const EdgeInsets.all(24),
-          child: Text('No items in this tab.',
+          child: Text(AppLocalizations.of(context).invNoItems,
               style: const TextStyle(color: AppTheme.textMuted, fontSize: 13)),
         ),
       );
@@ -522,7 +523,7 @@ class _BagGrid extends StatelessWidget {
                   Row(children: [
                     if (canEquip) Expanded(child: _QuickBtn(
                       icon: Icons.check_circle_outline,
-                      label: 'EQUIP',
+                      label: AppLocalizations.of(context).auraEquip,
                       color: const Color(0xFF44cc88),
                       onTap: () {
                         game.equipItem(item);
@@ -533,7 +534,7 @@ class _BagGrid extends StatelessWidget {
                     if (canEquip) const SizedBox(width: 8),
                     Expanded(child: _QuickBtn(
                       icon: Icons.auto_awesome,
-                      label: 'UPGRADE',
+                      label: AppLocalizations.of(context).forgeUpgrade,
                       color: AppTheme.accentGold,
                       onTap: () {
                         Navigator.pop(context);
@@ -584,12 +585,12 @@ class _BagGrid extends StatelessWidget {
     final cantEquip = !game.canEquip(item);
     final reason =
         item.requiredClass != null && item.requiredClass != game.hero.heroClass
-            ? 'Requires ${item.requiredClass!.displayName}'
+            ? AppLocalizations.of(context).invReqClass(item.requiredClass!.displayName)
             : game.hero.level < item.levelRequired
-                ? 'Requires Level ${item.levelRequired}'
+                ? AppLocalizations.of(context).invReqLevel(item.levelRequired)
                 : item.rebirthRequired > 0 &&
                         game.highestUnlockedTier < item.rebirthRequired
-                    ? 'Requires Tier ${item.rebirthRequired}'
+                    ? AppLocalizations.of(context).invReqTier(item.rebirthRequired)
                     : null;
 
     showModalBottomSheet(
@@ -602,7 +603,7 @@ class _BagGrid extends StatelessWidget {
         compareWith: equipped,
         actions: [
           _SheetAction(
-            label: cantEquip ? (reason ?? 'Cannot Equip') : 'Equip',
+            label: cantEquip ? (reason ?? AppLocalizations.of(context).invCannotEquip) : AppLocalizations.of(context).invEquip,
             color: cantEquip ? const Color(0xFF884444) : AppTheme.accentGold,
             onTap: cantEquip
                 ? null
@@ -612,7 +613,7 @@ class _BagGrid extends StatelessWidget {
                   },
           ),
           _SheetAction(
-            label: item.locked ? 'Unlock 🔓' : 'Lock 🔒',
+            label: item.locked ? AppLocalizations.of(context).invUnlock : AppLocalizations.of(context).invLock,
             color:
                 item.locked ? const Color(0xFF44cc88) : const Color(0xFFffaa44),
             onTap: () {
@@ -623,7 +624,7 @@ class _BagGrid extends StatelessWidget {
           ),
           if (!item.locked)
             _SheetAction(
-              label: 'Discard',
+              label: AppLocalizations.of(context).invDiscard,
               color: const Color(0xFFcc4444),
               onTap: () {
                 game.discardBagItem(index);
@@ -665,7 +666,7 @@ class _ItemTile extends StatelessWidget {
         border: Border.all(
             color: borderColor.withValues(alpha: hasItem ? 0.7 : 0.3),
             width: 1),
-        borderRadius: BorderRadius.circular(3),
+        borderRadius: BorderRadius.circular(8),
       ),
       child: hasItem
           ? Center(
@@ -801,7 +802,7 @@ class _ItemDetailSheetState extends State<_ItemDetailSheet> {
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(
                   border: Border.all(color: item.rarityColor),
-                  borderRadius: BorderRadius.circular(4),
+                  borderRadius: BorderRadius.circular(8),
                 ),
                 child: Text(item.rarityLabel,
                     style: TextStyle(fontSize: 11, color: item.rarityColor)),
@@ -823,7 +824,7 @@ class _ItemDetailSheetState extends State<_ItemDetailSheet> {
                 color: item.itemSet!.color.withValues(alpha: 0.08),
                 border: Border.all(
                     color: item.itemSet!.color.withValues(alpha: 0.5)),
-                borderRadius: BorderRadius.circular(4),
+                borderRadius: BorderRadius.circular(8),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -857,7 +858,7 @@ class _ItemDetailSheetState extends State<_ItemDetailSheet> {
                 color: const Color(0xFFFFD700).withValues(alpha: 0.08),
                 border: Border.all(
                     color: const Color(0xFFFFD700).withValues(alpha: 0.5)),
-                borderRadius: BorderRadius.circular(4),
+                borderRadius: BorderRadius.circular(8),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -890,7 +891,7 @@ class _ItemDetailSheetState extends State<_ItemDetailSheet> {
               final badgeColor = wrongClass
                   ? const Color(0xFFcc4444)
                   : const Color(0xFFFFD700);
-              final classLabel = item.requiredClass?.displayName ?? 'Any';
+              final classLabel = item.requiredClass?.displayName ?? AppLocalizations.of(context).invAny;
               final modParts = <String>[];
               if (item.abilityValueMult != 1.0) {
                 modParts.add('${item.abilityValueMult}× value');
@@ -931,20 +932,20 @@ class _ItemDetailSheetState extends State<_ItemDetailSheet> {
                 decoration: BoxDecoration(
                   color: badgeColor.withValues(alpha: 0.08),
                   border: Border.all(color: badgeColor.withValues(alpha: 0.5)),
-                  borderRadius: BorderRadius.circular(4),
+                  borderRadius: BorderRadius.circular(8),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Row(children: [
-                      Text('★ Unique — $classLabel only',
+                      Text(AppLocalizations.of(context).invUniqueOnly(classLabel),
                           style: TextStyle(
                               fontSize: 12,
                               fontWeight: FontWeight.bold,
                               color: badgeColor)),
                       if (wrongClass) ...[
                         const SizedBox(width: 6),
-                        const Text('(wrong class)',
+                        Text(AppLocalizations.of(context).invWrongClass,
                             style: TextStyle(
                                 fontSize: 10, color: Color(0xFFcc4444))),
                       ],
@@ -980,19 +981,19 @@ class _ItemDetailSheetState extends State<_ItemDetailSheet> {
               decoration: BoxDecoration(
                 color: const Color(0xFF1a1612),
                 border: Border.all(color: const Color(0xFF3a3020)),
-                borderRadius: BorderRadius.circular(3),
+                borderRadius: BorderRadius.circular(8),
               ),
               child: Row(
                 children: [
                   Expanded(
-                      child: Text('STAT',
+                      child: Text(AppLocalizations.of(context).invColStat,
                           style: AppTheme.pixelHeading(
                               fontSize: 9,
                               color: AppTheme.textMuted,
                               letterSpacing: 1))),
                   SizedBox(
                       width: 38,
-                      child: Text('THIS',
+                      child: Text(AppLocalizations.of(context).invColThis,
                           style: AppTheme.pixelHeading(
                               fontSize: 9,
                               color: item.rarityColor,
@@ -1001,7 +1002,7 @@ class _ItemDetailSheetState extends State<_ItemDetailSheet> {
                   const SizedBox(width: 6),
                   SizedBox(
                       width: 38,
-                      child: Text('EQPD',
+                      child: Text(AppLocalizations.of(context).invColEqpd,
                           style: AppTheme.pixelHeading(
                               fontSize: 9,
                               color: AppTheme.textMuted,
@@ -1010,7 +1011,7 @@ class _ItemDetailSheetState extends State<_ItemDetailSheet> {
                   const SizedBox(width: 6),
                   SizedBox(
                       width: 44,
-                      child: Text('DIFF',
+                      child: Text(AppLocalizations.of(context).invColDiff,
                           style: AppTheme.pixelHeading(
                               fontSize: 9,
                               color: AppTheme.textMuted,
@@ -1107,7 +1108,7 @@ class _ItemDetailSheetState extends State<_ItemDetailSheet> {
                     decoration: diff != 0
                         ? BoxDecoration(
                             color: diffColor.withValues(alpha: 0.12),
-                            borderRadius: BorderRadius.circular(3),
+                            borderRadius: BorderRadius.circular(8),
                           )
                         : null,
                     child: Text(diff != 0 ? '$diffIcon $diffStr' : '=',
@@ -1210,7 +1211,7 @@ class _GemSocketRow extends StatelessWidget {
             : const Color(0xFF231F1B),
         border: Border.all(
             color: borderColor.withValues(alpha: gem != null ? 0.5 : 0.3)),
-        borderRadius: BorderRadius.circular(4),
+        borderRadius: BorderRadius.circular(8),
       ),
       child: Row(children: [
         Text(gem != null ? gem.type.emoji : '◯',
@@ -1235,15 +1236,15 @@ class _GemSocketRow extends StatelessWidget {
                               : const Color(0xFF66aaff))),
                 ])
               : Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  const Text('Empty Socket',
+                  Text(AppLocalizations.of(context).invEmptySocket,
                       style: TextStyle(
                           fontSize: 13,
                           color: AppTheme.textMuted,
                           fontWeight: FontWeight.bold)),
                   Text(
                       game.gemBag.isEmpty
-                          ? 'Craft gems in Forge → Gems tab'
-                          : '${game.gemBag.length} gem(s) available to socket',
+                          ? AppLocalizations.of(context).invCraftGems
+                          : AppLocalizations.of(context).invGemsAvailable(game.gemBag.length),
                       style: const TextStyle(
                           fontSize: 11, color: AppTheme.textMuted)),
                 ]),
@@ -1256,9 +1257,9 @@ class _GemSocketRow extends StatelessWidget {
               decoration: BoxDecoration(
                 border: Border.all(
                     color: const Color(0xFFcc4444).withValues(alpha: 0.6)),
-                borderRadius: BorderRadius.circular(3),
+                borderRadius: BorderRadius.circular(8),
               ),
-              child: const Text('REMOVE',
+              child: Text(AppLocalizations.of(context).invRemove,
                   style: TextStyle(fontSize: 10, color: Color(0xFFcc6666))),
             ),
           ),
@@ -1273,9 +1274,9 @@ class _GemSocketRow extends StatelessWidget {
                 color: AppTheme.accentGold.withValues(alpha: 0.08),
                 border: Border.all(
                     color: AppTheme.accentGold.withValues(alpha: 0.5)),
-                borderRadius: BorderRadius.circular(3),
+                borderRadius: BorderRadius.circular(8),
               ),
-              child: Text(gem != null ? 'REPLACE' : 'SOCKET',
+              child: Text(gem != null ? AppLocalizations.of(context).forgeReplace : AppLocalizations.of(context).invSocket,
                   style: AppTheme.pixelHeading(
                       fontSize: 10, color: AppTheme.accentGold)),
             ),
@@ -1300,7 +1301,7 @@ class _GemSocketRow extends StatelessWidget {
               padding: const EdgeInsets.fromLTRB(16, 14, 16, 8),
               child: Row(children: [
                 Expanded(
-                    child: Text('Choose a gem to socket into ${item.name}',
+                    child: Text(AppLocalizations.of(context).invChooseGem(item.name),
                         style: const TextStyle(
                             fontSize: 13, color: AppTheme.textLight))),
               ]),
@@ -1333,7 +1334,7 @@ class _GemSocketRow extends StatelessWidget {
                         color: const Color(0xFF231F1B),
                         border:
                             Border.all(color: gem.color.withValues(alpha: 0.4)),
-                        borderRadius: BorderRadius.circular(4),
+                        borderRadius: BorderRadius.circular(8),
                       ),
                       child: Row(children: [
                         Text(gem.type.emoji,
@@ -1349,7 +1350,7 @@ class _GemSocketRow extends StatelessWidget {
                                     fontWeight: FontWeight.bold,
                                     color: gem.color)),
                             const SizedBox(height: 3),
-                            Text('On this ${item.slot.label}: ${gem.bonusLabelFor(item.slot)}',
+                            Text(AppLocalizations.of(context).invOnThis(item.slot.label, gem.bonusLabelFor(item.slot)),
                                 style: const TextStyle(
                                     fontSize: 13, color: AppTheme.textLight)),
                           ],
@@ -1371,19 +1372,19 @@ class _GemSocketRow extends StatelessWidget {
       context: context,
       builder: (_) => AlertDialog(
         backgroundColor: const Color(0xFF2A2623),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
-        title: Text('Remove Gem?',
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        title: Text(AppLocalizations.of(context).invRemoveGem,
             style: AppTheme.pixelHeading(
                 fontSize: 14, color: const Color(0xFFcc4444))),
         content: Text(
-          '${item.gem!.name} will be destroyed. Gems cannot be recovered once removed.',
+          AppLocalizations.of(context).invRemoveBody(item.gem!.name),
           style: const TextStyle(
               fontSize: 13, color: AppTheme.textLight, height: 1.4),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: Text('CANCEL',
+            child: Text(AppLocalizations.of(context).csCancel,
                 style: AppTheme.pixelHeading(
                     fontSize: 11, color: AppTheme.textMuted)),
           ),
@@ -1393,7 +1394,7 @@ class _GemSocketRow extends StatelessWidget {
               Navigator.pop(context);
               onChanged();
             },
-            child: Text('DESTROY',
+            child: Text(AppLocalizations.of(context).invDestroy,
                 style: AppTheme.pixelHeading(
                     fontSize: 11, color: const Color(0xFFcc4444))),
           ),
@@ -1407,19 +1408,19 @@ class _GemSocketRow extends StatelessWidget {
       context: context,
       builder: (_) => AlertDialog(
         backgroundColor: const Color(0xFF2A2623),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
-        title: Text('Replace Gem?',
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        title: Text(AppLocalizations.of(context).forgeReplaceGem,
             style: AppTheme.pixelHeading(
                 fontSize: 14, color: AppTheme.accentGold)),
         content: Text(
-          '${item.gem!.name} will be destroyed and replaced with ${newGem.name}.',
+          AppLocalizations.of(context).invReplaceBody(item.gem!.name, newGem.name),
           style: const TextStyle(
               fontSize: 13, color: AppTheme.textLight, height: 1.4),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: Text('CANCEL',
+            child: Text(AppLocalizations.of(context).csCancel,
                 style: AppTheme.pixelHeading(
                     fontSize: 11, color: AppTheme.textMuted)),
           ),
@@ -1429,7 +1430,7 @@ class _GemSocketRow extends StatelessWidget {
               Navigator.pop(context);
               onChanged();
             },
-            child: Text('REPLACE',
+            child: Text(AppLocalizations.of(context).forgeReplace,
                 style: AppTheme.pixelHeading(
                     fontSize: 11, color: const Color(0xFFcc4444))),
           ),
@@ -1477,7 +1478,7 @@ class _FilterSortBar extends StatelessWidget {
         SingleChildScrollView(
           scrollDirection: Axis.horizontal,
           child: Row(children: [
-            const Text('Sort:', style: TextStyle(fontSize: 9, color: AppTheme.textMuted)),
+            Text(AppLocalizations.of(context).invSort, style: const TextStyle(fontSize: 9, color: AppTheme.textMuted)),
             const SizedBox(width: 6),
             for (final s in _SortOrder.values)
               _Chip(
@@ -1486,7 +1487,7 @@ class _FilterSortBar extends StatelessWidget {
                 onTap: () => onSort(s),
               ),
             const SizedBox(width: 12),
-            const Text('Filter:', style: TextStyle(fontSize: 9, color: AppTheme.textMuted)),
+            Text(AppLocalizations.of(context).invFilter, style: const TextStyle(fontSize: 9, color: AppTheme.textMuted)),
             const SizedBox(width: 6),
             for (final f in _slots.entries)
               _Chip(
@@ -1516,7 +1517,7 @@ class _Chip extends StatelessWidget {
       decoration: BoxDecoration(
         color: active ? AppTheme.accentGold.withValues(alpha: 0.15) : Colors.transparent,
         border: Border.all(color: active ? AppTheme.accentGold : AppTheme.cardBorder),
-        borderRadius: BorderRadius.circular(3),
+        borderRadius: BorderRadius.circular(8),
       ),
       child: Text(label, style: TextStyle(
           fontSize: 9,

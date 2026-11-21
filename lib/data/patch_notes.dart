@@ -19,6 +19,63 @@ int get kLatestPatchBuild => kPatchNotes.first.build;
 
 const kPatchNotes = <PatchNote>[
   PatchNote(
+    build: 406,
+    title: 'Daily Chest & Speed Fixes',
+    date: '2026-11-21',
+    changes: [
+      'Fixed the Daily Chest — the "equip an item" daily could never be '
+          'completed, which blocked the chest. Finish all 7 tasks and it opens.',
+      'Daily challenges and the chest now reset reliably at your local '
+          'midnight, even if you keep the app open or return mid-day.',
+      'Battle Speed is now a quick dropdown: 1× and 1.5× free, 2× from a '
+          'rewarded ad (2 full hours, real time), 3× and 5× with VIP.',
+      'The 2× ad boost now shows a live countdown so you know how long it '
+          'lasts.',
+      'The Auto-Campaign button is back — on by default, tap to switch to '
+          'manual whenever you like.',
+      'Fixed reward popups that showed the base amount after watching a '
+          '2× ad, and a stale "2×" label that lingered after the boost expired.',
+    ],
+  ),
+  PatchNote(
+    build: 405,
+    title: 'Hands-Free & Polished',
+    date: '2026-11-20',
+    changes: [
+      'Auto-Campaign is now always on — your hero fights and advances through '
+          'stages on its own, no button to toggle.',
+      'Starter Packs redesigned — each now shows the exact gear and rarity you '
+          'get, in full pixel art (Epic helmet, Legendary weapon, Set armor).',
+      'Rounded, cleaner card styling across the whole game.',
+      'The Season Pass and Next Goal banners now scroll with the page instead '
+          'of sticking to the top of the Hero sheet.',
+      'The Guild tutorial now appears right when Guilds unlock, not 19 stages '
+          'later.',
+      'Balance: early campaign bosses are gentler for brand-new heroes, some '
+          'grindy mid-game fights are shorter, and falling behind on level now '
+          'eases the enemies a little instead of walling you.',
+    ],
+  ),
+  PatchNote(
+    build: 403,
+    title: 'Battles That Matter',
+    date: '2026-11-15',
+    changes: [
+      'Auto-Campaign is now free from Stage 5 — no subscription needed.',
+      'Auto-fight is now free from Stage 5 in Dungeon and Endless too (Boss '
+          'Rush and Gauntlet were already free).',
+      'Enemies hit harder and fights carry real stakes now.',
+      'Season Pass is now one tap away on the Hero hub — claim your free and '
+          'premium rewards.',
+      'New "Next Goal" tracker on the Hero hub shows your next unlock and how '
+          'close you are.',
+      'Cleaner menus — nav badges now light up only when you have something to do.',
+      'VIP passes reworked — Vanguard\'s Pact: 2× battle speed + 20% more '
+          'resources. Ascendant\'s Crown: 5× battle speed + 100% more resources.',
+      'Fixed an issue that could make your guild disappear.',
+    ],
+  ),
+  PatchNote(
     build: 373,
     title: 'Faster First Steps',
     date: '2026-11-08',

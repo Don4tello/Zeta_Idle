@@ -8,6 +8,7 @@ import '../theme/app_theme.dart';
 import '../widgets/battle_sprites.dart';
 import '../widgets/currency_icon.dart';
 import '../widgets/item_sprites.dart';
+import '../l10n/app_localizations.dart';
 
 /// Pixel-art icon for a login reward — mirrors the game's new [CurrencyIcon]
 /// set (and an [ItemSprite] for the epic/legendary item days), replacing the
@@ -71,7 +72,7 @@ class LoginStreakScreen extends StatelessWidget {
       backgroundColor: const Color(0xFF1B1A17),
       appBar: AppBar(
         backgroundColor: const Color(0xFF2A2623),
-        title: Text('DAILY LOGIN',
+        title: Text(AppLocalizations.of(context).lsTitle,
             style: AppTheme.pixelHeading(fontSize: 14, letterSpacing: 2)),
         actions: [
           Padding(
@@ -123,9 +124,9 @@ class LoginStreakScreen extends StatelessWidget {
                   color: const Color(0xFF0e1f0e),
                   border: Border.all(
                       color: const Color(0xFF44aa44).withValues(alpha: 0.5)),
-                  borderRadius: BorderRadius.circular(4),
+                  borderRadius: BorderRadius.circular(8),
                 ),
-                child: const Text('Come back tomorrow for your next reward!',
+                child: Text(AppLocalizations.of(context).lsComeBack,
                     style: TextStyle(
                         fontSize: 12, color: Color(0xFF88cc88))),
               ),
@@ -165,7 +166,7 @@ class _HeroBanner extends StatelessWidget {
         border: Border.all(
             color: frameColor ?? AppTheme.accentGold.withValues(alpha: 0.4),
             width: frameColor != null ? 2 : 1),
-        borderRadius: BorderRadius.circular(4),
+        borderRadius: BorderRadius.circular(8),
         boxShadow: frameColor != null
             ? [BoxShadow(color: frameColor.withValues(alpha: 0.5), blurRadius: 8)]
             : null,
@@ -195,7 +196,7 @@ class _HeroBanner extends StatelessWidget {
           const Color(0xFF231F1B),
         ]),
         border: Border.all(color: accent.withValues(alpha: 0.4)),
-        borderRadius: BorderRadius.circular(6),
+        borderRadius: BorderRadius.circular(8),
       ),
       child: Row(children: [
         spriteBox,
@@ -234,7 +235,7 @@ class _HeroBanner extends StatelessWidget {
                   decoration: BoxDecoration(
                     color: race.color.withValues(alpha: 0.15),
                     border: Border.all(color: race.color.withValues(alpha: 0.6)),
-                    borderRadius: BorderRadius.circular(3),
+                    borderRadius: BorderRadius.circular(8),
                   ),
                   child: Row(mainAxisSize: MainAxisSize.min, children: [
                     Text(race.icon, style: const TextStyle(fontSize: 12)),
@@ -267,12 +268,12 @@ class _StreakBadge extends StatelessWidget {
         color: const Color(0xFFff8800).withValues(alpha: 0.15),
         border: Border.all(
             color: const Color(0xFFff8800).withValues(alpha: 0.6)),
-        borderRadius: BorderRadius.circular(3),
+        borderRadius: BorderRadius.circular(8),
       ),
       child: Row(mainAxisSize: MainAxisSize.min, children: [
         const Text('🔥', style: TextStyle(fontSize: 12)),
         const SizedBox(width: 4),
-        Text('$streak day${streak == 1 ? '' : 's'}',
+        Text(AppLocalizations.of(context).lsStreakDays(streak),
             style: AppTheme.pixelHeading(
                 fontSize: 12, color: const Color(0xFFff8800))),
       ]),
@@ -293,7 +294,7 @@ class _InfoBanner extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white.withValues(alpha: 0.03),
         border: Border.all(color: AppTheme.cardBorder),
-        borderRadius: BorderRadius.circular(4),
+        borderRadius: BorderRadius.circular(8),
       ),
       child: Text(
         claimed
@@ -350,7 +351,7 @@ class _DayCell extends StatelessWidget {
                 ? const Color(0xFFffb300)
                 : border,
             width: isToday ? 1.5 : 1),
-        borderRadius: BorderRadius.circular(4),
+        borderRadius: BorderRadius.circular(8),
       ),
       child: Stack(
         children: [
@@ -396,13 +397,13 @@ class _ClaimButton extends StatelessWidget {
           backgroundColor: AppTheme.accentGold,
           foregroundColor: Colors.black,
           padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 14),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
         ),
         child: Row(mainAxisSize: MainAxisSize.min, children: [
           RewardIcon(reward: reward, size: 22),
           const SizedBox(width: 10),
           Flexible(
-            child: Text('CLAIM  ${loginRewardLabel(game, reward)}',
+            child: Text(AppLocalizations.of(context).lsClaimReward(loginRewardLabel(game, reward)),
                 textAlign: TextAlign.center,
                 style: AppTheme.pixelHeading(
                     fontSize: 12, letterSpacing: 1, color: Colors.black)),
@@ -424,7 +425,7 @@ class _CyclePreview extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('FULL 30-DAY CYCLE',
+        Text(AppLocalizations.of(context).lsFullCycle,
             style: AppTheme.pixelHeading(
                 fontSize: 11, letterSpacing: 2, color: AppTheme.textMuted)),
         const SizedBox(height: 4),
@@ -458,12 +459,12 @@ class _CyclePreview extends StatelessWidget {
                       : isPast
                           ? const Color(0xFF44aa44).withValues(alpha: 0.4)
                           : AppTheme.cardBorder),
-              borderRadius: BorderRadius.circular(3),
+              borderRadius: BorderRadius.circular(8),
             ),
             child: Row(children: [
               RewardIcon(reward: r, size: 20),
               const SizedBox(width: 10),
-              Text('Day ${r.day}',
+              Text(AppLocalizations.of(context).lsDay(r.day),
                   style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.bold,
@@ -494,7 +495,7 @@ class _CyclePreview extends StatelessWidget {
                     border: Border.all(color: AppTheme.accentGold),
                     borderRadius: BorderRadius.circular(2),
                   ),
-                  child: Text('TODAY',
+                  child: Text(AppLocalizations.of(context).lsToday,
                       style: AppTheme.pixelHeading(
                           fontSize: 8, color: AppTheme.accentGold)),
                 ),

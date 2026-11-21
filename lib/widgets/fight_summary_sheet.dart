@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../services/game_state.dart';
 import '../theme/app_theme.dart';
 import '../utils/format_number.dart';
+import '../l10n/app_localizations.dart';
 
 /// Post-fight summary — the stat breakdown (abilities used, max/avg/total
 /// damage, rounds) with the full battle log below. Reusable across every mode
@@ -51,10 +52,10 @@ class FightSummarySheet extends StatelessWidget {
             const SizedBox(width: 8),
             Expanded(
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text(s.victory ? 'VICTORY' : 'DEFEAT',
+                Text(s.victory ? AppLocalizations.of(context).fsVictory : AppLocalizations.of(context).fsDefeat,
                     style: AppTheme.pixelHeading(
                         fontSize: 13, letterSpacing: 2, color: resultColor)),
-                Text('vs ${s.enemyName}  ·  ${s.rounds} rounds',
+                Text(AppLocalizations.of(context).fsVs(s.enemyName, s.rounds),
                     style: const TextStyle(color: AppTheme.textMuted, fontSize: 11)),
               ]),
             ),
@@ -76,7 +77,7 @@ class FightSummarySheet extends StatelessWidget {
         if (s.abilitiesUsed.isNotEmpty) ...[
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Text('ABILITIES USED',
+            child: Text(AppLocalizations.of(context).fsAbilitiesUsed,
                 style: AppTheme.pixelHeading(
                     fontSize: 10, letterSpacing: 1.5, color: AppTheme.textMuted)),
           ),
@@ -91,7 +92,7 @@ class FightSummarySheet extends StatelessWidget {
                         decoration: BoxDecoration(
                           color: const Color(0xFF231F1B),
                           border: Border.all(color: AppTheme.cardBorder),
-                          borderRadius: BorderRadius.circular(3),
+                          borderRadius: BorderRadius.circular(8),
                         ),
                         child: Text('${e.key} ×${e.value}',
                             style: const TextStyle(color: Colors.white70, fontSize: 11)),
@@ -104,7 +105,7 @@ class FightSummarySheet extends StatelessWidget {
         // Full battle log
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: Text('BATTLE LOG',
+          child: Text(AppLocalizations.of(context).battleLog,
               style: AppTheme.pixelHeading(
                   fontSize: 10, letterSpacing: 1.5, color: AppTheme.textMuted)),
         ),
@@ -140,7 +141,7 @@ class FightSummarySheet extends StatelessWidget {
           decoration: BoxDecoration(
             color: const Color(0xFF231F1B),
             border: Border.all(color: color.withValues(alpha: 0.4)),
-            borderRadius: BorderRadius.circular(4),
+            borderRadius: BorderRadius.circular(8),
           ),
           child: Column(children: [
             Text(value,

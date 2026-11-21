@@ -5,6 +5,7 @@ import '../services/leaderboard_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/battle_sprites.dart';
 import '../widgets/player_profile_sheet.dart';
+import '../l10n/app_localizations.dart';
 
 class LeaderboardScreen extends StatefulWidget {
   const LeaderboardScreen({super.key, this.board = LeaderboardBoard.campaign});
@@ -80,7 +81,7 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
     } catch (e) {
       if (!mounted) return;
       setState(() {
-        _error   = 'Could not load leaderboard.';
+        _error   = AppLocalizations.of(context).lbError;
         _loading = false;
       });
     }
@@ -98,7 +99,7 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
           IconButton(
             icon: const Icon(Icons.refresh, size: 18),
             onPressed: _loading ? null : _load,
-            tooltip: 'Refresh',
+            tooltip: AppLocalizations.of(context).lbRefresh,
           ),
         ],
       ),
@@ -113,9 +114,9 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
                         child: Text(_error!,
                             style: const TextStyle(color: AppTheme.textMuted)))
                     : _top50!.isEmpty
-                        ? const Center(
-                            child: Text('No scores yet — be the first!',
-                                style: TextStyle(color: AppTheme.textMuted)))
+                        ? Center(
+                            child: Text(AppLocalizations.of(context).lbNoScores,
+                                style: const TextStyle(color: AppTheme.textMuted)))
                         : ListView.builder(
                             padding: const EdgeInsets.symmetric(
                                 vertical: 8, horizontal: 16),
@@ -164,9 +165,9 @@ class _PersonalBar extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text('Your personal best',
-                  style: TextStyle(color: AppTheme.textMuted, fontSize: 11)),
-              Text(entry != null ? _formatScore(board, entry!) : 'Not ranked yet',
+              Text(AppLocalizations.of(context).lbPersonalBest,
+                  style: const TextStyle(color: AppTheme.textMuted, fontSize: 11)),
+              Text(entry != null ? _formatScore(board, entry!) : AppLocalizations.of(context).lbNotRanked,
                   style: const TextStyle(
                       color: Colors.white,
                       fontSize: 15,
@@ -180,11 +181,11 @@ class _PersonalBar extends StatelessWidget {
             decoration: BoxDecoration(
               color: AppTheme.accentGold.withValues(alpha: 0.1),
               border: Border.all(color: AppTheme.accentGold.withValues(alpha: 0.5)),
-              borderRadius: BorderRadius.circular(4),
+              borderRadius: BorderRadius.circular(8),
             ),
             child: Column(children: [
-              const Text('RANK',
-                  style: TextStyle(color: AppTheme.textMuted, fontSize: 9, letterSpacing: 1)),
+              Text(AppLocalizations.of(context).lbRank,
+                  style: const TextStyle(color: AppTheme.textMuted, fontSize: 9, letterSpacing: 1)),
               Text('#$rank',
                   style: const TextStyle(
                       color: AppTheme.accentGold,
@@ -239,7 +240,7 @@ class _EntryTile extends StatelessWidget {
 
     return InkWell(
       onTap: () => showPlayerProfile(context, entry, board, rank, isMe),
-      borderRadius: BorderRadius.circular(4),
+      borderRadius: BorderRadius.circular(8),
       child: Container(
         margin: const EdgeInsets.only(bottom: 6),
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
@@ -250,7 +251,7 @@ class _EntryTile extends StatelessWidget {
                   ? rankColor.withValues(alpha: 0.06)
                   : const Color(0xFF231F1B),
           border: Border.all(color: borderColor, width: isMe ? 1.5 : 1),
-          borderRadius: BorderRadius.circular(4),
+          borderRadius: BorderRadius.circular(8),
         ),
         child: Row(children: [
           SizedBox(
@@ -273,7 +274,7 @@ class _EntryTile extends StatelessWidget {
               border: Border.all(
                   color: frameColor ?? AppTheme.cardBorder,
                   width: frameColor != null ? 2 : 1),
-              borderRadius: BorderRadius.circular(4),
+              borderRadius: BorderRadius.circular(8),
               boxShadow: frameColor != null
                   ? [BoxShadow(color: frameColor.withValues(alpha: 0.5), blurRadius: 5)]
                   : null,
@@ -301,7 +302,7 @@ class _EntryTile extends StatelessWidget {
                   ),
                   if (isMe) ...[
                     const SizedBox(width: 6),
-                    Text('YOU',
+                    Text(AppLocalizations.of(context).lbYou,
                         style: AppTheme.pixelHeading(
                             fontSize: 8, letterSpacing: 1, color: AppTheme.accentGold)),
                   ],

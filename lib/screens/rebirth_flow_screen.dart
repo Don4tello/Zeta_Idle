@@ -239,7 +239,7 @@ class _BoonCard extends StatelessWidget {
         decoration: BoxDecoration(
           color: bg,
           border: border,
-          borderRadius: BorderRadius.circular(6),
+          borderRadius: BorderRadius.circular(8),
           boxShadow: isSelected
               ? [BoxShadow(color: rarityColor.withValues(alpha: 0.4), blurRadius: 8)]
               : null,
@@ -331,7 +331,7 @@ class _ChallengeRow extends StatelessWidget {
       child: Container(
         margin: const EdgeInsets.only(bottom: 8),
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-        decoration: BoxDecoration(color: bg, border: border, borderRadius: BorderRadius.circular(6)),
+        decoration: BoxDecoration(color: bg, border: border, borderRadius: BorderRadius.circular(8)),
         child: Row(
           children: [
             Text(challenge.icon, style: const TextStyle(fontSize: 20)),
@@ -350,7 +350,7 @@ class _ChallengeRow extends StatelessWidget {
               decoration: BoxDecoration(
                 color: const Color(0xFF3a0a0a),
                 border: Border.all(color: const Color(0xFFff6666)),
-                borderRadius: BorderRadius.circular(4),
+                borderRadius: BorderRadius.circular(8),
               ),
               child: Text('+${challenge.bonusSouls} ✦', style: const TextStyle(color: Color(0xFFff9999), fontSize: 11, fontWeight: FontWeight.bold)),
             ),
@@ -413,7 +413,7 @@ Widget _panel({required String header, required Color headerColor, required Widg
     decoration: BoxDecoration(
       color: const Color(0xFF141018),
       border: Border.all(color: Colors.white12),
-      borderRadius: BorderRadius.circular(6),
+      borderRadius: BorderRadius.circular(8),
     ),
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,

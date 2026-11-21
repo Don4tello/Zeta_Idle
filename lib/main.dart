@@ -11,13 +11,16 @@ import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:firebase_remote_config/firebase_remote_config.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'services/remote_config_service.dart';
-import 'package:flutter/foundation.dart' show kDebugMode;
+import 'package:flutter/foundation.dart' show kDebugMode, kIsWeb;
+import 'demo_config.dart';
 import 'package:flutter/material.dart';
 import 'firebase_options.dart';
-import 'package:flutter/services.dart' show SystemChrome, DeviceOrientation;
+import 'package:flutter/services.dart'
+    show SystemChrome, DeviceOrientation, SystemUiMode, SystemUiOverlayStyle;
 import 'services/ad_service.dart';
 import 'services/notification_service.dart';
 import 'theme/app_theme.dart';
+import 'widgets/web_phone_frame.dart';
 import 'models/dnd_class.dart';
 import 'models/hero_model.dart' show HeroGender;
 import 'models/hero_race.dart';
@@ -40,7 +43,7 @@ FirebaseAnalytics? analytics;
 /// plus a Crashlytics breadcrumb of the current screen (for crash context).
 List<NavigatorObserver> get _routerObservers => [
       if (analytics != null) FirebaseAnalyticsObserver(analytics: analytics!),
-      if (_firebaseReady) _CrashlyticsRouteObserver(),
+      if (_firebaseReady && !kIsWeb) _CrashlyticsRouteObserver(),
     ];
 
 /// Records the current route as a Crashlytics custom key + breadcrumb, so a
@@ -122,36 +125,45 @@ Future<void> _appMain() async {
       // console so your test devices keep working). Enforcement stays a
       // separate, deliberate switch in the console — activating here only
       // makes the app START sending tokens so you can watch the metrics.
-      try {
-        await FirebaseAppCheck.instance.activate(
-          providerAndroid: kDebugMode
-              ? const AndroidDebugProvider()
-              : const AndroidPlayIntegrityProvider(),
-        );
-      } catch (e) {
-        DebugLogger.log('appcheck_init', 'error: $e');
+      // App Check uses Android-native attestation providers — skip on web
+      // (the demo/browser build), which has no Play Integrity.
+      if (!kIsWeb) {
+        try {
+          await FirebaseAppCheck.instance.activate(
+            providerAndroid: kDebugMode
+                ? const AndroidDebugProvider()
+                : const AndroidPlayIntegrityProvider(),
+          );
+        } catch (e) {
+          DebugLogger.log('appcheck_init', 'error: $e');
+        }
       }
 
       // ── Crashlytics ────────────────────────────────────────────────────
-      // Don't upload crashes from debug builds (keeps the console clean).
-      await FirebaseCrashlytics.instance
-          .setCrashlyticsCollectionEnabled(!kDebugMode);
-      // Route Flutter framework errors to Crashlytics (keeping the existing
-      // benign-warning filter), plus any error escaping the framework.
-      FlutterError.onError = (details) {
-        final msg = details.toString();
-        if (msg.contains('_debugDuringDeviceUpdate') ||
-            msg.contains('parentDataDirty') ||
-            msg.contains('semantics')) { return; }
-        FlutterError.presentError(details);
-        DebugLogger.log('flutter_error', details.toString());
-        FirebaseCrashlytics.instance.recordFlutterError(details);
-      };
-      PlatformDispatcher.instance.onError = (error, stack) {
-        FirebaseCrashlytics.instance.recordError(error, stack, fatal: true);
-        DebugLogger.log('platform_error', '$error\n$stack');
-        return true;
-      };
+      // firebase_crashlytics has NO web implementation, so gate the whole
+      // pipeline on web — the demo build keeps the plain (non-Crashlytics)
+      // FlutterError handler set above.
+      if (!kIsWeb) {
+        // Don't upload crashes from debug builds (keeps the console clean).
+        await FirebaseCrashlytics.instance
+            .setCrashlyticsCollectionEnabled(!kDebugMode);
+        // Route Flutter framework errors to Crashlytics (keeping the existing
+        // benign-warning filter), plus any error escaping the framework.
+        FlutterError.onError = (details) {
+          final msg = details.toString();
+          if (msg.contains('_debugDuringDeviceUpdate') ||
+              msg.contains('parentDataDirty') ||
+              msg.contains('semantics')) { return; }
+          FlutterError.presentError(details);
+          DebugLogger.log('flutter_error', details.toString());
+          FirebaseCrashlytics.instance.recordFlutterError(details);
+        };
+        PlatformDispatcher.instance.onError = (error, stack) {
+          FirebaseCrashlytics.instance.recordError(error, stack, fatal: true);
+          DebugLogger.log('platform_error', '$error\n$stack');
+          return true;
+        };
+      }
 
       // Forward every DebugLogger event to Crashlytics: always a breadcrumb,
       // and error-like entries as non-fatals. This surfaces the many caught
@@ -165,6 +177,7 @@ Future<void> _appMain() async {
       DebugLogger.sink = (category, message) {
         try {
           if (category == 'BALANCE') TelemetryService.recordFight(message);
+          if (kIsWeb) return; // no Crashlytics on web
           FirebaseCrashlytics.instance.log('[$category] $message');
           final lc = '$category $message'.toLowerCase();
           final looksLikeError = lc.contains('error') ||
@@ -181,7 +194,7 @@ Future<void> _appMain() async {
 
       // One-time self-test so we can confirm the pipeline reaches the console
       // (records a single labelled non-fatal on the first launch after update).
-      unawaited(_crashPipelineSelfTest());
+      if (!kIsWeb) unawaited(_crashPipelineSelfTest());
 
       // ── Analytics ──────────────────────────────────────────────────────
       analytics = FirebaseAnalytics.instance;
@@ -213,21 +226,39 @@ Future<void> _appMain() async {
     DeviceOrientation.portraitUp,
     DeviceOrientation.portraitDown,
   ]);
-  try {
-    await AdService.initialize();
-  } catch (e) {
-    // ignore: avoid_print
-    print('AdMob initialization warning: $e');
-    DebugLogger.log('admob_init', 'error: $e');
-  }
-  try {
-    // Initialise here, but ask for the OS permission after the first frame
-    // (see _ZetaIdleAppState.initState). Requesting before runApp() can return
-    // without ever showing the system dialog because there's no resumed
-    // Activity/UI yet.
-    await NotificationService.instance.initialize();
-  } catch (e) {
-    DebugLogger.log('notif_init', 'error: $e');
+  // Edge-to-edge: Android 15 (target SDK 35) draws apps behind the system bars
+  // by default. Opt in explicitly and make the bars fully transparent so content
+  // flows under them cleanly — the shell already wraps its body + bottom nav in
+  // SafeArea, so interactive UI stays clear of the insets. Also resolves Play
+  // Console's "Edge-to-edge may not display for all users" warning.
+  SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+  SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
+    statusBarColor: Colors.transparent,
+    statusBarIconBrightness: Brightness.light,   // dark app background → light icons
+    statusBarBrightness: Brightness.dark,        // iOS counterpart
+    systemNavigationBarColor: Colors.transparent,
+    systemNavigationBarIconBrightness: Brightness.light,
+    systemNavigationBarContrastEnforced: false,
+  ));
+  // AdMob (google_mobile_ads) and flutter_local_notifications are mobile-only —
+  // skip both on web (the demo/browser build).
+  if (!kIsWeb) {
+    try {
+      await AdService.initialize();
+    } catch (e) {
+      // ignore: avoid_print
+      print('AdMob initialization warning: $e');
+      DebugLogger.log('admob_init', 'error: $e');
+    }
+    try {
+      // Initialise here, but ask for the OS permission after the first frame
+      // (see _ZetaIdleAppState.initState). Requesting before runApp() can return
+      // without ever showing the system dialog because there's no resumed
+      // Activity/UI yet.
+      await NotificationService.instance.initialize();
+    } catch (e) {
+      DebugLogger.log('notif_init', 'error: $e');
+    }
   }
   // Restore the saved language override (if any) before the first frame so the
   // app opens in the player's chosen language.
@@ -384,6 +415,7 @@ class _ZetaIdleAppState extends State<ZetaIdleApp> with WidgetsBindingObserver {
               locale: locale,
               localizationsDelegates: AppLocalizations.localizationsDelegates,
               supportedLocales: AppLocalizations.supportedLocales,
+              builder: (ctx, child) => WebPhoneFrame(child: child ?? const SizedBox()),
               home: LoadingScreen(
                 task: () => _gameState.loadSlot(
                   pending.slot,
@@ -408,8 +440,8 @@ class _ZetaIdleAppState extends State<ZetaIdleApp> with WidgetsBindingObserver {
             localizationsDelegates: AppLocalizations.localizationsDelegates,
             supportedLocales: AppLocalizations.supportedLocales,
             routerConfig: _router,
-            builder: (_, child) =>
-                DebugCaptureSurface(child: child ?? const SizedBox()),
+            builder: (_, child) => WebPhoneFrame(
+                child: DebugCaptureSurface(child: child ?? const SizedBox())),
           ),
         );
       },

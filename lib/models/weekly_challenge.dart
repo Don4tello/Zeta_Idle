@@ -1,4 +1,6 @@
-﻿class WeeklyChallenge {
+﻿import 'dart:math' show Random;
+
+class WeeklyChallenge {
   WeeklyChallenge({
     required this.id,
     required this.name,
@@ -45,12 +47,15 @@
       () => WeeklyChallenge(id: 'w_stages', name: 'Pathfinder', description: 'Clear 25 campaign stages', target: 25, rewards: {'shards': 150, 'zcoins': 35}),
       () => WeeklyChallenge(id: 'w_craft', name: 'Artisan', description: 'Craft or reforge 10 items', target: 10, rewards: {'essence': 200, 'mythril': 10}),
     ];
-    // Pick 5 based on week seed
+    // Pick 5 distinct based on the week seed. Was an inline LCG
+    // (s * 1103515245 …) whose multiply overflows JS's 2^53 on web → the mod
+    // degenerated to <5 distinct values and this loop spun forever (page
+    // unresponsive). Random(seed) is deterministic and web-safe; pool.length (7)
+    // ≥ 5 guarantees termination.
     final indices = <int>{};
-    var s = weekSeed;
+    final rng = Random(weekSeed);
     while (indices.length < 5) {
-      s = (s * 1103515245 + 12345) & 0x7fffffff;
-      indices.add(s % pool.length);
+      indices.add(rng.nextInt(pool.length));
     }
     return indices.map((i) => pool[i]()).toList();
   }

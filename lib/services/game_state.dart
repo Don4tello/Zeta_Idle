@@ -1,6 +1,7 @@
 ﻿import 'dart:async';
 import 'dart:convert' show jsonEncode, jsonDecode;
 import 'dart:math';
+import '../demo_config.dart';
 import 'debug_logger.dart';
 import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/services.dart' show HapticFeedback;
@@ -179,6 +180,7 @@ class GameState extends ChangeNotifier {
       onPremiumSkinPurchased: (skinId) => unlockPremiumSkin(skinId),
       onCosmeticPurchased: (productId) => unlockCosmeticByProduct(productId),
       onPetPurchased: (productId) => unlockPremiumPet(productId),
+      onLifetimePurchased: unlockLifetimePremium,
     );
     if (testMode) return; // headless: no plugin init, no background timers
     _iapService.init();
@@ -203,11 +205,9 @@ class GameState extends ChangeNotifier {
         }
         // Auto-campaign runs VISIBLY on the Battle screen only. We intentionally
         // do NOT resolve battles silently in the background — that made the
-        // campaign look like it was "playing itself" with no fights. Just clear
-        // the flag if the subscription lapsed.
-        if (autoCampaign && !canAutoCampaign) {
-          autoCampaign = false;
-        }
+        // campaign look like it was "playing itself" with no fights. Campaign
+        // auto is default-ON for everyone (not gated), so we no longer clear it
+        // here; canAutoCampaign only gates ALT-mode auto (dungeon/endless).
       },
     );
   }
@@ -280,9 +280,24 @@ class GameState extends ChangeNotifier {
   // Loot history (last 20 events)
   final List<({String icon, String text, String? detail, DateTime time})> lootHistory = [];
 
+  // Monotonic loot counter (lootHistory is a rolling 20-item window, so its
+  // LENGTH can't detect new drops once full). Session-only: drives the
+  // Inventory nav badge, which lights for loot gained since the tab was last
+  // opened instead of the old `bag.isNotEmpty` (which was lit ~always and
+  // trained players to ignore badges).
+  int _lootEventCount = 0;
+  int _lootSeenCount = 0;
+  bool get hasUnseenLoot => _lootEventCount > _lootSeenCount;
+  void markLootSeen() {
+    if (_lootSeenCount == _lootEventCount) return;
+    _lootSeenCount = _lootEventCount;
+    notifyListeners();
+  }
+
   void logLoot(String icon, String text, {String? detail}) {
     lootHistory.insert(0, (icon: icon, text: text, detail: detail, time: DateTime.now()));
     if (lootHistory.length > 20) lootHistory.removeLast();
+    _lootEventCount++;
   }
 
   void setActiveDamageType(int index) {
@@ -494,6 +509,7 @@ class GameState extends ChangeNotifier {
   String? activeTitle;
   String? activeNameColor;
   String? activeFrame;
+  bool lifetimePremium = false;      // one-time $9.99 purchase — never expires
   bool isPremiumSubscriber = false;
   int premiumExpiryMs = 0;
   bool isSpeedSubscriber = false;
@@ -516,13 +532,14 @@ class GameState extends ChangeNotifier {
   }
 
   bool get hasPremium =>
-      isPremiumSubscriber && premiumExpiryMs > DateTime.now().millisecondsSinceEpoch;
+      lifetimePremium ||
+      (isPremiumSubscriber && premiumExpiryMs > DateTime.now().millisecondsSinceEpoch);
 
   bool get hasSpeedSub =>
       isSpeedSubscriber && speedSubExpiryMs > DateTime.now().millisecondsSinceEpoch;
 
-  /// Subscription idle-income bonus — Premium Pass +50%, Speed Boost +25%.
-  double get subIdleMult => hasPremium ? 1.5 : (hasSpeedSub ? 1.25 : 1.0);
+  /// Subscription idle-income bonus — Ascendant's Crown +100%, Vanguard's Pact +20%.
+  double get subIdleMult => hasPremium ? 2.0 : (hasSpeedSub ? 1.2 : 1.0);
 
   bool purchaseStarterPack(String packId) {
     if (purchasedPacks.contains(packId)) return false;
@@ -631,6 +648,16 @@ class GameState extends ChangeNotifier {
     _grantMonthlySubZcoins();
   }
 
+  void unlockLifetimePremium() {
+    if (lifetimePremium) return; // idempotent
+    lifetimePremium = true;
+    if (activeTitle == null) activeTitle = 'Premium';
+    notifyListeners();
+    saveToLocal();
+    persistEntitlements();
+    logLoot('👑', 'Lifetime Premium unlocked — thanks for your support!');
+  }
+
   void activateSpeedSub(int durationDays) {
     isSpeedSubscriber = true;
     speedSubExpiryMs = DateTime.now().millisecondsSinceEpoch
@@ -651,6 +678,7 @@ class GameState extends ChangeNotifier {
         .where((id) => kPetCatalog.any((p) => p.id == id && p.productId != null))
         .toList();
     return {
+      'lifetimePremium':     lifetimePremium,
       'isPremiumSubscriber': isPremiumSubscriber,
       'premiumExpiryMs':     premiumExpiryMs,
       'isSpeedSubscriber':   isSpeedSubscriber,
@@ -673,6 +701,7 @@ class GameState extends ChangeNotifier {
   Future<void> applyAccountEntitlements() async {
     final e = await saveService.loadEntitlements();
     if (e == null) return;
+    if ((e['lifetimePremium'] as bool?) ?? false) lifetimePremium = true;
     if ((e['isPremiumSubscriber'] as bool?) ?? false) isPremiumSubscriber = true;
     final pExp = (e['premiumExpiryMs'] as int?) ?? 0;
     if (pExp > premiumExpiryMs) premiumExpiryMs = pExp;
@@ -760,7 +789,16 @@ class GameState extends ChangeNotifier {
 
   // ── Battle speed ───────────────────────────────────────────────────────────
   int speedTier = 1;           // 1=1x, 2=1.5x, 3=prod:2x / debug:5x, 4=10x (debug)
-  bool autoCampaign = false;
+  // Auto-campaign is a default-ON feature; players can toggle it off from the
+  // battle screen's AUTO button to play manually.
+  bool autoCampaign = true;
+
+  /// Flip the campaign auto-advance on/off (battle-screen AUTO button).
+  void toggleCampaignAuto() {
+    autoCampaign = !autoCampaign;
+    notifyListeners();
+    saveToLocal();
+  }
   // True while the Battle screen is mounted. It drives auto-campaign VISIBLY
   // (animated fights + auto-advance), so the silent background sim must stand
   // down to avoid both loops fighting the same stage.
@@ -984,6 +1022,10 @@ class GameState extends ChangeNotifier {
     8:  'Passive Tree',
     10: 'Stat Bonuses & Quests',
     12: 'Bestiary',
+    // Guilds unlock at 14 (the GUILD button). Notice/next-goal nudge only — a
+    // social feature, so intentionally NOT in the enemy_data difficulty
+    // steepener list (no combat bump), unlike the power systems around it.
+    14: 'Guilds',
     15: 'Dungeon & Codex',
     18: 'Pet Companions',
     20: 'Bounties',
@@ -1000,9 +1042,39 @@ class GameState extends ChangeNotifier {
     100: 'Difficulty Tiers',
   };
 
-  // Auto-Campaign is a paid perk (Speed Boost / Premium Pass). Returns false if
-  // a non-subscriber tries to enable it (the UI shows an upsell in that case).
-  bool get canAutoCampaign => hasPremium || hasSpeedSub;
+  /// The player's next concrete campaign goal: the nearest upcoming unlock
+  /// milestone above the current stage, with progress toward it. Drives the
+  /// hub's "next goal" banner so every session opens with a visible target
+  /// (telemetry 2026-11-15: 44% of sessions ended inside 2 fights — no pull to
+  /// go deeper). Returns null once every milestone is cleared (stage ≥ 100),
+  /// where Difficulty Tiers take over as the goal. `stage` is 1-based for
+  /// display (campaignStageIndex is 0-based → the stage you're ABOUT to fight).
+  ({int stage, String reward, int fromStage, int toStage})? get nextGoal {
+    final current = campaignStageIndex; // 0-based: stages cleared so far
+    int? target;
+    for (final s in _unlockStageNames.keys) {
+      if (s > current && (target == null || s < target)) target = s;
+    }
+    if (target == null) return null;
+    // Anchor the progress bar to the previous milestone (or 0) so it fills
+    // across the gap between unlocks rather than from stage 0 every time.
+    var prev = 0;
+    for (final s in _unlockStageNames.keys) {
+      if (s <= current && s > prev) prev = s;
+    }
+    return (
+      stage: target,
+      reward: _unlockStageNames[target]!,
+      fromStage: prev,
+      toStage: target,
+    );
+  }
+
+  // Alt-mode auto (Dungeon auto-run, Endless auto-clear) is a PROGRESSION unlock,
+  // not a paid perk: available once you've beaten campaign stage 5. Campaign auto
+  // is always on; Speed Boost / Premium sell the speed multiplier, not auto. (Name
+  // kept for churn reasons — it now gates alt modes only, never campaign.)
+  bool get canAutoCampaign => campaignStageIndex >= 5;
 
   bool toggleAutoCampaign() {
     if (!autoCampaign && !canAutoCampaign) return false; // gated to subscribers
@@ -1063,6 +1135,11 @@ class GameState extends ChangeNotifier {
   bool get speedBoostActive =>
       DateTime.now().millisecondsSinceEpoch < speedBoostExpiryMs;
 
+  /// Time left on the (timed) rewarded-ad speed boost, or null when inactive.
+  Duration? get speedBoostRemaining => speedBoostActive
+      ? Duration(milliseconds: speedBoostExpiryMs - DateTime.now().millisecondsSinceEpoch)
+      : null;
+
   static const int kSpeedBoostCrystalCost = 150;
 
   bool purchaseSpeedBoost() {
@@ -1076,6 +1153,18 @@ class GameState extends ChangeNotifier {
     notifyListeners();
     saveToLocal();
     return true;
+  }
+
+  static const int kAdSpeedBoostMs = 2 * 60 * 60 * 1000; // 2 hours
+
+  /// Rewarded-ad grant: 2 hours of 2× battle speed (stacks onto any active boost).
+  void grantAdSpeedBoost() {
+    final base = speedBoostActive
+        ? speedBoostExpiryMs
+        : DateTime.now().millisecondsSinceEpoch;
+    speedBoostExpiryMs = base + kAdSpeedBoostMs;
+    notifyListeners();
+    saveToLocal();
   }
 
   void debugGrantZCoins(int amount) {
@@ -1134,16 +1223,16 @@ class GameState extends ChangeNotifier {
     notifyListeners();
   }
 
-  // Highest battle-speed tier the player can reach in the campaign. Everyone
-  // gets up to 2× (tier 3); the Speed Pass subscription unlocks a permanent
-  // 3× (tier 4). Debug builds always allow the fastest tier for testing.
-  // Free players cap at 1.5× (tier 2). 2× (tier 3) requires the purchased 2×
-  // boost or the Speed Pass subscription; the subscription also unlocks 3×.
+  // Highest battle-speed tier the player can reach (global — applies to every
+  // combat mode via scaledInterval). Free → 1.5× (tier 2). Rewarded-ad speed
+  // boost → 2× (tier 3). Vanguard's Pact sub → permanent 3× (tier 4). Ascendant's
+  // Crown (premium) → 5× (tier 5). Debug builds allow a fast tier for testing.
   int get maxCampaignSpeedTier {
     if (kDebugMode) return 4;
-    if (hasSpeedSub || hasPremium) return 4; // Speed Pass / Premium Pass → up to 3×
-    if (speedBoostActive) return 3;          // purchased 2× boost → 2×
-    return 2;                                // free → up to 1.5×
+    if (hasPremium) return 5;           // Ascendant's Crown → up to 5×
+    if (hasSpeedSub) return 4;          // Vanguard's Pact → up to 3×
+    if (speedBoostActive) return 3;     // rewarded-ad 2× boost → 2×
+    return 2;                           // free → up to 1.5×
   }
 
   void cycleBattleSpeed() {
@@ -1153,10 +1242,16 @@ class GameState extends ChangeNotifier {
     saveToLocal();
   }
 
-  String get battleSpeedLabel => switch (speedTier) {
+  /// The speed tier ACTUALLY in effect — the saved tier clamped to what the
+  /// player can currently use. So once a rewarded-ad boost expires (or a sub
+  /// lapses) the UI shows the real, reverted speed instead of a stale "2×".
+  int get effectiveSpeedTier => speedTier.clamp(1, maxCampaignSpeedTier);
+
+  String get battleSpeedLabel => switch (effectiveSpeedTier) {
     2 => '1.5×',
     3 => kDebugMode ? '5×' : '2×',
     4 => kDebugMode ? '10×' : '3×',
+    5 => '5×',
     _ => '1×',
   };
 
@@ -1174,6 +1269,7 @@ class GameState extends ChangeNotifier {
       case 2: return 1.5;
       case 3: return kDebugMode ? 5.0 : 2.0;
       case 4: return kDebugMode ? 10.0 : 3.0;
+      case 5: return 5.0;
       default: return 1.0;
     }
   }
@@ -2347,6 +2443,22 @@ class GameState extends ChangeNotifier {
   int totalPlaytimeSeconds = 0;
   DateTime? _sessionStart;
 
+  // One-time "rate us" prompt after 30 min of cumulative play. Store-policy
+  // compliant: it gates ONLY on playtime (never on leaving a rating) and leads
+  // to the native in-app review dialog — no reward is attached. [reviewPromptPending]
+  // is a transient flag the shell watches; [_reviewPrompted] latches (persisted)
+  // once we've actually asked, so we never nag again.
+  bool reviewPromptPending = false;
+  bool _reviewPrompted = false;
+  static const int _reviewAfterSeconds = 1800; // 30 minutes
+
+  /// Called by the shell after the rating soft-ask has been shown.
+  void markReviewPrompted() {
+    _reviewPrompted = true;
+    reviewPromptPending = false;
+    saveToLocal();
+  }
+
   void startPlaytimeTracking() { _sessionStart = DateTime.now(); }
 
   void updatePlaytime() {
@@ -2415,6 +2527,13 @@ class GameState extends ChangeNotifier {
     notifyListeners();
     saveToLocal();
     return true;
+  }
+
+  /// Rewarded-ad grant: free PvP stamina (doesn't consume a paid refill).
+  void grantAdPvpStamina() {
+    pvpStamina += 3;
+    notifyListeners();
+    saveToLocal();
   }
 
   bool spendPvpStamina() {
@@ -3114,7 +3233,7 @@ class GameState extends ChangeNotifier {
       case DailyChallengeType.useAbilities: return _dailyAbilityUses;
       case DailyChallengeType.dealDamage:  return _dailyDamageDealt;
       case DailyChallengeType.defeatBoss:  return _dailyBossKills;
-      case DailyChallengeType.equipItem:   return _totalDisenchants > 0 ? 1 : 0;
+      case DailyChallengeType.equipItem:   return _dailyItemEquipped ? 1 : 0;
       case DailyChallengeType.reachGold:   return gold;
     }
   }
@@ -5187,6 +5306,8 @@ class GameState extends ChangeNotifier {
 
   Future<void> prestige({RebirthBoon? boon, RebirthChallenge challenge = RebirthChallenge.none}) async {
     if (!canPrestige) return;
+    // Demo builds cap at Tier 0 — the difficulty-tier ladder is a full-game hook.
+    if (kDemoBuild && prestigeLevel >= kDemoMaxTier) return;
     final savedName         = hero.name;
     final savedClass        = hero.heroClass;
     final savedShards       = shards;
@@ -8551,6 +8672,17 @@ class GameState extends ChangeNotifier {
     saveToLocal();
   }
 
+  /// Rewarded-ad grant: claim the daily chest AND double it in one go. The base
+  /// claim latches [dailyChestClaimed] so it can't be re-run; the ad simply adds
+  /// a second chest's worth on top.
+  void claimDailyChestDoubled() {
+    if (!dailyChestAvailable) return;
+    claimDailyChest();                       // base chest (sets claimed + saves)
+    gold += 1000; shards += 75; essence += 50; zcoins += 50;   // ×2 bonus
+    notifyListeners();
+    saveToLocal();
+  }
+
   int            lastRewardGold    = 0;
   int            lastRewardExp     = 0;
   int            lastShardDrop     = 0;
@@ -8815,7 +8947,10 @@ class GameState extends ChangeNotifier {
   // Per-prestige-tier ramps on top of the RC base dials; bosses get a bump.
   static const double kFightRoundsPerTier = 0.8;  // +0.8 target rounds / tier
   static const double kBossRoundsMult     = 1.4;  // bosses last ~40% longer
-  static const double kThreatPctPerTier   = 0.006; // +0.6% hero-HP/hit per tier
+  static const double kThreatPctPerTier   = 0.010; // +1.0% hero-HP/hit per tier
+  // (build 403: 0.006→0.010 — paired with the gentler enemyThreatPct 0.04 base,
+  // keeps tier 0 soft for new players while the frontier still reaches the 0.12
+  // cap by ~tier 4-5, where the over-geared replay accounts actually live.)
   static const double kBossThreatMult     = 1.5;  // bosses hit ~50% harder
   static const double kMaxThreatPct       = 0.12; // hard cap — never one-shot
 
@@ -8889,10 +9024,26 @@ class GameState extends ChangeNotifier {
   // True when real time away exceeded the 8h idle cap — the dialog then shows
   // "more than 8 hours" rather than a misleading exact figure.
   bool offlineWasCapped     = false;
+  // Latched when the player watches a rewarded ad to double this report's idle
+  // earnings, so the ×2 can't be claimed twice for the same report.
+  bool offlineDoubled       = false;
   void clearOfflineReport() {
     offlineGoldEarned = 0; offlineXpEarned = 0;
     offlineEssenceEarned = 0; offlineSecondsAway = 0;
     offlineExpeditionsReady = 0; offlineWasCapped = false;
+    offlineDoubled = false;
+  }
+
+  /// Rewarded-ad "×2": re-grants this offline report's gold + essence (the
+  /// credited idle currencies). Guarded so it only applies once per report.
+  void grantDoubledOfflineReport() {
+    if (offlineDoubled || offlineGoldEarned <= 0) return;
+    offlineDoubled = true;
+    gold             += offlineGoldEarned;
+    _totalGoldEarned += offlineGoldEarned;
+    essence          += offlineEssenceEarned;
+    notifyListeners();
+    saveToLocal();
   }
 
   // Tutorial flags — one-time tips, persisted so they don't repeat
@@ -10025,6 +10176,7 @@ class GameState extends ChangeNotifier {
   int? beaconKillTarget;
   bool beaconQuestTicked = false;
   String beaconQuestTitle = '';
+  String beaconQuestId = '';
   int beaconQuestProg = 0;
   int beaconQuestTarget = 0;
 
@@ -10037,6 +10189,7 @@ class GameState extends ChangeNotifier {
     beaconQuestTicked = q != null && qNow > questBefore;
     if (beaconQuestTicked && q != null) {
       beaconQuestTitle  = q.title;
+      beaconQuestId     = q.id;
       beaconQuestProg   = qNow;
       beaconQuestTarget = q.target;
     }
@@ -10537,6 +10690,7 @@ class GameState extends ChangeNotifier {
     // First-item (Gear) coach now fires right at the drop (above), so it lands
     // straight after your very first item instead of behind the stage coaches.
 
+
     // Set pending boss defeat message (first kill only)
     if (isBossStage && _isCampaignBattle) {
       final bossStageIdx = campaignStageIndex - 1; // just advanced past it
@@ -10830,6 +10984,7 @@ class GameState extends ChangeNotifier {
       'activeTitle': activeTitle,
       'activeNameColor': activeNameColor,
       'activeFrame': activeFrame,
+      'lifetimePremium': lifetimePremium,
       'isPremiumSubscriber': isPremiumSubscriber,
       'premiumExpiryMs': premiumExpiryMs,
       'isSpeedSubscriber': isSpeedSubscriber,
@@ -10881,6 +11036,7 @@ class GameState extends ChangeNotifier {
       'pvpDailyDamage':    pvpDailyDamage,
       'pvpDailyRewardClaimed': pvpDailyRewardClaimed,
       'totalPlaytimeSeconds': totalPlaytimeSeconds,
+      'reviewPrompted': _reviewPrompted,
       'claimedMilestones': claimedMilestones.toList(),
       'abilityUseCounts': abilityUseCounts,
       'abilityAutoTriggers': abilityAutoTriggers,
@@ -11205,7 +11361,7 @@ class GameState extends ChangeNotifier {
     _energyRefillEpochMs = (json['energyRefillEpochMs'] as int?) ?? 0;
     dailyEnergyRefillsUsed = (json['dailyEnergyRefillsUsed'] as int?) ?? 0;
     tickEnergy();
-    autoCampaign         = (json['autoCampaign']        as bool?) ?? false;
+    autoCampaign         = (json['autoCampaign']        as bool?) ?? true;
     _seenUnlockStages.clear();
     _seenUnlockStages.addAll(
       (json['seenUnlockStages'] as List<dynamic>?)?.cast<int>() ?? [],
@@ -11221,6 +11377,7 @@ class GameState extends ChangeNotifier {
     activeTitle = json['activeTitle'] as String?;
     activeNameColor = json['activeNameColor'] as String?;
     activeFrame = json['activeFrame'] as String?;
+    lifetimePremium = (json['lifetimePremium'] as bool?) ?? false;
     isPremiumSubscriber = (json['isPremiumSubscriber'] as bool?) ?? false;
     premiumExpiryMs = (json['premiumExpiryMs'] as int?) ?? 0;
     isSpeedSubscriber = (json['isSpeedSubscriber'] as bool?) ?? false;
@@ -11535,6 +11692,7 @@ class GameState extends ChangeNotifier {
     final savedAvgHit = (json['lastAvgHit'] as int?) ?? 0;
     if (savedAvgHit > 0 && _recentHeroHits.isEmpty) _recentHeroHits.add(savedAvgHit);
     totalPlaytimeSeconds = (json['totalPlaytimeSeconds'] as int?) ?? 0;
+    _reviewPrompted = (json['reviewPrompted'] as bool?) ?? false;
     claimedMilestones = (json['claimedMilestones'] as List<dynamic>?)
         ?.cast<String>().toSet() ?? {};
     abilityUseCounts = (json['abilityUseCounts'] as Map<String, dynamic>?)
@@ -11685,6 +11843,10 @@ class GameState extends ChangeNotifier {
   void computeOfflineOnResume() {
     _applyOfflineProgress(_lastSaveMs);
     _lastSaveMs = DateTime.now().millisecondsSinceEpoch;
+    // Roll daily challenges/chest over if the local day changed while we were
+    // backgrounded, so a resume past local midnight resets without needing to
+    // open the Daily tab or cold-restart.
+    _checkDailyReset();
     notifyListeners();
   }
 
@@ -11694,6 +11856,10 @@ class GameState extends ChangeNotifier {
     if (_saveBlocked) return;
     _lastSaveMs = DateTime.now().millisecondsSinceEpoch;
     updatePlaytime();
+    // Queue the rating soft-ask once the player has put in 30 min of play.
+    if (!_reviewPrompted && totalPlaytimeSeconds >= _reviewAfterSeconds) {
+      reviewPromptPending = true;
+    }
     checkMilestones();
     final data = toJson();
     await saveService.saveRaw(data, slot: _currentSlot);

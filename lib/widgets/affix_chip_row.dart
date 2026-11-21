@@ -59,7 +59,7 @@ class _AffixChip extends StatelessWidget {
           decoration: BoxDecoration(
             color: const Color(0xFF1a1a2e),
             border: Border.all(color: color, width: 1.5),
-            borderRadius: BorderRadius.circular(6),
+            borderRadius: BorderRadius.circular(8),
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -83,7 +83,7 @@ class _AffixChip extends StatelessWidget {
                   padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                   decoration: BoxDecoration(
                     color: color.withValues(alpha: 0.15),
-                    borderRadius: BorderRadius.circular(4),
+                    borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text('TIER ${affix.tier}',
                       style: TextStyle(fontSize: 10, color: color)),

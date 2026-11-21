@@ -10,11 +10,13 @@ import '../models/hero_model.dart' show HeroGender;
 import '../models/hero_race.dart';
 import '../theme/app_theme.dart';
 import '../utils/format_number.dart';
+import '../l10n/app_localizations.dart';
 import 'ability_icon.dart';
 import 'battle_backgrounds.dart';
 import 'battle_sprites.dart';
 import 'pixel_health_bar.dart';
 import 'combat_objective_beacon.dart';
+import '../l10n/content_l10n.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // BattleArena — reusable visual arena widget used by BattleScreen, Gauntlet,
@@ -288,7 +290,12 @@ class BattleArenaState extends State<BattleArena> with TickerProviderStateMixin 
   }
 
   void playAbilityBanner(String name, AbilityEffect effect, {String id = ''}) {
-    _bannerText  = name.toUpperCase();
+    // Resolve the localized ability title from the stable id (falls back to the
+    // English name passed in).
+    _bannerText  = (id.isNotEmpty && mounted
+            ? ContentL10n.of(context).tr(id, 'title', name)
+            : name)
+        .toUpperCase();
     _bannerId    = id;
     _bannerColor = _effectColor(effect);
     _bannerCtrl.forward(from: 0);
@@ -712,7 +719,7 @@ class BattleArenaState extends State<BattleArena> with TickerProviderStateMixin 
                           decoration: BoxDecoration(
                             color: const Color(0xFF17130E).withValues(alpha: 0.92),
                             border: Border.all(color: _mercColor.withValues(alpha: 0.9), width: 1.5),
-                            borderRadius: BorderRadius.circular(6),
+                            borderRadius: BorderRadius.circular(8),
                             boxShadow: [
                               BoxShadow(color: _mercColor.withValues(alpha: 0.5), blurRadius: 12, spreadRadius: 1),
                             ],
@@ -733,7 +740,7 @@ class BattleArenaState extends State<BattleArena> with TickerProviderStateMixin 
                               crossAxisAlignment: CrossAxisAlignment.start,
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                Text('MERC ABILITY',
+                                Text(AppLocalizations.of(context).baMercAbility,
                                     style: TextStyle(
                                         fontSize: 7,
                                         letterSpacing: 1.5,
@@ -899,8 +906,8 @@ class BattleLogBox extends StatelessWidget {
             padding:
                 const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
             color: const Color(0xFF211E1A),
-            child: const Text('BATTLE LOG',
-                style: TextStyle(
+            child: Text(AppLocalizations.of(context).battleLog,
+                style: const TextStyle(
                     fontSize: 13,
                     color: AppTheme.accentGold,
                     letterSpacing: 2)),
@@ -1093,7 +1100,7 @@ class _CombatantPanel extends StatelessWidget {
               decoration: BoxDecoration(
                 color: frameColor!.withValues(alpha: 0.10),
                 border: Border.all(color: frameColor!, width: 1.5),
-                borderRadius: BorderRadius.circular(5),
+                borderRadius: BorderRadius.circular(8),
                 boxShadow: [BoxShadow(color: frameColor!.withValues(alpha: 0.4), blurRadius: 5)],
               ),
               child: nameText,
@@ -1342,7 +1349,7 @@ class _StatChip extends StatelessWidget {
     decoration: BoxDecoration(
       color: color.withValues(alpha: 0.12),
       border: Border.all(color: color.withValues(alpha: 0.5), width: 0.5),
-      borderRadius: BorderRadius.circular(3),
+      borderRadius: BorderRadius.circular(8),
     ),
     child: Text(label,
         style: TextStyle(fontSize: 8, color: color, fontWeight: FontWeight.bold)),

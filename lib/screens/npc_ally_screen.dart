@@ -8,6 +8,8 @@ import '../widgets/battle_sprites.dart';
 import '../widgets/currency_icon.dart';
 import '../widgets/zcoin_icon.dart';
 import 'main_shell.dart' show TutorialTip;
+import '../l10n/app_localizations.dart';
+import '../l10n/content_l10n.dart';
 
 class NpcAllyScreen extends StatelessWidget {
   const NpcAllyScreen({super.key, this.embedded = false});
@@ -26,9 +28,7 @@ class NpcAllyScreen extends StatelessWidget {
           TutorialTip(
             tutorialKey: 'mercs',
             game: game,
-            text: 'Mercenaries are companions who join permanently when you hit '
-                'certain milestones. 🤝 Each one provides passive combat bonuses '
-                'in every battle and can synergise with others for extra power.',
+            text: AppLocalizations.of(context).npcTutorial,
           ),
         // Embedded in the Hero Hub there's no AppBar — surface both spend
         // currencies (ZCoins and Shards) since mercs are unlocked/upgraded with them.
@@ -42,7 +42,7 @@ class NpcAllyScreen extends StatelessWidget {
           _PartyBanner(game: game),
         ],
         const SizedBox(height: 16),
-        Text('ROSTER',
+        Text(AppLocalizations.of(context).npcRoster,
             style: AppTheme.pixelHeading(
                 fontSize: 11, letterSpacing: 2, color: AppTheme.textMuted)),
         const SizedBox(height: 10),
@@ -53,7 +53,7 @@ class NpcAllyScreen extends StatelessWidget {
               .slideY(begin: 0.04, duration: 280.ms, curve: Curves.easeOut);
         }),
         const SizedBox(height: 8),
-        Text('SYNERGIES',
+        Text(AppLocalizations.of(context).npcSynergies,
             style: AppTheme.pixelHeading(
                 fontSize: 11, letterSpacing: 2, color: AppTheme.textMuted)),
         const SizedBox(height: 10),
@@ -70,13 +70,13 @@ class NpcAllyScreen extends StatelessWidget {
       backgroundColor: const Color(0xFF1B1A17),
       appBar: AppBar(
         backgroundColor: const Color(0xFF2A2623),
-        title: Text('MERCENARIES',
+        title: Text(AppLocalizations.of(context).npcTitle,
             style: AppTheme.pixelHeading(fontSize: 14, letterSpacing: 2)),
         actions: [
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
             child: Text(
-              '$unlockedCount / ${allies.length}  recruited',
+              AppLocalizations.of(context).npcRecruited(unlockedCount, allies.length),
               style: AppTheme.pixelHeading(
                   fontSize: 12, color: AppTheme.accentGold),
             ),
@@ -100,23 +100,23 @@ class _ActiveBonusBar extends StatelessWidget {
 
     final allyDmgPct = game.allyDmgPctBonus;
     if (allyDmgPct > 0)
-      chips.add(_Chip('+$allyDmgPct% Damage', const Color(0xFFff6644)));
+      chips.add(_Chip(AppLocalizations.of(context).npcChipDamage(allyDmgPct), const Color(0xFFff6644)));
     if (game.allyAcBonus > 0)
-      chips.add(_Chip('+${game.allyAcBonus}% AC', const Color(0xFF66aaff)));
+      chips.add(_Chip(AppLocalizations.of(context).npcChipAc(game.allyAcBonus), const Color(0xFF66aaff)));
     if (game.allyGoldMult > 1.0)
-      chips.add(_Chip('+${((game.allyGoldMult - 1) * 100).round()}% Gold',
+      chips.add(_Chip(AppLocalizations.of(context).guildBonusGold(((game.allyGoldMult - 1) * 100).round()),
           const Color(0xFFffdd44)));
     if (game.allyXpMult > 1.0)
-      chips.add(_Chip('+${((game.allyXpMult - 1) * 100).round()}% XP',
+      chips.add(_Chip(AppLocalizations.of(context).guildBonusXp(((game.allyXpMult - 1) * 100).round()),
           const Color(0xFF44ccaa)));
     if (game.allyShardMult > 1.0)
-      chips.add(_Chip('+${((game.allyShardMult - 1) * 100).round()}% Shards',
+      chips.add(_Chip(AppLocalizations.of(context).npcChipShards(((game.allyShardMult - 1) * 100).round()),
           const Color(0xFF88aaff)));
     if (game.allyIdleMult > 1.0)
-      chips.add(_Chip('+${((game.allyIdleMult - 1) * 100).round()}% Idle',
+      chips.add(_Chip(AppLocalizations.of(context).guildBonusIdle(((game.allyIdleMult - 1) * 100).round()),
           const Color(0xFF88cc44)));
     if (game.allyHpPct > 0)
-      chips.add(_Chip('+${game.allyHpPct}% HP', const Color(0xFF44ee88)));
+      chips.add(_Chip(AppLocalizations.of(context).npcChipHp(game.allyHpPct), const Color(0xFF44ee88)));
 
     if (chips.isEmpty) {
       return Container(
@@ -124,11 +124,11 @@ class _ActiveBonusBar extends StatelessWidget {
         decoration: BoxDecoration(
           color: const Color(0xFF231F1B),
           border: Border.all(color: AppTheme.cardBorder),
-          borderRadius: BorderRadius.circular(4),
+          borderRadius: BorderRadius.circular(8),
         ),
-        child: const Text(
-          'No mercenaries recruited yet. Fulfill milestones to unlock them.',
-          style: TextStyle(fontSize: 11, color: AppTheme.textMuted, height: 1.4),
+        child: Text(
+          AppLocalizations.of(context).npcNoMercs,
+          style: const TextStyle(fontSize: 11, color: AppTheme.textMuted, height: 1.4),
         ),
       );
     }
@@ -138,10 +138,10 @@ class _ActiveBonusBar extends StatelessWidget {
       decoration: BoxDecoration(
         color: const Color(0xFF231F1B),
         border: Border.all(color: AppTheme.cardBorder),
-        borderRadius: BorderRadius.circular(4),
+        borderRadius: BorderRadius.circular(8),
       ),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Text('TOTAL ACTIVE BONUSES',
+        Text(AppLocalizations.of(context).npcTotalBonuses,
             style: AppTheme.pixelHeading(
                 fontSize: 10, letterSpacing: 1, color: AppTheme.textMuted)),
         const SizedBox(height: 8),
@@ -159,7 +159,7 @@ class _ActiveBonusBar extends StatelessWidget {
         decoration: BoxDecoration(
           color: c.color.withValues(alpha: 0.10),
           border: Border.all(color: c.color.withValues(alpha: 0.5)),
-          borderRadius: BorderRadius.circular(3),
+          borderRadius: BorderRadius.circular(8),
         ),
         child: Text(c.label,
             style: TextStyle(
@@ -189,17 +189,17 @@ class _PartyBanner extends StatelessWidget {
       decoration: BoxDecoration(
         color: const Color(0xFF1a1028),
         border: Border.all(color: accent.withValues(alpha: 0.4)),
-        borderRadius: BorderRadius.circular(4),
+        borderRadius: BorderRadius.circular(8),
       ),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [
           const Icon(Icons.groups, size: 15, color: accent),
           const SizedBox(width: 6),
-          Text('BATTLE PARTY',
+          Text(AppLocalizations.of(context).npcBattleParty,
               style: AppTheme.pixelHeading(
                   fontSize: 10, letterSpacing: 1, color: accent)),
           const Spacer(),
-          Text('$count / $max fielded',
+          Text(AppLocalizations.of(context).npcFielded(count, max),
               style: AppTheme.pixelHeading(
                   fontSize: 11,
                   color: count > 0 ? accent : AppTheme.textMuted)),
@@ -440,7 +440,7 @@ class _AllyCard extends StatelessWidget {
             color: borderColor,
             width: milestoneReady ? 1.5 : 1,
           ),
-          borderRadius: BorderRadius.circular(4),
+          borderRadius: BorderRadius.circular(8),
         ),
         child: AnimatedSwitcher(
           duration: const Duration(milliseconds: 400),
@@ -545,7 +545,7 @@ class _CardContent extends StatelessWidget {
                 ]),
                 const SizedBox(height: 2),
                 Text(
-                  unlocked ? def.title : 'Unknown Mercenary',
+                  unlocked ? def.title : AppLocalizations.of(context).npcUnknown,
                   style: TextStyle(
                       fontSize: 11,
                       color: unlocked
@@ -583,7 +583,7 @@ class _CardContent extends StatelessWidget {
               border: Border.all(
                 color: const Color(0xFF7744bb).withValues(alpha: 0.5),
               ),
-              borderRadius: BorderRadius.circular(3),
+              borderRadius: BorderRadius.circular(8),
             ),
             child: Row(children: [
               Icon(def.abilityIconData, size: 15, color: def.abilityColor),
@@ -592,11 +592,11 @@ class _CardContent extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('BATTLE ABILITY: ${def.activeAbility!.name}',
+                    Text(AppLocalizations.of(context).npcBattleAbility(def.activeAbility!.name),
                         style: AppTheme.pixelHeading(
                             fontSize: 9, color: const Color(0xFFaa77ff))),
                     const SizedBox(height: 2),
-                    Text(def.activeAbility!.description,
+                    Text(ContentL10n.of(context).tr(def.id, 'desc', def.activeAbility!.description),
                         style: const TextStyle(
                             fontSize: 10, height: 1.3, color: Colors.white54)),
                   ],
@@ -631,11 +631,11 @@ class _CardContent extends StatelessWidget {
           else ...[
             Row(children: [
               Expanded(
-                child: Text('Unlock: ${def.milestoneLabel}',
+                child: Text(AppLocalizations.of(context).npcUnlock(def.milestoneLabel),
                     style: const TextStyle(
                         fontSize: 11, color: AppTheme.textMuted)),
               ),
-              Text('${game.allyMilestoneProgress(def)} / ${def.milestoneTarget}',
+              Text(AppLocalizations.of(context).npcProgress(game.allyMilestoneProgress(def), def.milestoneTarget),
                   style: const TextStyle(
                       fontSize: 11, color: Colors.white38)),
             ]),
@@ -691,7 +691,7 @@ class _TalentSection extends StatelessWidget {
       decoration: BoxDecoration(
         color: const Color(0xFF0e1a24),
         border: Border.all(color: const Color(0xFF2a4060)),
-        borderRadius: BorderRadius.circular(4),
+        borderRadius: BorderRadius.circular(8),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -699,7 +699,7 @@ class _TalentSection extends StatelessWidget {
           Row(children: [
             const Text('⚡', style: TextStyle(fontSize: 11)),
             const SizedBox(width: 5),
-            Text('LV ${talentDef.unlocksAtLevel} TALENT',
+            Text(AppLocalizations.of(context).npcLvTalent(talentDef.unlocksAtLevel),
                 style: AppTheme.pixelHeading(
                     fontSize: 9, letterSpacing: 2, color: const Color(0xFF6699cc))),
             if (chosen != null) ...[
@@ -711,7 +711,7 @@ class _TalentSection extends StatelessWidget {
                   border: Border.all(color: const Color(0xFF44aaff).withValues(alpha: 0.5)),
                   borderRadius: BorderRadius.circular(2),
                 ),
-                child: Text('CHOSEN: ${chosen!.name}',
+                child: Text(AppLocalizations.of(context).npcChosen(chosen!.name),
                     style: AppTheme.pixelHeading(
                         fontSize: 8, color: const Color(0xFF44aaff))),
               ),
@@ -771,7 +771,7 @@ class _TalentOption extends StatelessWidget {
         decoration: BoxDecoration(
           color: bg,
           border: Border.all(color: border, width: isChosen ? 1.5 : 1.0),
-          borderRadius: BorderRadius.circular(3),
+          borderRadius: BorderRadius.circular(8),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -846,13 +846,13 @@ class _MilestoneReadyBanner extends StatelessWidget {
           decoration: BoxDecoration(
             color: const Color(0xFF44cc88).withValues(alpha: 0.10),
             border: Border.all(color: const Color(0xFF44cc88).withValues(alpha: 0.6)),
-            borderRadius: BorderRadius.circular(3),
+            borderRadius: BorderRadius.circular(8),
           ),
           child: Row(children: [
             const Icon(Icons.lock_open_rounded,
                 color: Color(0xFF44cc88), size: 14),
             const SizedBox(width: 8),
-            Text('MILESTONE COMPLETE — RECRUITING...',
+            Text(AppLocalizations.of(context).npcMilestoneComplete,
                 style: AppTheme.pixelHeading(
                     fontSize: 9,
                     color: const Color(0xFF44cc88),
@@ -881,7 +881,7 @@ class _LevelBadge extends StatelessWidget {
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.12),
         border: Border.all(color: color.withValues(alpha: 0.5)),
-        borderRadius: BorderRadius.circular(3),
+        borderRadius: BorderRadius.circular(8),
       ),
       child: Text(
         maxed ? '★ MAX' : 'LV $level',
@@ -900,9 +900,9 @@ class _MaxBadge extends StatelessWidget {
             color: AppTheme.accentGold.withValues(alpha: 0.10),
             border: Border.all(
                 color: AppTheme.accentGold.withValues(alpha: 0.4)),
-            borderRadius: BorderRadius.circular(3),
+            borderRadius: BorderRadius.circular(8),
           ),
-          child: Text('★ MAX',
+          child: Text(AppLocalizations.of(context).npcMax,
               style: AppTheme.pixelHeading(
                   fontSize: 10, color: AppTheme.accentGold)),
         )
@@ -924,7 +924,7 @@ class _StarCountChip extends StatelessWidget {
       decoration: BoxDecoration(
         color: c.withValues(alpha: 0.12),
         border: Border.all(color: c.withValues(alpha: 0.5)),
-        borderRadius: BorderRadius.circular(3),
+        borderRadius: BorderRadius.circular(8),
       ),
       child: Text('★$stars',
           style: AppTheme.pixelHeading(fontSize: 9, color: c)),
@@ -953,15 +953,15 @@ class _StarControl extends StatelessWidget {
       decoration: BoxDecoration(
         color: const Color(0xFF241a08),
         border: Border.all(color: c.withValues(alpha: 0.4)),
-        borderRadius: BorderRadius.circular(4),
+        borderRadius: BorderRadius.circular(8),
       ),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [
-          Text('STAR RANK',
+          Text(AppLocalizations.of(context).npcStarRank,
               style: AppTheme.pixelHeading(
                   fontSize: 9, letterSpacing: 1, color: c)),
           const Spacer(),
-          Text('$stars / $maxStars',
+          Text(AppLocalizations.of(context).npcStars(stars, maxStars),
               style: AppTheme.pixelHeading(fontSize: 10, color: c)),
         ]),
         const SizedBox(height: 6),
@@ -976,7 +976,7 @@ class _StarControl extends StatelessWidget {
         ]),
         const SizedBox(height: 7),
         if (atMax)
-          Text('★ FULLY ASCENDED — each star adds +1 effective level.',
+          Text(AppLocalizations.of(context).npcFullyAscended,
               style: TextStyle(fontSize: 9, color: c.withValues(alpha: 0.85)))
         else ...[
           GestureDetector(
@@ -988,10 +988,10 @@ class _StarControl extends StatelessWidget {
               decoration: BoxDecoration(
                 color: canAfford ? c.withValues(alpha: 0.12) : Colors.transparent,
                 border: Border.all(color: canAfford ? c : AppTheme.cardBorder),
-                borderRadius: BorderRadius.circular(3),
+                borderRadius: BorderRadius.circular(8),
               ),
               child: Row(mainAxisSize: MainAxisSize.min, children: [
-                Text('ASCEND ★${stars + 1}',
+                Text(AppLocalizations.of(context).npcAscendStar(stars + 1),
                     style: AppTheme.pixelHeading(
                         fontSize: 9,
                         color: canAfford ? c : AppTheme.textMuted)),
@@ -1009,12 +1009,12 @@ class _StarControl extends StatelessWidget {
           if (!canAfford)
             Padding(
               padding: const EdgeInsets.only(top: 3),
-              child: Text('You have: ${game.mythril} Mythril',
+              child: Text(AppLocalizations.of(context).npcYouHave(game.mythril),
                   style: const TextStyle(fontSize: 8, color: Color(0xFFcc6644))),
             ),
         ],
         const SizedBox(height: 2),
-        Text('Each star = +1 effective level of this merc\'s bonus.',
+        Text(AppLocalizations.of(context).npcStarInfo,
             style: const TextStyle(fontSize: 8, color: Colors.white38)),
       ]),
     );
@@ -1032,7 +1032,7 @@ class _PartyToggle extends StatelessWidget {
   Widget build(BuildContext context) {
     // Passive-only mercs have nothing to field.
     if (def.activeAbility == null) {
-      return const Text('Passive bonuses only — always active.',
+      return Text(AppLocalizations.of(context).npcPassiveOnly,
           style: TextStyle(
               fontSize: 9, color: Colors.white38, fontStyle: FontStyle.italic));
     }
@@ -1076,7 +1076,7 @@ class _PartyToggle extends StatelessWidget {
                   : canField
                       ? c.withValues(alpha: 0.5)
                       : AppTheme.cardBorder),
-          borderRadius: BorderRadius.circular(3),
+          borderRadius: BorderRadius.circular(8),
         ),
         child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
           Icon(icon, size: 13, color: fg),
@@ -1146,7 +1146,7 @@ class _BonusTag extends StatelessWidget {
       decoration: BoxDecoration(
         color: c.withValues(alpha: 0.10),
         border: Border.all(color: c.withValues(alpha: 0.5)),
-        borderRadius: BorderRadius.circular(3),
+        borderRadius: BorderRadius.circular(8),
       ),
       child: Text(_label,
           style: const TextStyle(
@@ -1199,17 +1199,17 @@ class _UpgradeButtonState extends State<_UpgradeButton> {
                 ? AppTheme.accentGold.withValues(alpha: 0.10)
                 : Colors.transparent,
             border: Border.all(color: color),
-            borderRadius: BorderRadius.circular(3),
+            borderRadius: BorderRadius.circular(8),
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text('UPGRADE',
+              Text(AppLocalizations.of(context).forgeUpgrade,
                   style: AppTheme.pixelHeading(fontSize: 10, color: color)),
               const SizedBox(height: 2),
               // Cost line spells out the currency so it's clear you SPEND shards.
               Row(mainAxisSize: MainAxisSize.min, children: [
-                Text('Cost: ◆ ${widget.costShards} Shards',
+                Text(AppLocalizations.of(context).npcCostShards(widget.costShards),
                     style: TextStyle(
                         fontSize: 9,
                         color: color,
@@ -1273,7 +1273,7 @@ class _SynergyCard extends StatelessWidget {
         decoration: BoxDecoration(
           color: bgColor,
           border: Border.all(color: borderColor, width: active ? 1.5 : 1),
-          borderRadius: BorderRadius.circular(4),
+          borderRadius: BorderRadius.circular(8),
         ),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Row(children: [
@@ -1330,7 +1330,7 @@ class _SynergyCard extends StatelessWidget {
                     color: active
                         ? const Color(0xFFcc99ff).withValues(alpha: 0.5)
                         : AppTheme.cardBorder),
-                borderRadius: BorderRadius.circular(3),
+                borderRadius: BorderRadius.circular(8),
               ),
               child: Text(syn.bonusSummary,
                   style: TextStyle(
@@ -1390,7 +1390,7 @@ class _PartnerChip extends StatelessWidget {
             color: met
                 ? const Color(0xFFcc99ff).withValues(alpha: 0.5)
                 : AppTheme.cardBorder),
-        borderRadius: BorderRadius.circular(3),
+        borderRadius: BorderRadius.circular(8),
       ),
       child: Row(mainAxisSize: MainAxisSize.min, children: [
         Icon(icon, size: 12,

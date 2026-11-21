@@ -49,6 +49,35 @@
           ]
         }
       }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:876548377875:android:c5cef3abf48fd4b6d25ee6",
+        "android_client_info": {
+          "package_name": "com.zetaidle.app.dev"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "876548377875-9j3d3qhnade2rnf3i2djfd2m8odjgi72.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBGVQP8Iqyqp8Q9pQtdx5kZOZP3VYAaE38"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "876548377875-9j3d3qhnade2rnf3i2djfd2m8odjgi72.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
     }
   ],
   "configuration_version": "1"

@@ -5,6 +5,8 @@ import '../models/world_event.dart';
 import '../services/game_state.dart';
 import '../theme/app_theme.dart';
 import '../widgets/battle_sprites.dart';
+import '../l10n/app_localizations.dart';
+import '../l10n/content_l10n.dart';
 
 class WorldEventScreen extends StatelessWidget {
   const WorldEventScreen({super.key});
@@ -18,7 +20,7 @@ class WorldEventScreen extends StatelessWidget {
       backgroundColor: const Color(0xFF1B1A17),
       appBar: AppBar(
         backgroundColor: const Color(0xFF2A2623),
-        title: Text('WORLD EVENT',
+        title: Text(AppLocalizations.of(context).homeNavWorldEvent,
             style: AppTheme.pixelHeading(fontSize: 14, letterSpacing: 2)),
         actions: [
           Padding(
@@ -38,7 +40,7 @@ class WorldEventScreen extends StatelessWidget {
           const SizedBox(height: 16),
           _EventBossCard(event: event, game: game),
           const SizedBox(height: 16),
-          Text('OMEGA SHOP',
+          Text(AppLocalizations.of(context).weOmegaShop,
               style: AppTheme.pixelHeading(
                   fontSize: 11, letterSpacing: 2, color: event.color)),
           const SizedBox(height: 10),
@@ -53,8 +55,8 @@ class WorldEventScreen extends StatelessWidget {
                     final ok = game.buyEventReward(r.id);
                     if (ok && context.mounted) {
                       final msg = r.type == EventRewardType.gear
-                          ? '${r.name} forged at Lv${game.hero.level}! Check your bag.'
-                          : '${r.name} claimed!';
+                          ? AppLocalizations.of(context).weGearForged(ContentL10n.of(context).tr(r.id, 'title', r.name), game.hero.level)
+                          : AppLocalizations.of(context).weRewardClaimed(ContentL10n.of(context).tr(r.id, 'title', r.name));
                       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
                         content: Text(msg),
                         duration: const Duration(seconds: 3),
@@ -81,10 +83,10 @@ class _TokenBadge extends StatelessWidget {
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.15),
         border: Border.all(color: color.withValues(alpha: 0.6)),
-        borderRadius: BorderRadius.circular(3),
+        borderRadius: BorderRadius.circular(8),
       ),
       child: Row(mainAxisSize: MainAxisSize.min, children: [
-        Image.asset('assets/event_token.png', width: 16, height: 16,
+        Image.asset('assets/event_token.webp', width: 16, height: 16,
             filterQuality: FilterQuality.medium),
         const SizedBox(width: 4),
         Text('$tokens',
@@ -114,7 +116,7 @@ class _EventBanner extends StatelessWidget {
       decoration: BoxDecoration(
         color: event.color.withValues(alpha: 0.06),
         border: Border.all(color: event.color.withValues(alpha: 0.5)),
-        borderRadius: BorderRadius.circular(4),
+        borderRadius: BorderRadius.circular(8),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -123,7 +125,7 @@ class _EventBanner extends StatelessWidget {
             Text(event.icon, style: const TextStyle(fontSize: 29)),
             const SizedBox(width: 12),
             Expanded(
-              child: Text(event.name,
+              child: Text(ContentL10n.of(context).tr('we_${event.id}', 'title', event.name),
                   style: TextStyle(
                       fontSize: 19,
                       fontWeight: FontWeight.bold,
@@ -140,7 +142,7 @@ class _EventBanner extends StatelessWidget {
               decoration: BoxDecoration(
                 color: Colors.black.withValues(alpha: 0.25),
                 border: Border.all(color: event.color.withValues(alpha: 0.5)),
-                borderRadius: BorderRadius.circular(6),
+                borderRadius: BorderRadius.circular(8),
               ),
               alignment: Alignment.center,
               child: StaticEnemySprite(spriteId: event.spriteId, size: 64),
@@ -150,7 +152,7 @@ class _EventBanner extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('NOW HUNTING',
+                  Text(AppLocalizations.of(context).weNowHunting,
                       style: AppTheme.pixelHeading(
                           fontSize: 9,
                           letterSpacing: 1.5,
@@ -166,19 +168,19 @@ class _EventBanner extends StatelessWidget {
             ),
           ]),
           const SizedBox(height: 12),
-          Text(event.description,
+          Text(ContentL10n.of(context).tr('we_${event.id}', 'desc', event.description),
               style: const TextStyle(
                   fontSize: 12, color: Colors.white60, height: 1.5)),
           const SizedBox(height: 8),
           Row(children: [
-            const Text('Damage: ', style: TextStyle(fontSize: 10, color: Colors.white38)),
+            Text(AppLocalizations.of(context).weDamageLabel, style: const TextStyle(fontSize: 10, color: Colors.white38)),
             ...event.damageTypes.map((t) => Container(
               margin: const EdgeInsets.only(right: 6),
               padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
               decoration: BoxDecoration(
                 color: _dmgColor(t).withValues(alpha: 0.15),
                 border: Border.all(color: _dmgColor(t).withValues(alpha: 0.5)),
-                borderRadius: BorderRadius.circular(3),
+                borderRadius: BorderRadius.circular(8),
               ),
               child: Text(t.toUpperCase(),
                   style: TextStyle(fontSize: 9, color: _dmgColor(t), fontWeight: FontWeight.bold)),
@@ -206,12 +208,12 @@ class _WeekTimer extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white.withValues(alpha: 0.03),
         border: Border.all(color: AppTheme.cardBorder),
-        borderRadius: BorderRadius.circular(3),
+        borderRadius: BorderRadius.circular(8),
       ),
       child: Row(children: [
         const Icon(Icons.timer_outlined, size: 14, color: AppTheme.textMuted),
         const SizedBox(width: 8),
-        Text('Event ends in  ${d}d ${h}h ${m}m',
+        Text(AppLocalizations.of(context).weEndsIn(d, h, m),
             style: const TextStyle(fontSize: 12, color: AppTheme.textMuted)),
       ]),
     );
@@ -229,12 +231,12 @@ class _HowToEarn extends StatelessWidget {
       decoration: BoxDecoration(
         color: const Color(0xFF231F1B),
         border: Border.all(color: AppTheme.cardBorder),
-        borderRadius: BorderRadius.circular(4),
+        borderRadius: BorderRadius.circular(8),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('HOW TO EARN TOKENS',
+          Text(AppLocalizations.of(context).weHowToEarn,
               style: AppTheme.pixelHeading(
                   fontSize: 10, letterSpacing: 1, color: AppTheme.textMuted)),
           const SizedBox(height: 8),
@@ -243,8 +245,7 @@ class _HowToEarn extends StatelessWidget {
             const SizedBox(width: 10),
             Expanded(
               child: Text(
-                '${event.enemyName}s have a 15% chance to appear during any '
-                'battle. Defeat them for 1–3 Event Tokens each.',
+                AppLocalizations.of(context).weHowToEarnDesc(event.enemyName),
                 style: const TextStyle(
                     fontSize: 12, color: Colors.white60, height: 1.4),
               ),
@@ -294,7 +295,7 @@ class _EventBossCard extends StatelessWidget {
             borderRadius: const BorderRadius.vertical(top: Radius.circular(7)),
           ),
           child: Row(children: [
-            Text('⚔ EVENT BOSS',
+            Text(AppLocalizations.of(context).weEventBoss,
                 style: AppTheme.pixelHeading(
                     fontSize: 11, letterSpacing: 2, color: accent)),
             const Spacer(),
@@ -312,7 +313,7 @@ class _EventBossCard extends StatelessWidget {
                 decoration: BoxDecoration(
                   color: Colors.black.withValues(alpha: 0.25),
                   border: Border.all(color: accent.withValues(alpha: 0.45)),
-                  borderRadius: BorderRadius.circular(6),
+                  borderRadius: BorderRadius.circular(8),
                 ),
                 alignment: Alignment.center,
                 child: StaticEnemySprite(spriteId: event.spriteId, size: 60),
@@ -329,7 +330,7 @@ class _EventBossCard extends StatelessWidget {
                             color: Colors.white)),
                     const SizedBox(height: 8),
                     ClipRRect(
-                      borderRadius: BorderRadius.circular(3),
+                      borderRadius: BorderRadius.circular(8),
                       child: LinearProgressIndicator(
                         value: frac,
                         minHeight: 8,
@@ -402,7 +403,7 @@ class _EventBossCard extends StatelessWidget {
                           ? const Color(0xFFcc8844)
                           : AppTheme.cardBorder),
                 ),
-                child: Text('CLAIM LEGENDARY GEAR  (1 🏆 Boss Token)',
+                child: Text(AppLocalizations.of(context).weClaimLegendary,
                     style: AppTheme.pixelHeading(
                         fontSize: 11,
                         color: game.eventBossTokens > 0
@@ -455,7 +456,7 @@ class _RewardCard extends StatelessWidget {
                   ? color.withValues(alpha: 0.6)
                   : AppTheme.cardBorder,
         ),
-        borderRadius: BorderRadius.circular(4),
+        borderRadius: BorderRadius.circular(8),
       ),
       child: Row(children: [
         Text(reward.icon, style: const TextStyle(fontSize: 23)),
@@ -464,7 +465,7 @@ class _RewardCard extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(reward.name,
+              Text(ContentL10n.of(context).tr(reward.id, 'title', reward.name),
                   style: const TextStyle(
                       fontSize: 14, fontWeight: FontWeight.bold)),
               Text(reward.description,
@@ -476,7 +477,7 @@ class _RewardCard extends StatelessWidget {
         if (claimed)
           const Icon(Icons.check_circle, color: Color(0xFF44aa44), size: 20)
         else ...[
-          Image.asset('assets/event_token.png', width: 15, height: 15,
+          Image.asset('assets/event_token.webp', width: 15, height: 15,
               filterQuality: FilterQuality.medium),
           const SizedBox(width: 3),
           Text('${reward.tokenCost}',
@@ -496,7 +497,7 @@ class _RewardCard extends StatelessWidget {
               minimumSize: Size.zero,
               tapTargetSize: MaterialTapTargetSize.shrinkWrap,
             ),
-            child: Text('BUY',
+            child: Text(AppLocalizations.of(context).auraBuy,
                 style: AppTheme.pixelHeading(
                     fontSize: 11,
                     color: canAfford ? color : AppTheme.cardBorder)),

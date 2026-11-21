@@ -187,7 +187,7 @@ class _TierRow extends StatelessWidget {
             decoration: BoxDecoration(
               color: color.withValues(alpha: 0.2),
               border: Border.all(color: color, width: 2),
-              borderRadius: BorderRadius.circular(6),
+              borderRadius: BorderRadius.circular(8),
             ),
             child: Text(label,
                 style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 18)),
@@ -373,7 +373,7 @@ class _HeatCell extends StatelessWidget {
       width: size, height: size,
       margin: const EdgeInsets.all(1),
       alignment: Alignment.center,
-      decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(3)),
+      decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(8)),
       child: Text(label,
           style: TextStyle(color: textColor, fontSize: 10, fontWeight: FontWeight.bold)),
     );

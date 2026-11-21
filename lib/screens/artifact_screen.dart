@@ -5,6 +5,8 @@ import '../theme/app_theme.dart';
 import '../widgets/currency_icon.dart';
 import '../widgets/currency_info.dart';
 import '../widgets/stat_icon.dart';
+import '../l10n/app_localizations.dart';
+import '../l10n/content_l10n.dart';
 
 class ArtifactScreen extends StatefulWidget {
   const ArtifactScreen({super.key, this.embedded = false});
@@ -57,21 +59,20 @@ class _ArtifactScreenState extends State<ArtifactScreen> {
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: const Color(0xFF2A2623),
-        title: Text('Salvage $count artifact${count == 1 ? '' : 's'}?',
+        title: Text(AppLocalizations.of(ctx).artSalvageTitle(count),
             style: AppTheme.pixelHeading(fontSize: 13)),
         content: Text(
-          'Permanently destroy all $count unequipped artifact${count == 1 ? '' : 's'} '
-          'for ◆ $mythril mythril? Equipped artifacts are kept.',
+          AppLocalizations.of(ctx).artSalvageBody(count, mythril),
           style: const TextStyle(color: AppTheme.textMuted, fontSize: 13, height: 1.4),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('CANCEL', style: TextStyle(color: AppTheme.textMuted)),
+            child: Text(AppLocalizations.of(ctx).csCancel, style: const TextStyle(color: AppTheme.textMuted)),
           ),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('SALVAGE', style: TextStyle(color: Color(0xFFcc99ff))),
+            child: Text(AppLocalizations.of(ctx).artSalvage, style: const TextStyle(color: Color(0xFFcc99ff))),
           ),
         ],
       ),
@@ -81,7 +82,7 @@ class _ArtifactScreenState extends State<ArtifactScreen> {
     setState(() { _selectedArtifactId = null; _highlightedCell = null; });
     if (!context.mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: Text('Salvaged $n artifact${n == 1 ? '' : 's'} for ◆ $gained mythril.'),
+      content: Text(AppLocalizations.of(context).artSalvaged(n, gained)),
       behavior: SnackBarBehavior.floating,
       duration: const Duration(milliseconds: 1400)));
   }
@@ -101,10 +102,10 @@ class _ArtifactScreenState extends State<ArtifactScreen> {
         children: [
           // Row 1: title + slot count + mythril
           Row(children: [
-            Text('ARTIFACT TABLE',
+            Text(AppLocalizations.of(context).artTable,
                 style: AppTheme.pixelHeading(fontSize: 12, letterSpacing: 2)),
             const Spacer(),
-            Text('${game.unlockedArtifactCells.clamp(0, _maxCells)}/$_maxCells slots',
+            Text(AppLocalizations.of(context).artSlots(game.unlockedArtifactCells.clamp(0, _maxCells), _maxCells),
                 style: const TextStyle(color: AppTheme.textMuted, fontSize: 11)),
             const SizedBox(width: 10),
             _MythrilBadge(mythril: game.mythril),
@@ -118,7 +119,7 @@ class _ArtifactScreenState extends State<ArtifactScreen> {
                 final n = game.autoEquipArtifacts();
                 setState(() { _selectedArtifactId = null; _highlightedCell = null; });
                 ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                  content: Text(n > 0 ? 'Auto-equipped $n best artifacts.' : 'No artifacts to equip.'),
+                  content: Text(n > 0 ? AppLocalizations.of(context).artAutoEquipped(n) : AppLocalizations.of(context).artNoneToEquip),
                   behavior: SnackBarBehavior.floating,
                   duration: const Duration(milliseconds: 1200)));
               },
@@ -127,9 +128,9 @@ class _ArtifactScreenState extends State<ArtifactScreen> {
                 decoration: BoxDecoration(
                   color: game.ownedArtifacts.isEmpty ? Colors.transparent : AppTheme.accentGold.withValues(alpha: 0.12),
                   border: Border.all(color: game.ownedArtifacts.isEmpty ? AppTheme.cardBorder : AppTheme.accentGold),
-                  borderRadius: BorderRadius.circular(3),
+                  borderRadius: BorderRadius.circular(8),
                 ),
-                child: Text('⚡ AUTO-EQUIP',
+                child: Text(AppLocalizations.of(context).artAutoEquip,
                     style: AppTheme.pixelHeading(fontSize: 10,
                         color: game.ownedArtifacts.isEmpty ? AppTheme.textMuted : AppTheme.accentGold)),
               ),
@@ -149,9 +150,9 @@ class _ArtifactScreenState extends State<ArtifactScreen> {
                   border: Border.all(color: game.unequippedArtifactCount == 0
                       ? AppTheme.cardBorder
                       : const Color(0xFF9966ff)),
-                  borderRadius: BorderRadius.circular(3),
+                  borderRadius: BorderRadius.circular(8),
                 ),
-                child: Text('♻ SALVAGE',
+                child: Text(AppLocalizations.of(context).artSalvageBtn,
                     style: AppTheme.pixelHeading(fontSize: 10,
                         color: game.unequippedArtifactCount == 0
                             ? AppTheme.textMuted
@@ -186,7 +187,7 @@ class _ArtifactScreenState extends State<ArtifactScreen> {
       backgroundColor: const Color(0xFF1B1A17),
       appBar: AppBar(
         backgroundColor: const Color(0xFF2A2623),
-        title: Text('ARTIFACTS',
+        title: Text(AppLocalizations.of(context).artTitle,
             style: AppTheme.pixelHeading(fontSize: 14, letterSpacing: 2)),
         actions: [
           Padding(
@@ -206,7 +207,7 @@ class _ArtifactScreenState extends State<ArtifactScreen> {
         // Medieval wooden table surface
         color: const Color(0xFF3a2818),
         border: Border.all(color: const Color(0xFF5a3a20), width: 3),
-        borderRadius: BorderRadius.circular(6),
+        borderRadius: BorderRadius.circular(8),
         boxShadow: const [
           BoxShadow(color: Color(0x44000000), blurRadius: 8, offset: Offset(0, 4)),
         ],
@@ -255,7 +256,7 @@ class _ArtifactScreenState extends State<ArtifactScreen> {
     if (active.isEmpty) {
       return Padding(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        child: Text('Place artifacts on the table to gain bonuses.',
+        child: Text(AppLocalizations.of(context).artPlaceHint,
             style: const TextStyle(fontSize: 10, color: AppTheme.textMuted), textAlign: TextAlign.center),
       );
     }
@@ -265,12 +266,12 @@ class _ArtifactScreenState extends State<ArtifactScreen> {
       decoration: BoxDecoration(
         color: const Color(0xFF1a1a2e),
         border: Border.all(color: const Color(0xFF9966ff).withValues(alpha: 0.3)),
-        borderRadius: BorderRadius.circular(4),
+        borderRadius: BorderRadius.circular(8),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('TABLE BONUSES', style: AppTheme.pixelHeading(
+          Text(AppLocalizations.of(context).artTableBonuses, style: AppTheme.pixelHeading(
               fontSize: 9, letterSpacing: 2, color: const Color(0xFF9966ff))),
           const SizedBox(height: 6),
           Wrap(
@@ -305,10 +306,10 @@ class _ArtifactScreenState extends State<ArtifactScreen> {
         Padding(
           padding: const EdgeInsets.only(bottom: 4),
           child: Row(children: [
-            Text('COLLECTION',
+            Text(AppLocalizations.of(context).artCollection,
                 style: AppTheme.pixelHeading(fontSize: 11, letterSpacing: 2)),
             const SizedBox(width: 8),
-            Text('(${owned.length})',
+            Text(AppLocalizations.of(context).artCount(owned.length),
                 style: const TextStyle(fontSize: 10, color: AppTheme.textMuted)),
           ]),
         ),
@@ -372,7 +373,7 @@ class _GridCell extends StatelessWidget {
           decoration: BoxDecoration(
             color: const Color(0xFF1a1208),
             border: Border.all(color: const Color(0xFF2a1e10), width: 1),
-            borderRadius: BorderRadius.circular(6),
+            borderRadius: BorderRadius.circular(8),
           ),
           child: const Center(child: Icon(Icons.lock_outline, size: 18, color: Color(0xFF3a2818))),
         );
@@ -405,7 +406,7 @@ class _GridCell extends StatelessWidget {
             ] : null,
           ),
           child: hasArt
-              ? _buildFilled(size)
+              ? _buildFilled(context, size)
               : active
                   ? Center(child: Icon(Icons.add_circle_outline, size: size * 0.35, color: const Color(0xFF9966ff)))
                   : Center(child: Text('.', style: TextStyle(fontSize: size * 0.3, color: const Color(0xFF3a2818)))),
@@ -414,7 +415,7 @@ class _GridCell extends StatelessWidget {
     });
   }
 
-  Widget _buildFilled(double size) {
+  Widget _buildFilled(BuildContext context, double size) {
     final typeColor = artifact!.isSetPiece ? kArtifactSetColor : artifact!.type.color;
     final rarityColor = artifact!.displayColor;
     return Center(
@@ -426,7 +427,7 @@ class _GridCell extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.only(top: 1),
               child: Text(
-                artifact!.base.name,
+                ContentL10n.of(context).tr(artifact!.base.id, 'title', artifact!.base.name),
                 style: TextStyle(
                     fontSize: (size * 0.15).clamp(5.0, 8.0),
                     color: rarityColor,
@@ -459,10 +460,10 @@ class _PlacementHint extends StatelessWidget {
         const Icon(Icons.touch_app, color: Color(0xFF9966ff), size: 14),
         const SizedBox(width: 6),
         Expanded(
-          child: Text('Tap a grid cell to place "$name"',
+          child: Text(AppLocalizations.of(context).artTapToPlace(name),
               style: const TextStyle(color: Color(0xFF9966ff), fontSize: 12)),
         ),
-        const Text('tap again to cancel',
+        Text(AppLocalizations.of(context).artTapCancel,
             style: TextStyle(color: AppTheme.textMuted, fontSize: 10)),
       ]),
     );
@@ -514,7 +515,7 @@ class _ArtifactRow extends StatelessWidget {
         decoration: BoxDecoration(
           color: bgColor,
           border: Border.all(color: borderColor, width: selected || equipped ? 1.5 : 1.0),
-          borderRadius: BorderRadius.circular(3),
+          borderRadius: BorderRadius.circular(8),
         ),
         child: Row(children: [
           // Custom type icon
@@ -524,7 +525,7 @@ class _ArtifactRow extends StatelessWidget {
             decoration: BoxDecoration(
               color: tc.withValues(alpha: 0.10),
               border: Border.all(color: tc.withValues(alpha: 0.30)),
-              borderRadius: BorderRadius.circular(3),
+              borderRadius: BorderRadius.circular(8),
             ),
             child: Center(
               child: ArtifactIcon(type: artifact.type, color: tc, size: 24, rarity: artifact.rarity),
@@ -542,7 +543,7 @@ class _ArtifactRow extends StatelessWidget {
                 const SizedBox(height: 3),
                 // Rarity/set + type + drop level badges
                 Row(children: [
-                  _badge(artifact.isSetPiece ? 'SET' : artifact.rarity.label, rc),
+                  _badge(artifact.isSetPiece ? AppLocalizations.of(context).artSet : artifact.rarity.label, rc),
                   const SizedBox(width: 4),
                   _badge(artifact.type.label, tc),
                   const SizedBox(width: 4),
@@ -550,7 +551,7 @@ class _ArtifactRow extends StatelessWidget {
                 ]),
                 if (artifact.isSetPiece && artifact.set != null) ...[
                   const SizedBox(height: 3),
-                  Text('◈ ${artifact.set!.name}',
+                  Text('◈ ${ContentL10n.of(context).tr(artifact.set!.id, 'title', artifact.set!.name)}',
                       style: const TextStyle(
                           fontSize: 10, color: kArtifactSetColor, fontWeight: FontWeight.w600)),
                 ],
@@ -593,7 +594,7 @@ class _ArtifactRow extends StatelessWidget {
                               : AppTheme.cardBorder,
                           width: canAfford ? 1.5 : 1,
                         ),
-                        borderRadius: BorderRadius.circular(6),
+                        borderRadius: BorderRadius.circular(8),
                         boxShadow: canAfford
                             ? [BoxShadow(
                                 color: const Color(0xFF9966ff).withValues(alpha: 0.5),
@@ -606,7 +607,7 @@ class _ArtifactRow extends StatelessWidget {
                               size: 18,
                               color: canAfford ? Colors.white : AppTheme.textMuted),
                           const SizedBox(width: 4),
-                          Text('UPGRADE',
+                          Text(AppLocalizations.of(context).forgeUpgrade,
                               style: TextStyle(
                                   fontSize: 12,
                                   fontWeight: FontWeight.bold,
@@ -614,7 +615,7 @@ class _ArtifactRow extends StatelessWidget {
                                   color: canAfford ? Colors.white : AppTheme.textMuted)),
                         ]),
                         const SizedBox(height: 3),
-                        Text('$upgradeCost Mythril',
+                        Text(AppLocalizations.of(context).artUpgradeCost(upgradeCost),
                             style: TextStyle(
                                 fontSize: 11,
                                 fontWeight: FontWeight.w600,
@@ -691,7 +692,7 @@ class _SetBonusPanel extends StatelessWidget {
       decoration: BoxDecoration(
         color: kArtifactSetColor.withValues(alpha: 0.06),
         border: Border.all(color: kArtifactSetColor.withValues(alpha: 0.4)),
-        borderRadius: BorderRadius.circular(4),
+        borderRadius: BorderRadius.circular(8),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -699,27 +700,27 @@ class _SetBonusPanel extends StatelessWidget {
           Row(children: [
             const Icon(Icons.auto_awesome, size: 14, color: kArtifactSetColor),
             const SizedBox(width: 6),
-            Text('SET BONUSES',
+            Text(AppLocalizations.of(context).armSetBonuses,
                 style: AppTheme.pixelHeading(
                     fontSize: 11, letterSpacing: 2, color: kArtifactSetColor)),
           ]),
           const SizedBox(height: 4),
-          const Text(
-            'Collect matching green Set pieces. 2 equipped = partial bonus, all 3 = full bonus.',
-            style: TextStyle(fontSize: 10, color: AppTheme.textMuted, height: 1.3),
+          Text(
+            AppLocalizations.of(context).artSetBlurb,
+            style: const TextStyle(fontSize: 10, color: AppTheme.textMuted, height: 1.3),
           ),
           if (active.isEmpty) ...[
             const SizedBox(height: 8),
-            Text('No Set pieces equipped yet — ${ArtifactSet.all.length} sets to discover.',
+            Text(AppLocalizations.of(context).artNoSets(ArtifactSet.all.length),
                 style: const TextStyle(fontSize: 11, color: AppTheme.textMuted)),
           ] else
-            ...active.map((s) => _setRow(s, counts[s.id] ?? 0)),
+            ...active.map((s) => _setRow(context, s, counts[s.id] ?? 0)),
         ],
       ),
     );
   }
 
-  Widget _setRow(ArtifactSet s, int count) {
+  Widget _setRow(BuildContext context, ArtifactSet s, int count) {
     final has2 = count >= 2;
     final has3 = count >= 3;
     return Padding(
@@ -739,7 +740,7 @@ class _SetBonusPanel extends StatelessWidget {
                 color: kArtifactSetColor.withValues(alpha: has2 ? 0.20 : 0.08),
                 borderRadius: BorderRadius.circular(2),
               ),
-              child: Text('$count / 3',
+              child: Text(AppLocalizations.of(context).artCountOf3(count),
                   style: TextStyle(
                       fontSize: 11,
                       fontWeight: FontWeight.bold,
@@ -747,9 +748,9 @@ class _SetBonusPanel extends StatelessWidget {
             ),
           ]),
           const SizedBox(height: 3),
-          _bonusLine('2-Set', s.twoPieceBonus.summary, has2),
+          _bonusLine(AppLocalizations.of(context).art2Set, s.twoPieceBonus.summary, has2),
           const SizedBox(height: 1),
-          _bonusLine('3-Set', s.threePieceBonus.summary, has3),
+          _bonusLine(AppLocalizations.of(context).art3Set, s.threePieceBonus.summary, has3),
         ],
       ),
     );
@@ -788,7 +789,7 @@ class _MythrilBadge extends StatelessWidget {
         decoration: BoxDecoration(
           color: const Color(0xFF6644cc).withValues(alpha: 0.2),
           border: Border.all(color: const Color(0xFF9966ff).withValues(alpha: 0.6)),
-          borderRadius: BorderRadius.circular(3),
+          borderRadius: BorderRadius.circular(8),
         ),
         child: Row(mainAxisSize: MainAxisSize.min, children: [
           const CurrencyIcon(id: 'mythril', size: 13),
@@ -886,17 +887,17 @@ class _ArtifactSourcesCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: const Color(0xFF231d15),
         border: Border.all(color: const Color(0xFF5a3a20)),
-        borderRadius: BorderRadius.circular(6),
+        borderRadius: BorderRadius.circular(8),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('HOW TO GET ARTIFACTS',
+          Text(AppLocalizations.of(context).artHowToGet,
               style: AppTheme.pixelHeading(fontSize: 11, letterSpacing: 2, color: const Color(0xFFccb088))),
           const SizedBox(height: 8),
-          row('👑', 'Campaign Bosses', 'about a 25% chance to drop on every boss-stage kill.'),
-          row('🏰', 'Dungeon runs', 'each boss you defeat drops one — up to 2 per run. Best steady farm.'),
-          row('⚔', 'Boss Rush', 'clear a run with an A or S rank to earn an artifact.'),
+          row('👑', AppLocalizations.of(context).artRowCampaign, AppLocalizations.of(context).artRowCampaignDesc),
+          row('🏰', AppLocalizations.of(context).artRowDungeon, AppLocalizations.of(context).artRowDungeonDesc),
+          row('⚔', AppLocalizations.of(context).artRowBossRush, AppLocalizations.of(context).artRowBossRushDesc),
           const SizedBox(height: 2),
           const Text(
             'Deeper floors / higher stages & tiers roll higher-level artifacts, and '

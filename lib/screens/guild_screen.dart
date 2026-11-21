@@ -25,6 +25,7 @@ import '../widgets/battle_split_panel.dart';
 import '../widgets/battle_sprites.dart';
 import '../widgets/pixel_health_bar.dart';
 import '../widgets/snake_loader.dart';
+import '../l10n/app_localizations.dart';
 
 class GuildScreen extends StatefulWidget {
   const GuildScreen({super.key});
@@ -106,10 +107,36 @@ class _GuildScreenState extends State<GuildScreen> {
               .timeout(const Duration(seconds: 3));
           // Only a DEFINITIVE "guild no longer exists" (a successful fetch that
           // returns null) removes membership. A timeout/network error must NOT
-          // kick the player out of their guild.
-          if (_guild == null) {
-            game.guildId = null;
-            game.saveToLocal();
+          // kick the player out of their guild. Show a prompt rather than
+          // silently wiping membership — the user may want to investigate.
+          if (_guild == null && mounted) {
+            final leave = await showDialog<bool>(
+              context: context,
+              barrierDismissible: false,
+              builder: (ctx) => AlertDialog(
+                backgroundColor: const Color(0xFF1a1a2e),
+                title: const Text('Guild Not Found',
+                    style: TextStyle(color: Color(0xFFddbb44), fontWeight: FontWeight.bold)),
+                content: const Text(
+                  'Your guild could not be found on the server. It may have been deleted, or the data may not have saved correctly.\n\nLeave guild and start fresh?',
+                  style: TextStyle(color: Color(0xFFaabbcc)),
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(ctx, false),
+                    child: const Text('Keep Waiting', style: TextStyle(color: Color(0xFF88aacc))),
+                  ),
+                  TextButton(
+                    onPressed: () => Navigator.pop(ctx, true),
+                    child: const Text('Leave Guild', style: TextStyle(color: Color(0xFFcc4444))),
+                  ),
+                ],
+              ),
+            );
+            if (leave == true) {
+              game.guildId = null;
+              game.saveToLocal();
+            }
           }
         } catch (_) {
           _guild = null; // transient — keep membership, just can't show it now
@@ -182,7 +209,7 @@ class _GuildScreenState extends State<GuildScreen> {
     return Scaffold(
       backgroundColor: AppTheme.darkBg,
       appBar: AppBar(
-        title: Text(_guild?.name ?? 'GUILD',
+        title: Text(_guild?.name ?? AppLocalizations.of(context).guildTitle,
             style: AppTheme.pixelHeading(fontSize: 14, letterSpacing: 2)),
         actions: [
           if (_guild != null)
@@ -224,13 +251,12 @@ class _GuildScreenState extends State<GuildScreen> {
         children: [
           const Text('⚔', style: TextStyle(fontSize: 48), textAlign: TextAlign.center),
           const SizedBox(height: 12),
-          Text('JOIN A GUILD',
+          Text(AppLocalizations.of(context).guildJoinTitle,
               style: AppTheme.pixelHeading(fontSize: 17, letterSpacing: 2),
               textAlign: TextAlign.center),
           const SizedBox(height: 8),
-          const Text(
-            'Guilds provide passive bonuses, a weekly boss challenge, '
-            'and a guild shop with exclusive rewards.',
+          Text(
+            AppLocalizations.of(context).guildJoinBlurb,
             style: TextStyle(fontSize: 12, color: AppTheme.textMuted, height: 1.5),
             textAlign: TextAlign.center,
           ),
@@ -246,18 +272,18 @@ class _GuildScreenState extends State<GuildScreen> {
                 foregroundColor: AppTheme.accentGold,
                 side: const BorderSide(color: AppTheme.accentGold),
               ),
-              child: Text('CREATE GUILD',
+              child: Text(AppLocalizations.of(context).guildCreate,
                   style: AppTheme.pixelHeading(fontSize: 13, letterSpacing: 2, color: AppTheme.accentGold)),
             ),
           ),
           const SizedBox(height: 20),
 
           // Public guilds
-          Text('PUBLIC GUILDS',
+          Text(AppLocalizations.of(context).guildPublic,
               style: AppTheme.pixelHeading(fontSize: 11, letterSpacing: 2, color: AppTheme.textMuted)),
           const SizedBox(height: 8),
           if (_publicGuilds.isEmpty)
-            const Text('No guilds found. Be the first to create one!',
+            Text(AppLocalizations.of(context).guildNoGuilds,
                 style: TextStyle(fontSize: 12, color: AppTheme.textMuted))
           else
             ..._publicGuilds.map((g) => _GuildListTile(
@@ -276,7 +302,7 @@ class _GuildScreenState extends State<GuildScreen> {
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: AppTheme.cardBg,
-        title: Text('Create Guild', style: AppTheme.pixelHeading(fontSize: 14, color: AppTheme.accentGold)),
+        title: Text(AppLocalizations.of(ctx).guildCreateTitle, style: AppTheme.pixelHeading(fontSize: 14, color: AppTheme.accentGold)),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -284,27 +310,27 @@ class _GuildScreenState extends State<GuildScreen> {
               controller: nameCtrl,
               maxLength: 20,
               style: const TextStyle(color: AppTheme.textLight),
-              decoration: const InputDecoration(
-                labelText: 'Guild Name',
-                labelStyle: TextStyle(color: AppTheme.textMuted),
+              decoration: InputDecoration(
+                labelText: AppLocalizations.of(ctx).guildNameLabel,
+                labelStyle: const TextStyle(color: AppTheme.textMuted),
               ),
             ),
             TextField(
               controller: descCtrl,
               maxLength: 50,
               style: const TextStyle(color: AppTheme.textLight),
-              decoration: const InputDecoration(
-                labelText: 'Description (optional)',
-                labelStyle: TextStyle(color: AppTheme.textMuted),
+              decoration: InputDecoration(
+                labelText: AppLocalizations.of(ctx).guildDescLabel,
+                labelStyle: const TextStyle(color: AppTheme.textMuted),
               ),
             ),
           ],
         ),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('CANCEL', style: TextStyle(color: AppTheme.textMuted))),
+              child: Text(AppLocalizations.of(ctx).csCancel, style: const TextStyle(color: AppTheme.textMuted))),
           TextButton(onPressed: () => Navigator.pop(ctx, true),
-              child: Text('CREATE', style: TextStyle(color: AppTheme.accentGold))),
+              child: Text(AppLocalizations.of(ctx).guildCreateBtn, style: const TextStyle(color: AppTheme.accentGold))),
         ],
       ),
     );
@@ -390,13 +416,13 @@ class _GuildScreenState extends State<GuildScreen> {
             labelColor: AppTheme.accentGold,
             unselectedLabelColor: AppTheme.textMuted,
             indicatorColor: AppTheme.accentGold,
-            tabs: const [
-              Tab(child: Row(mainAxisSize: MainAxisSize.min, children: [GameIcon(GameIconType.scroll,      size: 14, color: Colors.white54), SizedBox(width: 4), Text('INFO')])),
-              Tab(child: Row(mainAxisSize: MainAxisSize.min, children: [GameIcon(GameIconType.castle,       size: 14, color: Colors.white54), SizedBox(width: 4), Text('CASTLE')])),
-              Tab(child: Row(mainAxisSize: MainAxisSize.min, children: [GameIcon(GameIconType.dragonSkull, size: 14, color: Colors.white54), SizedBox(width: 4), Text('BOSS')])),
-              Tab(child: Row(mainAxisSize: MainAxisSize.min, children: [GameIcon(GameIconType.swords,     size: 14, color: Colors.white54), SizedBox(width: 4), Text('WAR')])),
-              Tab(child: Row(mainAxisSize: MainAxisSize.min, children: [GameIcon(GameIconType.bubble,      size: 14, color: Colors.white54), SizedBox(width: 4), Text('CHAT')])),
-              Tab(child: Row(mainAxisSize: MainAxisSize.min, children: [GameIcon(GameIconType.shopBag,     size: 14, color: Colors.white54), SizedBox(width: 4), Text('SHOP')])),
+            tabs: [
+              Tab(child: Row(mainAxisSize: MainAxisSize.min, children: [const GameIcon(GameIconType.scroll,      size: 14, color: Colors.white54), const SizedBox(width: 4), Text(AppLocalizations.of(context).guildTabInfo)])),
+              Tab(child: Row(mainAxisSize: MainAxisSize.min, children: [const GameIcon(GameIconType.castle,       size: 14, color: Colors.white54), const SizedBox(width: 4), Text(AppLocalizations.of(context).guildTabCastle)])),
+              Tab(child: Row(mainAxisSize: MainAxisSize.min, children: [const GameIcon(GameIconType.dragonSkull, size: 14, color: Colors.white54), const SizedBox(width: 4), Text(AppLocalizations.of(context).guildTabBoss)])),
+              Tab(child: Row(mainAxisSize: MainAxisSize.min, children: [const GameIcon(GameIconType.swords,     size: 14, color: Colors.white54), const SizedBox(width: 4), Text(AppLocalizations.of(context).guildTabWar)])),
+              Tab(child: Row(mainAxisSize: MainAxisSize.min, children: [const GameIcon(GameIconType.bubble,      size: 14, color: Colors.white54), const SizedBox(width: 4), Text(AppLocalizations.of(context).guildTabChat)])),
+              Tab(child: Row(mainAxisSize: MainAxisSize.min, children: [const GameIcon(GameIconType.shopBag,     size: 14, color: Colors.white54), const SizedBox(width: 4), Text(AppLocalizations.of(context).guildTabShop)])),
             ],
           ),
           Expanded(
@@ -439,12 +465,12 @@ class _GuildScreenState extends State<GuildScreen> {
             decoration: BoxDecoration(
               color: const Color(0xFF17150E),
               border: Border.all(color: AppTheme.cardBorder),
-              borderRadius: BorderRadius.circular(6),
+              borderRadius: BorderRadius.circular(8),
             ),
             child: Column(children: [
               PixelCastle(tier: castle.tier, guildTint: tint, size: 160, animate: castle.isMaxTier),
               const SizedBox(height: 8),
-              Text('CASTLE — TIER ${castle.tier} / 10',
+              Text(AppLocalizations.of(context).guildCastleTier(castle.tier),
                   style: AppTheme.pixelHeading(fontSize: 14, color: AppTheme.accentGold, letterSpacing: 2)),
             ]),
           ),
@@ -456,15 +482,15 @@ class _GuildScreenState extends State<GuildScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text('Progress to Tier ${castle.tier + 1}',
+              Text(AppLocalizations.of(context).guildProgressTier(castle.tier + 1),
                   style: const TextStyle(fontSize: 13, color: AppTheme.textLight)),
-              Text('${castle.storedCP} / ${castle.cpToNextTier} CP',
+              Text(AppLocalizations.of(context).guildCpProgress(castle.storedCP, castle.cpToNextTier),
                   style: const TextStyle(fontSize: 12, color: AppTheme.textMuted)),
             ],
           ),
           const SizedBox(height: 6),
           ClipRRect(
-            borderRadius: BorderRadius.circular(4),
+            borderRadius: BorderRadius.circular(8),
             child: LinearProgressIndicator(
               value: castle.progress,
               minHeight: 12,
@@ -473,21 +499,20 @@ class _GuildScreenState extends State<GuildScreen> {
             ),
           ),
           const SizedBox(height: 4),
-          Text('Next: ${GuildBuffs.headlineFor(castle.tier + 1)}',
+          Text(AppLocalizations.of(context).guildNext(GuildBuffs.headlineFor(castle.tier + 1)),
               style: const TextStyle(fontSize: 12, color: Color(0xFF88ccff))),
         ] else
-          Text('Citadel complete — the castle is fully built!',
+          Text(AppLocalizations.of(context).guildCitadelComplete,
               style: AppTheme.pixelHeading(fontSize: 12, color: AppTheme.accentGoldBright),
               textAlign: TextAlign.center),
         const SizedBox(height: 16),
 
         // Contribute.
         if (canContribute) ...[
-          Text('CONTRIBUTE GOLD',
+          Text(AppLocalizations.of(context).guildContributeGold,
               style: AppTheme.pixelHeading(fontSize: 11, letterSpacing: 2, color: AppTheme.accentGold)),
           const SizedBox(height: 4),
-          Text('Convert gold to Construction Points (CP). Rate: ${AppTheme.fmtNumber(goldPerCP)} gold = 1 CP. '
-              'You can add up to ${CastleTier.dailyCpCap} CP per day.',
+          Text(AppLocalizations.of(context).guildContributeInfo(AppTheme.fmtNumber(goldPerCP), CastleTier.dailyCpCap),
               style: const TextStyle(fontSize: 12, color: AppTheme.textMuted, height: 1.4)),
           const SizedBox(height: 10),
           Row(children: [
@@ -505,7 +530,7 @@ class _GuildScreenState extends State<GuildScreen> {
         const SizedBox(height: 18),
 
         // Active castle benefits.
-        Text('ACTIVE CASTLE BENEFITS',
+        Text(AppLocalizations.of(context).guildActiveBenefits,
             style: AppTheme.pixelHeading(fontSize: 11, letterSpacing: 2, color: AppTheme.accentGold)),
         const SizedBox(height: 8),
         for (var t = 2; t <= castle.tier; t++)
@@ -518,7 +543,7 @@ class _GuildScreenState extends State<GuildScreen> {
             ]),
           ),
         if (castle.tier < 2)
-          const Text('Contribute to raise the castle and unlock benefits.',
+          Text(AppLocalizations.of(context).guildContributeHint,
               style: TextStyle(fontSize: 12, color: AppTheme.textMuted)),
       ],
     );
@@ -534,7 +559,7 @@ class _GuildScreenState extends State<GuildScreen> {
       if (mounted) setState(() {});
       if (gained > 0 && mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text('🏰 Castle advanced to Tier ${guild.castle.tier}!'),
+          content: Text(AppLocalizations.of(context).guildCastleAdvanced(guild.castle.tier)),
           backgroundColor: AppTheme.panelBg));
       }
       return;
@@ -544,8 +569,8 @@ class _GuildScreenState extends State<GuildScreen> {
     if (res == null) return;
     if (res.capReached) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-          content: Text('Daily construction cap reached — come back tomorrow!'),
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(AppLocalizations.of(context).guildCapReached),
           behavior: SnackBarBehavior.floating));
       }
       return;
@@ -560,7 +585,7 @@ class _GuildScreenState extends State<GuildScreen> {
         setState(() {});
         if (res.tiersGained > 0) {
           ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-            content: Text('🏰 Castle advanced to Tier ${res.newTier}!'),
+            content: Text(AppLocalizations.of(context).guildCastleAdvanced(res.newTier)),
             backgroundColor: AppTheme.panelBg));
         }
       }
@@ -581,7 +606,7 @@ class _GuildScreenState extends State<GuildScreen> {
             decoration: BoxDecoration(
               color: AppTheme.cardBg,
               border: Border.all(color: AppTheme.accentGold.withValues(alpha: 0.4)),
-              borderRadius: BorderRadius.circular(4),
+              borderRadius: BorderRadius.circular(8),
             ),
             child: Row(
               children: [
@@ -596,7 +621,7 @@ class _GuildScreenState extends State<GuildScreen> {
                       Text(guild.description,
                           style: const TextStyle(fontSize: 11, color: AppTheme.textMuted)),
                     const SizedBox(height: 4),
-                    Text('Level ${guild.level}  •  ${guild.memberCount}/${guild.maxMembers} members',
+                    Text(AppLocalizations.of(context).guildLevelMembers(guild.level, guild.memberCount, guild.maxMembers),
                         style: const TextStyle(fontSize: 11, color: AppTheme.textMuted)),
                   ],
                 )),
@@ -611,14 +636,14 @@ class _GuildScreenState extends State<GuildScreen> {
             decoration: BoxDecoration(
               color: const Color(0xFF0d1020),
               border: Border.all(color: AppTheme.cardBorder),
-              borderRadius: BorderRadius.circular(4),
+              borderRadius: BorderRadius.circular(8),
             ),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
-                _BonusChip('💰', '+${((guild.goldBonus - 1) * 100).round()}% Gold'),
-                _BonusChip('✨', '+${((guild.xpBonus - 1) * 100).round()}% XP'),
-                _BonusChip('⚡', '+${((guild.idleBonus - 1) * 100).round()}% Idle'),
+                _BonusChip('💰', AppLocalizations.of(context).guildBonusGold(((guild.goldBonus - 1) * 100).round())),
+                _BonusChip('✨', AppLocalizations.of(context).guildBonusXp(((guild.xpBonus - 1) * 100).round())),
+                _BonusChip('⚡', AppLocalizations.of(context).guildBonusIdle(((guild.idleBonus - 1) * 100).round())),
               ],
             ),
           ),
@@ -636,7 +661,7 @@ class _GuildScreenState extends State<GuildScreen> {
               ),
             )),
             const SizedBox(width: 8),
-            Text('${guild.xp}/${guild.xpToNextLevel} XP',
+            Text(AppLocalizations.of(context).guildXpProgress(guild.xp, guild.xpToNextLevel),
                 style: const TextStyle(fontSize: 9, color: AppTheme.textMuted)),
           ]),
           const SizedBox(height: 10),
@@ -653,16 +678,16 @@ class _GuildScreenState extends State<GuildScreen> {
                 border: Border.all(color: game.gold >= 1000
                     ? AppTheme.accentGold.withValues(alpha: 0.5)
                     : AppTheme.cardBorder),
-                borderRadius: BorderRadius.circular(4),
+                borderRadius: BorderRadius.circular(8),
               ),
               child: Row(children: [
                 const Text('💰', style: TextStyle(fontSize: 16)),
                 const SizedBox(width: 8),
-                Text('DONATE 1000 GOLD',
+                Text(AppLocalizations.of(context).guildDonate1000,
                     style: AppTheme.pixelHeading(fontSize: 10, letterSpacing: 1,
                         color: game.gold >= 1000 ? AppTheme.accentGold : AppTheme.textMuted)),
                 const Spacer(),
-                Text('→ Guild XP + 🪙',
+                Text(AppLocalizations.of(context).guildDonateReward,
                     style: TextStyle(fontSize: 9,
                         color: game.gold >= 1000 ? const Color(0xFF44cc88) : AppTheme.textMuted)),
               ]),
@@ -672,7 +697,7 @@ class _GuildScreenState extends State<GuildScreen> {
 
           // Unlocked perks
           if (guild.unlockedPerks.isNotEmpty) ...[
-            Text('PERKS', style: AppTheme.pixelHeading(fontSize: 11, letterSpacing: 2, color: AppTheme.textMuted)),
+            Text(AppLocalizations.of(context).guildPerks, style: AppTheme.pixelHeading(fontSize: 11, letterSpacing: 2, color: AppTheme.textMuted)),
             const SizedBox(height: 6),
             Wrap(spacing: 6, runSpacing: 6, children: guild.unlockedPerks.map((p) =>
               Tooltip(message: p.description, child: Container(
@@ -680,7 +705,7 @@ class _GuildScreenState extends State<GuildScreen> {
                 decoration: BoxDecoration(
                   color: const Color(0xFF9966ff).withValues(alpha: 0.08),
                   border: Border.all(color: const Color(0xFF9966ff).withValues(alpha: 0.4)),
-                  borderRadius: BorderRadius.circular(3),
+                  borderRadius: BorderRadius.circular(8),
                 ),
                 child: Text('${p.icon} ${p.name}',
                     style: const TextStyle(fontSize: 10, color: Color(0xFF9966ff), fontWeight: FontWeight.bold)),
@@ -691,14 +716,14 @@ class _GuildScreenState extends State<GuildScreen> {
           if (guild.nextPerks.isNotEmpty) ...[
             ...guild.nextPerks.map((p) => Padding(
               padding: const EdgeInsets.only(bottom: 3),
-              child: Text('🔒 Lv${p.levelRequired}: ${p.name} — ${p.description}',
+              child: Text(AppLocalizations.of(context).guildLockedPerk(p.levelRequired, p.name, p.description),
                   style: const TextStyle(fontSize: 9, color: AppTheme.textMuted)),
             )),
           ],
           const SizedBox(height: 14),
 
           // Members
-          Text('MEMBERS', style: AppTheme.pixelHeading(fontSize: 11, letterSpacing: 2, color: AppTheme.textMuted)),
+          Text(AppLocalizations.of(context).guildMembers, style: AppTheme.pixelHeading(fontSize: 11, letterSpacing: 2, color: AppTheme.textMuted)),
           const SizedBox(height: 6),
           ...guild.members.map((m) {
             final isLeader = _authService.currentUser?.uid == guild.leaderId;
@@ -714,7 +739,7 @@ class _GuildScreenState extends State<GuildScreen> {
               decoration: BoxDecoration(
                 color: AppTheme.cardBg,
                 border: Border.all(color: AppTheme.cardBorder),
-                borderRadius: BorderRadius.circular(3),
+                borderRadius: BorderRadius.circular(8),
               ),
               child: Row(children: [
                 SizedBox(width: 24, height: 28,
@@ -724,7 +749,7 @@ class _GuildScreenState extends State<GuildScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text('$roleIcon ${m.name}', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppTheme.textLight)),
-                    Text('Lv${m.level} ${m.heroClass}  •  ${m.role.name.toUpperCase()}  •  donated: ${m.totalDonated}g',
+                    Text(AppLocalizations.of(context).guildMemberLine(m.level, m.heroClass, m.role.name.toUpperCase(), m.totalDonated),
                         style: const TextStyle(fontSize: 9, color: AppTheme.textMuted)),
                   ],
                 )),
@@ -765,7 +790,7 @@ class _GuildScreenState extends State<GuildScreen> {
                 foregroundColor: const Color(0xFFcc4444),
                 side: const BorderSide(color: Color(0xFFcc4444)),
               ),
-              child: const Text('LEAVE GUILD'),
+              child: Text(AppLocalizations.of(context).guildLeave),
             ),
           ),
         ],
@@ -813,7 +838,7 @@ class _GuildScreenState extends State<GuildScreen> {
 
   Widget _buildBossTab(GameState game, Guild guild, GuildBoss? boss) {
     if (boss == null) {
-      return const Center(child: Text('No boss this week.', style: TextStyle(color: AppTheme.textMuted)));
+      return Center(child: Text(AppLocalizations.of(context).guildNoBoss, style: const TextStyle(color: AppTheme.textMuted)));
     }
 
     final sorted = [...guild.members]..sort((a, b) => b.weeklyDamage.compareTo(a.weeklyDamage));
@@ -828,11 +853,11 @@ class _GuildScreenState extends State<GuildScreen> {
             decoration: BoxDecoration(
               color: const Color(0xFF1a0a2a),
               border: Border.all(color: const Color(0xFFcc44ff).withValues(alpha: 0.5)),
-              borderRadius: BorderRadius.circular(6),
+              borderRadius: BorderRadius.circular(8),
             ),
             child: Column(
               children: [
-                Text('☠ WEEKLY GUILD BOSS', style: AppTheme.pixelHeading(
+                Text(AppLocalizations.of(context).guildWeeklyBoss, style: AppTheme.pixelHeading(
                     fontSize: 11, letterSpacing: 2, color: const Color(0xFFcc44ff))),
                 const SizedBox(height: 10),
                 SizedBox(height: 60, child: StaticEnemySprite(spriteId: boss.spriteId, size: 56)),
@@ -842,11 +867,11 @@ class _GuildScreenState extends State<GuildScreen> {
                 const SizedBox(height: 8),
                 PixelHealthBar(current: boss.hp, max: boss.maxHp, height: 14),
                 const SizedBox(height: 4),
-                Text('${boss.hp} / ${boss.maxHp} HP',
+                Text(AppLocalizations.of(context).guildBossHp(boss.hp, boss.maxHp),
                     style: const TextStyle(fontSize: 11, color: AppTheme.textMuted)),
                 if (boss.defeated) ...[
                   const SizedBox(height: 8),
-                  Text('✓ DEFEATED', style: AppTheme.pixelHeading(
+                  Text(AppLocalizations.of(context).guildDefeated, style: AppTheme.pixelHeading(
                       fontSize: 13, color: const Color(0xFF44cc88))),
                 ],
               ],
@@ -871,8 +896,7 @@ class _GuildScreenState extends State<GuildScreen> {
                   final r = game.claimGuildBossReward(rank);
                   if (r != null && context.mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                      content: Text('🏆 Last week\'s boss: Rank #${r['rank']} — '
-                          '+${r['guildCoins'] ?? 0} Guild Coins, +${r['gold'] ?? 0} gold'),
+                      content: Text(AppLocalizations.of(context).guildBossRewardMsg(r['rank'] ?? 0, r['guildCoins'] ?? 0, r['gold'] ?? 0)),
                       duration: const Duration(seconds: 3)));
                     setState(() {});
                   }
@@ -883,7 +907,7 @@ class _GuildScreenState extends State<GuildScreen> {
                   padding: const EdgeInsets.symmetric(vertical: 12),
                   side: const BorderSide(color: AppTheme.accentGold),
                 ),
-                child: Text('🏆 CLAIM LAST WEEK\'S BOSS REWARD',
+                child: Text(AppLocalizations.of(context).guildClaimBossReward,
                     style: AppTheme.pixelHeading(fontSize: 12, color: AppTheme.accentGold)),
               ),
             ),
@@ -892,7 +916,7 @@ class _GuildScreenState extends State<GuildScreen> {
 
           // Attack button + attempts
           if (!boss.defeated) ...[
-            Text('Attempts: ${_maxBossAttacks - _bossAttacksToday} / $_maxBossAttacks',
+            Text(AppLocalizations.of(context).guildAttempts(_maxBossAttacks - _bossAttacksToday, _maxBossAttacks),
                 style: const TextStyle(fontSize: 10, color: AppTheme.textMuted)),
             const SizedBox(height: 6),
             SizedBox(
@@ -907,7 +931,7 @@ class _GuildScreenState extends State<GuildScreen> {
                   disabledForegroundColor: AppTheme.cardBorder,
                 ),
                 child: Text(
-                  _bossAttacksToday >= _maxBossAttacks ? 'NO ATTEMPTS LEFT' : '⚔ CHALLENGE BOSS',
+                  _bossAttacksToday >= _maxBossAttacks ? AppLocalizations.of(context).guildNoAttempts : AppLocalizations.of(context).guildChallengeBoss,
                   style: AppTheme.pixelHeading(fontSize: 13, letterSpacing: 2,
                       color: _bossAttacksToday >= _maxBossAttacks ? AppTheme.cardBorder : Colors.white)),
               ),
@@ -916,7 +940,7 @@ class _GuildScreenState extends State<GuildScreen> {
           const SizedBox(height: 14),
 
           // Damage leaderboard
-          Text('DAMAGE RANKING', style: AppTheme.pixelHeading(
+          Text(AppLocalizations.of(context).guildDamageRanking, style: AppTheme.pixelHeading(
               fontSize: 11, letterSpacing: 2, color: AppTheme.textMuted)),
           const SizedBox(height: 6),
           ...sorted.asMap().entries.map((e) {
@@ -934,7 +958,7 @@ class _GuildScreenState extends State<GuildScreen> {
                     color: rank == 1 ? AppTheme.accentGold : AppTheme.textMuted)),
                 const SizedBox(width: 8),
                 Expanded(child: Text(m.name, style: const TextStyle(fontSize: 12, color: AppTheme.textLight))),
-                Text('${m.weeklyDamage} dmg', style: const TextStyle(fontSize: 11, color: AppTheme.textMuted)),
+                Text(AppLocalizations.of(context).guildDmg(m.weeklyDamage), style: const TextStyle(fontSize: 11, color: AppTheme.textMuted)),
               ]),
             );
           }),
@@ -1176,7 +1200,7 @@ class _GuildScreenState extends State<GuildScreen> {
       decoration: BoxDecoration(
         color: const Color(0xFF0d1020),
         border: Border.all(color: gold.withValues(alpha: 0.4)),
-        borderRadius: BorderRadius.circular(6),
+        borderRadius: BorderRadius.circular(8),
       ),
       child: Text(GuildWarSchedule.phaseLabel,
           style: const TextStyle(fontSize: 12, color: Colors.white, fontWeight: FontWeight.bold)),
@@ -1204,7 +1228,7 @@ class _GuildScreenState extends State<GuildScreen> {
           decoration: BoxDecoration(
             color: e.isPlayer ? gold.withValues(alpha: 0.12) : Colors.transparent,
             border: e.isPlayer ? Border.all(color: gold.withValues(alpha: 0.5)) : null,
-            borderRadius: BorderRadius.circular(4),
+            borderRadius: BorderRadius.circular(8),
           ),
           child: Row(children: [
             SizedBox(width: 24, child: Text('#${i + 1}', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: rankColor))),
@@ -1221,15 +1245,15 @@ class _GuildScreenState extends State<GuildScreen> {
         decoration: BoxDecoration(
           color: const Color(0xFF0d1020),
           border: Border.all(color: gold.withValues(alpha: 0.3)),
-          borderRadius: BorderRadius.circular(6),
+          borderRadius: BorderRadius.circular(8),
         ),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Row(children: [
             const GameIcon(GameIconType.trophy, size: 15, color: gold),
             const SizedBox(width: 6),
-            Text('WAR STANDINGS', style: AppTheme.pixelHeading(fontSize: 12, color: gold)),
+            Text(AppLocalizations.of(context).guildWarStandings, style: AppTheme.pixelHeading(fontSize: 12, color: gold)),
             const Spacer(),
-            Text('Your record: ${game.guildWarWins}W–${game.guildWarLosses}L',
+            Text(AppLocalizations.of(context).guildWarRecord(game.guildWarWins, game.guildWarLosses),
                 style: const TextStyle(fontSize: 11, color: AppTheme.textMuted)),
           ]),
           const SizedBox(height: 8),
@@ -1239,8 +1263,8 @@ class _GuildScreenState extends State<GuildScreen> {
     }
 
     final banner = ClipRRect(
-      borderRadius: BorderRadius.circular(6),
-      child: Image.asset('assets/guild_war_sign_up.jpg',
+      borderRadius: BorderRadius.circular(8),
+      child: Image.asset('assets/guild_war_sign_up.webp',
           width: double.infinity, height: 150, fit: BoxFit.cover,
           filterQuality: FilterQuality.medium,
           errorBuilder: (_, __, ___) => const SizedBox.shrink()),
@@ -1255,12 +1279,12 @@ class _GuildScreenState extends State<GuildScreen> {
         decoration: BoxDecoration(
           color: AppTheme.cardBg,
           border: Border.all(color: AppTheme.cardBorder),
-          borderRadius: BorderRadius.circular(6),
+          borderRadius: BorderRadius.circular(8),
         ),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          const Text('Weekly Guild War', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Colors.white)),
+          Text(AppLocalizations.of(context).guildWeeklyWar, style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Colors.white)),
           const SizedBox(height: 6),
-          const Text('Enlist during Preparation (Mon–Tue). Wed–Fri, spend War Attacks to fight rival champions and earn points for your guild. Sat–Sun, claim rank rewards.',
+          Text(AppLocalizations.of(context).guildWarBlurb,
               style: TextStyle(fontSize: 12, color: AppTheme.textMuted, height: 1.4)),
           const SizedBox(height: 12),
           SizedBox(width: double.infinity, child: ElevatedButton(
@@ -1269,8 +1293,8 @@ class _GuildScreenState extends State<GuildScreen> {
                     if (game.enlistInGuildWar(guild.id, guild.name)) {
                       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
                         content: Text(phase == GuildWarPhase.battle
-                            ? '⚔ Enlisted! Spend your War Attacks now.'
-                            : '⚔ Enlisted! Return Wed–Fri to fight.'),
+                            ? AppLocalizations.of(context).guildEnlistedBattle
+                            : AppLocalizations.of(context).guildEnlistedPrep),
                         duration: const Duration(seconds: 2)));
                     }
                   }
@@ -1278,7 +1302,7 @@ class _GuildScreenState extends State<GuildScreen> {
             style: ElevatedButton.styleFrom(
               backgroundColor: gold.withValues(alpha: 0.18), foregroundColor: gold,
               side: BorderSide(color: phase != GuildWarPhase.ended ? gold : AppTheme.cardBorder)),
-            child: Text(phase != GuildWarPhase.ended ? 'ENLIST YOUR GUILD' : 'WAR ENDED — WAIT FOR NEXT WEEK',
+            child: Text(phase != GuildWarPhase.ended ? AppLocalizations.of(context).guildEnlist : AppLocalizations.of(context).guildWarEndedWait,
                 style: AppTheme.pixelHeading(fontSize: 12, color: phase != GuildWarPhase.ended ? gold : AppTheme.textMuted)),
           )),
         ]),
@@ -1297,14 +1321,14 @@ class _GuildScreenState extends State<GuildScreen> {
       decoration: BoxDecoration(
         gradient: const LinearGradient(colors: [Color(0xFF241a2e), Color(0xFF17140F)]),
         border: Border.all(color: gold.withValues(alpha: 0.4)),
-        borderRadius: BorderRadius.circular(6),
+        borderRadius: BorderRadius.circular(8),
       ),
       child: Column(children: [
-        scoreRow('${war.guildAName} (you)', myScore, gold, true),
+        scoreRow(AppLocalizations.of(context).guildScoreYou(war.guildAName), myScore, gold, true),
         const Divider(color: Colors.white12, height: 10),
         scoreRow(war.guildBName, rivalScore, const Color(0xFFff6688), false),
         const SizedBox(height: 6),
-        Text(myScore >= rivalScore ? '🏆 Your guild leads!' : '⚠ Your guild is behind — fight!',
+        Text(myScore >= rivalScore ? AppLocalizations.of(context).guildLeads : AppLocalizations.of(context).guildBehind,
             style: TextStyle(fontSize: 11, color: myScore >= rivalScore ? const Color(0xFF66dd88) : const Color(0xFFffaa44))),
       ]),
     ));
@@ -1320,11 +1344,11 @@ class _GuildScreenState extends State<GuildScreen> {
           backgroundColor: gold.withValues(alpha: 0.18), foregroundColor: gold,
           padding: const EdgeInsets.symmetric(vertical: 12),
           side: BorderSide(color: charges > 0 ? gold : AppTheme.cardBorder)),
-        child: Text(charges > 0 ? '⚔ FIGHT FOR THE GUILD  ($charges/${GameState.kWarAttacksPerDay})' : 'NO WAR ATTACKS LEFT TODAY',
+        child: Text(charges > 0 ? AppLocalizations.of(context).guildFightForGuild(charges, GameState.kWarAttacksPerDay) : AppLocalizations.of(context).guildNoWarAttacks,
             style: AppTheme.pixelHeading(fontSize: 12, color: charges > 0 ? gold : AppTheme.textMuted)),
       )));
       children.add(const SizedBox(height: 6));
-      children.add(const Text('War Attacks refresh daily during the Battle phase.',
+      children.add(Text(AppLocalizations.of(context).guildWarRefresh,
           style: TextStyle(fontSize: 10, color: AppTheme.textMuted)));
     } else if (phase == GuildWarPhase.ended) {
       children.add(SizedBox(width: double.infinity, child: ElevatedButton(
@@ -1333,7 +1357,7 @@ class _GuildScreenState extends State<GuildScreen> {
           if (r != null && context.mounted) {
             final won = (r['won'] ?? 0) == 1;
             ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-              content: Text('${won ? '🏆 Victory!' : 'War over.'} +${r['guildCoins'] ?? 0} Guild Coins, +${r['gold'] ?? 0} gold'),
+              content: Text(AppLocalizations.of(context).guildWarRewardMsg(won ? AppLocalizations.of(context).guildWarVictory : AppLocalizations.of(context).guildWarOver, r['guildCoins'] ?? 0, r['gold'] ?? 0)),
               duration: const Duration(seconds: 3)));
           }
         },
@@ -1341,11 +1365,11 @@ class _GuildScreenState extends State<GuildScreen> {
           backgroundColor: const Color(0xFFcc8844).withValues(alpha: 0.18), foregroundColor: const Color(0xFFffaa44),
           padding: const EdgeInsets.symmetric(vertical: 12),
           side: BorderSide(color: game.warRewardsClaimed ? AppTheme.cardBorder : const Color(0xFFcc8844))),
-        child: Text(game.warRewardsClaimed ? 'REWARDS CLAIMED' : 'CLAIM WAR REWARDS',
+        child: Text(game.warRewardsClaimed ? AppLocalizations.of(context).guildRewardsClaimed : AppLocalizations.of(context).guildClaimWarRewards,
             style: AppTheme.pixelHeading(fontSize: 12, color: game.warRewardsClaimed ? AppTheme.textMuted : const Color(0xFFffaa44))),
       )));
     } else {
-      children.add(const Text('Battle begins Wednesday — come back to fight!',
+      children.add(Text(AppLocalizations.of(context).guildWarBattleSoon,
           style: TextStyle(fontSize: 12, color: AppTheme.textMuted)));
     }
 
@@ -1382,7 +1406,7 @@ class _GuildScreenState extends State<GuildScreen> {
             decoration: BoxDecoration(
               color: const Color(0xFF0d1020),
               border: Border.all(color: AppTheme.accentGold.withValues(alpha: 0.3)),
-              borderRadius: BorderRadius.circular(4),
+              borderRadius: BorderRadius.circular(8),
             ),
             child: Row(children: [
               const Text('🪙', style: TextStyle(fontSize: 18)),
@@ -1390,7 +1414,7 @@ class _GuildScreenState extends State<GuildScreen> {
               Text('${game.guildCoins}',
                   style: GoogleFonts.rajdhani(fontSize: 17, fontWeight: FontWeight.bold, color: AppTheme.accentGold)),
               const SizedBox(width: 6),
-              const Text('Guild Coins', style: TextStyle(fontSize: 12, color: AppTheme.textMuted)),
+              Text(AppLocalizations.of(context).guildCoinsLabel, style: TextStyle(fontSize: 12, color: AppTheme.textMuted)),
             ]),
           ),
           const SizedBox(height: 14),
@@ -1402,7 +1426,7 @@ class _GuildScreenState extends State<GuildScreen> {
               decoration: BoxDecoration(
                 color: canAfford ? AppTheme.accentGold.withValues(alpha: 0.05) : AppTheme.cardBg,
                 border: Border.all(color: canAfford ? AppTheme.accentGold.withValues(alpha: 0.5) : AppTheme.cardBorder),
-                borderRadius: BorderRadius.circular(4),
+                borderRadius: BorderRadius.circular(8),
               ),
               child: Row(children: [
                 _guildShopItemIcon(item, 24),
@@ -1422,7 +1446,7 @@ class _GuildScreenState extends State<GuildScreen> {
                     decoration: BoxDecoration(
                       color: canAfford ? AppTheme.accentGold.withValues(alpha: 0.12) : Colors.transparent,
                       border: Border.all(color: canAfford ? AppTheme.accentGold : AppTheme.cardBorder),
-                      borderRadius: BorderRadius.circular(3),
+                      borderRadius: BorderRadius.circular(8),
                     ),
                     child: Text('🪙${item.cost}', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold,
                         color: canAfford ? AppTheme.accentGold : AppTheme.textMuted)),
@@ -1470,7 +1494,7 @@ class _GuildListTile extends StatelessWidget {
       decoration: BoxDecoration(
         color: AppTheme.cardBg,
         border: Border.all(color: AppTheme.cardBorder),
-        borderRadius: BorderRadius.circular(4),
+        borderRadius: BorderRadius.circular(8),
       ),
       child: Row(children: [
         Text(guild.icon, style: const TextStyle(fontSize: 24)),
@@ -1479,7 +1503,7 @@ class _GuildListTile extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(guild.name, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: AppTheme.textLight)),
-            Text('Lv${guild.level}  •  ${guild.memberCount}/${guild.maxMembers} members',
+            Text(AppLocalizations.of(context).guildListLine(guild.level, guild.memberCount, guild.maxMembers),
                 style: const TextStyle(fontSize: 10, color: AppTheme.textMuted)),
           ],
         )),
@@ -1491,13 +1515,13 @@ class _GuildListTile extends StatelessWidget {
               decoration: BoxDecoration(
                 color: AppTheme.accentGold.withValues(alpha: 0.12),
                 border: Border.all(color: AppTheme.accentGold),
-                borderRadius: BorderRadius.circular(3),
+                borderRadius: BorderRadius.circular(8),
               ),
-              child: Text('JOIN', style: AppTheme.pixelHeading(fontSize: 11, color: AppTheme.accentGold)),
+              child: Text(AppLocalizations.of(context).guildJoin, style: AppTheme.pixelHeading(fontSize: 11, color: AppTheme.accentGold)),
             ),
           )
         else
-          const Text('FULL', style: TextStyle(fontSize: 10, color: AppTheme.textMuted)),
+          Text(AppLocalizations.of(context).guildFull, style: TextStyle(fontSize: 10, color: AppTheme.textMuted)),
       ]),
     );
   }
@@ -1765,7 +1789,7 @@ class _GuildBossBattleState extends State<_GuildBossBattle> {
       backgroundColor: AppTheme.darkBg,
       appBar: AppBar(
         backgroundColor: const Color(0xFF2A2623),
-        title: Text('GUILD BOSS', style: AppTheme.pixelHeading(fontSize: 14, letterSpacing: 2)),
+        title: Text(AppLocalizations.of(context).guildBossTitle, style: AppTheme.pixelHeading(fontSize: 14, letterSpacing: 2)),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
           onPressed: () => Navigator.pop(context, _totalDamage),
@@ -1837,11 +1861,11 @@ class _GuildBossBattleState extends State<_GuildBossBattle> {
               padding: const EdgeInsets.all(14),
               color: _won ? const Color(0xFF0a2a0a) : const Color(0xFF2a0a0a),
               child: Column(children: [
-                Text(_won ? '✦ BOSS DEFEATED!' : '💀 FALLEN',
+                Text(_won ? AppLocalizations.of(context).guildBossWin : AppLocalizations.of(context).guildBossLose,
                     style: AppTheme.pixelHeading(fontSize: 16, letterSpacing: 2,
                         color: _won ? const Color(0xFF44cc88) : const Color(0xFFcc4444))),
                 const SizedBox(height: 4),
-                Text('Total damage dealt: $_totalDamage',
+                Text(AppLocalizations.of(context).guildTotalDamage(_totalDamage),
                     style: const TextStyle(fontSize: 12, color: AppTheme.textMuted)),
                 const SizedBox(height: 10),
                 SizedBox(
@@ -1854,7 +1878,7 @@ class _GuildBossBattleState extends State<_GuildBossBattle> {
                       foregroundColor: AppTheme.accentGold,
                       side: const BorderSide(color: AppTheme.accentGold),
                     ),
-                    child: Text('RETURN TO GUILD',
+                    child: Text(AppLocalizations.of(context).guildReturn,
                         style: AppTheme.pixelHeading(fontSize: 12, color: AppTheme.accentGold)),
                   ),
                 ),
@@ -1889,17 +1913,17 @@ class _CpButton extends StatelessWidget {
         decoration: BoxDecoration(
           color: enabled ? AppTheme.accentGold.withValues(alpha: 0.12) : Colors.transparent,
           border: Border.all(color: enabled ? AppTheme.accentGold : AppTheme.cardBorder),
-          borderRadius: BorderRadius.circular(4),
+          borderRadius: BorderRadius.circular(8),
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text('+$cp CP',
+            Text(AppLocalizations.of(context).guildCpAmount(cp),
                 style: TextStyle(
                     fontSize: 13, fontWeight: FontWeight.bold,
                     color: enabled ? AppTheme.accentGold : AppTheme.textMuted)),
             const SizedBox(height: 2),
-            Text('${AppTheme.fmtNumber(goldCost)}g',
+            Text(AppLocalizations.of(context).guildGoldCost(AppTheme.fmtNumber(goldCost)),
                 style: const TextStyle(fontSize: 10, color: AppTheme.textMuted)),
           ],
         ),

@@ -1,5 +1,6 @@
 ﻿import 'dart:math';
 import 'package:flutter/material.dart';
+import '../l10n/app_localizations.dart';
 
 /// Animated gold coin with a "Z" embossed on it — the visual for the
 /// premium currency (ZCoins, formerly "Crystals").
@@ -63,7 +64,7 @@ class ZCoinBalanceBar extends StatelessWidget {
       decoration: BoxDecoration(
         color: const Color(0xFF231F1B),
         border: Border.all(color: const Color(0xFF66aaff).withValues(alpha: 0.4)),
-        borderRadius: BorderRadius.circular(4),
+        borderRadius: BorderRadius.circular(8),
       ),
       child: Row(children: [
         const ZCoinIcon(size: 18),
@@ -82,12 +83,12 @@ class ZCoinBalanceBar extends StatelessWidget {
               style: const TextStyle(
                   fontSize: 17, fontWeight: FontWeight.bold, color: Color(0xFF80d0ff))),
           const SizedBox(width: 6),
-          const Text('Shards',
-              style: TextStyle(fontSize: 12, color: Color(0xFF9fb4c9))),
+          Text(AppLocalizations.of(context).zcShards,
+              style: const TextStyle(fontSize: 12, color: Color(0xFF9fb4c9))),
         ],
         const Spacer(),
-        const Text('Your balance',
-            style: TextStyle(fontSize: 11, color: Color(0xFF7a8a99))),
+        Text(AppLocalizations.of(context).euYourBalance,
+            style: const TextStyle(fontSize: 11, color: Color(0xFF7a8a99))),
       ]),
     );
   }

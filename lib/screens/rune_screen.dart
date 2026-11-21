@@ -5,6 +5,7 @@ import '../services/game_state.dart';
 import '../theme/app_theme.dart';
 import '../widgets/currency_info.dart';
 import '../widgets/rune_sprite.dart';
+import '../l10n/app_localizations.dart';
 
 class RuneScreen extends StatelessWidget {
   const RuneScreen({super.key, this.embedded = false});
@@ -25,31 +26,29 @@ class RuneScreen extends StatelessWidget {
           decoration: BoxDecoration(
             color: const Color(0xFF1a1225),
             border: Border.all(color: const Color(0xFFaa66ff).withValues(alpha: 0.4)),
-            borderRadius: BorderRadius.circular(4),
+            borderRadius: BorderRadius.circular(8),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('ABILITY RUNES', style: AppTheme.pixelHeading(
+              Text(AppLocalizations.of(context).runeTitle, style: AppTheme.pixelHeading(
                   fontSize: 12, color: const Color(0xFFaa66ff), letterSpacing: 2)),
               const SizedBox(height: 6),
-              const Text(
-                'Socket runes to permanently enhance your abilities.\n'
-                'Each rune modifies a specific ability — boosting damage, duration, or cooldown.\n'
-                'Costs Arcane Dust from disenchanting gear, gems, and runes.',
-                style: TextStyle(fontSize: 11, color: AppTheme.textMuted, height: 1.4)),
+              Text(
+                AppLocalizations.of(context).runeBody,
+                style: const TextStyle(fontSize: 11, color: AppTheme.textMuted, height: 1.4)),
               const SizedBox(height: 8),
               Row(children: [
                 InfoTip(
                   message: CurrencyInfo.gemShards,
                   child: Row(mainAxisSize: MainAxisSize.min, children: [
-                    const Text('🌀 Arcane Dust: ', style: TextStyle(fontSize: 11, color: AppTheme.textMuted)),
+                    Text(AppLocalizations.of(context).runeArcaneDust, style: const TextStyle(fontSize: 11, color: AppTheme.textMuted)),
                     Text('${game.gemShards}', style: const TextStyle(
                         fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFFbb88ee))),
                   ]),
                 ),
                 const SizedBox(width: 16),
-                Text('📜 Owned: ${game.ownedRunes.length}/${runes.length}',
+                Text(AppLocalizations.of(context).runeOwned(game.ownedRunes.length, runes.length),
                     style: const TextStyle(fontSize: 11, color: AppTheme.textMuted)),
               ]),
             ],
@@ -58,7 +57,7 @@ class RuneScreen extends StatelessWidget {
 
         // Rune list
         if (runes.isEmpty)
-          const Center(child: Text('No runes available for this class.',
+          Center(child: Text(AppLocalizations.of(context).runeNone,
               style: TextStyle(color: AppTheme.textMuted)))
         else
           ...runes.map((rune) => _RuneCard(rune: rune, game: game)),
@@ -69,7 +68,7 @@ class RuneScreen extends StatelessWidget {
     return Scaffold(
       backgroundColor: AppTheme.darkBg,
       appBar: AppBar(
-        title: Text('RUNES', style: AppTheme.pixelHeading(fontSize: 14, letterSpacing: 2)),
+        title: Text(AppLocalizations.of(context).runeAppBar, style: AppTheme.pixelHeading(fontSize: 14, letterSpacing: 2)),
       ),
       body: Column(children: [
         const CurrencySourceBar(['gemShards']),
@@ -102,7 +101,7 @@ class _RuneCard extends StatelessWidget {
             ? const Color(0xFF112211)
             : const Color(0xFF1a1816),
         border: Border.all(color: borderColor.withValues(alpha: socketed ? 0.6 : 0.4)),
-        borderRadius: BorderRadius.circular(6),
+        borderRadius: BorderRadius.circular(8),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -126,9 +125,9 @@ class _RuneCard extends StatelessWidget {
                 decoration: BoxDecoration(
                   color: const Color(0xFF44cc88).withValues(alpha: 0.15),
                   border: Border.all(color: const Color(0xFF44cc88)),
-                  borderRadius: BorderRadius.circular(3),
+                  borderRadius: BorderRadius.circular(8),
                 ),
-                child: Text('SOCKETED', style: AppTheme.pixelHeading(
+                child: Text(AppLocalizations.of(context).runeSocketed, style: AppTheme.pixelHeading(
                     fontSize: 9, color: const Color(0xFF44cc88))),
               ),
           ]),
@@ -140,7 +139,7 @@ class _RuneCard extends StatelessWidget {
               decoration: BoxDecoration(
                 color: rune.color.withValues(alpha: 0.08),
                 border: Border.all(color: rune.color.withValues(alpha: 0.3)),
-                borderRadius: BorderRadius.circular(4),
+                borderRadius: BorderRadius.circular(8),
               ),
               child: Text('✦ ${rune.bonusEffectDesc}',
                   style: TextStyle(fontSize: 11, color: rune.color, fontWeight: FontWeight.bold)),
@@ -153,13 +152,13 @@ class _RuneCard extends StatelessWidget {
               decoration: BoxDecoration(
                 color: const Color(0xFF1a1a1a),
                 border: Border.all(color: AppTheme.cardBorder),
-                borderRadius: BorderRadius.circular(4),
+                borderRadius: BorderRadius.circular(8),
               ),
-              child: const Row(children: [
-                Icon(Icons.lock_outline, size: 12, color: AppTheme.textMuted),
-                SizedBox(width: 6),
-                Expanded(child: Text('Not yet found — drops from bosses, dungeons, gauntlet, and expeditions.',
-                    style: TextStyle(fontSize: 9, color: AppTheme.textMuted))),
+              child: Row(children: [
+                const Icon(Icons.lock_outline, size: 12, color: AppTheme.textMuted),
+                const SizedBox(width: 6),
+                Expanded(child: Text(AppLocalizations.of(context).runeNotFound,
+                    style: const TextStyle(fontSize: 9, color: AppTheme.textMuted))),
               ]),
             ),
           ],
@@ -171,7 +170,7 @@ class _RuneCard extends StatelessWidget {
                   if (item.canSocketRune) item,
               ];
               if (socketable.isEmpty) {
-                return const Text('Equip a ring or amulet to socket this rune.',
+                return Text(AppLocalizations.of(context).runeEquipFirst,
                     style: TextStyle(fontSize: 10, color: AppTheme.textMuted));
               }
               return Wrap(
@@ -187,10 +186,10 @@ class _RuneCard extends StatelessWidget {
                           : Colors.transparent,
                       foregroundColor: owned ? rune.color : AppTheme.cardBorder,
                       side: BorderSide(color: owned ? rune.color : AppTheme.cardBorder),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                       padding: const EdgeInsets.symmetric(horizontal: 10),
                     ),
-                    child: Text('Socket → ${item.name}  (🌀 ${rune.dustCost})',
+                    child: Text(AppLocalizations.of(context).runeSocketInto(item.name, rune.dustCost),
                         style: TextStyle(fontSize: 9,
                             color: owned ? rune.color : AppTheme.cardBorder)),
                   ),

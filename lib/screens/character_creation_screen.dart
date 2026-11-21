@@ -9,6 +9,7 @@ import '../models/hero_race.dart';
 import '../models/hero_trait.dart';
 import '../services/analytics_service.dart';
 import '../l10n/app_localizations.dart';
+import '../l10n/content_l10n.dart';
 import '../theme/app_theme.dart';
 import '../utils/profanity_filter.dart';
 import '../widgets/battle_sprites.dart';
@@ -999,7 +1000,7 @@ class _RaceListRow extends StatelessWidget {
                         ),
                         if (trait != null)
                           Text(
-                            trait.name,
+                            ContentL10n.of(context).tr('trait_${trait.id.name}', 'title', trait.name),
                             style: GoogleFonts.rajdhani(
                               fontSize: 9,
                               color: AppTheme.textMuted,
@@ -1081,7 +1082,7 @@ class _RaceListRow extends StatelessWidget {
                       Padding(
                         padding: const EdgeInsets.fromLTRB(16, 2, 16, 8),
                         child: Text(
-                          trait.description,
+                          ContentL10n.of(context).tr('trait_${trait.id.name}', 'desc', trait.description),
                           style: GoogleFonts.rajdhani(
                             fontSize: 10,
                             color: AppTheme.textMuted,

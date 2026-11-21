@@ -100,7 +100,7 @@ class _StatsTab extends StatelessWidget {
           decoration: BoxDecoration(
             color: const Color(0xFF181c24),
             border: Border.all(color: const Color(0xFF66aaff).withValues(alpha: 0.35)),
-            borderRadius: BorderRadius.circular(3),
+            borderRadius: BorderRadius.circular(8),
           ),
           child: const Text(
             'Every abbreviation you\'ll see on gear, artifacts, and in battle — '
@@ -122,7 +122,7 @@ class _StatsTab extends StatelessWidget {
           decoration: BoxDecoration(
             color: const Color(0xFF231F1B),
             border: Border.all(color: AppTheme.accentGold.withValues(alpha: 0.3)),
-            borderRadius: BorderRadius.circular(3),
+            borderRadius: BorderRadius.circular(8),
           ),
           child: const Text(
             'The six attribute stats use fantasy names (Power, Agility, Vitality, '
@@ -152,7 +152,7 @@ class _StatCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: const Color(0xFF231F1B),
         border: Border.all(color: color.withValues(alpha: 0.35)),
-        borderRadius: BorderRadius.circular(4),
+        borderRadius: BorderRadius.circular(8),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -164,7 +164,7 @@ class _StatCard extends StatelessWidget {
             decoration: BoxDecoration(
               color: color.withValues(alpha: 0.12),
               border: Border.all(color: color.withValues(alpha: 0.5)),
-              borderRadius: BorderRadius.circular(3),
+              borderRadius: BorderRadius.circular(8),
             ),
             child: Text(abbr,
                 textAlign: TextAlign.center,
@@ -217,7 +217,7 @@ class _KeywordsTab extends StatelessWidget {
           decoration: BoxDecoration(
             color: const Color(0xFF2a0a1a),
             border: Border.all(color: const Color(0xFFff88aa).withValues(alpha: 0.4)),
-            borderRadius: BorderRadius.circular(3),
+            borderRadius: BorderRadius.circular(8),
           ),
           child: const Text(
             'These keywords only appear on Legendary-tier items. '
@@ -262,7 +262,7 @@ class _KeywordCard extends StatelessWidget {
             ? const Color(0xFF1a0a12)
             : const Color(0xFF231F1B),
         border: Border.all(color: color.withValues(alpha: 0.35)),
-        borderRadius: BorderRadius.circular(4),
+        borderRadius: BorderRadius.circular(8),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -474,7 +474,7 @@ class _SystemCardState extends State<_SystemCard> {
                 ? e.color.withValues(alpha: 0.55)
                 : AppTheme.cardBorder,
           ),
-          borderRadius: BorderRadius.circular(4),
+          borderRadius: BorderRadius.circular(8),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -542,7 +542,7 @@ class _CurrencyCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: const Color(0xFF231F1B),
         border: Border.all(color: entry.color.withValues(alpha: 0.35)),
-        borderRadius: BorderRadius.circular(4),
+        borderRadius: BorderRadius.circular(8),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,

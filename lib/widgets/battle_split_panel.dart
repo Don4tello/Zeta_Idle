@@ -3,6 +3,8 @@ import '../models/equipment.dart' show ItemStat;
 import '../models/hero_ability.dart';
 import '../models/passive_tree.dart' show PassiveEffect;
 import '../services/game_state.dart';
+import '../l10n/app_localizations.dart';
+import '../l10n/content_l10n.dart';
 import 'ability_icon.dart';
 
 /// Shared ABILITIES + ALLIES + STATUS panel used across all battle screens.
@@ -107,7 +109,7 @@ class BattleSplitPanel extends StatelessWidget {
   static void showAbilityInfo(BuildContext context, GameState game,
       HeroAbility a, int cd, int totalCd, Color color, IconData icon) {
     _showInfoSheet(context,
-      title: a.name,
+      title: ContentL10n.of(context).tr(a.id, 'title', a.name),
       body: _buildAbilityTooltip(game, a, cd, totalCd),
       color: color,
       icon: icon,
@@ -267,8 +269,8 @@ class BattleSplitPanel extends StatelessWidget {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   if (abilities.isNotEmpty) ...[
-                    const Text('ABILITIES',
-                        style: TextStyle(color: Color(0xFF7799cc), fontSize: 11,
+                    Text(AppLocalizations.of(context).bspAbilities,
+                        style: const TextStyle(color: Color(0xFF7799cc), fontSize: 11,
                             fontWeight: FontWeight.bold, letterSpacing: 2)),
                     const SizedBox(height: 4),
                     ...abilities.map((a) {
@@ -291,7 +293,7 @@ class BattleSplitPanel extends StatelessWidget {
                       return GestureDetector(
                         onTap: () => _showInfoSheet(
                           context,
-                          title: a.name,
+                          title: ContentL10n.of(context).tr(a.id, 'title', a.name),
                           body: _buildAbilityTooltip(game, a, cd, total),
                           color: color,
                           icon: icon,
@@ -332,7 +334,7 @@ class BattleSplitPanel extends StatelessWidget {
                                   children: [
                                     Row(children: [
                                       Expanded(
-                                        child: Text(a.name,
+                                        child: Text(ContentL10n.of(context).tr(a.id, 'title', a.name),
                                             style: const TextStyle(
                                                 color: Colors.white, fontSize: 11,
                                                 fontWeight: FontWeight.bold),
@@ -370,8 +372,8 @@ class BattleSplitPanel extends StatelessWidget {
                       const Divider(color: Color(0xFF2a2a3a), height: 1),
                       const SizedBox(height: 5),
                     ],
-                    const Text('MERCS',
-                        style: TextStyle(color: Color(0xFF44cc88), fontSize: 11,
+                    Text(AppLocalizations.of(context).bspMercs,
+                        style: const TextStyle(color: Color(0xFF44cc88), fontSize: 11,
                             fontWeight: FontWeight.bold, letterSpacing: 2)),
                     const SizedBox(height: 4),
                     ...allies.map((ally) {
@@ -519,32 +521,32 @@ class BattleIconBar extends StatelessWidget {
     if (game.buffAttackBonus > 0)
       statuses.add((icon: Icons.add_circle, color: const Color(0xFFffcc00),
           label: '+${game.buffAttackBonus}% DMG',
-          desc: 'Your hero deals +${game.buffAttackBonus}% damage per hit.',
+          desc: AppLocalizations.of(context).bspDescAtk(game.buffAttackBonus),
           rounds: game.buffAttackRounds));
     if (game.buffAcBonus > 0)
       statuses.add((icon: Icons.shield, color: const Color(0xFF66aaff),
           label: '+${game.buffAcBonus}% Armor',
-          desc: '+${game.buffAcBonus}% Armor Class rating — reduces incoming enemy damage.',
+          desc: AppLocalizations.of(context).bspDescArmor(game.buffAcBonus),
           rounds: game.buffAcRounds));
     if (game.dodgeNextHit)
       statuses.add((icon: Icons.directions_run, color: const Color(0xFF44ddcc),
-          label: 'DODGE',
-          desc: 'Your hero will completely dodge the next enemy attack.',
+          label: AppLocalizations.of(context).buffDodge,
+          desc: AppLocalizations.of(context).bspDescDodge,
           rounds: 1));
     if (game.auraRoundsLeft > 0)
       statuses.add((icon: Icons.healing, color: const Color(0xFF55ee88),
           label: '+${game.auraHealPerRound} HP/r',
-          desc: 'Healing aura — restores ${game.auraHealPerRound} HP at the start of each round.',
+          desc: AppLocalizations.of(context).bspDescAura(game.auraHealPerRound),
           rounds: game.auraRoundsLeft));
     if (game.dotRoundsLeft > 0)
       statuses.add((icon: Icons.bug_report, color: const Color(0xFF88dd00),
           label: '${game.dotDmg}/rnd DoT',
-          desc: 'Damage over time — the enemy takes ${game.dotDmg} damage each round.',
+          desc: AppLocalizations.of(context).bspDescDot(game.dotDmg),
           rounds: game.dotRoundsLeft));
     if (game.enemyStunRounds > 0)
       statuses.add((icon: Icons.flash_on, color: const Color(0xFFcc44ff),
-          label: 'Enemy STUN',
-          desc: 'The enemy is stunned and skips its attack.',
+          label: AppLocalizations.of(context).bspEnemyStun,
+          desc: AppLocalizations.of(context).bspDescStun,
           rounds: game.enemyStunRounds));
     if (game.enemyWeakenRounds > 0)
       statuses.add((icon: Icons.remove_circle, color: const Color(0xFFff4488),
@@ -591,14 +593,14 @@ class BattleIconBar extends StatelessWidget {
                         return _AbilityIcon(
                           key: ValueKey(a.id),
                           abilityId: a.id, color: dtColor, fill: fill, ready: ready,
-                          name: a.name, cd: cd,
+                          name: ContentL10n.of(context).tr(a.id, 'title', a.name), cd: cd,
                           onTap: () => BattleSplitPanel.showAbilityInfo(context, game, a, cd, total, dtColor, icon),
                         );
                       }
                       return _AbilityIcon(
                         key: ValueKey(a.id),
                         abilityId: a.id, color: color, fill: fill, ready: ready,
-                        name: a.name, cd: cd,
+                        name: ContentL10n.of(context).tr(a.id, 'title', a.name), cd: cd,
                         onTap: () => BattleSplitPanel.showAbilityInfo(context, game, a, cd, total, color, icon),
                       );
                     }),
@@ -666,7 +668,7 @@ class BattleIconBar extends StatelessWidget {
                             border: Border.all(
                               color: borderColor.withValues(alpha: dimmed ? 0.18 : 0.45),
                             ),
-                            borderRadius: BorderRadius.circular(6),
+                            borderRadius: BorderRadius.circular(8),
                           ),
                           child: Column(
                             mainAxisAlignment: MainAxisAlignment.center,
@@ -683,8 +685,8 @@ class BattleIconBar extends StatelessWidget {
                                 overflow: TextOverflow.ellipsis,
                               ),
                               if (!hasActive)
-                                const Text('PASSIVE',
-                                    style: TextStyle(
+                                Text(AppLocalizations.of(context).bspPassive,
+                                    style: const TextStyle(
                                         fontSize: 7, color: Color(0xFF445566),
                                         fontWeight: FontWeight.bold, letterSpacing: 0.5)),
                             ],
@@ -768,13 +770,13 @@ class _AbilityIconState extends State<_AbilityIcon>
                 color: w.ready ? w.color : w.color.withValues(alpha: 0.3),
                 width: w.ready ? 1.5 : 1,
               ),
-              borderRadius: BorderRadius.circular(6),
+              borderRadius: BorderRadius.circular(8),
               boxShadow: w.ready ? [
                 BoxShadow(color: w.color.withValues(alpha: 0.3), blurRadius: 8),
               ] : null,
             ),
             child: ClipRRect(
-              borderRadius: BorderRadius.circular(5),
+              borderRadius: BorderRadius.circular(8),
               child: Stack(
                 children: [
                   // Custom-painted ability icon fills the box
@@ -843,7 +845,7 @@ class _StatusIcon extends StatelessWidget {
           decoration: BoxDecoration(
             color: color.withValues(alpha: 0.12),
             border: Border.all(color: color.withValues(alpha: 0.5)),
-            borderRadius: BorderRadius.circular(3),
+            borderRadius: BorderRadius.circular(8),
           ),
           child: Stack(
             children: [

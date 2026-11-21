@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../models/shop_catalog.dart';
 import '../services/leaderboard_service.dart';
 import '../theme/app_theme.dart';
+import '../l10n/app_localizations.dart';
 import 'battle_sprites.dart';
 
 /// Read-only public character sheet for a leaderboard entry. Shows the player's
@@ -131,10 +132,10 @@ class _PlayerProfileSheet extends StatelessWidget {
                   padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                   decoration: BoxDecoration(
                     color: AppTheme.accentGold.withValues(alpha: 0.15),
-                    borderRadius: BorderRadius.circular(3),
+                    borderRadius: BorderRadius.circular(8),
                   ),
-                  child: const Text('YOU',
-                      style: TextStyle(
+                  child: Text(AppLocalizations.of(context).lbYou,
+                      style: const TextStyle(
                           fontSize: 9, letterSpacing: 1,
                           fontWeight: FontWeight.bold, color: AppTheme.accentGold)),
                 ),
@@ -184,7 +185,7 @@ class _PlayerProfileSheet extends StatelessWidget {
         decoration: BoxDecoration(
           color: const Color(0xFF1B1A17),
           border: Border.all(color: color.withValues(alpha: 0.4)),
-          borderRadius: BorderRadius.circular(6),
+          borderRadius: BorderRadius.circular(8),
         ),
         child: Column(
           children: [

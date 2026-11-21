@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../models/season_pass.dart';
 import '../services/game_state.dart';
 import '../theme/app_theme.dart';
+import '../l10n/app_localizations.dart';
 import 'premium_shop_screen.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -70,7 +71,7 @@ class _SeasonPassScreenState extends State<SeasonPassScreen> {
           backgroundColor: AppTheme.darkBg,
           appBar: AppBar(
             backgroundColor: AppTheme.bgSecondary,
-            title: Text('SEASON PASS',
+            title: Text(AppLocalizations.of(context).homeNavSeasonPass,
                 style: AppTheme.pixelHeading(fontSize: 14, letterSpacing: 2)),
           ),
           body: Column(
@@ -94,12 +95,12 @@ class _SeasonPassScreenState extends State<SeasonPassScreen> {
                       premiumClaimed: game.seasonPremiumClaimed.contains(t.tier),
                       onClaimFree: () {
                         if (game.claimSeasonFree(t.tier)) {
-                          _toast('Claimed ${t.freeReward}');
+                          _toast(AppLocalizations.of(context).spClaimed(t.freeReward));
                         }
                       },
                       onClaimPremium: () {
                         if (game.claimSeasonPremium(t.tier)) {
-                          _toast('Claimed ${t.premiumReward}');
+                          _toast(AppLocalizations.of(context).spClaimed(t.premiumReward ?? ''));
                         } else if (!game.hasPremium) {
                           _openPremium();
                         }
@@ -116,8 +117,11 @@ class _SeasonPassScreenState extends State<SeasonPassScreen> {
   }
 
   void _openPremium() {
+    // Land straight on the shop's VIP tab, where the Premium Pass is sold.
     Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => const PremiumShopScreen()),
+      MaterialPageRoute(
+          builder: (_) => const PremiumShopScreen(
+              initialTab: PremiumShopScreen.vipTab)),
     );
   }
 
@@ -136,7 +140,7 @@ class _SeasonPassScreenState extends State<SeasonPassScreen> {
             crossAxisAlignment: CrossAxisAlignment.baseline,
             textBaseline: TextBaseline.alphabetic,
             children: [
-              Text('TIER $tier',
+              Text(AppLocalizations.of(context).dngTierN(tier),
                   style: const TextStyle(
                       color: AppTheme.accentGoldBright,
                       fontSize: 26,
@@ -146,13 +150,13 @@ class _SeasonPassScreenState extends State<SeasonPassScreen> {
               Text('/ ${SeasonPassTier.tiers.length}',
                   style: const TextStyle(color: AppTheme.textMuted, fontSize: 16)),
               const Spacer(),
-              const Text('📅 Resets monthly',
-                  style: TextStyle(color: AppTheme.textMuted, fontSize: 13)),
+              Text(AppLocalizations.of(context).spResetsMonthly,
+                  style: const TextStyle(color: AppTheme.textMuted, fontSize: 13)),
             ],
           ),
           const SizedBox(height: 10),
           ClipRRect(
-            borderRadius: BorderRadius.circular(6),
+            borderRadius: BorderRadius.circular(8),
             child: LinearProgressIndicator(
               value: game.seasonTierProgress,
               minHeight: 12,
@@ -163,8 +167,8 @@ class _SeasonPassScreenState extends State<SeasonPassScreen> {
           const SizedBox(height: 4),
           Text(
             maxed
-                ? 'All tiers unlocked — nice work!'
-                : '${game.seasonPassXp} / ${game.seasonNextTierXp} XP to Tier ${tier + 1}',
+                ? AppLocalizations.of(context).spAllUnlocked
+                : AppLocalizations.of(context).spXpToTier(game.seasonPassXp, game.seasonNextTierXp, tier + 1),
             style: const TextStyle(color: AppTheme.textMuted, fontSize: 13),
           ),
           if (!game.hasPremium) ...[
@@ -179,8 +183,8 @@ class _SeasonPassScreenState extends State<SeasonPassScreen> {
                   minimumSize: const Size.fromHeight(48),
                 ),
                 icon: const Text('👑', style: TextStyle(fontSize: 18)),
-                label: const Text('Unlock Premium Pass — 2× XP + premium track',
-                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
+                label: Text(AppLocalizations.of(context).spUnlockPremium,
+                    style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
               ),
             ),
           ],
@@ -191,14 +195,14 @@ class _SeasonPassScreenState extends State<SeasonPassScreen> {
               child: OutlinedButton(
                 onPressed: () {
                   final n = game.claimAllSeason();
-                  _toast(n > 0 ? 'Claimed $n reward${n == 1 ? '' : 's'}' : 'Nothing to claim');
+                  _toast(n > 0 ? AppLocalizations.of(context).spClaimedN(n) : AppLocalizations.of(context).spNothingToClaim);
                 },
                 style: OutlinedButton.styleFrom(
                   foregroundColor: AppTheme.accentGoldBright,
                   side: const BorderSide(color: AppTheme.accentGold),
                   minimumSize: const Size.fromHeight(48),
                 ),
-                child: Text('CLAIM ALL ($unclaimed)',
+                child: Text(AppLocalizations.of(context).achClaimAll(unclaimed),
                     style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, letterSpacing: 1)),
               ),
             ),
@@ -213,17 +217,17 @@ class _SeasonPassScreenState extends State<SeasonPassScreen> {
       color: AppTheme.bgSecondary,
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: Row(
-        children: const [
-          SizedBox(width: 44),
+        children: [
+          const SizedBox(width: 44),
           Expanded(
-            child: Text('FREE',
+            child: Text(AppLocalizations.of(context).spFree,
                 textAlign: TextAlign.center,
-                style: TextStyle(color: AppTheme.textMuted, fontSize: 13, fontWeight: FontWeight.bold, letterSpacing: 2)),
+                style: const TextStyle(color: AppTheme.textMuted, fontSize: 13, fontWeight: FontWeight.bold, letterSpacing: 2)),
           ),
           Expanded(
-            child: Text('👑 PREMIUM',
+            child: Text(AppLocalizations.of(context).spPremium,
                 textAlign: TextAlign.center,
-                style: TextStyle(color: AppTheme.accentGoldBright, fontSize: 13, fontWeight: FontWeight.bold, letterSpacing: 1)),
+                style: const TextStyle(color: AppTheme.accentGoldBright, fontSize: 13, fontWeight: FontWeight.bold, letterSpacing: 1)),
           ),
         ],
       ),
@@ -340,13 +344,13 @@ class _RewardCell extends StatelessWidget {
     final dim = claimed || !unlocked || locked;
     return InkWell(
       onTap: (claimable || locked) ? onClaim : null,
-      borderRadius: BorderRadius.circular(6),
+      borderRadius: BorderRadius.circular(8),
       child: Container(
         constraints: const BoxConstraints(minHeight: 56),
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
         decoration: BoxDecoration(
           color: claimable ? AppTheme.accentGold.withValues(alpha: 0.12) : Colors.transparent,
-          borderRadius: BorderRadius.circular(6),
+          borderRadius: BorderRadius.circular(8),
           border: Border.all(
             color: claimable ? AppTheme.accentGold : AppTheme.cardBorder,
           ),

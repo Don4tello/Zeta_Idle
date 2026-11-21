@@ -1,3 +1,4 @@
+import 'dart:math' show Random;
 import 'package:flutter/material.dart';
 
 enum BountyType {
@@ -295,11 +296,16 @@ class BountyPool {
 
   static List<int> _shuffleIndices(int length, int seed) {
     final indices = List<int>.generate(length, (i) => i);
+    // Seeded Fisher-Yates. Was an inline LCG with 64-bit PCG constants, which
+    // dart2js rejects (literals > 2^53 can't be represented in JS). Random(seed)
+    // is deterministic and web-safe; the exact ordering isn't persisted, so
+    // switching the generator only reshuffles which daily bounties appear.
+    final rng = Random(seed);
     for (var i = indices.length - 1; i > 0; i--) {
-      final j = (seed * 6364136223846793005 + i * 1442695040888963407) % (i + 1);
+      final j = rng.nextInt(i + 1);
       final tmp = indices[i];
-      indices[i] = indices[j.abs()];
-      indices[j.abs()] = tmp;
+      indices[i] = indices[j];
+      indices[j] = tmp;
     }
     return indices;
   }

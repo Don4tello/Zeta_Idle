@@ -11,6 +11,7 @@ import '../widgets/game_icons.dart';
 import '../models/artifact.dart';
 import '../models/equipment.dart';
 import '../services/game_state.dart';
+import '../widgets/battle_speed_menu.dart';
 import '../widgets/affix_chip_row.dart';
 import '../widgets/battle_split_panel.dart';
 import '../widgets/battle_arena.dart';
@@ -24,6 +25,8 @@ import '../data/ability_data.dart';
 import '../widgets/arena_ability_effect.dart';
 import '../widgets/fight_summary_sheet.dart';
 import '../utils/format_number.dart';
+import '../l10n/app_localizations.dart';
+import '../l10n/content_l10n.dart';
 
 class BattleScreen extends StatefulWidget {
   const BattleScreen({super.key});
@@ -137,9 +140,10 @@ class _BattleScreenState extends State<BattleScreen>
           game.haptic(HapticFeedback.mediumImpact);
         }
       }
-      // Hands-free auto-campaign: show the reward briefly, then auto-continue to
-      // the next stage. The player can still tap CONTINUE to skip the pause.
-      if (game.autoCampaign && game.canAutoCampaign) {
+      // Auto-campaign (default ON, toggleable via the AUTO button): show the
+      // reward briefly then auto-continue to the next stage. If the player turned
+      // it off, wait for them to tap CONTINUE instead.
+      if (game.autoCampaign) {
         await Future.any([
           _rewardCompleter!.future,
           Future.delayed(Duration(milliseconds: game.scaledInterval(1300))),
@@ -235,35 +239,35 @@ class _BattleScreenState extends State<BattleScreen>
             children: [
               GameIcon(GameIconType.skull, size: 32, color: const Color(0xFFee4040)),
               const SizedBox(height: 8),
-              Text('${game.hero.name.toUpperCase()} FALLS',
+              Text(AppLocalizations.of(dialogCtx).heroFalls(game.hero.name.toUpperCase()),
                   style: const TextStyle(
                     color: Color(0xFFee4040), fontSize: 16,
                     fontWeight: FontWeight.bold, letterSpacing: 2)),
               const SizedBox(height: 12),
-              const Text(
-                  'Grow stronger before trying again.',
+              Text(
+                  AppLocalizations.of(dialogCtx).battleGrowStronger,
                   textAlign: TextAlign.center,
-                  style: TextStyle(color: AppTheme.textLight, fontSize: 13)),
+                  style: const TextStyle(color: AppTheme.textLight, fontSize: 13)),
               const SizedBox(height: 16),
               if (stage >= 5)
-                _defeatOption(dialogCtx, GameIconType.swords, 'ENDLESS MODE', 'Farm XP & gold at your pace',
+                _defeatOption(dialogCtx, GameIconType.swords, AppLocalizations.of(dialogCtx).defeatEndlessTitle, AppLocalizations.of(dialogCtx).defeatEndlessHint,
                     const Color(0xFF55cc88), () { Navigator.of(dialogCtx).pop(); context.push(Routes.endless); }),
               if (stage >= 5)
-                _defeatOption(dialogCtx, GameIconType.key, 'DUNGEON', 'Earn shards & items',
+                _defeatOption(dialogCtx, GameIconType.key, AppLocalizations.of(dialogCtx).modeDungeon, AppLocalizations.of(dialogCtx).defeatDungeonHint,
                     const Color(0xFF66aaff), () { Navigator.of(dialogCtx).pop(); context.push(Routes.dungeon); }),
               if (stage >= 10)
-                _defeatOption(dialogCtx, GameIconType.gauntlet, 'GAUNTLET', 'Earn echoes for upgrades',
+                _defeatOption(dialogCtx, GameIconType.gauntlet, AppLocalizations.of(dialogCtx).modeGauntlet, AppLocalizations.of(dialogCtx).defeatGauntletHint,
                     const Color(0xFFcc88ff), () { Navigator.of(dialogCtx).pop(); context.push(Routes.gauntlet); }),
               if (stage >= 5)
-                _defeatOption(dialogCtx, GameIconType.star, 'DAILY CHALLENGES', 'Claim rewards for progress',
+                _defeatOption(dialogCtx, GameIconType.star, AppLocalizations.of(dialogCtx).defeatDailyTitle, AppLocalizations.of(dialogCtx).defeatDailyHint,
                     const Color(0xFFffaa44), () { Navigator.of(dialogCtx).pop(); context.push(Routes.daily); }),
               const SizedBox(height: 8),
               SizedBox(
                 width: double.infinity,
                 child: TextButton(
                   onPressed: () => Navigator.of(dialogCtx).pop(),
-                  child: const Text('BACK TO HERO',
-                      style: TextStyle(color: AppTheme.textMuted, fontSize: 12, letterSpacing: 1)),
+                  child: Text(AppLocalizations.of(dialogCtx).battleBackToHero,
+                      style: const TextStyle(color: AppTheme.textMuted, fontSize: 12, letterSpacing: 1)),
                 ),
               ),
             ],
@@ -301,7 +305,7 @@ class _BattleScreenState extends State<BattleScreen>
             children: [
               const Text('✦', style: TextStyle(fontSize: 40, color: Color(0xFFcc44ff))),
               const SizedBox(height: 10),
-              Text(unlocked ? 'TIER $tier UNLOCKED' : 'CAMPAIGN CLEARED',
+              Text(unlocked ? AppLocalizations.of(dialogCtx).battleTierUnlocked(tier) : AppLocalizations.of(dialogCtx).battleCampaignCleared,
                   textAlign: TextAlign.center,
                   style: const TextStyle(
                       fontSize: 18, fontWeight: FontWeight.bold,
@@ -309,20 +313,16 @@ class _BattleScreenState extends State<BattleScreen>
               const SizedBox(height: 14),
               Text(
                 unlocked
-                    ? 'The Omega has fallen. The campaign restarts at Tier $tier — '
-                        'tougher enemies and better loot.\n\n'
-                        'Your level, Paragon, gear and currencies all carry over. '
-                        'Nothing resets.'
-                    : 'The Omega has fallen at the highest tier. You\'ve reached '
-                        'the summit — keep farming for loot and Paragon Points.',
+                    ? AppLocalizations.of(dialogCtx).battleTierUnlockedBody(tier)
+                    : AppLocalizations.of(dialogCtx).battleCampaignClearedBody,
                 textAlign: TextAlign.center,
                 style: const TextStyle(color: AppTheme.textLight, fontSize: 13, height: 1.5),
               ),
               const SizedBox(height: 6),
-              const Text(
-                'Switch tiers anytime from the Campaign header.',
+              Text(
+                AppLocalizations.of(dialogCtx).battleSwitchTiersHint,
                 textAlign: TextAlign.center,
-                style: TextStyle(color: AppTheme.textMuted, fontSize: 12),
+                style: const TextStyle(color: AppTheme.textMuted, fontSize: 12),
               ),
               const SizedBox(height: 20),
               SizedBox(
@@ -335,8 +335,8 @@ class _BattleScreenState extends State<BattleScreen>
                     side: const BorderSide(color: Color(0xFFcc44ff)),
                     padding: const EdgeInsets.symmetric(vertical: 12),
                   ),
-                  child: const Text('CONTINUE',
-                      style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold,
+                  child: Text(AppLocalizations.of(dialogCtx).commonContinue,
+                      style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold,
                           letterSpacing: 2)),
                 ),
               ),
@@ -483,7 +483,7 @@ class _BattleScreenState extends State<BattleScreen>
         titleSpacing: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
-          tooltip: 'Retreat',
+          tooltip: AppLocalizations.of(context).battleRetreat,
           onPressed: () {
             game.retreatBattle();
             Navigator.pop(context);
@@ -497,12 +497,12 @@ class _BattleScreenState extends State<BattleScreen>
                   ? AppTheme.accentGold : AppTheme.textMuted,
               size: 21,
             ),
-            tooltip: 'Last fight summary',
+            tooltip: AppLocalizations.of(context).battleLastFightSummary,
             onPressed: () {
               final s = game.lastFightSummary;
               if (s == null) {
-                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                  content: Text('No fight finished yet.'),
+                ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                  content: Text(AppLocalizations.of(context).battleNoFightYet),
                   behavior: SnackBarBehavior.floating,
                 ));
                 return;
@@ -516,7 +516,7 @@ class _BattleScreenState extends State<BattleScreen>
               color: _isPaused ? AppTheme.accentGold : AppTheme.textMuted,
               size: 22,
             ),
-            tooltip: _isPaused ? 'Resume' : 'Pause',
+            tooltip: _isPaused ? AppLocalizations.of(context).battleResume : AppLocalizations.of(context).battlePause,
             onPressed: () => setState(() => _isPaused = !_isPaused),
           ),
           IconButton(
@@ -530,33 +530,21 @@ class _BattleScreenState extends State<BattleScreen>
               (context as Element).markNeedsBuild();
             },
           ),
-          _SpeedButton(game: game),
+          // Auto-campaign toggle — default ON, but players can turn it off to
+          // play manually. Campaign auto is a free default feature, so no gate.
           IconButton(
-            icon: Icon(
-              !game.canAutoCampaign
-                  ? Icons.lock_outline
-                  : Icons.autorenew,
-              color: game.autoCampaign
-                  ? const Color(0xFF44cc88)
-                  : (game.canAutoCampaign ? AppTheme.textMuted : const Color(0xFF886655)),
-              size: 20,
-            ),
-            tooltip: !game.canAutoCampaign
-                ? 'Auto-Campaign — Speed Boost / Premium Pass'
-                : (game.autoCampaign ? 'Auto-Campaign: ON' : 'Auto-Campaign: OFF'),
+            icon: Icon(Icons.autorenew, size: 20,
+                color: game.autoCampaign ? const Color(0xFF44cc88) : AppTheme.textMuted),
+            tooltip: game.autoCampaign
+                ? AppLocalizations.of(context).battleAutoCampaignOn
+                : AppLocalizations.of(context).battleAutoCampaignOff,
             onPressed: () {
-              if (!game.toggleAutoCampaign()) {
-                game.audioService.playUiError();
-                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                  content: Text('Auto-Campaign is a Speed Boost / Premium Pass perk.'),
-                  behavior: SnackBarBehavior.floating,
-                ));
-                return;
-              }
+              game.toggleCampaignAuto();
               game.audioService.playUiClick();
               (context as Element).markNeedsBuild();
             },
           ),
+          _SpeedButton(game: game),
         ],
       ),
       body: Column(
@@ -605,9 +593,9 @@ class _BattleScreenState extends State<BattleScreen>
   }
 
   Widget _buildNoBattle(BuildContext context) {
-    return const Center(
-      child: Text('NO ACTIVE BATTLE',
-          style: TextStyle(fontSize: 19, color: AppTheme.accentGold, letterSpacing: 2)),
+    return Center(
+      child: Text(AppLocalizations.of(context).battleNoActiveBattle,
+          style: const TextStyle(fontSize: 19, color: AppTheme.accentGold, letterSpacing: 2)),
     );
   }
 
@@ -787,7 +775,7 @@ class _BattleScreenState extends State<BattleScreen>
             heroPet: game.equippedPet != null
                 ? PetBattleSprite(pet: game.equippedPet!)
                 : null,
-            enemyName:    enemy.name,
+            enemyName:    ContentL10n.of(context).tr(enemy.id, 'title', enemy.name),
             enemyLevel:   enemy.level,
             enemyCurrentHp: enemy.currentHealth,
             enemyMaxHp:   enemy.maxHealth,
@@ -862,8 +850,8 @@ class _BattleScreenState extends State<BattleScreen>
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             _stagger(0.00, 0.22,
-                              child: const Text('VICTORY!',
-                                  style: TextStyle(
+                              child: Text(AppLocalizations.of(ctx).battleVictory,
+                                  style: const TextStyle(
                                       fontSize: 27, fontWeight: FontWeight.bold,
                                       color: AppTheme.accentGold, letterSpacing: 4))),
                             // Boss defeat lore — first kill only
@@ -878,11 +866,11 @@ class _BattleScreenState extends State<BattleScreen>
                                   decoration: BoxDecoration(
                                     color: const Color(0xFF1a0a00),
                                     border: Border.all(color: const Color(0xFFcc8844).withValues(alpha: 0.5)),
-                                    borderRadius: BorderRadius.circular(4),
+                                    borderRadius: BorderRadius.circular(8),
                                   ),
                                   child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                                    const Text('BOSS DEFEATED',
-                                        style: TextStyle(fontSize: 8, color: Color(0xFFcc8844),
+                                    Text(AppLocalizations.of(ctx).battleBossDefeated,
+                                        style: const TextStyle(fontSize: 8, color: Color(0xFFcc8844),
                                             fontWeight: FontWeight.bold, letterSpacing: 2)),
                                     const SizedBox(height: 5),
                                     Text(msg,
@@ -905,11 +893,11 @@ class _BattleScreenState extends State<BattleScreen>
                                   decoration: BoxDecoration(
                                     color: const Color(0xFF0a1a0a),
                                     border: Border.all(color: const Color(0xFF44cc44).withValues(alpha: 0.6)),
-                                    borderRadius: BorderRadius.circular(4),
+                                    borderRadius: BorderRadius.circular(8),
                                   ),
                                   child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                                    const Text('NEW CONTENT UNLOCKED',
-                                        style: TextStyle(fontSize: 8, color: Color(0xFF44cc44),
+                                    Text(AppLocalizations.of(ctx).battleNewContentUnlocked,
+                                        style: const TextStyle(fontSize: 8, color: Color(0xFF44cc44),
                                             fontWeight: FontWeight.bold, letterSpacing: 2)),
                                     const SizedBox(height: 5),
                                     Text('⚔  $notice',
@@ -930,17 +918,17 @@ class _BattleScreenState extends State<BattleScreen>
                                   decoration: BoxDecoration(
                                     color: const Color(0xFF1a1000),
                                     border: Border.all(color: AppTheme.accentGold.withValues(alpha: 0.7)),
-                                    borderRadius: BorderRadius.circular(4),
+                                    borderRadius: BorderRadius.circular(8),
                                   ),
                                   child: Row(children: [
                                     Icon(cls.info.icon, color: AppTheme.accentGold, size: 20),
                                     const SizedBox(width: 10),
                                     Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                                      const Text('CLASS QUESTLINE UNLOCKED',
-                                          style: TextStyle(fontSize: 8, color: AppTheme.accentGold,
+                                      Text(AppLocalizations.of(ctx).battleClassQuestlineUnlocked,
+                                          style: const TextStyle(fontSize: 8, color: AppTheme.accentGold,
                                               fontWeight: FontWeight.bold, letterSpacing: 2)),
                                       const SizedBox(height: 4),
-                                      Text('The ${cls.displayName} path begins. Complete 5 quests to unlock your Ultimate Ability.',
+                                      Text(AppLocalizations.of(ctx).battleClassQuestlineBody(cls.displayName),
                                           style: const TextStyle(fontSize: 11, color: AppTheme.textLight, height: 1.4)),
                                     ])),
                                   ]),
@@ -949,7 +937,7 @@ class _BattleScreenState extends State<BattleScreen>
                             }),
                             const SizedBox(height: 16),
                             _stagger(0.15, 0.40,
-                              child: Text('+${fmtNum(_rewardGold)} GOLD',
+                              child: Text(AppLocalizations.of(ctx).battleRewardGold(fmtNum(_rewardGold)),
                                   style: const TextStyle(
                                       fontSize: 21, fontWeight: FontWeight.bold,
                                       color: Color(0xFFffd700), letterSpacing: 2))),
@@ -959,7 +947,7 @@ class _BattleScreenState extends State<BattleScreen>
                                   mainAxisAlignment: MainAxisAlignment.center, children: [
                                 const CurrencyIcon(id: 'xp', size: 22),
                                 const SizedBox(width: 8),
-                                Text('+${fmtNum(_rewardExp)} XP',
+                                Text(AppLocalizations.of(ctx).battleRewardXp(fmtNum(_rewardExp)),
                                     style: const TextStyle(
                                         fontSize: 21, fontWeight: FontWeight.bold,
                                         color: Color(0xFF4ad46a), letterSpacing: 2)),
@@ -970,7 +958,7 @@ class _BattleScreenState extends State<BattleScreen>
                                 const CurrencyIcon(id: 'shards', size: 16),
                                 const SizedBox(width: 6),
                                 if (_rewardShards > 0) Text(
-                                  '+$_rewardShards SHARDS',
+                                  AppLocalizations.of(ctx).battleRewardShards('$_rewardShards'),
                                   style: const TextStyle(
                                       fontSize: 17,
                                       fontWeight: FontWeight.bold,
@@ -1008,7 +996,7 @@ class _BattleScreenState extends State<BattleScreen>
                                           color: const Color(0xFF1a1a0e),
                                           border: Border.all(
                                               color: const Color(0xFFffcc44).withValues(alpha: 0.6)),
-                                          borderRadius: BorderRadius.circular(4),
+                                          borderRadius: BorderRadius.circular(8),
                                         ),
                                         child: Row(
                                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -1020,7 +1008,8 @@ class _BattleScreenState extends State<BattleScreen>
                                               mainAxisSize: MainAxisSize.min,
                                               children: [
                                                 Text(
-                                                  'ABILITY UNLOCKED: ${ability.name}',
+                                                  AppLocalizations.of(ctx).battleAbilityUnlocked(
+                                                      ContentL10n.of(ctx).tr(ability.id, 'title', ability.name)),
                                                   style: const TextStyle(
                                                     fontSize: 11,
                                                     color: Color(0xFFffcc44),
@@ -1030,7 +1019,7 @@ class _BattleScreenState extends State<BattleScreen>
                                                 ),
                                                 const SizedBox(height: 3),
                                                 Text(
-                                                  ability.description,
+                                                  ContentL10n.of(ctx).tr(ability.id, 'desc', ability.description),
                                                   style: const TextStyle(
                                                     fontSize: 10,
                                                     color: Color(0xFFffeeaa),
@@ -1059,8 +1048,8 @@ class _BattleScreenState extends State<BattleScreen>
                                   children: [
                                     GameIcon(GameIconType.coinBag, size: 11, color: const Color(0xFF88cc88)),
                                     const SizedBox(width: 4),
-                                    const Text('Added to Bag',
-                                        style: TextStyle(
+                                    Text(AppLocalizations.of(ctx).battleAddedToBag,
+                                        style: const TextStyle(
                                             fontSize: 11, color: Color(0xFF88cc88),
                                             letterSpacing: 1)),
                                   ],
@@ -1099,8 +1088,8 @@ class _BattleScreenState extends State<BattleScreen>
                             padding: const EdgeInsets.symmetric(
                                 horizontal: 14, vertical: 10),
                           ),
-                          child: const Text('HERO',
-                              style: TextStyle(fontSize: 12, letterSpacing: 1)),
+                          child: Text(AppLocalizations.of(ctx).navHero,
+                              style: const TextStyle(fontSize: 12, letterSpacing: 1)),
                         ),
                         const SizedBox(width: 12),
                         ElevatedButton(
@@ -1131,8 +1120,8 @@ class _BattleScreenState extends State<BattleScreen>
                             return Column(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                const Text('FIGHT  (−1 ⚡)',
-                                    style: TextStyle(
+                                Text(AppLocalizations.of(ctx).battleFight,
+                                    style: const TextStyle(
                                         fontSize: 12,
                                         fontWeight: FontWeight.bold,
                                         letterSpacing: 1)),
@@ -1218,85 +1207,46 @@ class _SpeedButton extends StatelessWidget {
   final GameState game;
 
   static const _debugLabels = ['1×', '1.5×', '5×', '10×'];
-  static const _prodLabels  = ['1×', '1.5×', '2×', '3×'];
+  // prod tiers: 1=1× 2=1.5× 3=2× 4=3× 5=5× (Crown only)
+  static const _prodLabels  = ['1×', '1.5×', '2×', '3×', '5×'];
 
   String get _label => (kDebugMode ? _debugLabels : _prodLabels)[
-      (game.speedTier - 1).clamp(0, 3)];
+      (game.effectiveSpeedTier - 1).clamp(0, kDebugMode ? 3 : 4)];
 
-  bool get _active => game.speedTier > 1;
+  bool get _active => game.effectiveSpeedTier > 1;
 
-  void _onTap(BuildContext context) {
-    // Speed Pass subscribers reach a permanent 3× (tier 4).
-    final maxTier = kDebugMode ? 4 : ((game.hasSpeedSub || game.hasPremium) ? 4 : 3);
-    final next = (game.speedTier % maxTier) + 1;
-
-    // Tier 3 (2×) is gated behind the ZCoin boost — but subscribers skip it.
-    if (!kDebugMode && next == 3 && !game.speedBoostActive && !game.hasSpeedSub && !game.hasPremium) {
-      _showPurchaseDialog(context);
-      return;
-    }
-    game.setSpeedTier(next);
-  }
-
-  void _showPurchaseDialog(BuildContext context) {
-    showDialog<void>(
-      context: context,
-      builder: (_) => AlertDialog(
-        backgroundColor: const Color(0xFF1a1a2e),
-        title: const Text('2× Speed Boost',
-            style: TextStyle(color: Color(0xFFddbb44), fontWeight: FontWeight.bold)),
-        content: Text(
-          'Unlock 2— battle speed for 7 days?\n\nCost: ${GameState.kSpeedBoostCrystalCost} ZCoins\n'
-          'Your ZCoins: ${game.zcoins}',
-          style: const TextStyle(color: Color(0xFFaabbcc)),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel', style: TextStyle(color: Color(0xFF667799))),
-          ),
-          TextButton(
-            onPressed: () {
-              Navigator.pop(context);
-              if (game.purchaseSpeedBoost()) {
-                game.setSpeedTier(3);
-              } else {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Not enough zcoins!')),
-                );
-              }
-            },
-            child: const Text('Purchase', style: TextStyle(color: Color(0xFFddbb44))),
-          ),
-        ],
-      ),
-    );
-  }
+  // The speed selector lives in widgets/battle_speed_menu.dart so Settings can
+  // reuse the exact same dropdown (see showBattleSpeedMenu).
 
   @override
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.only(right: 8),
       child: GestureDetector(
-        onTap: () => _onTap(context),
+        onTap: () => showBattleSpeedMenu(context, game),
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+          padding: const EdgeInsets.fromLTRB(10, 6, 6, 6),
           decoration: BoxDecoration(
             color: _active ? const Color(0xFF1a3a1a) : const Color(0xFF1a1a2a),
             border: Border.all(
               color: _active ? const Color(0xFF44cc44) : const Color(0xFF334466),
               width: 1.5,
             ),
-            borderRadius: BorderRadius.circular(3),
+            borderRadius: BorderRadius.circular(8),
           ),
-          child: Text(
-            _label,
-            style: TextStyle(
-              color: _active ? const Color(0xFF44cc44) : const Color(0xFF667799),
-              fontSize: 13,
-              fontWeight: FontWeight.bold,
+          child: Row(mainAxisSize: MainAxisSize.min, children: [
+            Text(
+              _label,
+              style: TextStyle(
+                color: _active ? const Color(0xFF44cc44) : const Color(0xFF667799),
+                fontSize: 13,
+                fontWeight: FontWeight.bold,
+              ),
             ),
-          ),
+            Icon(Icons.arrow_drop_down,
+                size: 16,
+                color: _active ? const Color(0xFF44cc44) : const Color(0xFF667799)),
+          ]),
         ),
       ),
     );
@@ -1318,7 +1268,7 @@ class _ArtifactDropBadge extends StatelessWidget {
       decoration: BoxDecoration(
         color: const Color(0xFF1a1428),
         border: Border.all(color: rc.withValues(alpha: 0.7)),
-        borderRadius: BorderRadius.circular(4),
+        borderRadius: BorderRadius.circular(8),
         boxShadow: [BoxShadow(color: rc.withValues(alpha: 0.2), blurRadius: 8)],
       ),
       child: Row(children: [
@@ -1327,7 +1277,7 @@ class _ArtifactDropBadge extends StatelessWidget {
           decoration: BoxDecoration(
             color: tc.withValues(alpha: 0.12),
             border: Border.all(color: tc.withValues(alpha: 0.4)),
-            borderRadius: BorderRadius.circular(3),
+            borderRadius: BorderRadius.circular(8),
           ),
           child: Center(
             child: ArtifactIcon(type: artifact.type, color: tc, size: 24, rarity: artifact.rarity),
@@ -1336,7 +1286,7 @@ class _ArtifactDropBadge extends StatelessWidget {
         const SizedBox(width: 10),
         Expanded(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
-            Text('ARTIFACT FOUND!',
+            Text(AppLocalizations.of(context).battleArtifactFound,
                 style: TextStyle(fontSize: 9, color: rc, fontWeight: FontWeight.bold, letterSpacing: 1)),
             const SizedBox(height: 2),
             Text(artifact.name,
@@ -1407,7 +1357,7 @@ class _StatusBadge extends StatelessWidget {
         decoration: BoxDecoration(
           color: status.color.withValues(alpha: 0.18),
           border: Border.all(color: status.color.withValues(alpha: 0.65), width: 1),
-          borderRadius: BorderRadius.circular(4),
+          borderRadius: BorderRadius.circular(8),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
@@ -1441,7 +1391,7 @@ class _StatusBadge extends StatelessWidget {
           decoration: BoxDecoration(
             color: const Color(0xFF1a1208),
             border: Border.all(color: status.color, width: 1.5),
-            borderRadius: BorderRadius.circular(6),
+            borderRadius: BorderRadius.circular(8),
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -1452,7 +1402,7 @@ class _StatusBadge extends StatelessWidget {
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                   decoration: BoxDecoration(
                     color: status.color.withValues(alpha: 0.25),
-                    borderRadius: BorderRadius.circular(4),
+                    borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(status.label,
                       style: TextStyle(
@@ -1479,7 +1429,7 @@ class _StatusBadge extends StatelessWidget {
                       fontSize: 13, color: Color(0xFFa89878), height: 1.4)),
               if (status.rounds > 0) ...[
                 const SizedBox(height: 8),
-                Text('${status.rounds} round(s) remaining',
+                Text(AppLocalizations.of(context).battleRoundsRemaining(status.rounds),
                     style: TextStyle(
                         fontSize: 11,
                         color: status.color.withValues(alpha: 0.8),

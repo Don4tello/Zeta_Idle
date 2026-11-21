@@ -22,7 +22,7 @@ typedef PurchaseCallback = void Function(String productId, int zcoins);
 class IapService {
   IapService(this._onCrystalsGranted,
       {this.onPackPurchased, this.onSubscriptionActivated, this.onPremiumSkinPurchased,
-       this.onCosmeticPurchased, this.onPetPurchased});
+       this.onCosmeticPurchased, this.onPetPurchased, this.onLifetimePurchased});
 
   final void Function(int) _onCrystalsGranted;
   final void Function(String)? onPackPurchased;
@@ -30,6 +30,7 @@ class IapService {
   final void Function(String)? onPremiumSkinPurchased;
   final void Function(String)? onCosmeticPurchased; // real-money cosmetics
   final void Function(String)? onPetPurchased;      // real-money pets
+  final void Function()? onLifetimePurchased;       // one-time lifetime unlock
   StreamSubscription<List<PurchaseDetails>>? _sub;
   final Map<String, ProductDetails> _products = {};
   bool _storeAvailable = false;
@@ -57,6 +58,8 @@ class IapService {
     'pet_premium_dragon',
     // Subscriptions
     'sub_speed_monthly', 'sub_premium_monthly',
+    // One-time lifetime unlock
+    'lifetime_premium',
   };
 
   static bool get platformSupported =>
@@ -168,6 +171,12 @@ class IapService {
     }
     if (productId == 'sub_premium_monthly') {
       onSubscriptionActivated?.call(productId, 30);
+      return;
+    }
+
+    // One-time lifetime unlock
+    if (productId == 'lifetime_premium') {
+      onLifetimePurchased?.call();
       return;
     }
   }

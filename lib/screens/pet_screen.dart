@@ -6,6 +6,8 @@ import '../theme/app_theme.dart';
 import '../widgets/pet_battle_sprite.dart';
 import '../widgets/zcoin_icon.dart';
 import 'main_shell.dart' show TutorialTip;
+import '../l10n/app_localizations.dart';
+import '../l10n/content_l10n.dart';
 
 // -----------------------------------------------------------------------------
 // PetScreen
@@ -36,10 +38,7 @@ class PetScreen extends StatelessWidget {
         TutorialTip(
           tutorialKey: 'pets',
           game: game,
-          text: 'Pet companions join you in battle and stack their bonuses '
-              'passively � even ones not equipped. ??  Equip one to have it '
-              'appear at your side during fights.  Evolve owned pets twice '
-              'to double their bonus value.',
+          text: AppLocalizations.of(context).petTutorial,
         ),
 
         // -- Active bonus summary --------------------------------------------
@@ -55,11 +54,11 @@ class PetScreen extends StatelessWidget {
         // -- Roster ---------------------------------------------------------
         Row(
           children: [
-            Text('ROSTER',
+            Text(AppLocalizations.of(context).npcRoster,
                 style: AppTheme.pixelHeading(
                     fontSize: 11, letterSpacing: 2, color: AppTheme.textMuted)),
             const Spacer(),
-            Text('$ownedCnt / ${kPetCatalog.length}  owned',
+            Text(AppLocalizations.of(context).petOwned(ownedCnt, kPetCatalog.length),
                 style: AppTheme.pixelHeading(
                     fontSize: 11, color: AppTheme.accentGold)),
           ],
@@ -85,7 +84,7 @@ class PetScreen extends StatelessWidget {
       backgroundColor: const Color(0xFF1B1A17),
       appBar: AppBar(
         backgroundColor: const Color(0xFF2A2623),
-        title: Text('COMPANIONS',
+        title: Text(AppLocalizations.of(context).petTitle,
             style: AppTheme.pixelHeading(fontSize: 14, letterSpacing: 2)),
         actions: [
           Padding(
@@ -136,12 +135,12 @@ class _BonusSummary extends StatelessWidget {
       decoration: BoxDecoration(
         color: const Color(0xFF1a2010),
         border: Border.all(color: const Color(0xFF446633)),
-        borderRadius: BorderRadius.circular(6),
+        borderRadius: BorderRadius.circular(8),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('ACTIVE BONUSES (all owned pets)',
+          Text(AppLocalizations.of(context).petActiveBonuses,
               style: AppTheme.pixelHeading(
                   fontSize: 10, letterSpacing: 1, color: const Color(0xFF88cc66))),
           const SizedBox(height: 8),
@@ -152,7 +151,7 @@ class _BonusSummary extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
               decoration: BoxDecoration(
                 color: const Color(0xFF223318),
-                borderRadius: BorderRadius.circular(4),
+                borderRadius: BorderRadius.circular(8),
                 border: Border.all(color: const Color(0xFF446633)),
               ),
               child: Text('${c.label}  ${c.value}',
@@ -182,7 +181,7 @@ class _EquippedSlot extends StatelessWidget {
         border: Border.all(
             color: pet != null ? AppTheme.accentGold : AppTheme.cardBorder,
             width: pet != null ? 1.5 : 1),
-        borderRadius: BorderRadius.circular(6),
+        borderRadius: BorderRadius.circular(8),
       ),
       child: pet == null
           ? Row(
@@ -193,11 +192,11 @@ class _EquippedSlot extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('No companion equipped',
+                      Text(AppLocalizations.of(context).petNoCompanion,
                           style: AppTheme.pixelHeading(
                               fontSize: 13, color: AppTheme.textMuted)),
                       const SizedBox(height: 4),
-                      const Text('Equip a pet to have it appear in battle.',
+                      Text(AppLocalizations.of(context).petEquipHint,
                           style: TextStyle(fontSize: 13, color: AppTheme.textMuted)),
                     ],
                   ),
@@ -216,7 +215,7 @@ class _EquippedSlot extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Row(children: [
-                        Text(pet.name,
+                        Text(ContentL10n.of(context).tr(pet.id, 'title', pet.name),
                             style: AppTheme.pixelHeading(
                                 fontSize: 14, color: AppTheme.accentGold)),
                         const SizedBox(width: 8),
@@ -243,7 +242,7 @@ class _EquippedSlot extends StatelessWidget {
                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                     minimumSize: const Size(0, 36),
                   ),
-                  child: const Text('UNEQUIP',
+                  child: Text(AppLocalizations.of(context).shopUnequip,
                       style: TextStyle(fontSize: 11)),
                 ),
               ],
@@ -293,7 +292,7 @@ class _PetCard extends StatelessWidget {
                         ? const Color(0xFF446633)
                         : AppTheme.cardBorder,
             width: premium ? 1.5 : 1),
-        borderRadius: BorderRadius.circular(6),
+        borderRadius: BorderRadius.circular(8),
         boxShadow: premium
             ? [BoxShadow(color: AppTheme.accentGold.withValues(alpha: 0.35), blurRadius: 10)]
             : null,
@@ -324,7 +323,7 @@ class _PetCard extends StatelessWidget {
               children: [
                 Row(children: [
                   Flexible(
-                    child: Text(pet.name,
+                    child: Text(ContentL10n.of(context).tr(pet.id, 'title', pet.name),
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
                             fontSize: 15,
@@ -339,9 +338,9 @@ class _PetCard extends StatelessWidget {
                       padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
                       decoration: BoxDecoration(
                         color: AppTheme.accentGold.withValues(alpha: 0.2),
-                        borderRadius: BorderRadius.circular(3),
+                        borderRadius: BorderRadius.circular(8),
                       ),
-                      child: Text('★ PREMIUM',
+                      child: Text(AppLocalizations.of(context).petPremium,
                           style: AppTheme.pixelHeading(fontSize: 8, color: AppTheme.accentGoldBright)),
                     ),
                   ],
@@ -355,10 +354,10 @@ class _PetCard extends StatelessWidget {
                       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                       decoration: BoxDecoration(
                         color: const Color(0xFF3a2e10),
-                        borderRadius: BorderRadius.circular(4),
+                        borderRadius: BorderRadius.circular(8),
                         border: Border.all(color: AppTheme.accentGold),
                       ),
-                      child: Text('IN BATTLE',
+                      child: Text(AppLocalizations.of(context).petInBattle,
                           style: AppTheme.pixelHeading(
                               fontSize: 9, color: AppTheme.accentGold)),
                     ),
@@ -372,7 +371,7 @@ class _PetCard extends StatelessWidget {
                             ? const Color(0xFFaaddaa)
                             : AppTheme.textMuted)),
                 if (!isOwned)
-                  Text(pet.description,
+                  Text(ContentL10n.of(context).tr(pet.id, 'desc', pet.description),
                       maxLines: 2, overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
                           fontSize: 11, color: AppTheme.textMuted,
@@ -410,14 +409,14 @@ class _PetCard extends StatelessWidget {
                 )
               else if (!isEquipped)
                 _ActionButton(
-                  label: 'EQUIP',
+                  label: AppLocalizations.of(context).auraEquip,
                   enabled: true,
                   color: const Color(0xFF335533),
                   onTap: () => game.equipPet(pet.id),
                 )
               else
                 _ActionButton(
-                  label: 'EQUIPPED',
+                  label: AppLocalizations.of(context).auraEquipped,
                   enabled: false,
                   color: const Color(0xFF2a2516),
                   onTap: () {},
@@ -433,7 +432,7 @@ class _PetCard extends StatelessWidget {
               ],
               if (isOwned && evoLevel >= 10) ...[
                 const SizedBox(height: 4),
-                Text('MAX', style: AppTheme.pixelHeading(
+                Text(AppLocalizations.of(context).auMax, style: AppTheme.pixelHeading(
                     fontSize: 10, color: AppTheme.accentGold)),
               ],
             ],
@@ -448,17 +447,17 @@ class _PetCard extends StatelessWidget {
       context: context,
       builder: (_) => AlertDialog(
         backgroundColor: const Color(0xFF2A2623),
-        title: Text('Recruit ${pet.name}?',
+        title: Text(AppLocalizations.of(context).petRecruitTitle(ContentL10n.of(context).tr(pet.id, 'title', pet.name)),
             style: AppTheme.pixelHeading(
                 fontSize: 13, color: AppTheme.accentGold)),
         content: Text(
-          '${pet.description}\n\nBonus: ${pet.bonusLabel}\n\nCost: ${pet.zcoinCost} ZCoins',
+          AppLocalizations.of(context).petRecruitBody(ContentL10n.of(context).tr(pet.id, 'desc', pet.description), pet.bonusLabel, pet.zcoinCost),
           style: const TextStyle(fontSize: 14, color: AppTheme.textLight),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: Text('CANCEL',
+            child: Text(AppLocalizations.of(context).csCancel,
                 style: AppTheme.pixelHeading(
                     fontSize: 12, color: AppTheme.textMuted)),
           ),
@@ -467,7 +466,7 @@ class _PetCard extends StatelessWidget {
               Navigator.pop(context);
               game.purchasePet(pet.id);
             },
-            child: Text('RECRUIT',
+            child: Text(AppLocalizations.of(context).petRecruit,
                 style: AppTheme.pixelHeading(
                     fontSize: 12, color: AppTheme.accentGold)),
           ),
@@ -485,18 +484,17 @@ class _PetCard extends StatelessWidget {
       context: context,
       builder: (_) => AlertDialog(
         backgroundColor: const Color(0xFF2A2623),
-        title: Text('Evolve ${pet.name}?',
+        title: Text(AppLocalizations.of(context).petEvolveTitle(ContentL10n.of(context).tr(pet.id, 'title', pet.name)),
             style: AppTheme.pixelHeading(
                 fontSize: 13, color: AppTheme.accentGold)),
         content: Text(
-          'Upgrade to Evolution $nextLevel.\n\n'
-          'New bonus: +$nextBonus$suffix\nCost: $cost ZCoins',
+          AppLocalizations.of(context).petEvolveBody(nextLevel, '$nextBonus$suffix', cost),
           style: const TextStyle(fontSize: 14, color: AppTheme.textLight),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: Text('CANCEL',
+            child: Text(AppLocalizations.of(context).csCancel,
                 style: AppTheme.pixelHeading(
                     fontSize: 12, color: AppTheme.textMuted)),
           ),
@@ -505,7 +503,7 @@ class _PetCard extends StatelessWidget {
               Navigator.pop(context);
               game.evolvePet(pet.id);
             },
-            child: Text('EVOLVE',
+            child: Text(AppLocalizations.of(context).auraEvolve,
                 style: AppTheme.pixelHeading(
                     fontSize: 12, color: AppTheme.accentGold)),
           ),
@@ -540,7 +538,7 @@ class _ActionButton extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
         decoration: BoxDecoration(
           color: enabled ? color : const Color(0xFF1e1e1e),
-          borderRadius: BorderRadius.circular(4),
+          borderRadius: BorderRadius.circular(8),
           border: Border.all(
               color: enabled ? color.withValues(alpha: 1) : AppTheme.cardBorder),
         ),
@@ -571,7 +569,7 @@ class _EvoStars extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
       decoration: BoxDecoration(
         color: const Color(0xFF2a2200),
-        borderRadius: BorderRadius.circular(3),
+        borderRadius: BorderRadius.circular(8),
         border: Border.all(color: AppTheme.accentGold.withValues(alpha: 0.5)),
       ),
       child: Text(
@@ -607,7 +605,7 @@ class _EvolveButton extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
         decoration: BoxDecoration(
           color: bgColor,
-          borderRadius: BorderRadius.circular(4),
+          borderRadius: BorderRadius.circular(8),
           border: Border.all(color: borderColor),
         ),
         child: Row(
@@ -615,9 +613,9 @@ class _EvolveButton extends StatelessWidget {
           children: [
             // Tier image
             ClipRRect(
-              borderRadius: BorderRadius.circular(3),
+              borderRadius: BorderRadius.circular(8),
               child: Image.asset(
-                'assets/images/tier_$nextEvoLevel.png',
+                'assets/images/tier_$nextEvoLevel.webp',
                 width: 28,
                 height: 32,
                 fit: BoxFit.cover,
@@ -642,7 +640,7 @@ class _EvolveButton extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
-                Text('EVOLVE  Evo $nextEvoLevel',
+                Text(AppLocalizations.of(context).petEvolveN(nextEvoLevel),
                     style: TextStyle(
                         fontSize: 10,
                         fontWeight: FontWeight.bold,

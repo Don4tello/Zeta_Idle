@@ -2,6 +2,8 @@
 import '../models/ascension.dart';
 import '../services/game_state.dart';
 import '../theme/app_theme.dart';
+import '../l10n/app_localizations.dart';
+import '../l10n/content_l10n.dart';
 
 class AscensionScreen extends StatelessWidget {
   const AscensionScreen({super.key, this.embedded = false});
@@ -9,12 +11,12 @@ class AscensionScreen extends StatelessWidget {
   final bool embedded;
   static const _accentColor = Color(0xFFcc88ff);
 
-  Widget _body(GameState game) => ListView(
+  Widget _body(BuildContext context, GameState game) => ListView(
         padding: const EdgeInsets.all(16),
         children: [
           if (embedded) ...[
             Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-              Text('ASCENSION',
+              Text(AppLocalizations.of(context).ascTitle,
                   style: AppTheme.pixelHeading(
                       fontSize: 12, letterSpacing: 2, color: _accentColor)),
               _AscPointBadge(points: game.ascensionPoints),
@@ -26,7 +28,7 @@ class AscensionScreen extends StatelessWidget {
           if (game.canAscend) _AscendButton(game: game),
           if (game.ascensionLevel > 0) ...[
             const SizedBox(height: 16),
-            Text('META-BOARD',
+            Text(AppLocalizations.of(context).ascMetaBoard,
                 style: AppTheme.pixelHeading(
                     fontSize: 12, letterSpacing: 2, color: _accentColor)),
             const SizedBox(height: 10),
@@ -44,14 +46,14 @@ class AscensionScreen extends StatelessWidget {
 
     if (embedded) {
       return ColoredBox(
-          color: const Color(0xFF1B1A17), child: _body(game));
+          color: const Color(0xFF1B1A17), child: _body(context, game));
     }
 
     return Scaffold(
       backgroundColor: const Color(0xFF1B1A17),
       appBar: AppBar(
         backgroundColor: const Color(0xFF1a1030),
-        title: Text('ASCENSION',
+        title: Text(AppLocalizations.of(context).ascTitle,
             style: AppTheme.pixelHeading(
                 fontSize: 14, letterSpacing: 2, color: _accentColor)),
         actions: [
@@ -61,7 +63,7 @@ class AscensionScreen extends StatelessWidget {
           ),
         ],
       ),
-      body: _body(game),
+      body: _body(context, game),
     );
   }
 }
@@ -78,12 +80,12 @@ class _AscPointBadge extends StatelessWidget {
         color: const Color(0xFF6622aa).withValues(alpha: 0.2),
         border: Border.all(
             color: const Color(0xFFcc88ff).withValues(alpha: 0.6)),
-        borderRadius: BorderRadius.circular(3),
+        borderRadius: BorderRadius.circular(8),
       ),
       child: Row(mainAxisSize: MainAxisSize.min, children: [
         const Text('✦', style: TextStyle(fontSize: 11, color: Color(0xFFcc88ff))),
         const SizedBox(width: 4),
-        Text('$points AP',
+        Text(AppLocalizations.of(context).ascApPoints(points),
             style: AppTheme.pixelHeading(
                 fontSize: 12, color: const Color(0xFFcc88ff))),
       ]),
@@ -104,13 +106,13 @@ class _InfoBanner extends StatelessWidget {
       decoration: BoxDecoration(
         color: const Color(0xFF100818),
         border: Border.all(color: const Color(0xFFcc88ff).withValues(alpha: 0.3)),
-        borderRadius: BorderRadius.circular(4),
+        borderRadius: BorderRadius.circular(8),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(children: [
-            Text('Ascension Level: ',
+            Text(AppLocalizations.of(context).ascLevelLabel,
                 style: const TextStyle(color: AppTheme.textMuted, fontSize: 13)),
             Text('$level',
                 style: const TextStyle(
@@ -120,7 +122,7 @@ class _InfoBanner extends StatelessWidget {
           ]),
           const SizedBox(height: 4),
           Row(children: [
-            Text('Prestige Level: ',
+            Text(AppLocalizations.of(context).ascPrestigeLabel,
                 style: const TextStyle(color: AppTheme.textMuted, fontSize: 13)),
             Text('$prestige',
                 style: TextStyle(
@@ -128,24 +130,14 @@ class _InfoBanner extends StatelessWidget {
                     fontSize: 13)),
           ]),
           const SizedBox(height: 8),
-          const Text(
-            'Ascension is the deepest reset — it converts your Rebirths into Ascension '
-            'Points (AP). You earn 1 AP for every Rebirth you sacrifice, so the more you '
-            'bank before ascending, the bigger the payout.\n\n'
-            'Spend AP two ways — both permanent and both survive every future reset:\n'
-            '• The Meta-Board below (XP, gold, damage, idle & prestige bonuses)\n'
-            '• Ascend your class abilities on the Abilities screen (+10% power per tier, '
-            'up to 60 AP per character)\n\n'
-            'You KEEP:  Ascension bonuses & AP spent, Artifacts, Mythril, Tower Shards, '
-            'Elemental Mastery.\n'
-            'You LOSE:  all Rebirths, hero level, gold, gear, subclass, ability ranks, '
-            'and campaign progress.',
+          Text(
+            AppLocalizations.of(context).ascBody,
             style: TextStyle(fontSize: 11, color: AppTheme.textMuted, height: 1.5),
           ),
           if (prestige < 5) ...[
             const SizedBox(height: 8),
             Text(
-              'Requires Prestige Level 5 to Ascend  (current: $prestige/5)',
+              AppLocalizations.of(context).ascRequires(prestige),
               style: const TextStyle(
                   fontSize: 11, color: Color(0xFFff6644)),
             ),
@@ -169,9 +161,9 @@ class _AscendButton extends StatelessWidget {
           backgroundColor: const Color(0xFF6622aa),
           foregroundColor: Colors.white,
           padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 14),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
         ),
-        child: Text('ASCEND  (+${game.ascensionPointsForNextAscension} AP)',
+        child: Text(AppLocalizations.of(context).ascAscendAp(game.ascensionPointsForNextAscension),
             style: AppTheme.pixelHeading(
                 fontSize: 13, letterSpacing: 1, color: Colors.white)),
       ),
@@ -183,21 +175,17 @@ class _AscendButton extends StatelessWidget {
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: const Color(0xFF1a1030),
-        title: Text('Ascend?',
+        title: Text(AppLocalizations.of(ctx).ascConfirmTitle,
             style: AppTheme.pixelHeading(
                 fontSize: 14, color: const Color(0xFFcc88ff))),
         content: Text(
-          'Sacrifice ${game.prestigeLevel} Rebirth(s) for '
-          '${game.ascensionPointsForNextAscension} Ascension Point(s).\n\n'
-          'KEEP: Ascension bonuses, Artifacts, Mythril, Tower Shards, Ability Ascensions.\n'
-          'LOSE: all Rebirths, hero level, gold, gear, subclass, ability ranks, campaign progress.\n\n'
-          'This cannot be undone.',
+          AppLocalizations.of(ctx).ascConfirmBody(game.prestigeLevel, game.ascensionPointsForNextAscension),
           style: const TextStyle(color: Colors.white70, fontSize: 13, height: 1.5),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('CANCEL',
+            child: Text(AppLocalizations.of(ctx).csCancel,
                 style: TextStyle(color: AppTheme.textMuted)),
           ),
           TextButton(
@@ -205,7 +193,7 @@ class _AscendButton extends StatelessWidget {
               Navigator.pop(ctx, true);
               game.ascend();
             },
-            child: Text('ASCEND',
+            child: Text(AppLocalizations.of(ctx).hubAscend,
                 style: TextStyle(
                     color: const Color(0xFFcc88ff),
                     fontWeight: FontWeight.bold)),
@@ -241,7 +229,7 @@ class _NodeCard extends StatelessWidget {
                   ? const Color(0xFFcc88ff).withValues(alpha: 0.3)
                   : AppTheme.cardBorder,
         ),
-        borderRadius: BorderRadius.circular(4),
+        borderRadius: BorderRadius.circular(8),
       ),
       child: Row(children: [
         Text(node.icon, style: const TextStyle(fontSize: 23)),
@@ -250,7 +238,7 @@ class _NodeCard extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(node.label,
+              Text(ContentL10n.of(context).tr('an_${node.id}', 'title', node.label),
                   style: TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.bold,
@@ -258,7 +246,7 @@ class _NodeCard extends StatelessWidget {
                           ? const Color(0xFFcc88ff)
                           : Colors.white70)),
               const SizedBox(height: 2),
-              Text(node.description,
+              Text(ContentL10n.of(context).tr('an_${node.id}', 'desc', node.description),
                   style: const TextStyle(
                       fontSize: 11, color: AppTheme.textMuted)),
               const SizedBox(height: 4),
@@ -274,9 +262,9 @@ class _NodeCard extends StatelessWidget {
               color: const Color(0xFFcc88ff).withValues(alpha: 0.12),
               border: Border.all(
                   color: const Color(0xFFcc88ff).withValues(alpha: 0.5)),
-              borderRadius: BorderRadius.circular(3),
+              borderRadius: BorderRadius.circular(8),
             ),
-            child: Text('MAX',
+            child: Text(AppLocalizations.of(context).auMax,
                 style: AppTheme.pixelHeading(
                     fontSize: 10,
                     color: const Color(0xFFcc88ff))),

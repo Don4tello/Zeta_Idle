@@ -141,7 +141,7 @@ class _StatsBody extends StatelessWidget {
                   decoration: BoxDecoration(
                     color: nameFrame.withValues(alpha: 0.10),
                     border: Border.all(color: nameFrame, width: 1.5),
-                    borderRadius: BorderRadius.circular(6),
+                    borderRadius: BorderRadius.circular(8),
                     boxShadow: frameColor != null
                         ? [BoxShadow(color: nameFrame.withValues(alpha: 0.4), blurRadius: 6)]
                         : null,
@@ -281,7 +281,7 @@ class _StatsBody extends StatelessWidget {
         decoration: BoxDecoration(
           color: purple.withValues(alpha: 0.05),
           border: Border.all(color: purple.withValues(alpha: 0.25)),
-          borderRadius: BorderRadius.circular(3),
+          borderRadius: BorderRadius.circular(8),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -309,7 +309,7 @@ class _StatsBody extends StatelessWidget {
                 color: const Color(0xFFcc88ff).withValues(alpha: 0.10),
                 border: Border.all(
                     color: const Color(0xFFcc88ff).withValues(alpha: 0.45)),
-                borderRadius: BorderRadius.circular(3),
+                borderRadius: BorderRadius.circular(8),
               ),
               child: Row(children: [
                 const Text('✦',
@@ -389,7 +389,7 @@ class _StatsBody extends StatelessWidget {
         decoration: BoxDecoration(
           color: gold.withValues(alpha: 0.06),
           border: Border.all(color: gold.withValues(alpha: 0.35)),
-          borderRadius: BorderRadius.circular(3),
+          borderRadius: BorderRadius.circular(8),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -410,7 +410,7 @@ class _StatsBody extends StatelessWidget {
                 decoration: BoxDecoration(
                   color: gold.withValues(alpha: 0.10),
                   border: Border.all(color: gold.withValues(alpha: 0.40)),
-                  borderRadius: BorderRadius.circular(3),
+                  borderRadius: BorderRadius.circular(8),
                 ),
                 child: Text(c,
                     style: const TextStyle(
@@ -1003,7 +1003,7 @@ class _StatsBody extends StatelessWidget {
         decoration: BoxDecoration(
           color: teal.withValues(alpha: 0.05),
           border: Border.all(color: teal.withValues(alpha: 0.30)),
-          borderRadius: BorderRadius.circular(3),
+          borderRadius: BorderRadius.circular(8),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -1175,7 +1175,7 @@ class _StatRowWidgetState extends State<_StatRowWidget> {
                 ? row.color.withValues(alpha: 0.4)
                 : const Color(0xFF1e2235),
           ),
-          borderRadius: BorderRadius.circular(3),
+          borderRadius: BorderRadius.circular(8),
         ),
         child: Column(
           children: [

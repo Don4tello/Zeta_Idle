@@ -1,6 +1,7 @@
 ﻿import 'package:flutter/material.dart';
 import '../models/equipment.dart';
 import '../services/game_state.dart';
+import '../l10n/app_localizations.dart';
 import 'item_sprites.dart';
 
 class ItemDropBadge extends StatefulWidget {
@@ -57,7 +58,7 @@ class _ItemDropBadgeState extends State<ItemDropBadge>
               border: Border.all(
                   color: color.withValues(alpha: 0.85),
                   width: isSpecial ? 2.0 : 1.5),
-              borderRadius: BorderRadius.circular(4),
+              borderRadius: BorderRadius.circular(8),
               boxShadow: isSpecial
                   ? [BoxShadow(color: color.withValues(alpha: 0.3), blurRadius: 16, spreadRadius: 2)]
                   : null,
@@ -101,10 +102,10 @@ class _ItemDropBadgeState extends State<ItemDropBadge>
                   final game = GameStateProvider.of(ctx);
                   final current = game.inventory.equipped[item.slot];
                   if (current == null) {
-                    return const Padding(
-                      padding: EdgeInsets.only(top: 6),
-                      child: Text('No item equipped — direct upgrade!',
-                          style: TextStyle(fontSize: 10, color: Color(0xFF55cc88))),
+                    return Padding(
+                      padding: const EdgeInsets.only(top: 6),
+                      child: Text(AppLocalizations.of(ctx).idbNoItem,
+                          style: const TextStyle(fontSize: 10, color: Color(0xFF55cc88))),
                     );
                   }
                   final diffs = <Widget>[];

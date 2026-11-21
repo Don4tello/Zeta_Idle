@@ -2,7 +2,9 @@ import 'dart:math' show max;
 import 'dart:ui' show PointerDeviceKind;
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../services/game_state.dart';
+import '../demo_config.dart';
 import '../l10n/app_localizations.dart';
 import '../theme/app_theme.dart';
 import '../widgets/game_icons.dart';
@@ -147,20 +149,28 @@ class _ModesScreenState extends State<ModesScreen>
     super.dispose();
   }
 
-  Widget _screenFor(int i) => switch (i) {
-    // Primary — indices must match _tabData order exactly
-    0  => const CampaignScreen(),
-    1  => const DungeonScreen(),
-    2  => const BossRushScreen(),        // BOSS RUSH
-    3  => const EndlessScreen(),         // TOWER ASCENSION
-    4  => const GauntletScreen(),        // GAUNTLET
-    // Secondary
-    5  => const PvpScreen(),             // PVP (grouped next to Gauntlet)
-    6  => const DailyScreen(),           // CHALLENGES (daily / weekly / bounties)
-    7  => const WorldEventScreen(),      // EVENTS
-    8  => const ExpeditionScreen(),      // EXPEDITION
-    _  => const SizedBox.shrink(),
-  };
+  Widget _screenFor(int i) {
+    // Demo builds show the alt modes as locked "full game" teasers (the id lives
+    // in _tabData); Campaign + Challenges stay playable. See demo_config.dart.
+    final id = _tabData[i].$1;
+    if (!kDemoModeAllowed(id)) {
+      return _DemoLockedMode(modeId: id, icon: _modeIcons[id] ?? GameIconType.swords);
+    }
+    return switch (i) {
+      // Primary — indices must match _tabData order exactly
+      0  => const CampaignScreen(),
+      1  => const DungeonScreen(),
+      2  => const BossRushScreen(),        // BOSS RUSH
+      3  => const EndlessScreen(),         // TOWER ASCENSION
+      4  => const GauntletScreen(),        // GAUNTLET
+      // Secondary
+      5  => const PvpScreen(),             // PVP (grouped next to Gauntlet)
+      6  => const DailyScreen(),           // CHALLENGES (daily / weekly / bounties)
+      7  => const WorldEventScreen(),      // EVENTS
+      8  => const ExpeditionScreen(),      // EXPEDITION
+      _  => const SizedBox.shrink(),
+    };
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -251,10 +261,10 @@ class _ModesScreenState extends State<ModesScreen>
                           Text(_modeLabel(context, label),
                               textAlign: TextAlign.center,
                               style: GoogleFonts.rajdhani(
-                                fontSize: 9,
+                                fontSize: 10.5,
                                 fontWeight: isActive
                                     ? FontWeight.bold
-                                    : FontWeight.normal,
+                                    : FontWeight.w500,
                                 letterSpacing: 1,
                                 color: isActive
                                     ? AppTheme.accentGold
@@ -285,12 +295,12 @@ class _ModesScreenState extends State<ModesScreen>
                             padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 1),
                             decoration: BoxDecoration(
                               color: const Color(0xFFee3333),
-                              borderRadius: BorderRadius.circular(3),
+                              borderRadius: BorderRadius.circular(8),
                             ),
                             child: Text(
                               AppLocalizations.of(context).badgeNew,
                               style: const TextStyle(
-                                fontSize: 6,
+                                fontSize: 7.5,
                                 color: Colors.white,
                                 fontWeight: FontWeight.bold,
                                 letterSpacing: 0.5,
@@ -329,6 +339,69 @@ class _ModesScreenState extends State<ModesScreen>
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// Teaser shown in the PLAY tab for a mode that's locked in the demo build —
+/// previews the mode by name + icon and points to the full game, instead of
+/// hiding it (so players see the breadth of what they'd unlock).
+class _DemoLockedMode extends StatelessWidget {
+  const _DemoLockedMode({required this.modeId, required this.icon});
+  final String modeId;
+  final GameIconType icon;
+
+  @override
+  Widget build(BuildContext context) {
+    final name = _modeLabel(context, modeId);
+    const gold = AppTheme.accentGold;
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(28),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            GameIcon(icon, size: 56, color: gold.withValues(alpha: 0.7)),
+            const SizedBox(height: 18),
+            Row(mainAxisSize: MainAxisSize.min, children: [
+              const Icon(Icons.lock_outline, size: 16, color: gold),
+              const SizedBox(width: 8),
+              Text(name,
+                  style: AppTheme.pixelHeading(
+                      fontSize: 16, letterSpacing: 2, color: gold)),
+            ]),
+            const SizedBox(height: 14),
+            Text(AppLocalizations.of(context).demoModeLocked,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                    fontSize: 14, color: AppTheme.textLight, height: 1.5)),
+            const SizedBox(height: 10),
+            Material(
+              color: gold.withValues(alpha: 0.10),
+              borderRadius: BorderRadius.circular(8),
+              child: InkWell(
+                onTap: () => launchUrl(Uri.parse(kFullGameUrl),
+                    mode: LaunchMode.externalApplication),
+                borderRadius: BorderRadius.circular(8),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 11),
+                  decoration: BoxDecoration(
+                    border: Border.all(color: gold.withValues(alpha: 0.5)),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Row(mainAxisSize: MainAxisSize.min, children: [
+                    const Icon(Icons.open_in_new, size: 14, color: gold),
+                    const SizedBox(width: 8),
+                    Text(AppLocalizations.of(context).demoFullGameCta,
+                        style: AppTheme.pixelHeading(
+                            fontSize: 11, letterSpacing: 1, color: gold)),
+                  ]),
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

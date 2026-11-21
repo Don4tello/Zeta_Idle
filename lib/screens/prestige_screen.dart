@@ -7,6 +7,8 @@ import '../widgets/currency_info.dart';
 import '../widgets/paragon_icon.dart';
 import '../widgets/currency_icon.dart';
 import 'main_shell.dart' show TutorialTip;
+import '../l10n/app_localizations.dart';
+import '../l10n/content_l10n.dart';
 
 class PrestigeScreen extends StatelessWidget {
   const PrestigeScreen({super.key, this.embedded = false});
@@ -25,9 +27,7 @@ class PrestigeScreen extends StatelessWidget {
             TutorialTip(
               tutorialKey: 'prestige',
               game: game,
-              text: '✦ Paragon Points are earned by levelling up — 1 per level. '
-                  'Spend them on the Paragon Board and Shop below for permanent '
-                  'power that never resets.',
+              text: AppLocalizations.of(context).prgTutorial,
             ),
           // Rebirth is retired — tiers now drive progression (clear the campaign
           // to unlock the next tier). Panel hidden; Paragon board kept.
@@ -36,15 +36,15 @@ class PrestigeScreen extends StatelessWidget {
           _ParagonBoard(game: game),
           const SizedBox(height: 20),
           Row(children: [
-            Text('PARAGON SHOP',
+            Text(AppLocalizations.of(context).prgShop,
                 style: AppTheme.pixelHeading(fontSize: 14, letterSpacing: 2)),
             const SizedBox(width: 10),
             _SoulBadge(souls: game.prestigeSouls, large: false),
           ]),
           const SizedBox(height: 4),
-          const Text(
-            'Spend Paragon Points on permanent upgrades that persist across all future runs.',
-            style: TextStyle(fontSize: 14, color: AppTheme.textMuted),
+          Text(
+            AppLocalizations.of(context).prgShopSub,
+            style: const TextStyle(fontSize: 14, color: AppTheme.textMuted),
           ),
           const SizedBox(height: 14),
           // Grouped by category
@@ -63,7 +63,7 @@ class PrestigeScreen extends StatelessWidget {
       backgroundColor: const Color(0xFF1B1A17),
       appBar: AppBar(
         backgroundColor: const Color(0xFF2A2623),
-        title: Text('PARAGON', style: AppTheme.pixelHeading(fontSize: 14, letterSpacing: 2)),
+        title: Text(AppLocalizations.of(context).hubParagon, style: AppTheme.pixelHeading(fontSize: 14, letterSpacing: 2)),
         actions: [
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -162,12 +162,12 @@ class _BonusPanel extends StatelessWidget {
       decoration: BoxDecoration(
         color: const Color(0xFF231F1B),
         border: Border.all(color: AppTheme.cardBorder),
-        borderRadius: BorderRadius.circular(4),
+        borderRadius: BorderRadius.circular(8),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('ACTIVE BONUSES',
+          Text(AppLocalizations.of(context).prgActiveBonuses,
               style: AppTheme.pixelHeading(
                   fontSize: 10, letterSpacing: 2, color: AppTheme.textMuted)),
           const SizedBox(height: 8),
@@ -193,7 +193,7 @@ class _BonusChip extends StatelessWidget {
       decoration: BoxDecoration(
         color: const Color(0xFF1a2a1a),
         border: Border.all(color: const Color(0xFF44cc88).withValues(alpha: 0.5)),
-        borderRadius: BorderRadius.circular(3),
+        borderRadius: BorderRadius.circular(8),
       ),
       child: Text(label, style: const TextStyle(fontSize: 11, color: Color(0xFF44cc88))),
     );
@@ -230,7 +230,7 @@ class _ShopNode extends StatelessWidget {
       decoration: BoxDecoration(
         color: const Color(0xFF231F1B),
         border: Border.all(color: borderColor, width: owned ? 1.5 : 1),
-        borderRadius: BorderRadius.circular(4),
+        borderRadius: BorderRadius.circular(8),
       ),
       child: Row(
         children: [
@@ -239,7 +239,7 @@ class _ShopNode extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(children: [
-                  Text(node.name,
+                  Text(ContentL10n.of(context).tr('pn_${node.id}', 'title', node.name),
                       style: TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.bold,
@@ -251,16 +251,16 @@ class _ShopNode extends StatelessWidget {
                       decoration: BoxDecoration(
                         color: const Color(0xFFcc8844).withValues(alpha: 0.15),
                         border: Border.all(color: const Color(0xFFcc8844)),
-                        borderRadius: BorderRadius.circular(3),
+                        borderRadius: BorderRadius.circular(8),
                       ),
-                      child: Text('OWNED',
+                      child: Text(AppLocalizations.of(context).armOwned,
                           style: AppTheme.pixelHeading(
                               fontSize: 9, color: const Color(0xFFcc8844))),
                     ),
                   ],
                 ]),
                 const SizedBox(height: 3),
-                Text(node.description,
+                Text(ContentL10n.of(context).tr('pn_${node.id}', 'desc', node.description),
                     style: TextStyle(
                         fontSize: 12,
                         color: (!prereqMet || owned)
@@ -308,7 +308,7 @@ class _ShopNode extends StatelessWidget {
                     minimumSize: Size.zero,
                     tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                   ),
-                  child: Text('BUY',
+                  child: Text(AppLocalizations.of(context).auraBuy,
                       style: AppTheme.pixelHeading(
                           fontSize: 11,
                           letterSpacing: 1,
@@ -349,7 +349,7 @@ class _SoulBadge extends StatelessWidget {
         decoration: BoxDecoration(
           color: color.withValues(alpha: 0.08),
           border: Border.all(color: color.withValues(alpha: dim ? 0.3 : 0.7)),
-          borderRadius: BorderRadius.circular(4),
+          borderRadius: BorderRadius.circular(8),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
@@ -390,20 +390,20 @@ class _ParagonBoard extends StatelessWidget {
       decoration: BoxDecoration(
         color: const Color(0xFF13110E),
         border: Border.all(color: const Color(0xFF6a4fb0)),
-        borderRadius: BorderRadius.circular(4),
+        borderRadius: BorderRadius.circular(8),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(children: [
-            Text('✦ PARAGON BOARD',
+            Text(AppLocalizations.of(context).prgBoard,
                 style: AppTheme.pixelHeading(
                     fontSize: 13, letterSpacing: 2, color: const Color(0xFFb59bff))),
             const Spacer(),
             _SoulBadge(souls: game.prestigeSouls, large: false),
           ]),
           const SizedBox(height: 2),
-          const Text('Invest points into a direction — ranks scale forever.',
+          Text(AppLocalizations.of(context).prgBoardHint,
               style: TextStyle(fontSize: 12, color: AppTheme.textMuted)),
           const SizedBox(height: 10),
           ...kParagonStats.map((s) => _ParagonRow(stat: s, game: game)),
@@ -478,7 +478,7 @@ class _ParagonRowState extends State<_ParagonRow> {
                   style: const TextStyle(
                       fontSize: 13, fontWeight: FontWeight.bold, color: Colors.white)),
               const SizedBox(width: 6),
-              Text('Rank $rank',
+              Text(AppLocalizations.of(context).prgRank(rank),
                   style: const TextStyle(fontSize: 11, color: Color(0xFFb59bff))),
             ]),
             Text('+$totalStr${stat.suffix} ${_effectLabel(stat.effect)}',
@@ -495,7 +495,7 @@ class _ParagonRowState extends State<_ParagonRow> {
             constraints: const BoxConstraints(minHeight: 34),
             decoration: BoxDecoration(
               color: const Color(0xFF2a1f45),
-              borderRadius: BorderRadius.circular(4),
+              borderRadius: BorderRadius.circular(8),
               border: Border.all(
                   color: canAfford ? const Color(0xFF6a4fb0) : AppTheme.cardBorder),
             ),

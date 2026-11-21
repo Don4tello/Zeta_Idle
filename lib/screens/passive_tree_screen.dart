@@ -8,6 +8,8 @@ import '../widgets/currency_icon.dart';
 import '../widgets/currency_info.dart';
 import '../widgets/passive_icon.dart';
 import 'main_shell.dart' show TutorialTip;
+import '../l10n/app_localizations.dart';
+import '../l10n/content_l10n.dart';
 
 class PassiveTreeScreen extends StatelessWidget {
   const PassiveTreeScreen({super.key, this.embedded = false});
@@ -65,12 +67,12 @@ class PassiveTreeScreen extends StatelessWidget {
               ),
             ),
             const SizedBox(width: 4),
-            const Text('essence', style: TextStyle(color: Colors.white38, fontSize: 12)),
+            Text(AppLocalizations.of(context).ptEssence, style: const TextStyle(color: Colors.white38, fontSize: 12)),
           ]),
         ),
         const Spacer(),
         Text(
-          '${game.passiveTree.unlockedCount} nodes unlocked',
+          AppLocalizations.of(context).ptNodesUnlocked(game.passiveTree.unlockedCount),
           style: const TextStyle(color: Colors.white30, fontSize: 11),
         ),
       ]),
@@ -83,9 +85,7 @@ class PassiveTreeScreen extends StatelessWidget {
           TutorialTip(
             tutorialKey: 'passives',
             game: game,
-            text: 'You\'ve earned Shards ◆ — spend them here on permanent passive '
-                'nodes that never reset. Your class branch is at the top. '
-                'Each node ranks up to 5 for bigger bonuses.',
+            text: AppLocalizations.of(context).ptTutorial,
           ),
         // Display order: class branch (elementalist) on top, then Vitalist right
         // below Guardian. Explicit list so it doesn't depend on enum order.
@@ -112,7 +112,7 @@ class PassiveTreeScreen extends StatelessWidget {
         nodes.sort((a, b) => a.tier.compareTo(b.tier));
         final color  = _branchColors[branch]!;
         final branchName = branch == PassiveBranch.elementalist
-            ? 'THE ${game.hero.heroClass.displayName.toUpperCase()}'
+            ? AppLocalizations.of(context).ptTheClass(game.hero.heroClass.displayName.toUpperCase())
             : _branchNames[branch]!;
         final locked = branch == PassiveBranch.ascendant &&
             !game.passiveTree.ascendantBranchAvailable;
@@ -157,7 +157,7 @@ class PassiveTreeScreen extends StatelessWidget {
                       const Icon(Icons.lock_outline, color: Colors.white30, size: 11),
                       const SizedBox(width: 4),
                       Text(
-                        '$otherCount / 5 branches at 25',
+                        AppLocalizations.of(context).ptBranchesAt25(otherCount),
                         style: const TextStyle(color: Colors.white30, fontSize: 10),
                       ),
                     ])
@@ -170,15 +170,15 @@ class PassiveTreeScreen extends StatelessWidget {
                             context: context,
                             builder: (ctx) => AlertDialog(
                               backgroundColor: const Color(0xFF1a1a2e),
-                              title: Text('Respec ${_branchNames[branch]}?',
+                              title: Text(AppLocalizations.of(ctx).ptRespecBranch(_branchNames[branch]!),
                                   style: const TextStyle(color: Colors.white, fontSize: 14)),
-                              content: Text('Refund $refund essence (75%)',
+                              content: Text(AppLocalizations.of(ctx).ptRefund(refund),
                                   style: const TextStyle(color: Colors.white70, fontSize: 12)),
                               actions: [
                                 TextButton(onPressed: () => Navigator.pop(ctx, false),
-                                    child: const Text('Cancel')),
+                                    child: Text(AppLocalizations.of(ctx).commonCancel)),
                                 TextButton(onPressed: () => Navigator.pop(ctx, true),
-                                    child: Text('Respec', style: TextStyle(color: color))),
+                                    child: Text(AppLocalizations.of(ctx).ptRespec, style: TextStyle(color: color))),
                               ],
                             ),
                           );
@@ -188,9 +188,9 @@ class PassiveTreeScreen extends StatelessWidget {
                           padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                           decoration: BoxDecoration(
                             border: Border.all(color: color.withValues(alpha: 0.4)),
-                            borderRadius: BorderRadius.circular(3),
+                            borderRadius: BorderRadius.circular(8),
                           ),
-                          child: Text('RESPEC', style: TextStyle(
+                          child: Text(AppLocalizations.of(context).auRespec, style: TextStyle(
                               fontSize: 8, color: color.withValues(alpha: 0.7), fontWeight: FontWeight.bold)),
                         ),
                       ),
@@ -257,7 +257,7 @@ class PassiveTreeScreen extends StatelessWidget {
               color: const Color(0xFF2a2a1a),
               border: const Border(left: BorderSide(color: Color(0xFFccaa44), width: 3)),
             ),
-            child: Text('CROSS-BRANCH', style: TextStyle(
+            child: Text(AppLocalizations.of(context).ptCrossBranch, style: TextStyle(
               color: const Color(0xFFccaa44), fontSize: 12,
               fontWeight: FontWeight.bold, letterSpacing: 1.5)),
           ),
@@ -274,7 +274,7 @@ class PassiveTreeScreen extends StatelessWidget {
               decoration: BoxDecoration(
                 color: const Color(0xFF231F1B),
                 border: Border.all(color: can ? const Color(0xFFccaa44) : Colors.white12),
-                borderRadius: BorderRadius.circular(4),
+                borderRadius: BorderRadius.circular(8),
               ),
               child: Row(children: [
                 PassiveIcon(effect: node.effect, size: 20),
@@ -282,10 +282,10 @@ class PassiveTreeScreen extends StatelessWidget {
                 Expanded(child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(node.name, style: TextStyle(
+                    Text(ContentL10n.of(context).tr(node.id, 'title', node.name), style: TextStyle(
                         fontSize: 12, fontWeight: FontWeight.bold,
                         color: can ? const Color(0xFFccaa44) : Colors.white38)),
-                    Text('${node.description}  [$rank/${node.maxRank}]',
+                    Text('${ContentL10n.of(context).tr(node.id, 'desc', node.description)}  [$rank/${node.maxRank}]',
                         style: const TextStyle(fontSize: 9, color: Colors.white38)),
                   ],
                 )),
@@ -297,7 +297,7 @@ class PassiveTreeScreen extends StatelessWidget {
                       decoration: BoxDecoration(
                         color: can && affordable ? const Color(0xFF2a2a1a) : Colors.transparent,
                         border: Border.all(color: can && affordable ? const Color(0xFFccaa44) : Colors.white12),
-                        borderRadius: BorderRadius.circular(3),
+                        borderRadius: BorderRadius.circular(8),
                       ),
                       child: Text('$cost ✦', style: TextStyle(fontSize: 10,
                           color: can && affordable ? const Color(0xFFccaa44) : Colors.white24)),
@@ -320,17 +320,17 @@ class PassiveTreeScreen extends StatelessWidget {
                   context: context,
                   builder: (ctx) => AlertDialog(
                     backgroundColor: const Color(0xFF1a1a2e),
-                    title: const Text('Full Respec?', style: TextStyle(color: Colors.white, fontSize: 14)),
+                    title: Text(AppLocalizations.of(ctx).ptFullRespec, style: const TextStyle(color: Colors.white, fontSize: 14)),
                     content: Text(
-                      'Reset ALL passive nodes.\nRefund $refund essence (60%).\nCost: 50 zcoins.',
+                      AppLocalizations.of(ctx).ptFullRespecBody(refund),
                       style: const TextStyle(color: Colors.white70, fontSize: 12, height: 1.4),
                     ),
                     actions: [
                       TextButton(onPressed: () => Navigator.pop(ctx, false),
-                          child: const Text('Cancel')),
+                          child: Text(AppLocalizations.of(ctx).commonCancel)),
                       TextButton(
                         onPressed: game.zcoins >= 50 ? () => Navigator.pop(ctx, true) : null,
-                        child: Text('Respec (50 ZC)',
+                        child: Text(AppLocalizations.of(ctx).ptRespec50,
                             style: TextStyle(color: game.zcoins >= 50 ? const Color(0xFFcc88ff) : Colors.white24)),
                       ),
                     ],
@@ -342,7 +342,7 @@ class PassiveTreeScreen extends StatelessWidget {
                 foregroundColor: const Color(0xFFcc88ff),
                 side: const BorderSide(color: Color(0xFFcc88ff)),
               ),
-              child: const Text('FULL RESPEC (50 ZC)',
+              child: Text(AppLocalizations.of(context).ptFullRespecBtn,
                   style: TextStyle(fontSize: 11, letterSpacing: 1)),
             ),
           ),
@@ -363,7 +363,7 @@ class PassiveTreeScreen extends StatelessWidget {
     return Scaffold(
       backgroundColor: AppTheme.darkBg,
       appBar: AppBar(
-        title: const Text('PASSIVE TREE'),
+        title: Text(AppLocalizations.of(context).ptTitle),
         actions: [
           Padding(
             padding: const EdgeInsets.only(right: 16),
@@ -379,7 +379,7 @@ class PassiveTreeScreen extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 4),
-              const Text('essence', style: TextStyle(color: Colors.white38, fontSize: 12)),
+              Text(AppLocalizations.of(context).ptEssence, style: const TextStyle(color: Colors.white38, fontSize: 12)),
             ]),
           ),
         ],
@@ -497,7 +497,7 @@ class _NodeCard extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(node.name,
+                      Text(ContentL10n.of(context).tr(node.id, 'title', node.name),
                           style: TextStyle(color: color, fontSize: 16,
                               fontWeight: FontWeight.bold, letterSpacing: 1)),
                       Text(_effectLabel(node.effect),
@@ -548,9 +548,9 @@ class _NodeCard extends StatelessWidget {
                         padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
                         decoration: BoxDecoration(
                           color: color.withValues(alpha: 0.15),
-                          borderRadius: BorderRadius.circular(3),
+                          borderRadius: BorderRadius.circular(8),
                         ),
-                        child: Text('NOW',
+                        child: Text(AppLocalizations.of(sheetCtx).ptNow,
                             style: TextStyle(color: color, fontSize: 9,
                                 fontWeight: FontWeight.bold)),
                       ),
@@ -573,10 +573,10 @@ class _NodeCard extends StatelessWidget {
                     icon: const Icon(Icons.auto_awesome, size: 14),
                     label: Text(
                       canUpgrade
-                          ? 'UPGRADE  ($cost ✦)'
+                          ? AppLocalizations.of(sheetCtx).ptUpgradeCost(cost)
                           : node.branch == PassiveBranch.ascendant
-                              ? 'LOCKED — spend 25 ranks in more branches'
-                              : 'LOCKED — max all branch nodes first',
+                              ? AppLocalizations.of(sheetCtx).ptLocked
+                              : AppLocalizations.of(sheetCtx).ptLockedMax,
                       style: const TextStyle(fontSize: 13, letterSpacing: 0.5),
                     ),
                     style: ElevatedButton.styleFrom(
@@ -588,7 +588,7 @@ class _NodeCard extends StatelessWidget {
                           color: canAfford ? color : Colors.white12, width: 1.5),
                       padding: const EdgeInsets.symmetric(vertical: 14),
                       shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(6)),
+                          borderRadius: BorderRadius.circular(8)),
                     ),
                   ),
                 ),
@@ -597,7 +597,7 @@ class _NodeCard extends StatelessWidget {
                 Center(
                   child: Padding(
                     padding: const EdgeInsets.only(top: 12),
-                    child: Text('MAX RANK — ${sign}${node.value * node.maxRank}$suffix total',
+                    child: Text(AppLocalizations.of(sheetCtx).ptMaxRankTotal('${sign}${node.value * node.maxRank}$suffix'),
                         style: TextStyle(color: color, fontSize: 13,
                             fontWeight: FontWeight.bold)),
                   ),
@@ -668,7 +668,7 @@ class _NodeCard extends StatelessWidget {
             ),
             const SizedBox(height: 2),
             Text(
-              node.name,
+              ContentL10n.of(context).tr(node.id, 'title', node.name),
               textAlign: TextAlign.center,
               style: TextStyle(
                 color: locked
@@ -684,7 +684,7 @@ class _NodeCard extends StatelessWidget {
             ),
             const SizedBox(height: 1),
             Text(
-              node.description,
+              ContentL10n.of(context).tr(node.id, 'desc', node.description),
               textAlign: TextAlign.center,
               style: TextStyle(
                 color: locked ? Colors.white12 : Colors.white38,
@@ -724,7 +724,7 @@ class _NodeCard extends StatelessWidget {
                         : rank > 0 ? color : color.withValues(alpha: 0.6))),
             const SizedBox(height: 2),
             if (isMax)
-              Text('MAX',
+              Text(AppLocalizations.of(context).auMax,
                 style: TextStyle(color: color, fontSize: 8, fontWeight: FontWeight.bold, letterSpacing: 1))
             else if (!locked)
               FittedBox(

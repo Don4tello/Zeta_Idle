@@ -8,6 +8,7 @@ import '../widgets/currency_icon.dart';
 import '../widgets/currency_info.dart';
 import '../widgets/hold_repeat_button.dart';
 import '../widgets/node_sprite.dart';
+import '../l10n/app_localizations.dart';
 import 'main_shell.dart' show TutorialTip;
 
 class EndlessUpgradeScreen extends StatelessWidget {
@@ -31,7 +32,7 @@ class EndlessUpgradeScreen extends StatelessWidget {
             decoration: BoxDecoration(
               color: const Color(0xFF231F1B),
               border: Border.all(color: const Color(0xFFcc88ff).withValues(alpha: 0.4)),
-              borderRadius: BorderRadius.circular(4),
+              borderRadius: BorderRadius.circular(8),
             ),
             child: Row(children: [
               const CurrencyIcon(id: 'echoes', size: 18),
@@ -40,20 +41,18 @@ class EndlessUpgradeScreen extends StatelessWidget {
                   style: const TextStyle(
                       fontSize: 17, fontWeight: FontWeight.bold, color: Color(0xFFcc88ff))),
               const SizedBox(width: 6),
-              const Text('Echoes',
-                  style: TextStyle(fontSize: 12, color: Color(0xFFb69fd0))),
+              Text(AppLocalizations.of(context).euEchoes,
+                  style: const TextStyle(fontSize: 12, color: Color(0xFFb69fd0))),
               const Spacer(),
-              const Text('Your balance',
-                  style: TextStyle(fontSize: 11, color: Color(0xFF8a7a99))),
+              Text(AppLocalizations.of(context).euYourBalance,
+                  style: const TextStyle(fontSize: 11, color: Color(0xFF8a7a99))),
             ]),
           ),
         ],
         TutorialTip(
           tutorialKey: 'upgrade',
           game: game,
-          text: 'Gauntlet runs earn Echoes 🔊 — spend them here on permanent '
-              'combat upgrades that never reset. '
-              'These are some of the most powerful bonuses in the game.',
+          text: AppLocalizations.of(context).euTutorial,
         ),
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
@@ -70,8 +69,7 @@ class EndlessUpgradeScreen extends StatelessWidget {
               const SizedBox(width: 10),
               Expanded(
                 child: Text(
-                  'Upgrades are permanent per character. '
-                  'Bonuses apply in all game modes.',
+                  AppLocalizations.of(context).euPermanent,
                   style: GoogleFonts.rajdhani(
                     fontSize: 11,
                     color: AppTheme.textMuted,
@@ -104,7 +102,7 @@ class EndlessUpgradeScreen extends StatelessWidget {
     return Scaffold(
       backgroundColor: AppTheme.darkBg,
       appBar: AppBar(
-        title: const Text('UPGRADES'),
+        title: Text(AppLocalizations.of(context).hubUpgrades),
         actions: [
           Padding(
             padding: const EdgeInsets.only(right: 16),
@@ -127,7 +125,7 @@ class EndlessUpgradeScreen extends StatelessWidget {
                 ),
                 const SizedBox(width: 4),
                 Text(
-                  'ECHOES',
+                  AppLocalizations.of(context).euEchoesCap,
                   style: GoogleFonts.rajdhani(
                     color: const Color(0xFFcc88ff).withValues(alpha: 0.6),
                     fontSize: 10,
@@ -315,7 +313,7 @@ class _NodeCardState extends State<_NodeCard> with SingleTickerProviderStateMixi
                         ),
                         const SizedBox(width: 4),
                         Text(
-                          'for Lv ${level + 1}',
+                          AppLocalizations.of(context).euForLv(level + 1),
                           style: GoogleFonts.rajdhani(
                             fontSize: 10,
                             color: AppTheme.textMuted,
@@ -352,7 +350,7 @@ class _NodeCardState extends State<_NodeCard> with SingleTickerProviderStateMixi
                                 const SizedBox(width: 5),
                               ],
                               Text(
-                                canAfford ? 'UPGRADE' : 'UPGRADE',
+                                AppLocalizations.of(context).forgeUpgrade,
                                 style: GoogleFonts.rajdhani(
                                   fontSize: 11,
                                   fontWeight: FontWeight.bold,
@@ -502,7 +500,7 @@ class _SynergyPanel extends StatelessWidget {
       children: [
         Padding(
           padding: const EdgeInsets.only(bottom: 8),
-          child: Text('SYNERGIES',
+          child: Text(AppLocalizations.of(context).npcSynergies,
               style: GoogleFonts.rajdhani(
                   fontSize: 11,
                   letterSpacing: 2,
@@ -532,7 +530,7 @@ class _SynergyCard extends StatelessWidget {
             ? const Color(0xFF0d1f2d)
             : const Color(0xFF0d1218),
         border: Border.all(color: color.withValues(alpha: unlocked ? 0.5 : 0.2)),
-        borderRadius: BorderRadius.circular(4),
+        borderRadius: BorderRadius.circular(8),
       ),
       child: Row(
         children: [
@@ -576,7 +574,7 @@ class _SynergyCard extends StatelessWidget {
               const SizedBox(height: 2),
               Text(
                 unlocked
-                    ? 'ACTIVE'
+                    ? AppLocalizations.of(context).euActive
                     : '${status.node1.statLabel} ${status.level1}/$req  •  ${status.node2.statLabel} ${status.level2}/$req',
                 style: TextStyle(
                     fontSize: 9,

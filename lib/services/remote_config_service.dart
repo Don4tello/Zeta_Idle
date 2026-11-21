@@ -164,8 +164,24 @@ class RemoteConfigService {
   //  • enemyThreatPct: base enemy damage per hit as a fraction of hero max HP
   //    (+per-tier ramp, +boss mult), so fights stay threatening at any gear level.
   // Set either to 0 to disable that half. Tune live, re-pull ZBAL.
-  double get targetFightRounds   => _d('target_fight_rounds', 8.0);
-  double get enemyThreatPct      => _d('enemy_threat_pct', 0.03);
+  // Defaults raised (build 349) off 2026-11-15 telemetry: the AGGREGATE showed 0
+  // deaths / median 2-round fights / 100% end-HP, so these were set to 18 / 0.05.
+  // Build 403 re-analysis (cohort-filtered) revealed the aggregate was CONTAMINATED
+  // by dev/maxed accounts (42/110 sessions were level 300+, 65/110 beat the whole
+  // campaign). The REAL new-player cohort (33 sessions, lvl≤30, tier 0) already
+  // fought ~5-6 rounds and bosses ended at ~53% HP — i.e. tier 0 was NOT trivial;
+  // the triviality is an over-geared-replay artifact. So 0.05 base would over-
+  // punish the exact cohort that's churning (bosses = base×1.5 = 0.075/hit over a
+  // now-longer fight → risked lethal stage-4 bosses). Re-tuned to be gentle at
+  // tier 0 and ramp HARD into the over-geared tiers (via kThreatPctPerTier below):
+  //   enemyThreatPct 0.05 → 0.04 (tier-0 boss 0.06/hit — a measured +33% over the
+  //     pre-349 0.03 baseline, not +67%); kThreatPctPerTier 0.006 → 0.010 so the
+  //     frontier still reaches the 0.12 one-shot cap by ~tier 4-5.
+  //   targetFightRounds 18 → 15 (~6 real rounds at tier 0 ≈ new players' natural
+  //     length, so the floor barely extends their fights, while still flooring the
+  //     over-geared 2-round stomps up). Watch the lvl≤30 cohort on the next pull.
+  double get targetFightRounds   => _d('target_fight_rounds', 15.0);
+  double get enemyThreatPct      => _d('enemy_threat_pct', 0.04);
   // Extra rounds above the floor that cap a fight's length. Enemy HP is clamped
   // to [floor, floor+band] rounds of the hero's damage, so naturally-tanky
   // content can't produce 30-40 round grinds. 0 = no ceiling (floor only).

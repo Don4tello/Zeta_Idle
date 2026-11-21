@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 // ─────────────────────────────────────────────────────────────────────────────
 // PixelCastle — shows the illustrated castle scene for a guild-castle tier
 // (1..10). Previously a CustomPainter; now backed by per-tier art in
-// assets/castles/castle_1.jpg … castle_10.jpg (hamlet → citadel), so upgrading
+// assets/castles/castle_1.webp … castle_10.webp (hamlet → citadel), so upgrading
 // reads as the settlement growing. The original API (tier / guildTint / size /
 // animate) is preserved so every call site is unchanged — guildTint tints the
 // frame so two same-tier guilds still differ; `animate` is currently unused.
@@ -48,7 +48,7 @@ class PixelCastle extends StatelessWidget {
         borderRadius: BorderRadius.circular(radius),
         border: Border.all(color: guildTint.withValues(alpha: 0.55), width: 1.5),
         image: DecorationImage(
-          image: AssetImage('assets/castles/castle_$t.jpg'),
+          image: AssetImage('assets/castles/castle_$t.webp'),
           fit: BoxFit.cover,
           filterQuality: FilterQuality.medium,
         ),

@@ -7,6 +7,7 @@ import '../models/hero_ability.dart' show AbilityEffect;
 import '../services/game_state.dart';
 import '../theme/app_theme.dart';
 import '../widgets/item_sprites.dart';
+import '../l10n/app_localizations.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // ArmoryScreen — legendary & set item database for the current class
@@ -55,11 +56,11 @@ class _ArmoryScreenState extends State<ArmoryScreen>
           labelColor: AppTheme.accentGold,
           unselectedLabelColor: AppTheme.textMuted,
           labelStyle: AppTheme.pixelHeading(fontSize: 11, letterSpacing: 1),
-          tabs: const [
-            Tab(text: 'UNIQUES'),
-            Tab(text: 'MYTHIC'),
-            Tab(text: 'SET ITEMS'),
-            Tab(text: 'ARTIFACTS'),
+          tabs: [
+            Tab(text: AppLocalizations.of(context).armTabUniques),
+            Tab(text: AppLocalizations.of(context).armTabMythic),
+            Tab(text: AppLocalizations.of(context).armTabSets),
+            Tab(text: AppLocalizations.of(context).armTabArtifacts),
           ],
         ),
       ),
@@ -88,7 +89,7 @@ class _ArmoryScreenState extends State<ArmoryScreen>
       backgroundColor: AppTheme.darkBg,
       appBar: AppBar(
         backgroundColor: const Color(0xFF2A2623),
-        title: Text('ARMORY',
+        title: Text(AppLocalizations.of(context).hubArmory,
             style: AppTheme.pixelHeading(fontSize: 14, letterSpacing: 2)),
         actions: [
           Padding(
@@ -126,9 +127,9 @@ class _LegendaryList extends StatelessWidget {
       ..sort((a, b) => a.levelRequired.compareTo(b.levelRequired));
 
     if (items.isEmpty) {
-      return const Center(
-        child: Text('No legendaries for this class.',
-            style: TextStyle(color: AppTheme.textMuted)),
+      return Center(
+        child: Text(AppLocalizations.of(context).armNoLegendaries,
+            style: const TextStyle(color: AppTheme.textMuted)),
       );
     }
 
@@ -136,7 +137,7 @@ class _LegendaryList extends StatelessWidget {
       padding: const EdgeInsets.all(12),
       itemCount: items.length + 1,
       itemBuilder: (ctx, i) {
-        if (i == 0) return _legendaryHeader(items.length);
+        if (i == 0) return _legendaryHeader(ctx, items.length);
         final item = items[i - 1];
         final isOpen = expanded?.id == item.id;
         return _LegendaryCard(
@@ -149,27 +150,26 @@ class _LegendaryList extends StatelessWidget {
     );
   }
 
-  Widget _legendaryHeader(int count) {
+  Widget _legendaryHeader(BuildContext context, int count) {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: const Color(0xFF1a0a20),
         border: Border.all(color: const Color(0xFFE8A0FF).withValues(alpha: 0.5)),
-        borderRadius: BorderRadius.circular(4),
+        borderRadius: BorderRadius.circular(8),
       ),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [
           const Icon(Icons.auto_awesome, size: 18, color: Color(0xFFE8A0FF)),
           const SizedBox(width: 8),
-          Text('$count Class Uniques',
+          Text(AppLocalizations.of(context).armClassUniques(count),
               style: AppTheme.pixelHeading(fontSize: 12, color: const Color(0xFFE8A0FF))),
         ]),
         const SizedBox(height: 6),
-        const Text(
-          'Unique items are class-bound and dramatically enhance your abilities. '
-          'Each amplifies a specific class ability. Drop rate: 2% per boss kill.',
-          style: TextStyle(fontSize: 11, color: AppTheme.textMuted, height: 1.5),
+        Text(
+          AppLocalizations.of(context).armUniqueBlurb,
+          style: const TextStyle(fontSize: 11, color: AppTheme.textMuted, height: 1.5),
         ),
       ]),
     );
@@ -205,7 +205,7 @@ class _LegendaryCard extends StatelessWidget {
           border: Border.all(
               color: isOpen ? color : color.withValues(alpha: 0.3),
               width: isOpen ? 1.5 : 1),
-          borderRadius: BorderRadius.circular(4),
+          borderRadius: BorderRadius.circular(8),
         ),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           // Header row
@@ -227,11 +227,11 @@ class _LegendaryCard extends StatelessWidget {
                         border: Border.all(color: const Color(0xFF44cc88)),
                         borderRadius: BorderRadius.circular(2),
                       ),
-                      child: const Text('OWNED',
-                          style: TextStyle(fontSize: 7, color: Color(0xFF44cc88), fontWeight: FontWeight.bold)),
+                      child: Text(AppLocalizations.of(context).armOwned,
+                          style: const TextStyle(fontSize: 7, color: Color(0xFF44cc88), fontWeight: FontWeight.bold)),
                     ),
                 ]),
-                Text('${item.slot.label}  •  Req. Level ${item.levelRequired}',
+                Text(AppLocalizations.of(context).armSlotReqLevel(item.slot.label, item.levelRequired),
                     style: const TextStyle(fontSize: 9, color: AppTheme.textMuted)),
               ])),
               Icon(isOpen ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
@@ -258,7 +258,7 @@ class _LegendaryCard extends StatelessWidget {
               padding: const EdgeInsets.all(12),
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 // Stats
-                Text('STATS', style: AppTheme.pixelHeading(fontSize: 9, color: AppTheme.textMuted, letterSpacing: 1)),
+                Text(AppLocalizations.of(context).armStats, style: AppTheme.pixelHeading(fontSize: 9, color: AppTheme.textMuted, letterSpacing: 1)),
                 const SizedBox(height: 6),
                 Wrap(
                   spacing: 8, runSpacing: 4,
@@ -272,7 +272,7 @@ class _LegendaryCard extends StatelessWidget {
                 // Ability enhancement
                 if (item.uniqueAbilityId != null) ...[
                   const SizedBox(height: 10),
-                  Text('ABILITY ENHANCEMENT', style: AppTheme.pixelHeading(fontSize: 9, color: AppTheme.textMuted, letterSpacing: 1)),
+                  Text(AppLocalizations.of(context).armAbilityEnh, style: AppTheme.pixelHeading(fontSize: 9, color: AppTheme.textMuted, letterSpacing: 1)),
                   const SizedBox(height: 6),
                   Container(
                     width: double.infinity,
@@ -280,20 +280,20 @@ class _LegendaryCard extends StatelessWidget {
                     decoration: BoxDecoration(
                       color: color.withValues(alpha: 0.06),
                       border: Border.all(color: color.withValues(alpha: 0.3)),
-                      borderRadius: BorderRadius.circular(3),
+                      borderRadius: BorderRadius.circular(8),
                     ),
                     child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                       if (item.abilityValueMult != 1.0)
-                        Text('• Ability damage ×${item.abilityValueMult.toStringAsFixed(1)}',
+                        Text(AppLocalizations.of(context).armAbilityDamage(item.abilityValueMult.toStringAsFixed(1)),
                             style: TextStyle(fontSize: 11, color: color, height: 1.5)),
                       if (item.abilityDurationAdd != 0)
-                        Text('• +${item.abilityDurationAdd} rounds duration',
+                        Text(AppLocalizations.of(context).armAbilityDuration(item.abilityDurationAdd),
                             style: TextStyle(fontSize: 11, color: color, height: 1.5)),
                       if (item.abilityCooldownFlat != 0)
-                        Text('• ${item.abilityCooldownFlat < 0 ? "" : "-"}${item.abilityCooldownFlat.abs()} rounds cooldown',
+                        Text(AppLocalizations.of(context).armAbilityCooldown('${item.abilityCooldownFlat < 0 ? "" : "-"}${item.abilityCooldownFlat.abs()}'),
                             style: TextStyle(fontSize: 11, color: color, height: 1.5)),
                       if (item.abilityExtraEffect != null)
-                        Text('• On cast: ${_extraEffectDesc(item)}',
+                        Text(AppLocalizations.of(context).armOnCast(_extraEffectDesc(item)),
                             style: TextStyle(fontSize: 11, color: color, height: 1.5)),
                     ]),
                   ),
@@ -301,16 +301,16 @@ class _LegendaryCard extends StatelessWidget {
 
                 // Drop info
                 const SizedBox(height: 10),
-                Text('HOW TO FIND', style: AppTheme.pixelHeading(fontSize: 9, color: AppTheme.textMuted, letterSpacing: 1)),
+                Text(AppLocalizations.of(context).armHowToFind, style: AppTheme.pixelHeading(fontSize: 9, color: AppTheme.textMuted, letterSpacing: 1)),
                 const SizedBox(height: 6),
-                _DropRow('Campaign bosses', '2% per boss kill'),
-                _DropRow('Tower Ascension bosses', '2% per boss kill'),
-                _DropRow('Boss Rush runs', '2% per boss kill'),
-                _DropRow('Gauntlet clear', 'Rare bonus drop'),
+                _DropRow(AppLocalizations.of(context).armDropCampaign, AppLocalizations.of(context).armRate2),
+                _DropRow(AppLocalizations.of(context).armDropTower, AppLocalizations.of(context).armRate2),
+                _DropRow(AppLocalizations.of(context).armDropBossRush, AppLocalizations.of(context).armRate2),
+                _DropRow(AppLocalizations.of(context).armDropGauntlet, AppLocalizations.of(context).armRateRare),
                 const SizedBox(height: 4),
-                const Text(
-                  'Drops are class-specific — only items for your class can drop.',
-                  style: TextStyle(fontSize: 9, color: AppTheme.textMuted, fontStyle: FontStyle.italic),
+                Text(
+                  AppLocalizations.of(context).armDropsClassSpecific,
+                  style: const TextStyle(fontSize: 9, color: AppTheme.textMuted, fontStyle: FontStyle.italic),
                 ),
               ]),
             ),
@@ -364,7 +364,7 @@ class _MythicList extends StatelessWidget {
     return ListView(
       padding: const EdgeInsets.all(12),
       children: [
-        _mythicHeader(),
+        _mythicHeader(context),
         if (mythicItems.isEmpty)
           Container(
             margin: const EdgeInsets.only(top: 8),
@@ -372,16 +372,16 @@ class _MythicList extends StatelessWidget {
             decoration: BoxDecoration(
               color: AppTheme.cardBg,
               border: Border.all(color: const Color(0xFFDD1111).withValues(alpha: 0.2)),
-              borderRadius: BorderRadius.circular(4),
+              borderRadius: BorderRadius.circular(8),
             ),
-            child: const Column(children: [
-              Icon(Icons.local_fire_department, size: 32, color: Color(0xFFDD1111)),
-              SizedBox(height: 8),
-              Text('No Mythic items yet',
-                  style: TextStyle(fontSize: 13, color: AppTheme.textMuted)),
-              SizedBox(height: 4),
-              Text('Defeat campaign bosses for a 0.5% chance per kill.',
-                  style: TextStyle(fontSize: 10, color: AppTheme.textMuted),
+            child: Column(children: [
+              const Icon(Icons.local_fire_department, size: 32, color: Color(0xFFDD1111)),
+              const SizedBox(height: 8),
+              Text(AppLocalizations.of(context).armNoMythic,
+                  style: const TextStyle(fontSize: 13, color: AppTheme.textMuted)),
+              const SizedBox(height: 4),
+              Text(AppLocalizations.of(context).armMythicHint,
+                  style: const TextStyle(fontSize: 10, color: AppTheme.textMuted),
                   textAlign: TextAlign.center),
             ]),
           )
@@ -391,29 +391,27 @@ class _MythicList extends StatelessWidget {
     );
   }
 
-  Widget _mythicHeader() {
+  Widget _mythicHeader(BuildContext context) {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: const Color(0xFF1a0000),
         border: Border.all(color: const Color(0xFFDD1111).withValues(alpha: 0.5)),
-        borderRadius: BorderRadius.circular(4),
+        borderRadius: BorderRadius.circular(8),
       ),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        const Row(children: [
-          Icon(Icons.local_fire_department, size: 18, color: Color(0xFFDD1111)),
-          SizedBox(width: 8),
-          Text('Mythic Items',
-              style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold,
+        Row(children: [
+          const Icon(Icons.local_fire_department, size: 18, color: Color(0xFFDD1111)),
+          const SizedBox(width: 8),
+          Text(AppLocalizations.of(context).armMythicItems,
+              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold,
                   color: Color(0xFFDD1111))),
         ]),
         const SizedBox(height: 6),
-        const Text(
-          'The rarest procedurally-generated tier. Mythic items have 3 stats '
-          'with the highest possible values and a powerful keyword effect. '
-          'Drop rate: 0.5% per boss kill.',
-          style: TextStyle(fontSize: 11, color: AppTheme.textMuted, height: 1.5),
+        Text(
+          AppLocalizations.of(context).armMythicBlurb,
+          style: const TextStyle(fontSize: 11, color: AppTheme.textMuted, height: 1.5),
         ),
       ]),
     );
@@ -435,7 +433,7 @@ class _MythicCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: const Color(0xFF1a0000),
         border: Border.all(color: color.withValues(alpha: equipped ? 0.9 : 0.4), width: equipped ? 1.5 : 1),
-        borderRadius: BorderRadius.circular(4),
+        borderRadius: BorderRadius.circular(8),
       ),
       child: Padding(
         padding: const EdgeInsets.all(10),
@@ -448,7 +446,7 @@ class _MythicCard extends StatelessWidget {
               Text(item.name,
                   style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold,
                       color: Color(0xFFDD1111))),
-              Text('${item.slot.label}  •  Lv${item.levelRequired}',
+              Text(AppLocalizations.of(context).armSlotLv(item.slot.label, item.levelRequired),
                   style: const TextStyle(fontSize: 9, color: AppTheme.textMuted)),
             ])),
             if (equipped)
@@ -459,7 +457,7 @@ class _MythicCard extends StatelessWidget {
                   border: Border.all(color: color),
                   borderRadius: BorderRadius.circular(2),
                 ),
-                child: const Text('EQUIPPED',
+                child: Text(AppLocalizations.of(context).auraEquipped,
                     style: TextStyle(fontSize: 7, color: Color(0xFFDD1111),
                         fontWeight: FontWeight.bold)),
               ),
@@ -480,7 +478,7 @@ class _MythicCard extends StatelessWidget {
           ),
           if (item.keyword != null) ...[
             const SizedBox(height: 6),
-            Text('${item.keyword!.name.toUpperCase()} keyword',
+            Text(AppLocalizations.of(context).armKeyword(item.keyword!.name.toUpperCase()),
                 style: const TextStyle(fontSize: 9, color: Color(0xFFDD1111),
                     fontStyle: FontStyle.italic)),
           ],
@@ -504,7 +502,7 @@ class _SetList extends StatelessWidget {
       padding: const EdgeInsets.all(12),
       itemCount: kSetCatalog.length + 1,
       itemBuilder: (ctx, i) {
-        if (i == 0) return _setHeader();
+        if (i == 0) return _setHeader(ctx);
         final set = kSetCatalog[i - 1];
         final pieces = game.inventory.equipped.values
             .where((e) => e.setId == set.id).length;
@@ -519,26 +517,25 @@ class _SetList extends StatelessWidget {
     );
   }
 
-  Widget _setHeader() {
+  Widget _setHeader(BuildContext context) {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: const Color(0xFF0a1020),
         border: Border.all(color: const Color(0xFF4455aa).withValues(alpha: 0.5)),
-        borderRadius: BorderRadius.circular(4),
+        borderRadius: BorderRadius.circular(8),
       ),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        const Row(children: [
-          Icon(Icons.layers_outlined, size: 18, color: Color(0xFF88aaff)),
-          SizedBox(width: 8),
-          Text('Set Items', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFF88aaff))),
+        Row(children: [
+          const Icon(Icons.layers_outlined, size: 18, color: Color(0xFF88aaff)),
+          const SizedBox(width: 8),
+          Text(AppLocalizations.of(context).armSetItemsTitle, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFF88aaff))),
         ]),
         const SizedBox(height: 6),
-        const Text(
-          'Collect multiple pieces of the same set to unlock powerful bonuses. '
-          'Sets now require 6 pieces for the full bonus. Drop rate: 0.3% per boss kill.',
-          style: TextStyle(fontSize: 11, color: AppTheme.textMuted, height: 1.5),
+        Text(
+          AppLocalizations.of(context).armSetBlurb,
+          style: const TextStyle(fontSize: 11, color: AppTheme.textMuted, height: 1.5),
         ),
       ]),
     );
@@ -569,7 +566,7 @@ class _SetCard extends StatelessWidget {
           border: Border.all(
               color: equippedCount > 0 ? color : color.withValues(alpha: 0.3),
               width: isOpen ? 1.5 : 1),
-          borderRadius: BorderRadius.circular(4),
+          borderRadius: BorderRadius.circular(8),
         ),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           // Header
@@ -590,10 +587,10 @@ class _SetCard extends StatelessWidget {
                     maxLines: 1, overflow: TextOverflow.ellipsis),
               ])),
               Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
-                Text('$equippedCount / $maxPieces',
+                Text(AppLocalizations.of(context).armFraction(equippedCount, maxPieces),
                     style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold,
                         color: equippedCount >= maxPieces ? color : AppTheme.textMuted)),
-                Text('equipped', style: const TextStyle(fontSize: 8, color: AppTheme.textMuted)),
+                Text(AppLocalizations.of(context).armEquippedLower, style: const TextStyle(fontSize: 8, color: AppTheme.textMuted)),
               ]),
               const SizedBox(width: 6),
               Icon(isOpen ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
@@ -642,7 +639,7 @@ class _SetCard extends StatelessWidget {
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
 
                 // Tier bonuses
-                Text('SET BONUSES', style: AppTheme.pixelHeading(fontSize: 9, color: AppTheme.textMuted, letterSpacing: 1)),
+                Text(AppLocalizations.of(context).armSetBonuses, style: AppTheme.pixelHeading(fontSize: 9, color: AppTheme.textMuted, letterSpacing: 1)),
                 const SizedBox(height: 8),
                 ...set.tiers.map((tier) {
                   final active = equippedCount >= tier.piecesRequired;
@@ -656,13 +653,13 @@ class _SetCard extends StatelessWidget {
                       border: Border.all(
                           color: active ? color : AppTheme.cardBorder,
                           width: active ? 1.5 : 1),
-                      borderRadius: BorderRadius.circular(3),
+                      borderRadius: BorderRadius.circular(8),
                     ),
                     child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
                       Container(
                         width: 28, height: 20,
                         alignment: Alignment.center,
-                        child: Text('${tier.piecesRequired}pc',
+                        child: Text(AppLocalizations.of(context).armPc(tier.piecesRequired),
                             style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold,
                                 color: active ? color : AppTheme.textMuted)),
                       ),
@@ -686,7 +683,7 @@ class _SetCard extends StatelessWidget {
                 const SizedBox(height: 10),
 
                 // Slots
-                Text('SET PIECES', style: AppTheme.pixelHeading(fontSize: 9, color: AppTheme.textMuted, letterSpacing: 1)),
+                Text(AppLocalizations.of(context).armSetPieces, style: AppTheme.pixelHeading(fontSize: 9, color: AppTheme.textMuted, letterSpacing: 1)),
                 const SizedBox(height: 6),
                 Wrap(
                   spacing: 6, runSpacing: 6,
@@ -702,7 +699,7 @@ class _SetCard extends StatelessWidget {
                         border: Border.all(
                             color: slotEquipped ? color : color.withValues(alpha: 0.35),
                             width: slotEquipped ? 1.5 : 1),
-                        borderRadius: BorderRadius.circular(3),
+                        borderRadius: BorderRadius.circular(8),
                       ),
                       child: Row(mainAxisSize: MainAxisSize.min, children: [
                         if (slotEquipped) ...[
@@ -720,11 +717,11 @@ class _SetCard extends StatelessWidget {
                 const SizedBox(height: 10),
 
                 // Drop info
-                Text('HOW TO FIND', style: AppTheme.pixelHeading(fontSize: 9, color: AppTheme.textMuted, letterSpacing: 1)),
+                Text(AppLocalizations.of(context).armHowToFind, style: AppTheme.pixelHeading(fontSize: 9, color: AppTheme.textMuted, letterSpacing: 1)),
                 const SizedBox(height: 6),
-                _DropRow('Campaign bosses', '0.3% per boss kill'),
-                _DropRow('Tower Ascension bosses', '0.3% per boss kill'),
-                _DropRow('Boss Rush runs', '0.3% per boss kill'),
+                _DropRow(AppLocalizations.of(context).armDropCampaign, AppLocalizations.of(context).armRate03),
+                _DropRow(AppLocalizations.of(context).armDropTower, AppLocalizations.of(context).armRate03),
+                _DropRow(AppLocalizations.of(context).armDropBossRush, AppLocalizations.of(context).armRate03),
                 const SizedBox(height: 4),
                 const Text(
                   'Set items can drop any piece from the set at random.',
@@ -761,7 +758,7 @@ class _ArtifactSetList extends StatelessWidget {
       padding: const EdgeInsets.all(12),
       itemCount: ArtifactSet.all.length + 1,
       itemBuilder: (ctx, i) {
-        if (i == 0) return _header();
+        if (i == 0) return _header(ctx);
         final set = ArtifactSet.all[i - 1];
         final isOpen = expanded == set.id;
         return _ArtifactSetCard(
@@ -775,26 +772,24 @@ class _ArtifactSetList extends StatelessWidget {
     );
   }
 
-  Widget _header() {
+  Widget _header(BuildContext context) {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: kArtifactSetColor.withValues(alpha: 0.06),
         border: Border.all(color: kArtifactSetColor.withValues(alpha: 0.5)),
-        borderRadius: BorderRadius.circular(4),
+        borderRadius: BorderRadius.circular(8),
       ),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        const Row(children: [
-          Icon(Icons.auto_awesome, size: 18, color: kArtifactSetColor),
-          SizedBox(width: 8),
-          Text('Artifact Sets', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: kArtifactSetColor)),
+        Row(children: [
+          const Icon(Icons.auto_awesome, size: 18, color: kArtifactSetColor),
+          const SizedBox(width: 8),
+          Text(AppLocalizations.of(context).armArtifactSets, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: kArtifactSetColor)),
         ]),
         const SizedBox(height: 6),
         Text(
-          '${ArtifactSet.all.length} three-piece artifact sets. Equip 2 matching green pieces on '
-          'the artifact grid for a partial bonus, all 3 for the full bonus. Set pieces drop from '
-          'Dungeons, Boss Rush, and Campaign bosses.',
+          AppLocalizations.of(context).armArtifactBlurb(ArtifactSet.all.length),
           style: const TextStyle(fontSize: 11, color: AppTheme.textMuted, height: 1.5),
         ),
       ]),
@@ -831,7 +826,7 @@ class _ArtifactSetCard extends StatelessWidget {
           border: Border.all(
               color: equippedCount > 0 ? _c : _c.withValues(alpha: 0.3),
               width: isOpen ? 1.5 : 1),
-          borderRadius: BorderRadius.circular(4),
+          borderRadius: BorderRadius.circular(8),
         ),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Padding(
@@ -848,10 +843,10 @@ class _ArtifactSetCard extends StatelessWidget {
                     maxLines: 1, overflow: TextOverflow.ellipsis),
               ])),
               Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
-                Text('$equippedCount / ${set.pieces.length}',
+                Text(AppLocalizations.of(context).armFraction(equippedCount, set.pieces.length),
                     style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold,
                         color: equippedCount >= set.pieces.length ? _c : AppTheme.textMuted)),
-                const Text('equipped', style: TextStyle(fontSize: 8, color: AppTheme.textMuted)),
+                Text(AppLocalizations.of(context).armEquippedLower, style: const TextStyle(fontSize: 8, color: AppTheme.textMuted)),
               ]),
               const SizedBox(width: 6),
               Icon(isOpen ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
@@ -875,13 +870,13 @@ class _ArtifactSetCard extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.all(12),
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text('SET BONUSES', style: AppTheme.pixelHeading(fontSize: 9, color: AppTheme.textMuted, letterSpacing: 1)),
+                Text(AppLocalizations.of(context).armSetBonuses, style: AppTheme.pixelHeading(fontSize: 9, color: AppTheme.textMuted, letterSpacing: 1)),
                 const SizedBox(height: 8),
-                _bonusTier('2', set.twoPieceBonus.summary, equippedCount >= 2),
+                _bonusTier(context, '2', set.twoPieceBonus.summary, equippedCount >= 2),
                 const SizedBox(height: 6),
-                _bonusTier('3', set.threePieceBonus.summary, equippedCount >= 3),
+                _bonusTier(context, '3', set.threePieceBonus.summary, equippedCount >= 3),
                 const SizedBox(height: 12),
-                Text('SET PIECES', style: AppTheme.pixelHeading(fontSize: 9, color: AppTheme.textMuted, letterSpacing: 1)),
+                Text(AppLocalizations.of(context).armSetPieces, style: AppTheme.pixelHeading(fontSize: 9, color: AppTheme.textMuted, letterSpacing: 1)),
                 const SizedBox(height: 6),
                 Wrap(spacing: 6, runSpacing: 6, children: [
                   for (final p in set.pieces)
@@ -890,14 +885,14 @@ class _ArtifactSetCard extends StatelessWidget {
                       decoration: BoxDecoration(
                         color: _c.withValues(alpha: 0.06),
                         border: Border.all(color: _c.withValues(alpha: 0.35)),
-                        borderRadius: BorderRadius.circular(3),
+                        borderRadius: BorderRadius.circular(8),
                       ),
                       child: Text('${p.name}  (${p.type.label})',
                           style: const TextStyle(fontSize: 9, color: _c)),
                     ),
                 ]),
                 const SizedBox(height: 10),
-                Text('COLLECTED  $ownedCount / ${set.pieces.length} distinct pieces owned',
+                Text(AppLocalizations.of(context).armCollected(ownedCount, set.pieces.length),
                     style: const TextStyle(fontSize: 10, color: AppTheme.textMuted, fontStyle: FontStyle.italic)),
               ]),
             ),
@@ -907,17 +902,17 @@ class _ArtifactSetCard extends StatelessWidget {
     );
   }
 
-  Widget _bonusTier(String pcs, String summary, bool active) {
+  Widget _bonusTier(BuildContext context, String pcs, String summary, bool active) {
     return Container(
       padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
         color: active ? _c.withValues(alpha: 0.10) : AppTheme.cardBg,
         border: Border.all(color: active ? _c : AppTheme.cardBorder, width: active ? 1.5 : 1),
-        borderRadius: BorderRadius.circular(3),
+        borderRadius: BorderRadius.circular(8),
       ),
       child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
         SizedBox(width: 28,
-            child: Text('${pcs}pc',
+            child: Text(AppLocalizations.of(context).armPc(pcs),
                 style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold,
                     color: active ? _c : AppTheme.textMuted))),
         const SizedBox(width: 8),
@@ -947,7 +942,7 @@ class _StatPill extends StatelessWidget {
     decoration: BoxDecoration(
       color: color.withValues(alpha: 0.10),
       border: Border.all(color: color.withValues(alpha: 0.4)),
-      borderRadius: BorderRadius.circular(3),
+      borderRadius: BorderRadius.circular(8),
     ),
     child: RichText(
       text: TextSpan(
@@ -976,7 +971,7 @@ class _DropRow extends StatelessWidget {
         decoration: BoxDecoration(
           color: const Color(0xFF1a1a2e),
           border: Border.all(color: AppTheme.cardBorder),
-          borderRadius: BorderRadius.circular(3),
+          borderRadius: BorderRadius.circular(8),
         ),
         child: Text(rate, style: const TextStyle(fontSize: 9, color: AppTheme.textMuted)),
       ),

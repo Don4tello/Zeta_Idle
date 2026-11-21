@@ -32,6 +32,25 @@ android {
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+        manifestPlaceholders["appName"] = "Zeta Idle"
+    }
+
+    // Two flavors so a local test build can sit ALONGSIDE the Play Store app
+    // instead of colliding with its signature. `prod` is the shippable app
+    // (unchanged id com.zetaidle.app); `dev` gets a `.dev` suffix + its own
+    // launcher name and is registered as a separate client in
+    // google-services.json. NOTE: with flavors present, Flutter builds must now
+    // name one — Play release is `--flavor prod`, test install is `--flavor dev`.
+    flavorDimensions += "env"
+    productFlavors {
+        create("prod") {
+            dimension = "env"
+        }
+        create("dev") {
+            dimension = "env"
+            applicationIdSuffix = ".dev"
+            manifestPlaceholders["appName"] = "Zeta Idle DEV"
+        }
     }
 
     signingConfigs {

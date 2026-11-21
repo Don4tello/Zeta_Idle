@@ -9,6 +9,7 @@ import '../models/equipment.dart';
 import '../widgets/item_drop_badge.dart';
 import '../services/game_state.dart';
 import '../theme/app_theme.dart';
+import '../l10n/content_l10n.dart';
 import '../widgets/currency_icon.dart';
 import '../widgets/fight_summary_sheet.dart';
 import '../widgets/affix_chip_row.dart';
@@ -20,6 +21,7 @@ import '../widgets/pet_battle_sprite.dart';
 import '../widgets/level_up_section.dart';
 import '../utils/format_number.dart';
 import 'main_shell.dart' show TutorialTip;
+import '../l10n/app_localizations.dart';
 
 class EndlessScreen extends StatefulWidget {
   const EndlessScreen({super.key});
@@ -241,19 +243,19 @@ class _EndlessScreenState extends State<EndlessScreen> {
       builder: (ctx) => AlertDialog(
         backgroundColor: const Color(0xFF1a0a0a),
         title: Text(
-          '${heroName.toUpperCase()} FALLS',
+          AppLocalizations.of(ctx).heroFalls(heroName.toUpperCase()),
           style: const TextStyle(color: Color(0xFFee4040), letterSpacing: 2),
         ),
-        content: const Text(
-          'Your hero was overwhelmed.\nUpgrade your stats and try again.',
-          style: TextStyle(color: AppTheme.textLight),
+        content: Text(
+          AppLocalizations.of(ctx).endlessDefeatBody,
+          style: const TextStyle(color: AppTheme.textLight),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(),
-            child: const Text(
-              'RETURN',
-              style: TextStyle(color: AppTheme.accentGold),
+            child: Text(
+              AppLocalizations.of(ctx).dngReturn,
+              style: const TextStyle(color: AppTheme.accentGold),
             ),
           ),
         ],
@@ -272,7 +274,7 @@ class _EndlessScreenState extends State<EndlessScreen> {
     return Scaffold(
       backgroundColor: AppTheme.darkBg,
       appBar: AppBar(
-        title: const Text('TOWER ASCENSION'),
+        title: Text(AppLocalizations.of(context).modeTowerAscension),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
           onPressed: () {
@@ -302,8 +304,8 @@ class _EndlessScreenState extends State<EndlessScreen> {
                 if (next > maxTier) next = 1;
                 game.setSpeedTier(next);
                 if (next == maxTier && maxTier < 4) {
-                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                      content: Text('Higher speed needs the Speed Boost / Premium Pass.'),
+                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                      content: Text(AppLocalizations.of(context).dngSpeedNeeds),
                       behavior: SnackBarBehavior.floating,
                       duration: Duration(milliseconds: 1200)));
                 }
@@ -317,7 +319,7 @@ class _EndlessScreenState extends State<EndlessScreen> {
                       ? const Color(0xFFffaa00).withValues(alpha: 0.15) : Colors.transparent,
                   border: Border.all(color: game.speedTier > 1
                       ? const Color(0xFFffaa00) : AppTheme.cardBorder),
-                  borderRadius: BorderRadius.circular(4),
+                  borderRadius: BorderRadius.circular(8),
                 ),
                 child: Text(game.battleSpeedLabel,
                     style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold,
@@ -330,12 +332,12 @@ class _EndlessScreenState extends State<EndlessScreen> {
             icon: Icon(Icons.assessment_outlined, size: 21,
                 color: game.lastFightSummary != null
                     ? AppTheme.accentGold : AppTheme.textMuted),
-            tooltip: 'Last fight summary',
+            tooltip: AppLocalizations.of(context).battleLastFightSummary,
             onPressed: () {
               final s = game.lastFightSummary;
               if (s == null) {
-                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                    content: Text('No fight finished yet.'),
+                ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                    content: Text(AppLocalizations.of(context).battleNoFightYet),
                     behavior: SnackBarBehavior.floating));
                 return;
               }
@@ -404,13 +406,13 @@ class _EndlessScreenState extends State<EndlessScreen> {
         children: [
           // ── Tower Ascension banner ─────────────────────────────────────
           ClipRRect(
-            borderRadius: BorderRadius.circular(6),
+            borderRadius: BorderRadius.circular(8),
             child: Stack(
               children: [
                 SizedBox(
                   width: double.infinity,
                   height: 170,
-                  child: Image.asset('assets/images/tower_ascension.png',
+                  child: Image.asset('assets/images/tower_ascension.webp',
                       fit: BoxFit.cover, alignment: Alignment.topCenter),
                 ),
                 Positioned.fill(
@@ -426,7 +428,7 @@ class _EndlessScreenState extends State<EndlessScreen> {
                 ),
                 Positioned(
                   left: 14, right: 14, bottom: 10,
-                  child: Text('TOWER ASCENSION',
+                  child: Text(AppLocalizations.of(context).modeTowerAscension,
                       style: AppTheme.pixelHeading(
                           fontSize: 18, letterSpacing: 3,
                           color: const Color(0xFFcc88ff))),
@@ -450,7 +452,7 @@ class _EndlessScreenState extends State<EndlessScreen> {
               decoration: BoxDecoration(
                 color: const Color(0xFF1a1a2e),
                 border: Border.all(color: AppTheme.accentGold.withValues(alpha: 0.4)),
-                borderRadius: BorderRadius.circular(4),
+                borderRadius: BorderRadius.circular(8),
               ),
               child: Row(children: [
                 const Text('🏆', style: TextStyle(fontSize: 16)),
@@ -459,7 +461,7 @@ class _EndlessScreenState extends State<EndlessScreen> {
                   'PERSONAL BEST: Stage ${game.endlessPersonalBest}',
                   style: AppTheme.pixelHeading(fontSize: 11, letterSpacing: 1, color: AppTheme.accentGold),
                 )),
-                Text('Stage ${game.endlessStageIndex + 1}',
+                Text(AppLocalizations.of(context).endlessStage(game.endlessStageIndex + 1),
                     style: const TextStyle(fontSize: 10, color: AppTheme.textMuted)),
               ]),
             ),
@@ -476,7 +478,7 @@ class _EndlessScreenState extends State<EndlessScreen> {
                 decoration: BoxDecoration(
                   color: const Color(0xFF1a1028),
                   border: Border.all(color: const Color(0xFFcc88ff).withValues(alpha: 0.45)),
-                  borderRadius: BorderRadius.circular(4),
+                  borderRadius: BorderRadius.circular(8),
                 ),
                 child: Row(children: [
                   const Text('🗼', style: TextStyle(fontSize: 16)),
@@ -487,7 +489,7 @@ class _EndlessScreenState extends State<EndlessScreen> {
                         fontSize: 11, letterSpacing: 1, color: const Color(0xFFcc88ff)),
                   )),
                   if (next != null)
-                    Text('Next reward: Floor $next',
+                    Text(AppLocalizations.of(context).endlessNextReward(next),
                         style: const TextStyle(fontSize: 10, color: AppTheme.textMuted)),
                 ]),
               );
@@ -536,7 +538,7 @@ class _EndlessScreenState extends State<EndlessScreen> {
                 ),
                 const SizedBox(height: 10),
                 Text(
-                  baseEnemy.name.toUpperCase(),
+                  ContentL10n.of(context).tr(baseEnemy.id, 'title', baseEnemy.name).toUpperCase(),
                   style: GoogleFonts.rajdhani(
                     fontSize: 18, fontWeight: FontWeight.bold,
                     color: const Color(0xFFee4040), letterSpacing: 2,
@@ -560,7 +562,7 @@ class _EndlessScreenState extends State<EndlessScreen> {
                 ),
                 const SizedBox(height: 10),
                 Text(
-                  baseEnemy.description,
+                  ContentL10n.of(context).tr(baseEnemy.id, 'desc', baseEnemy.description),
                   textAlign: TextAlign.center,
                   style: GoogleFonts.rajdhani(
                     fontSize: 11, color: AppTheme.textMuted, height: 1.5,
@@ -573,7 +575,7 @@ class _EndlessScreenState extends State<EndlessScreen> {
 
           // ── BOSS SELECTOR ─────────────────────────────────────
           if (game.effectiveUnlockStage >= 5) ...[
-            Text('CHALLENGE A BOSS',
+            Text(AppLocalizations.of(context).endlessChallengeBoss,
                 style: AppTheme.pixelHeading(fontSize: 10, letterSpacing: 2, color: AppTheme.textMuted)),
             const SizedBox(height: 6),
             SizedBox(
@@ -610,7 +612,7 @@ class _EndlessScreenState extends State<EndlessScreen> {
                                           : const Color(0xFFcc44ff).withValues(alpha: 0.3),
                                   width: isSelected ? 2 : 1,
                                 ),
-                                borderRadius: BorderRadius.circular(4),
+                                borderRadius: BorderRadius.circular(8),
                                 boxShadow: isSelected && !isDefeated ? [
                                   BoxShadow(
                                     color: const Color(0xFFcc44ff).withValues(alpha: 0.3),
@@ -641,7 +643,7 @@ class _EndlessScreenState extends State<EndlessScreen> {
                               Positioned.fill(
                                 child: Container(
                                   margin: const EdgeInsets.only(right: 6),
-                                  decoration: BoxDecoration(borderRadius: BorderRadius.circular(4)),
+                                  decoration: BoxDecoration(borderRadius: BorderRadius.circular(8)),
                                   alignment: Alignment.center,
                                   child: const Text('✓', style: TextStyle(fontSize: 14, color: Color(0xFF44cc66), fontWeight: FontWeight.bold)),
                                 ),
@@ -656,7 +658,9 @@ class _EndlessScreenState extends State<EndlessScreen> {
             // ── PREMIUM AUTO-CLEAR ────────────────────────────────
             Builder(builder: (_) {
               final nextBoss = _nextAvailableBossStage(game);
-              final locked   = !game.hasPremium;
+              // Auto-clear unlocks by progression — once you've beaten campaign
+              // stage 5. Only offers boss stages you've already beaten.
+              final locked   = !game.canAutoCampaign;
               final enabled  = !locked && nextBoss != null;
               return Padding(
                 padding: const EdgeInsets.only(top: 10),
@@ -676,9 +680,9 @@ class _EndlessScreenState extends State<EndlessScreen> {
                           }
                         : locked
                             ? () => ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text('👑  Premium Pass required to auto-clear bosses'),
-                                  duration: Duration(seconds: 2),
+                                SnackBar(
+                                  content: Text(AppLocalizations.of(context).endlessPremiumAutoClear),
+                                  duration: const Duration(seconds: 2),
                                 ))
                             : null,
                     style: ElevatedButton.styleFrom(
@@ -687,11 +691,11 @@ class _EndlessScreenState extends State<EndlessScreen> {
                       side: BorderSide(
                           color: enabled ? const Color(0xFF44cc88) : AppTheme.cardBorder,
                           width: 1.5),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                     ),
                     child: Text(
                       locked
-                          ? '👑  AUTO-CLEAR BOSSES  (PREMIUM)'
+                          ? '🔒  AUTO-CLEAR BOSSES  (STAGE 5)'
                           : nextBoss == null
                               ? '✓  ALL BOSSES CLEARED TODAY'
                               : '⚡  AUTO-CLEAR ALL BOSSES',
@@ -727,7 +731,7 @@ class _EndlessScreenState extends State<EndlessScreen> {
                   decoration: BoxDecoration(
                     color: const Color(0xFF1a0a2e),
                     border: Border.all(color: const Color(0xFFcc44ff).withValues(alpha: 0.5)),
-                    borderRadius: BorderRadius.circular(6),
+                    borderRadius: BorderRadius.circular(8),
                   ),
                   child: Column(children: [
                     Row(children: [
@@ -760,13 +764,13 @@ class _EndlessScreenState extends State<EndlessScreen> {
                       decoration: BoxDecoration(
                         color: const Color(0xFF0a0a1e),
                         border: Border.all(color: AppTheme.accentGold.withValues(alpha: 0.3)),
-                        borderRadius: BorderRadius.circular(4),
+                        borderRadius: BorderRadius.circular(8),
                       ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                         Row(children: [
-                          Text('REWARDS: ', style: AppTheme.pixelHeading(
+                          Text(AppLocalizations.of(context).endlessRewards, style: AppTheme.pixelHeading(
                               fontSize: 9, letterSpacing: 1, color: AppTheme.textMuted)),
                           Text('🔮 $towerShardReward   ',
                               style: const TextStyle(fontSize: 11, color: Color(0xFFcc88ff), fontWeight: FontWeight.bold)),
@@ -777,7 +781,7 @@ class _EndlessScreenState extends State<EndlessScreen> {
                         ]),
                         const SizedBox(height: 4),
                         Row(children: [
-                          Text('DROP: ', style: AppTheme.pixelHeading(
+                          Text(AppLocalizations.of(context).endlessDrop, style: AppTheme.pixelHeading(
                               fontSize: 9, letterSpacing: 1, color: AppTheme.textMuted)),
                           Text(
                             boss.level >= 20 ? '⚔ Legendary Lv${boss.level}' :
@@ -817,7 +821,7 @@ class _EndlessScreenState extends State<EndlessScreen> {
                                     ? AppTheme.cardBorder
                                     : const Color(0xFFcc44ff),
                                 width: 1.5),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                           ),
                           child: Text(
                             alreadyDefeated ? '✓  DEFEATED TODAY' : '⚔  ENTER BOSS BATTLE',
@@ -859,13 +863,13 @@ class _EndlessScreenState extends State<EndlessScreen> {
                   const SizedBox(height: 8),
                   Row(
                     children: [
-                      _rewardChip('💰', '~${fmtNum(stage.goldReward)}', 'GOLD',
+                      _rewardChip('💰', '~${fmtNum(stage.goldReward)}', AppLocalizations.of(context).endlessGold,
                           const Color(0xFFffd700)),
                       const SizedBox(width: 8),
-                      _rewardChip('⭐', '~${fmtNum(stage.experienceReward)}', 'XP',
+                      _rewardChip('⭐', '~${fmtNum(stage.experienceReward)}', AppLocalizations.of(context).endlessXp,
                           const Color(0xFF4ad46a)),
                       const SizedBox(width: 8),
-                      _rewardChip('♾️', '∞', 'RESPAWNS', AppTheme.textMuted),
+                      _rewardChip('♾️', '∞', AppLocalizations.of(context).endlessRespawns, AppTheme.textMuted),
                     ],
                   ),
                   const SizedBox(height: 6),
@@ -1010,7 +1014,7 @@ class _EndlessScreenState extends State<EndlessScreen> {
                 heroPet: game.equippedPet != null
                     ? PetBattleSprite(pet: game.equippedPet!)
                     : null,
-                enemyName:    enemy.name,
+                enemyName:    ContentL10n.of(context).tr(enemy.id, 'title', enemy.name),
                 enemyLevel:   enemy.level,
                 enemyCurrentHp: enemy.currentHealth,
                 enemyMaxHp:   enemy.maxHealth,
@@ -1089,7 +1093,7 @@ class _EndlessScreenState extends State<EndlessScreen> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Text('VICTORY!',
+                Text(AppLocalizations.of(context).battleVictory,
                     style: TextStyle(
                       fontSize: 27,
                       fontWeight: FontWeight.bold,
@@ -1097,7 +1101,7 @@ class _EndlessScreenState extends State<EndlessScreen> {
                       letterSpacing: 4,
                     )),
                 const SizedBox(height: 16),
-                Text('+${fmtNum(_rewardGold)} GOLD',
+                Text(AppLocalizations.of(context).battleRewardGold(fmtNum(_rewardGold)),
                     style: const TextStyle(
                       fontSize: 21,
                       fontWeight: FontWeight.bold,
@@ -1109,7 +1113,7 @@ class _EndlessScreenState extends State<EndlessScreen> {
                     mainAxisAlignment: MainAxisAlignment.center, children: [
                   const CurrencyIcon(id: 'xp', size: 22),
                   const SizedBox(width: 8),
-                  Text('+${fmtNum(_rewardExp)} XP',
+                  Text(AppLocalizations.of(context).battleRewardXp(fmtNum(_rewardExp)),
                       style: const TextStyle(
                         fontSize: 21,
                         fontWeight: FontWeight.bold,
@@ -1122,7 +1126,7 @@ class _EndlessScreenState extends State<EndlessScreen> {
                   const CurrencyIcon(id: 'shards', size: 16),
                   const SizedBox(width: 6),
                   if (_rewardShards > 0) Text(
-                    '+${fmtNum(_rewardShards)} SHARDS',
+                    AppLocalizations.of(context).battleRewardShards(fmtNum(_rewardShards)),
                     style: const TextStyle(
                       fontSize: 17,
                       fontWeight: FontWeight.bold,
@@ -1136,7 +1140,7 @@ class _EndlessScreenState extends State<EndlessScreen> {
                     const Text('🔮', style: TextStyle(fontSize: 14)),
                     const SizedBox(width: 6),
                     Text(
-                      '+${fmtNum(_rewardTowerShards)} TOWER SHARDS',
+                      AppLocalizations.of(context).endlessTowerShards(fmtNum(_rewardTowerShards)),
                       style: const TextStyle(
                         fontSize: 15,
                         fontWeight: FontWeight.bold,
@@ -1158,7 +1162,7 @@ class _EndlessScreenState extends State<EndlessScreen> {
                     child: Column(
                       children: [
                         Text(
-                          '★ MILESTONE: $_rewardMilestone KILLS ★',
+                          AppLocalizations.of(context).endlessMilestone(_rewardMilestone!),
                           style: const TextStyle(
                             fontSize: 13,
                             fontWeight: FontWeight.bold,
@@ -1168,7 +1172,7 @@ class _EndlessScreenState extends State<EndlessScreen> {
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          '+${fmtNum(_rewardMilestone! * 50)} GOLD  +${(_rewardMilestone! ~/ 10).clamp(1, 10)} ◆',
+                          AppLocalizations.of(context).endlessMilestoneReward(fmtNum(_rewardMilestone! * 50), (_rewardMilestone! ~/ 10).clamp(1, 10)),
                           style: const TextStyle(
                             fontSize: 11,
                             color: Color(0xFFFFCC44),
@@ -1192,7 +1196,7 @@ class _EndlessScreenState extends State<EndlessScreen> {
                   ItemDropBadge(item: _rewardItem!),
                 ],
                 const SizedBox(height: 16),
-                const Text('The enemy stirs again...',
+                Text(AppLocalizations.of(context).endlessEnemyStirs,
                     style: TextStyle(
                       fontSize: 12,
                       color: Color(0xFFee4040),

@@ -1,5 +1,7 @@
 import 'package:firebase_analytics/firebase_analytics.dart';
 
+import '../demo_config.dart' show kIsDevBuild;
+
 /// Thin wrapper over Firebase Analytics for game-specific events.
 ///
 /// Safe no-op until [init] is called with a real instance (e.g. it stays a
@@ -118,15 +120,20 @@ class AnalyticsService {
 
   // ── Monetization / cosmetics ────────────────────────────────────────────────
   void iapPurchase(String productId) =>
-      _log('iap_purchase', {'product': productId});
+      _log('iap_purchase', {'product': productId, 'env': kIsDevBuild ? 'dev' : 'real'});
 
   /// GA4's reserved `purchase` event — feeds Firebase revenue reports.
   /// [value] is the localized price (rawPrice), [currency] an ISO-4217 code.
+  ///
+  /// Skipped entirely on DEV builds: license-tester "purchases" are free test
+  /// transactions that still report the real store price, so logging them would
+  /// inflate revenue reports with money nobody actually spent.
   void purchase({
     required double value,
     required String currency,
     String? productId,
   }) {
+    if (kIsDevBuild) return;
     final fa = _fa;
     if (fa == null || value <= 0 || currency.isEmpty) return;
     fa.logPurchase(

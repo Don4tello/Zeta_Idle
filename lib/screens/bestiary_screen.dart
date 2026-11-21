@@ -5,6 +5,8 @@ import '../services/game_state.dart';
 import '../theme/app_theme.dart';
 import '../widgets/battle_sprites.dart';
 import 'main_shell.dart' show TutorialTip;
+import '../l10n/app_localizations.dart';
+import '../l10n/content_l10n.dart';
 
 // ── Type metadata ──────────────────────────────────────────────────────────────
 
@@ -50,7 +52,7 @@ class BestiaryScreen extends StatelessWidget {
       backgroundColor: const Color(0xFF1B1A17),
       appBar: AppBar(
         backgroundColor: const Color(0xFF2A2623),
-        title: Text('BESTIARY',
+        title: Text(AppLocalizations.of(context).hubBestiary,
             style: AppTheme.pixelHeading(fontSize: 14, letterSpacing: 2)),
       ),
       body: ListView(
@@ -70,7 +72,7 @@ class BestiaryScreen extends StatelessWidget {
             decoration: BoxDecoration(
               color: const Color(0xFF231F1B),
               border: Border.all(color: AppTheme.accentGold.withValues(alpha: 0.4)),
-              borderRadius: BorderRadius.circular(4),
+              borderRadius: BorderRadius.circular(8),
             ),
             child: Row(children: [
               Expanded(child: _Stat(
@@ -101,7 +103,7 @@ class BestiaryScreen extends StatelessWidget {
             decoration: BoxDecoration(
               color: Colors.white.withValues(alpha: 0.03),
               border: Border.all(color: AppTheme.cardBorder),
-              borderRadius: BorderRadius.circular(4),
+              borderRadius: BorderRadius.circular(8),
             ),
             child: const Text(
               'Discovering an enemy grants +1 permanent ATK.\n'
@@ -159,7 +161,7 @@ class _TypeSectionState extends State<_TypeSection> {
           decoration: BoxDecoration(
             color: color.withValues(alpha: 0.06),
             border: Border.all(color: color.withValues(alpha: allFound ? 0.5 : 0.25)),
-            borderRadius: BorderRadius.circular(4),
+            borderRadius: BorderRadius.circular(8),
           ),
           child: Row(children: [
             Icon(icon, size: 22, color: color),
@@ -188,7 +190,7 @@ class _TypeSectionState extends State<_TypeSection> {
                     decoration: BoxDecoration(
                       color: color.withValues(alpha: 0.10),
                       border: Border.all(color: color.withValues(alpha: 0.4)),
-                      borderRadius: BorderRadius.circular(3),
+                      borderRadius: BorderRadius.circular(8),
                     ),
                     child: Text(
                       typePct > 0
@@ -201,7 +203,7 @@ class _TypeSectionState extends State<_TypeSection> {
                     ),
                   ),
                   const SizedBox(width: 8),
-                  Text('$totalKills total kills',
+                  Text(AppLocalizations.of(context).bestTotalKills(totalKills),
                       style: TextStyle(fontSize: 10, color: AppTheme.textMuted)),
                   const Spacer(),
                   if (typePct < 25)
@@ -212,7 +214,7 @@ class _TypeSectionState extends State<_TypeSection> {
                           color: color.withValues(alpha: 0.5)),
                     )
                   else
-                    Text('TYPE MAXED',
+                    Text(AppLocalizations.of(context).bestTypeMaxed,
                         style: TextStyle(
                             fontSize: 9,
                             color: const Color(0xFFffdd44),
@@ -286,7 +288,7 @@ class _BestiaryCard extends StatelessWidget {
             color: discovered
                 ? color.withValues(alpha: 0.2)
                 : AppTheme.cardBorder.withValues(alpha: 0.3)),
-        borderRadius: BorderRadius.circular(4),
+        borderRadius: BorderRadius.circular(8),
       ),
       child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
         // Enemy sprite (real battle sprite once discovered, else a locked box)
@@ -298,7 +300,7 @@ class _BestiaryCard extends StatelessWidget {
             color: color.withValues(alpha: discovered ? 0.10 : 0.04),
             border: Border.all(
                 color: color.withValues(alpha: discovered ? 0.5 : 0.15)),
-            borderRadius: BorderRadius.circular(4),
+            borderRadius: BorderRadius.circular(8),
           ),
           child: discovered
               ? StaticEnemySprite(spriteId: entry.enemyId, size: 38)
@@ -311,7 +313,7 @@ class _BestiaryCard extends StatelessWidget {
             // Name + badges
             Row(children: [
               Text(
-                discovered ? entry.name : '???',
+                discovered ? ContentL10n.of(context).tr(entry.enemyId, 'title', entry.name) : '???',
                 style: TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.bold,
@@ -326,7 +328,7 @@ class _BestiaryCard extends StatelessWidget {
                   decoration: BoxDecoration(
                     color: Colors.white.withValues(alpha: 0.06),
                     border: Border.all(color: Colors.white24),
-                    borderRadius: BorderRadius.circular(3),
+                    borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(entry.category,
                       style: const TextStyle(
@@ -350,9 +352,9 @@ class _BestiaryCard extends StatelessWidget {
                       color: const Color(0xFFffdd44).withValues(alpha: 0.10),
                       border: Border.all(
                           color: const Color(0xFFffdd44).withValues(alpha: 0.45)),
-                      borderRadius: BorderRadius.circular(3),
+                      borderRadius: BorderRadius.circular(8),
                     ),
-                    child: Text('+$goldPct% gold',
+                    child: Text(AppLocalizations.of(context).bestGoldBonus(goldPct),
                         style: const TextStyle(
                             fontSize: 8,
                             color: Color(0xFFffdd44),
@@ -365,8 +367,8 @@ class _BestiaryCard extends StatelessWidget {
             // Flavor text
             Text(
               discovered
-                  ? entry.flavorText
-                  : 'Kill this creature to reveal its secrets.',
+                  ? ContentL10n.of(context).tr(entry.enemyId, 'flavor', entry.flavorText)
+                  : AppLocalizations.of(context).bestUndiscovered,
               style: TextStyle(
                 fontSize: 11,
                 color: discovered ? AppTheme.textMuted : Colors.white24,
@@ -411,7 +413,7 @@ class _BestiaryCard extends StatelessWidget {
                                   ? color.withValues(alpha: 0.3)
                                   : Colors.white12,
                         ),
-                        borderRadius: BorderRadius.circular(3),
+                        borderRadius: BorderRadius.circular(8),
                       ),
                       child: Text(
                         claimed ? '$m ✓' : canClaim ? '$m ★ ${_milestoneLabel(m)}' : '$m',
@@ -440,7 +442,7 @@ class _BestiaryCard extends StatelessWidget {
                 fontWeight: FontWeight.bold,
                 color: discovered ? AppTheme.accentGold : Colors.white24),
           ),
-          const Text('killed',
+          Text(AppLocalizations.of(context).bestKilled,
               style: TextStyle(fontSize: 9, color: AppTheme.textMuted)),
           if (discovered) ...[
             const SizedBox(height: 2),
@@ -492,7 +494,7 @@ class _KillProgress extends StatelessWidget {
     final progress = (kills - prevThreshold) / 10.0;
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-        Text('next +1% dmg at $nextAt kills',
+        Text(AppLocalizations.of(context).bestNextDmg(nextAt),
             style: TextStyle(fontSize: 9, color: color.withValues(alpha: 0.5))),
         Text('${kills % 10}/10',
             style: TextStyle(fontSize: 9, color: color.withValues(alpha: 0.5))),

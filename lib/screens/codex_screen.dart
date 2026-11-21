@@ -105,7 +105,7 @@ class _CodexHeader extends StatelessWidget {
       decoration: BoxDecoration(
         color: const Color(0xFF231F1B),
         border: Border.all(color: AppTheme.accentGold.withValues(alpha: 0.35)),
-        borderRadius: BorderRadius.circular(4),
+        borderRadius: BorderRadius.circular(8),
       ),
       child: Row(children: [
         const Text('📖', style: TextStyle(fontSize: 26)),
@@ -146,7 +146,7 @@ class _Section extends StatelessWidget {
       decoration: BoxDecoration(
         color: const Color(0xFF231F1B),
         border: Border.all(color: color.withValues(alpha: 0.35)),
-        borderRadius: BorderRadius.circular(4),
+        borderRadius: BorderRadius.circular(8),
       ),
       clipBehavior: Clip.hardEdge,
       child: Theme(
@@ -214,7 +214,7 @@ class _Chip extends StatelessWidget {
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.12),
         border: Border.all(color: color.withValues(alpha: 0.5)),
-        borderRadius: BorderRadius.circular(3),
+        borderRadius: BorderRadius.circular(8),
       ),
       child: Text(label, style: TextStyle(fontSize: 10, color: color)),
     );
@@ -440,7 +440,7 @@ class _StatsContent extends StatelessWidget {
           decoration: BoxDecoration(
             color: const Color(0xFF181614),
             border: Border.all(color: AppTheme.cardBorder),
-            borderRadius: BorderRadius.circular(3),
+            borderRadius: BorderRadius.circular(8),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -455,7 +455,7 @@ class _StatsContent extends StatelessWidget {
                     padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
                     decoration: BoxDecoration(
                       border: Border.all(color: AppTheme.cardBorder),
-                      borderRadius: BorderRadius.circular(3),
+                      borderRadius: BorderRadius.circular(8),
                     ),
                     child: Text(r,
                         style: const TextStyle(fontSize: 10, color: AppTheme.textMuted)),
@@ -602,7 +602,7 @@ class _ClassCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: const Color(0xFF1A1714),
         border: Border.all(color: AppTheme.accentGold.withValues(alpha: 0.25)),
-        borderRadius: BorderRadius.circular(4),
+        borderRadius: BorderRadius.circular(8),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -618,7 +618,7 @@ class _ClassCard extends StatelessWidget {
               decoration: BoxDecoration(
                 color: AppTheme.accentGold.withValues(alpha: 0.08),
                 border: Border.all(color: AppTheme.accentGold.withValues(alpha: 0.4)),
-                borderRadius: BorderRadius.circular(3),
+                borderRadius: BorderRadius.circular(8),
               ),
               child: Text(info.primaryAbility,
                   style: const TextStyle(fontSize: 10, color: AppTheme.accentGold)),
@@ -647,7 +647,7 @@ class _ClassCard extends StatelessWidget {
                         ? AppTheme.accentGold.withValues(alpha: 0.6)
                         : AppTheme.cardBorder,
                   ),
-                  borderRadius: BorderRadius.circular(3),
+                  borderRadius: BorderRadius.circular(8),
                 ),
                 child: Column(
                   children: [
@@ -721,7 +721,7 @@ class _RaceCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: const Color(0xFF1A1714),
         border: Border.all(color: color.withValues(alpha: 0.35)),
-        borderRadius: BorderRadius.circular(4),
+        borderRadius: BorderRadius.circular(8),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

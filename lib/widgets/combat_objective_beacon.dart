@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import '../services/game_state.dart';
 import '../theme/app_theme.dart';
+import '../l10n/content_l10n.dart';
 
 /// A compact objective beacon shown top-right during combat. It stays hidden and
 /// slides in for a few seconds whenever the current enemy's bestiary kills or the
@@ -89,7 +90,7 @@ class _CombatObjectiveBeaconState extends State<CombatObjectiveBeacon>
                   color: const Color(0xCC17150E),
                   border: Border.all(
                       color: AppTheme.accentGold.withValues(alpha: 0.6)),
-                  borderRadius: BorderRadius.circular(5),
+                  borderRadius: BorderRadius.circular(8),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -109,7 +110,7 @@ class _CombatObjectiveBeaconState extends State<CombatObjectiveBeacon>
                       if (_showBestiary) const SizedBox(height: 5),
                       _BeaconRow(
                         icon: '⚔',
-                        label: game.beaconQuestTitle,
+                        label: ContentL10n.of(context).tr(game.beaconQuestId, 'title', game.beaconQuestTitle),
                         current: game.beaconQuestProg,
                         target: game.beaconQuestTarget,
                         color: AppTheme.accentGold,

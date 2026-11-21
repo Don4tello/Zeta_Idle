@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/shop_catalog.dart';
 import '../models/palette_skin.dart';
+import '../demo_config.dart';
 import '../services/ad_service.dart';
 import '../services/analytics_service.dart';
 import '../services/game_state.dart';
@@ -12,14 +13,23 @@ import '../theme/app_theme.dart';
 import '../widgets/battle_sprites.dart';
 import '../widgets/currency_icon.dart';
 import '../widgets/vip_emblem.dart';
+import '../widgets/item_sprites.dart';
 import '../widgets/zcoin_icon.dart';
+import '../models/equipment.dart';
 import 'aura_shop_screen.dart';
+import '../l10n/app_localizations.dart';
 
 // Set false before publishing to stores
 const bool _kCheatsEnabled = false;
 
 class PremiumShopScreen extends StatefulWidget {
-  const PremiumShopScreen({super.key});
+  const PremiumShopScreen({super.key, this.initialTab = 0});
+
+  /// Tab to open on: 0 Bundles · 1 VIP · 2 Starter · 3 Resources · 4 Cosmetics.
+  final int initialTab;
+
+  /// VIP tab index — where the Premium Pass / subscriptions live.
+  static const int vipTab = 1;
 
   @override
   State<PremiumShopScreen> createState() => _PremiumShopScreenState();
@@ -27,9 +37,9 @@ class PremiumShopScreen extends StatefulWidget {
 
 class _PremiumShopScreenState extends State<PremiumShopScreen>
     with SingleTickerProviderStateMixin {
-  late final TabController _tabs = TabController(length: 5, vsync: this);
+  late final TabController _tabs = TabController(
+      length: 5, vsync: this, initialIndex: widget.initialTab.clamp(0, 4));
 
-  static const _tabLabels = ['BUNDLES', 'VIP', 'STARTER', 'RESOURCES', 'COSMETICS'];
   static const _tabIcons  = ['💎', '⭐', '🎁', '💰', '🎨'];
 
   @override
@@ -46,7 +56,7 @@ class _PremiumShopScreenState extends State<PremiumShopScreen>
       backgroundColor: AppTheme.darkBg,
       appBar: AppBar(
         backgroundColor: const Color(0xFF2A2623),
-        title: Text('SHOP', style: AppTheme.pixelHeading(fontSize: 14, letterSpacing: 2)),
+        title: Text(AppLocalizations.of(context).navShop, style: AppTheme.pixelHeading(fontSize: 14, letterSpacing: 2)),
         actions: [
           Padding(
             padding: const EdgeInsets.only(right: 12),
@@ -66,8 +76,14 @@ class _PremiumShopScreenState extends State<PremiumShopScreen>
           labelPadding: const EdgeInsets.symmetric(horizontal: 12),
           unselectedLabelColor: AppTheme.textMuted,
           indicatorColor: AppTheme.accentGold,
-          tabs: List.generate(_tabLabels.length, (i) =>
-            Tab(text: '${_tabIcons[i]} ${_tabLabels[i]}')),
+          tabs: List.generate(_tabIcons.length, (i) =>
+            Tab(text: '${_tabIcons[i]} ${[
+              AppLocalizations.of(context).shopTabBundles,
+              AppLocalizations.of(context).shopTabVip,
+              AppLocalizations.of(context).shopTabStarter,
+              AppLocalizations.of(context).shopTabResources,
+              AppLocalizations.of(context).shopTabCosmetics,
+            ][i]}')),
         ),
       ),
       body: ScrollConfiguration(
@@ -85,10 +101,12 @@ class _PremiumShopScreenState extends State<PremiumShopScreen>
           ListView(
             padding: const EdgeInsets.all(14),
             children: [
-              _SectionLabel('ZCOIN BUNDLES', 'Premium currency for the Shop'),
+              _SectionLabel(AppLocalizations.of(context).shopSecBundles, AppLocalizations.of(context).shopSecBundlesSub),
               if (_kCheatsEnabled) _DebugGrantPanel(game: game),
-              _WatchAdCard(game: game),
-              const SizedBox(height: 8),
+              // Demo builds have no real ad network — the rewarded-ad path would
+              // "succeed" instantly and hand out free ZCoins, so hide it.
+              if (!kDemoBuild) _WatchAdCard(game: game),
+              if (!kDemoBuild) const SizedBox(height: 8),
               for (int i = 0; i < IapService.packages.length; i++)
                 _CrystalCard(
                   pkg: IapService.packages[i],
@@ -104,7 +122,8 @@ class _PremiumShopScreenState extends State<PremiumShopScreen>
           ListView(
             padding: const EdgeInsets.all(14),
             children: [
-              _SectionLabel('VIP SUBSCRIPTIONS', 'Recurring perks and benefits'),
+              _SectionLabel(AppLocalizations.of(context).shopSecVip, AppLocalizations.of(context).shopSecVipSub),
+              _LifetimeCard(game: game),
               ...SubscriptionTier.all.map((sub) => _SubCard(sub: sub, game: game)),
               const SizedBox(height: 16),
               if (IapService.platformSupported) ...[
@@ -118,7 +137,7 @@ class _PremiumShopScreenState extends State<PremiumShopScreen>
           ListView(
             padding: const EdgeInsets.all(14),
             children: [
-              _SectionLabel('STARTER PACKS', 'One-time purchase bundles'),
+              _SectionLabel(AppLocalizations.of(context).shopSecStarter, AppLocalizations.of(context).shopSecStarterSub),
               ...StarterPack.all.map((pack) => _PackCard(
                     pack: pack,
                     game: game,
@@ -133,7 +152,7 @@ class _PremiumShopScreenState extends State<PremiumShopScreen>
           ListView(
             padding: const EdgeInsets.all(14),
             children: [
-              _SectionLabel('RESOURCES', 'Spend ZCoins on gold & materials'),
+              _SectionLabel(AppLocalizations.of(context).shopSecResources, AppLocalizations.of(context).shopSecResourcesSub),
               ...ResourceBundle.all.map((b) => _ResourceCard(bundle: b, game: game)),
               const SizedBox(height: 24),
             ],
@@ -147,30 +166,30 @@ class _PremiumShopScreenState extends State<PremiumShopScreen>
               const SizedBox(height: 18),
               CosmeticsSkinsSection(game: game, scrollable: false),
               const SizedBox(height: 22),
-              _SectionLabel('AURAS', 'Equip a glow — owned aura bonuses always stack'),
+              _SectionLabel(AppLocalizations.of(context).shopSecAuras, AppLocalizations.of(context).shopSecAurasSub),
               CosmeticsAurasSection(game: game, scrollable: false),
               const SizedBox(height: 22),
-              _SectionLabel('BOOSTS', 'Permanent stat boosts'),
+              _SectionLabel(AppLocalizations.of(context).shopSecBoosts, AppLocalizations.of(context).shopSecBoostsSub),
               CosmeticsBoostsSection(game: game, scrollable: false),
               const SizedBox(height: 22),
-              _SectionLabel('TITLES', 'A rank displayed beneath your name'),
+              _SectionLabel(AppLocalizations.of(context).shopSecTitles, AppLocalizations.of(context).shopSecTitlesSub),
               ...CosmeticItem.all
                   .where((c) => c.type == CosmeticType.title)
                   .map((item) => _CosmeticCard(item: item, game: game)),
               const SizedBox(height: 20),
-              _SectionLabel('NAME COLOURS', 'Colour + glow for your hero name'),
+              _SectionLabel(AppLocalizations.of(context).shopSecColours, AppLocalizations.of(context).shopSecColoursSub),
               ...CosmeticItem.all
                   .where((c) => c.type == CosmeticType.nameColor)
                   .map((item) => _CosmeticCard(item: item, game: game)),
               const SizedBox(height: 20),
-              _SectionLabel('FRAMES', 'A frame around your hero portrait'),
+              _SectionLabel(AppLocalizations.of(context).shopSecFrames, AppLocalizations.of(context).shopSecFramesSub),
               ...CosmeticItem.all
                   .where((c) => c.type == CosmeticType.frame)
                   .map((item) => _CosmeticCard(item: item, game: game)),
               const SizedBox(height: 20),
               AttackEffectsSection(game: game, scrollable: false),
               const SizedBox(height: 22),
-              _SectionLabel('CHARACTER SLOTS', 'Extra character save slots'),
+              _SectionLabel(AppLocalizations.of(context).shopSecSlots, AppLocalizations.of(context).shopSecSlotsSub),
               CosmeticsMiscSection(game: game, scrollable: false),
               const SizedBox(height: 24),
             ],
@@ -233,7 +252,7 @@ class _ValueBadge extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
         decoration: BoxDecoration(
           color: color,
-          borderRadius: BorderRadius.circular(4),
+          borderRadius: BorderRadius.circular(8),
           boxShadow: [BoxShadow(color: color.withValues(alpha: 0.5), blurRadius: 8)],
         ),
         child: Text(label,
@@ -295,7 +314,7 @@ class _PremiumSkinShowcase extends StatelessWidget {
               children: [
                 const Text('👑', style: TextStyle(fontSize: 16)),
                 const SizedBox(width: 8),
-                Text('PREMIUM CLASS ARMOR',
+                Text(AppLocalizations.of(context).shopPremiumArmor,
                     style: AppTheme.pixelHeading(
                         fontSize: 11, letterSpacing: 2, color: accent)),
               ],
@@ -313,7 +332,7 @@ class _PremiumSkinShowcase extends StatelessWidget {
                   decoration: BoxDecoration(
                     color: Colors.black.withValues(alpha: 0.28),
                     border: Border.all(color: accent.withValues(alpha: 0.45)),
-                    borderRadius: BorderRadius.circular(6),
+                    borderRadius: BorderRadius.circular(8),
                   ),
                   alignment: Alignment.center,
                   child: StaticEnemySprite(spriteId: def.id, size: 96),
@@ -329,14 +348,14 @@ class _PremiumSkinShowcase extends StatelessWidget {
                               fontWeight: FontWeight.bold,
                               color: accent)),
                       const SizedBox(height: 2),
-                      Text('${game.hero.heroClass.displayName} · Endgame skin',
+                      Text(AppLocalizations.of(context).shopEndgameSkin(game.hero.heroClass.displayName),
                           style: const TextStyle(fontSize: 12, color: AppTheme.textMuted)),
                       const SizedBox(height: 8),
                       Text(def.description,
                           style: const TextStyle(
                               fontSize: 13, color: AppTheme.textLight, height: 1.35)),
                       const SizedBox(height: 12),
-                      _buildAction(owned, equipped, price),
+                      _buildAction(context, owned, equipped, price),
                     ],
                   ),
                 ),
@@ -353,13 +372,13 @@ class _PremiumSkinShowcase extends StatelessWidget {
                   children: [
                     Icon(Icons.auto_awesome, size: 13, color: accent),
                     const SizedBox(width: 6),
-                    Text('INCLUDED BONUSES',
+                    Text(AppLocalizations.of(context).shopIncludedBonuses,
                         style: AppTheme.pixelHeading(
                             fontSize: 10, letterSpacing: 1.5, color: accent)),
                     const SizedBox(width: 6),
-                    const Expanded(
-                      child: Text('every shop skin bonus, combined',
-                          style: TextStyle(fontSize: 10, color: AppTheme.textMuted)),
+                    Expanded(
+                      child: Text(AppLocalizations.of(context).shopEverySkin,
+                          style: const TextStyle(fontSize: 10, color: AppTheme.textMuted)),
                     ),
                   ],
                 ),
@@ -374,7 +393,7 @@ class _PremiumSkinShowcase extends StatelessWidget {
                         decoration: BoxDecoration(
                           color: accent.withValues(alpha: 0.12),
                           border: Border.all(color: accent.withValues(alpha: 0.4)),
-                          borderRadius: BorderRadius.circular(4),
+                          borderRadius: BorderRadius.circular(8),
                         ),
                         child: Text(label,
                             style: const TextStyle(
@@ -390,7 +409,7 @@ class _PremiumSkinShowcase extends StatelessWidget {
     );
   }
 
-  Widget _buildAction(bool owned, bool equipped, String price) {
+  Widget _buildAction(BuildContext context, bool owned, bool equipped, String price) {
     final def = premiumSkinForClass(game.hero.heroClass)!;
     final accent = def.accentColor;
 
@@ -401,14 +420,14 @@ class _PremiumSkinShowcase extends StatelessWidget {
           decoration: BoxDecoration(
             color: accent.withValues(alpha: 0.18),
             border: Border.all(color: accent),
-            borderRadius: BorderRadius.circular(6),
+            borderRadius: BorderRadius.circular(8),
           ),
-          child: Text('✓ EQUIPPED',
+          child: Text(AppLocalizations.of(context).shopEquippedCheck,
               style: AppTheme.pixelHeading(fontSize: 11, color: accent)),
         ),
         const SizedBox(width: 8),
         _PremiumButton(
-          label: 'UNEQUIP',
+          label: AppLocalizations.of(context).shopUnequip,
           filled: false,
           color: AppTheme.textMuted,
           onTap: () => game.equipPremiumSkin(null),
@@ -417,7 +436,7 @@ class _PremiumSkinShowcase extends StatelessWidget {
     }
     if (owned) {
       return _PremiumButton(
-        label: 'EQUIP',
+        label: AppLocalizations.of(context).auraEquip,
         filled: true,
         color: accent,
         onTap: () => game.equipPremiumSkin(def.id),
@@ -426,7 +445,7 @@ class _PremiumSkinShowcase extends StatelessWidget {
     final iap = game.iapService;
     final storeReady = iap.storeAvailable && iap.priceFor(def.productId).isNotEmpty;
     return _PremiumButton(
-      label: 'UNLOCK  ·  $price',
+      label: AppLocalizations.of(context).shopUnlockPrice(price),
       filled: true,
       color: const Color(0xFFffcc44),
       onTap: () {
@@ -466,7 +485,7 @@ class _PremiumButton extends StatelessWidget {
         decoration: BoxDecoration(
           color: filled ? color.withValues(alpha: 0.9) : Colors.transparent,
           border: Border.all(color: color, width: 1.5),
-          borderRadius: BorderRadius.circular(6),
+          borderRadius: BorderRadius.circular(8),
         ),
         alignment: Alignment.center,
         child: Text(label,
@@ -485,11 +504,32 @@ class _PackCard extends StatelessWidget {
   final GameState game;
   final bool featured;
 
+  // The headline gear each pack grants, shown as the card's "picture" using the
+  // REAL pixel-art gear sprite + rarity glow (same art as loot drops). Keyed off
+  // the gear entry in the pack contents so it stays in sync with
+  // GameState.purchaseStarterPack (epicHelmet/legendaryWeapon/setPiece).
+  static ({ItemSlot slot, ItemRarity rarity, String label})? _signatureItem(StarterPack p) {
+    if (p.contents.containsKey('epicHelmet')) {
+      return (slot: ItemSlot.helmet, rarity: ItemRarity.epic, label: 'Epic');
+    }
+    if (p.contents.containsKey('legendaryWeapon')) {
+      return (slot: ItemSlot.weapon, rarity: ItemRarity.legendary, label: 'Legendary');
+    }
+    if (p.contents.containsKey('setPiece')) {
+      return (slot: ItemSlot.armor, rarity: ItemRarity.set, label: 'Set');
+    }
+    return null;
+  }
+
+  static bool _isGearKey(String k) =>
+      k == 'epicHelmet' || k == 'legendaryWeapon' || k == 'setPiece';
+
   @override
   Widget build(BuildContext context) {
     final bought = game.purchasedPacks.contains(pack.id);
+    final sig = _signatureItem(pack);
     return Container(
-      margin: const EdgeInsets.only(bottom: 8),
+      margin: const EdgeInsets.only(bottom: 10),
       padding: const EdgeInsets.all(14),
       decoration: _premiumTile(pack.color, active: bought),
       child: Column(
@@ -500,63 +540,118 @@ class _PackCard extends StatelessWidget {
             _ValueBadge('MOST POPULAR', pack.color),
             const SizedBox(height: 8),
           ],
-          Row(children: [
-        Text(pack.icon, style: const TextStyle(fontSize: 28)),
-        const SizedBox(width: 12),
-        Expanded(child: Tooltip(
-          message: pack.contents.entries.map((e) => '${_icon(e.key)} ${e.value} ${e.key}').join('\n'),
-          triggerMode: TooltipTriggerMode.tap,
-          preferBelow: false,
-          textStyle: const TextStyle(fontSize: 12, color: Colors.white),
-          decoration: BoxDecoration(
-            color: const Color(0xFF2a2030),
-            border: Border.all(color: const Color(0xFFcc88ff).withValues(alpha: 0.5)),
-            borderRadius: BorderRadius.circular(6),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Headline item showcase — the gear + rarity this pack grants,
+              // framed in its rarity colour (mirrors the VIP emblem showcase).
+              if (sig != null) ...[
+                _itemPicture(sig),
+                const SizedBox(width: 14),
+              ],
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(pack.name,
+                        style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: pack.color)),
+                    const SizedBox(height: 2),
+                    Text(pack.description,
+                        style: const TextStyle(fontSize: 11, color: AppTheme.textMuted, height: 1.3)),
+                    const SizedBox(height: 8),
+                    Wrap(
+                      spacing: 10,
+                      runSpacing: 4,
+                      children: pack.contents.entries
+                          .where((e) => !_isGearKey(e.key))
+                          .map((e) => Text('${_icon(e.key)} ${AppTheme.fmtNumber(e.value)}',
+                              style: TextStyle(
+                                  fontSize: 11, color: pack.color, fontWeight: FontWeight.w600)))
+                          .toList(),
+                    ),
+                    const SizedBox(height: 12),
+                    if (bought)
+                      Row(children: [
+                        const Icon(Icons.check_circle, size: 16, color: Color(0xFF44cc88)),
+                        const SizedBox(width: 6),
+                        Text(AppLocalizations.of(context).armOwned,
+                            style: const TextStyle(
+                                fontSize: 12, color: Color(0xFF44cc88), fontWeight: FontWeight.bold)),
+                      ])
+                    else
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton(
+                          onPressed: () {
+                            if (pack.productId != null && game.iapService.storeAvailable) {
+                              game.iapService.buyNonConsumable(pack.productId!);
+                            } else if (kDebugMode) {
+                              game.purchaseStarterPack(pack.id);
+                            } else {
+                              ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                                content: Text(AppLocalizations.of(context).shopStoreUnavailable),
+                                backgroundColor: const Color(0xFF442222),
+                                duration: const Duration(seconds: 2),
+                              ));
+                            }
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: pack.color.withValues(alpha: 0.2),
+                            foregroundColor: pack.color,
+                            side: BorderSide(color: pack.color),
+                            padding: const EdgeInsets.symmetric(vertical: 10),
+                          ),
+                          child: Builder(builder: (ctx) {
+                            final storePrice = pack.productId != null
+                                ? game.iapService.priceFor(pack.productId!)
+                                : '';
+                            return Text(storePrice.isNotEmpty ? storePrice : pack.price,
+                                style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold));
+                          }),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ],
           ),
-          child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(children: [
-              Expanded(child: Text(pack.name, style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: pack.color))),
-              const Icon(Icons.info_outline, size: 14, color: AppTheme.textMuted),
-            ]),
-            Text(pack.description, style: const TextStyle(fontSize: 10, color: AppTheme.textMuted)),
-            const SizedBox(height: 4),
-            Wrap(spacing: 8, children: pack.contents.entries.map((e) =>
-              Text('${_icon(e.key)} ${e.value}', style: TextStyle(fontSize: 10, color: pack.color)),
-            ).toList()),
-          ],
-        ))),
-        if (bought)
-          const Text('OWNED', style: TextStyle(fontSize: 10, color: Color(0xFF44cc88), fontWeight: FontWeight.bold))
-        else
-          ElevatedButton(
-            onPressed: () {
-              if (pack.productId != null && game.iapService.storeAvailable) {
-                game.iapService.buyNonConsumable(pack.productId!);
-              } else if (kDebugMode) {
-                game.purchaseStarterPack(pack.id);
-              } else {
-                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                  content: Text('Store unavailable — try again later.'),
-                  backgroundColor: Color(0xFF442222),
-                  duration: Duration(seconds: 2),
-                ));
-              }
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: pack.color.withValues(alpha: 0.2),
-              foregroundColor: pack.color,
-              side: BorderSide(color: pack.color),
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        ],
+      ),
+    );
+  }
+
+  Widget _itemPicture(({ItemSlot slot, ItemRarity rarity, String label}) sig) {
+    final color = ItemSprite.glowColorFor(sig.rarity) ?? Colors.white;
+    return Container(
+      width: 88,
+      height: 108,
+      decoration: BoxDecoration(
+        gradient: RadialGradient(colors: [
+          color.withValues(alpha: 0.22),
+          Colors.black.withValues(alpha: 0.35),
+        ]),
+        border: Border.all(color: color.withValues(alpha: 0.6), width: 1.5),
+        borderRadius: BorderRadius.circular(8),
+        boxShadow: [BoxShadow(color: color.withValues(alpha: 0.25), blurRadius: 10)],
+      ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          // Real pixel-art gear sprite (weapon / armor / helmet) with its rarity
+          // glow — the same art shown for loot drops in the Inventory.
+          ItemSprite(slot: sig.slot, rarity: sig.rarity, size: 58),
+          const SizedBox(height: 6),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.18),
+              borderRadius: BorderRadius.circular(8),
             ),
-            child: Builder(builder: (ctx) {
-              final storePrice = pack.productId != null ? game.iapService.priceFor(pack.productId!) : '';
-              return Text(storePrice.isNotEmpty ? storePrice : pack.price,
-                  style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold));
-            }),
+            child: Text(sig.label.toUpperCase(),
+                style: TextStyle(
+                    fontSize: 9, fontWeight: FontWeight.bold, color: color, letterSpacing: 1)),
           ),
-      ]),
         ],
       ),
     );
@@ -607,8 +702,8 @@ class _CrystalCard extends StatelessWidget {
             } else if (kDebugMode) {
               game.grantCrystals(pkg.zcoins);
             } else {
-              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                content: Text('Store unavailable — try again later.'),
+              ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                content: Text(AppLocalizations.of(context).shopStoreUnavailable),
                 backgroundColor: Color(0xFF442222),
                 duration: Duration(seconds: 2),
               ));
@@ -627,6 +722,202 @@ class _CrystalCard extends StatelessWidget {
           }),
         ),
       ]),
+        ],
+      ),
+    );
+  }
+}
+
+class _LifetimeCard extends StatelessWidget {
+  const _LifetimeCard({required this.game});
+  final GameState game;
+
+  static const _productId = 'lifetime_premium';
+  static const _fallbackPrice = '\$9.99';
+  // Ruby red (was gold) so the lifetime "Eternal Pact" stands apart from the
+  // gold-accented subscription VIP packs as the headline, forever tier.
+  static const _accent = Color(0xFFD1434B); // ruby red
+
+  @override
+  Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context);
+    final owned = game.lifetimePremium;
+    final storePrice = game.iapService.priceFor(_productId);
+    final displayPrice = storePrice.isNotEmpty ? storePrice : _fallbackPrice;
+    const activeGreen = Color(0xFF44cc88);
+
+    final perks = [
+      l.shopLifetimePerk1,
+      l.shopLifetimePerk2,
+      l.shopLifetimePerk3,
+      l.shopLifetimePerk4,
+      l.shopLifetimePerk5,
+      l.shopLifetimePerk6,
+      l.shopLifetimePerk7,
+      // (Dropped the old "Auto-Campaign (free from stage 5)" perk — auto-campaign
+      // is now an always-on default feature, so it's no longer a premium perk.)
+    ];
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            _accent.withValues(alpha: 0.28),
+            const Color(0xFF17140F),
+            _accent.withValues(alpha: 0.18),
+          ],
+        ),
+        border: Border.all(
+          color: owned ? activeGreen : _accent.withValues(alpha: 0.75),
+          width: 2,
+        ),
+        borderRadius: BorderRadius.circular(8),
+        boxShadow: [
+          BoxShadow(color: _accent.withValues(alpha: 0.25), blurRadius: 18, spreadRadius: 2),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header ribbon
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [_accent.withValues(alpha: 0.35), Colors.transparent],
+              ),
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(7)),
+            ),
+            child: Row(children: [
+              const Text('♾️', style: TextStyle(fontSize: 16)),
+              const SizedBox(width: 8),
+              Text(l.shopLifetimeTitle,
+                  style: AppTheme.pixelHeading(fontSize: 13, letterSpacing: 2, color: _accent)),
+              const SizedBox(width: 8),
+              _ValueBadge(l.shopLifetimeBadge, _accent),
+              const Spacer(),
+              Text(owned ? '' : displayPrice,
+                  style: AppTheme.pixelHeading(fontSize: 11, color: _accent)),
+            ]),
+          ),
+
+          // Preview — a large crown emblem (radial glow + light rays) beside the
+          // tagline + action, mirroring the premium-skin showcase so the
+          // "forever" tier reads as the headline offer, not a plain text card.
+          Padding(
+            padding: const EdgeInsets.fromLTRB(14, 10, 14, 10),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  width: 92,
+                  height: 118,
+                  decoration: BoxDecoration(
+                    gradient: RadialGradient(
+                      colors: [
+                        _accent.withValues(alpha: 0.22),
+                        Colors.black.withValues(alpha: 0.32),
+                      ],
+                    ),
+                    border: Border.all(color: _accent.withValues(alpha: 0.45)),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  alignment: Alignment.center,
+                  child: const VipEmblem(kind: 1, color: _accent, size: 84),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(l.shopLifetimeTagline,
+                          style: const TextStyle(
+                              fontSize: 13, color: AppTheme.textLight, fontStyle: FontStyle.italic)),
+                      const SizedBox(height: 12),
+                      if (owned)
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                          decoration: BoxDecoration(
+                            color: activeGreen.withValues(alpha: 0.18),
+                            border: Border.all(color: activeGreen),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text(l.shopLifetimeOwned,
+                              textAlign: TextAlign.center,
+                              style: AppTheme.pixelHeading(fontSize: 12, color: activeGreen)),
+                        )
+                      else
+                        SizedBox(
+                          width: double.infinity,
+                          child: ElevatedButton(
+                            onPressed: () {
+                              if (game.iapService.storeAvailable) {
+                                game.iapService.buyNonConsumable(_productId);
+                              } else if (kDebugMode) {
+                                game.unlockLifetimePremium();
+                              } else {
+                                ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                                  content: Text(AppLocalizations.of(context).shopStoreUnavailable),
+                                  backgroundColor: const Color(0xFF442222),
+                                  duration: const Duration(seconds: 2),
+                                ));
+                              }
+                            },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: _accent.withValues(alpha: 0.18),
+                              foregroundColor: _accent,
+                              side: const BorderSide(color: _accent, width: 1.5),
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                            ),
+                            child: Text(l.shopLifetimeBuy(displayPrice),
+                                style: AppTheme.pixelHeading(fontSize: 11, color: _accent)),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          // EVERYTHING INCLUDED — perk chips, full width below the preview.
+          Padding(
+            padding: const EdgeInsets.fromLTRB(14, 0, 14, 14),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(children: [
+                  Icon(Icons.auto_awesome, size: 13, color: _accent),
+                  const SizedBox(width: 6),
+                  Text(l.shopLifetimeIncludes,
+                      style: AppTheme.pixelHeading(fontSize: 10, letterSpacing: 1.5, color: _accent)),
+                ]),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 6,
+                  runSpacing: 6,
+                  children: [
+                    for (final perk in perks)
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: _accent.withValues(alpha: 0.12),
+                          border: Border.all(color: _accent.withValues(alpha: 0.4)),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(perk,
+                            style: const TextStyle(fontSize: 12, color: AppTheme.textLight)),
+                      ),
+                  ],
+                ),
+              ],
+            ),
+          ),
         ],
       ),
     );
@@ -682,7 +973,7 @@ class _SubCard extends StatelessWidget {
             child: Row(children: [
               Text(sub.icon, style: const TextStyle(fontSize: 16)),
               const SizedBox(width: 8),
-              Text('VIP SUBSCRIPTION',
+              Text(AppLocalizations.of(context).shopVipSub,
                   style: AppTheme.pixelHeading(
                       fontSize: 11, letterSpacing: 2, color: accent)),
               if (sub.id == 'sub_premium') ...[
@@ -707,7 +998,7 @@ class _SubCard extends StatelessWidget {
                   decoration: BoxDecoration(
                     color: Colors.black.withValues(alpha: 0.28),
                     border: Border.all(color: accent.withValues(alpha: 0.45)),
-                    borderRadius: BorderRadius.circular(6),
+                    borderRadius: BorderRadius.circular(8),
                   ),
                   alignment: Alignment.center,
                   child: VipEmblem(
@@ -732,9 +1023,9 @@ class _SubCard extends StatelessWidget {
                           decoration: BoxDecoration(
                             color: activeGreen.withValues(alpha: 0.18),
                             border: Border.all(color: activeGreen),
-                            borderRadius: BorderRadius.circular(6),
+                            borderRadius: BorderRadius.circular(8),
                           ),
-                          child: Text('✓ SUBSCRIBED',
+                          child: Text(AppLocalizations.of(context).shopSubscribed,
                               style: AppTheme.pixelHeading(fontSize: 11, color: activeGreen)),
                         )
                       else
@@ -751,8 +1042,8 @@ class _SubCard extends StatelessWidget {
                                   game.activatePremium(30);
                                 }
                               } else {
-                                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                                  content: Text('Store unavailable — try again later.'),
+                                ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                                  content: Text(AppLocalizations.of(context).shopStoreUnavailable),
                                   backgroundColor: Color(0xFF442222),
                                   duration: Duration(seconds: 2),
                                 ));
@@ -763,7 +1054,7 @@ class _SubCard extends StatelessWidget {
                               foregroundColor: accent,
                               side: BorderSide(color: accent),
                             ),
-                            child: Text('SUBSCRIBE  $displayPrice',
+                            child: Text(AppLocalizations.of(context).shopSubscribe(displayPrice),
                                 style: AppTheme.pixelHeading(fontSize: 11, color: accent)),
                           ),
                         ),
@@ -780,7 +1071,7 @@ class _SubCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 if (sub.id == 'sub_premium') ...[
-                  Text("Everything in Vanguard's Pact, plus:",
+                  Text(AppLocalizations.of(context).shopEverythingPlus,
                       style: TextStyle(
                           fontSize: 11,
                           fontStyle: FontStyle.italic,
@@ -790,7 +1081,7 @@ class _SubCard extends StatelessWidget {
                 Row(children: [
                   Icon(Icons.auto_awesome, size: 13, color: accent),
                   const SizedBox(width: 6),
-                  Text('INCLUDED PERKS',
+                  Text(AppLocalizations.of(context).shopIncludedPerks,
                       style: AppTheme.pixelHeading(
                           fontSize: 10, letterSpacing: 1.5, color: accent)),
                 ]),
@@ -805,7 +1096,7 @@ class _SubCard extends StatelessWidget {
                         decoration: BoxDecoration(
                           color: accent.withValues(alpha: 0.12),
                           border: Border.all(color: accent.withValues(alpha: 0.4)),
-                          borderRadius: BorderRadius.circular(4),
+                          borderRadius: BorderRadius.circular(8),
                         ),
                         child: Text(perk,
                             style: const TextStyle(fontSize: 12, color: AppTheme.textLight)),
@@ -835,7 +1126,7 @@ class _ResourceCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: const Color(0xFF1a1816),
         border: Border.all(color: bundle.color.withValues(alpha: 0.4)),
-        borderRadius: BorderRadius.circular(4),
+        borderRadius: BorderRadius.circular(8),
       ),
       child: Row(children: [
         CurrencyIcon(id: bundle.resource, size: 26),
@@ -863,7 +1154,7 @@ class _ResourceCard extends StatelessWidget {
             decoration: BoxDecoration(
               color: canAfford ? bundle.color.withValues(alpha: 0.12) : Colors.transparent,
               border: Border.all(color: canAfford ? bundle.color : AppTheme.cardBorder),
-              borderRadius: BorderRadius.circular(3),
+              borderRadius: BorderRadius.circular(8),
             ),
             child: Row(mainAxisSize: MainAxisSize.min, children: [
               const ZCoinIcon(size: 12, animate: false),
@@ -907,7 +1198,7 @@ class _CosmeticCard extends StatelessWidget {
                 : owned ? const Color(0xFF44cc88).withValues(alpha: 0.4)
                 : AppTheme.cardBorder,
             width: isRM ? 1.5 : 1),
-        borderRadius: BorderRadius.circular(4),
+        borderRadius: BorderRadius.circular(8),
         boxShadow: (item.glow && (equipped || isRM))
             ? [BoxShadow(color: item.color.withValues(alpha: 0.35), blurRadius: 8)]
             : null,
@@ -926,7 +1217,7 @@ class _CosmeticCard extends StatelessWidget {
               ),
               if (item.glow) ...[
                 const SizedBox(width: 5),
-                Text('✦ GLOW',
+                Text(AppLocalizations.of(context).shopGlow,
                     style: TextStyle(fontSize: 7, letterSpacing: 0.5,
                         fontWeight: FontWeight.bold, color: item.color.withValues(alpha: 0.8))),
               ],
@@ -938,7 +1229,7 @@ class _CosmeticCard extends StatelessWidget {
                     color: item.color.withValues(alpha: 0.18),
                     borderRadius: BorderRadius.circular(2),
                   ),
-                  child: Text('EXCLUSIVE',
+                  child: Text(AppLocalizations.of(context).shopExclusive,
                       style: TextStyle(fontSize: 7, letterSpacing: 0.5,
                           fontWeight: FontWeight.bold, color: item.color)),
                 ),
@@ -948,7 +1239,7 @@ class _CosmeticCard extends StatelessWidget {
           ],
         )),
         if (equipped)
-          Text('EQUIPPED', style: TextStyle(fontSize: 9, color: item.color, fontWeight: FontWeight.bold))
+          Text(AppLocalizations.of(context).auraEquipped, style: TextStyle(fontSize: 9, color: item.color, fontWeight: FontWeight.bold))
         else if (owned)
           GestureDetector(
             onTap: () => game.equipCosmetic(item.id),
@@ -956,9 +1247,9 @@ class _CosmeticCard extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
               decoration: BoxDecoration(
                 border: Border.all(color: const Color(0xFF44cc88)),
-                borderRadius: BorderRadius.circular(3),
+                borderRadius: BorderRadius.circular(8),
               ),
-              child: const Text('EQUIP', style: TextStyle(fontSize: 9, color: Color(0xFF44cc88), fontWeight: FontWeight.bold)),
+              child: Text(AppLocalizations.of(context).auraEquip, style: const TextStyle(fontSize: 9, color: Color(0xFF44cc88), fontWeight: FontWeight.bold)),
             ),
           )
         else if (isRM)
@@ -976,7 +1267,7 @@ class _CosmeticCard extends StatelessWidget {
                 decoration: BoxDecoration(
                   color: item.color.withValues(alpha: 0.15),
                   border: Border.all(color: item.color),
-                  borderRadius: BorderRadius.circular(3),
+                  borderRadius: BorderRadius.circular(8),
                 ),
                 child: Text(label,
                     style: TextStyle(fontSize: 10, color: item.color, fontWeight: FontWeight.bold)),
@@ -991,7 +1282,7 @@ class _CosmeticCard extends StatelessWidget {
               decoration: BoxDecoration(
                 color: canAfford ? item.color.withValues(alpha: 0.1) : Colors.transparent,
                 border: Border.all(color: canAfford ? item.color : AppTheme.cardBorder),
-                borderRadius: BorderRadius.circular(3),
+                borderRadius: BorderRadius.circular(8),
               ),
               child: Row(mainAxisSize: MainAxisSize.min, children: [
                 ZCoinIcon(size: 11, animate: false),
@@ -1080,8 +1371,8 @@ class _WatchAdCardState extends State<_WatchAdCard> {
       },
       onFailed: () {
         if (mounted) setState(() => _watching = false);
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-          content: Text('No ad available right now — try again later.'),
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(AppLocalizations.of(context).shopNoAd),
           backgroundColor: Color(0xFF2A2623),
           duration: Duration(seconds: 3),
         ));
@@ -1108,17 +1399,17 @@ class _WatchAdCardState extends State<_WatchAdCard> {
       decoration: BoxDecoration(
         color: done ? AppTheme.cardBg : const Color(0xFF0a1a0a),
         border: Border.all(color: color.withValues(alpha: 0.5)),
-        borderRadius: BorderRadius.circular(4),
+        borderRadius: BorderRadius.circular(8),
       ),
       child: Row(children: [
         Text(done ? '✓' : '📺', style: TextStyle(fontSize: 22, color: color)),
         const SizedBox(width: 12),
         Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text('Watch an Ad',
+          Text(AppLocalizations.of(context).shopWatchAd,
               style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: color)),
           Text(done
-              ? 'Come back tomorrow for more free ZCoins!'
-              : 'Earn $_rewardPerAd ZCoins per ad  •  ${_maxAdsPerDay - _adsToday}/$_maxAdsPerDay remaining',
+              ? AppLocalizations.of(context).shopComeBackTomorrow
+              : AppLocalizations.of(context).shopAdOffer(_rewardPerAd, _maxAdsPerDay - _adsToday, _maxAdsPerDay),
               style: const TextStyle(fontSize: 11, color: AppTheme.textMuted)),
         ])),
         if (!done)
@@ -1134,7 +1425,7 @@ class _WatchAdCardState extends State<_WatchAdCard> {
             child: _watching
                 ? const SizedBox(width: 14, height: 14,
                     child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF44dd88)))
-                : Text(_cooldown ? 'WAIT...' : 'WATCH',
+                : Text(_cooldown ? AppLocalizations.of(context).shopWait : AppLocalizations.of(context).shopWatch,
                     style: AppTheme.pixelHeading(fontSize: 10, color: color)),
           ),
       ]),
@@ -1162,7 +1453,7 @@ class _AdRewardDialog extends StatelessWidget {
         child: Column(mainAxisSize: MainAxisSize.min, children: [
           const ZCoinIcon(size: 48),
           const SizedBox(height: 12),
-          Text('REWARD EARNED',
+          Text(AppLocalizations.of(context).shopRewardEarned,
               style: AppTheme.pixelHeading(
                   fontSize: 13, letterSpacing: 2, color: AppTheme.accentGold)),
           const SizedBox(height: 10),
@@ -1171,9 +1462,9 @@ class _AdRewardDialog extends StatelessWidget {
             decoration: BoxDecoration(
               color: const Color(0xFF2a1f00),
               border: Border.all(color: AppTheme.accentGold.withValues(alpha: 0.5)),
-              borderRadius: BorderRadius.circular(4),
+              borderRadius: BorderRadius.circular(8),
             ),
-            child: Text('+$amount ZCoins',
+            child: Text(AppLocalizations.of(context).shopPlusZcoins(amount),
                 style: AppTheme.pixelHeading(
                     fontSize: 22, color: AppTheme.accentGold)),
           ),
@@ -1187,9 +1478,9 @@ class _AdRewardDialog extends StatelessWidget {
                 foregroundColor: Colors.black,
                 padding: const EdgeInsets.symmetric(vertical: 12),
                 shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(4)),
+                    borderRadius: BorderRadius.circular(8)),
               ),
-              child: Text('COLLECT',
+              child: Text(AppLocalizations.of(context).shopCollect,
                   style: AppTheme.pixelHeading(
                       fontSize: 12, letterSpacing: 1, color: Colors.black)),
             ),
@@ -1217,8 +1508,8 @@ class _RestorePurchasesButtonState extends State<_RestorePurchasesButton> {
     await widget.game.iapService.restorePurchases();
     if (mounted) {
       setState(() => _restoring = false);
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-        content: Text('Purchases restored. Any active subscriptions or packs have been re-applied.'),
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(AppLocalizations.of(context).shopPurchasesRestored),
         backgroundColor: Color(0xFF1a2a1a),
         duration: Duration(seconds: 3),
       ));
@@ -1233,7 +1524,7 @@ class _RestorePurchasesButtonState extends State<_RestorePurchasesButton> {
         child: _restoring
             ? const SizedBox(width: 14, height: 14,
                 child: CircularProgressIndicator(strokeWidth: 2, color: AppTheme.textMuted))
-            : const Text('Restore Purchases',
+            : Text(AppLocalizations.of(context).shopRestorePurchases,
                 style: TextStyle(fontSize: 11, color: AppTheme.textMuted,
                     decoration: TextDecoration.underline)),
       ),
@@ -1282,7 +1573,7 @@ class _DebugGrantPanelState extends State<_DebugGrantPanel> {
       decoration: BoxDecoration(
         color: const Color(0xFF0d1a0d),
         border: Border.all(color: const Color(0xFF44cc88).withValues(alpha: 0.7)),
-        borderRadius: BorderRadius.circular(4),
+        borderRadius: BorderRadius.circular(8),
       ),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         const Row(children: [
