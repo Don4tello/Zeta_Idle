@@ -1610,142 +1610,141 @@ class AppLocalizationsKo extends AppLocalizations {
   String get dngExpBoss => '보스 (5층마다) — 고위험, 고보상';
 
   @override
-  String get dngBonesHint =>
-      'Slain enemies drop Bones — spend them at the Traveling Merchant.';
+  String get dngBonesHint => '처치한 적은 뼈를 드롭합니다 — 순회 상인에게서 사용하세요.';
 
   @override
-  String get dngExpectedLoot => 'EXPECTED LOOT';
+  String get dngExpectedLoot => '예상 전리품';
 
   @override
-  String get dngLootGold => 'Gold';
+  String get dngLootGold => '골드';
 
   @override
-  String get dngLootGoldDetail => 'From combat, treasure rooms & rest supplies';
+  String get dngLootGoldDetail => '전투, 보물방 & 휴식 보급품에서';
 
   @override
-  String get dngLootShards => 'Shards';
+  String get dngLootShards => '파편';
 
   @override
-  String get dngLootShardsDetail => 'Treasure rooms & chests along the run';
+  String get dngLootShardsDetail => '런 중의 보물방 & 상자에서';
 
   @override
-  String get dngLootItems => 'Items';
+  String get dngLootItems => '아이템';
 
   @override
   String dngLootItemsDetail(String tier) {
-    return 'Item tier at your depth: $tier  (elites & bosses drop better)';
+    return '현재 깊이의 아이템 티어: $tier  (정예 & 보스가 더 좋은 것을 드롭)';
   }
 
   @override
-  String get dngLootMythril => 'Mythril';
+  String get dngLootMythril => '미스릴';
 
   @override
   String dngLootMythrilDetail(int a, int b) {
-    return '~$a at floor 5  •  ~$b at floor 10';
+    return '5층에서 ~$a  •  10층에서 ~$b';
   }
 
   @override
   String dngYourBest(int f, int m) {
-    return 'Your best: floor $f  •  ~$m mythril';
+    return '최고 기록: $f층  •  ~$m 미스릴';
   }
 
   @override
-  String get dngNoRecord => 'No record yet';
+  String get dngNoRecord => '아직 기록 없음';
 
   @override
   String dngDeepestFloor(int f) {
-    return 'Deepest floor: $f';
+    return '최심층: $f층';
   }
 
   @override
   String dngDailyAttempts(int r, int max) {
-    return 'Daily attempts: $r / $max';
+    return '일일 시도: $r / $max';
   }
 
   @override
   String dngEnterTier(int tier) {
-    return 'ENTER  TIER $tier';
+    return '티어 $tier 입장';
   }
 
   @override
-  String get dngNoAttempts => 'NO ATTEMPTS LEFT';
+  String get dngNoAttempts => '남은 시도 없음';
 
   @override
   String dngBuyExtra(int cost) {
-    return '$cost ZCoins — Buy 1 extra attempt';
+    return '$cost Z코인 — 추가 시도 1회 구매';
   }
 
   @override
-  String get dngBossFloor => '☠ BOSS FLOOR';
+  String get dngBossFloor => '☠ 보스 층';
 
   @override
   String dngBossIn(int n) {
-    return '☠ Boss in $n';
+    return '☠ $n 후 보스';
   }
 
   @override
-  String get dngChoosePath => 'CHOOSE YOUR PATH';
+  String get dngChoosePath => '길을 선택하세요';
 
   @override
-  String get dngNextBoss => '☠ NEXT FLOOR: BOSS';
+  String get dngNextBoss => '☠ 다음 층: 보스';
 
   @override
-  String get dngMystery => 'MYSTERY';
+  String get dngMystery => '미스터리';
 
   @override
-  String get dngGoblin => '💰 TREASURE GOBLIN';
+  String get dngGoblin => '💰 보물 고블린';
 
   @override
-  String get dngEnter => 'ENTER';
+  String get dngEnter => '입장';
 
   @override
-  String get dngMystery1 => 'An unmarked door.';
+  String get dngMystery1 => '표시 없는 문.';
 
   @override
-  String get dngMystery2 => 'Fortune or peril?';
+  String get dngMystery2 => '행운인가 위험인가?';
 
   @override
   String dngGoblinHp(Object hp) {
-    return '$hp HP  •  flees after 5 rounds';
+    return '$hp HP  •  5라운드 후 도망';
   }
 
   @override
-  String get dngGoblinReward => '6× gold if you slay it in time!';
+  String get dngGoblinReward => '제때 처치하면 골드 6배!';
 
   @override
-  String get dngGuaranteedDrop => 'Guaranteed item drop';
+  String get dngGuaranteedDrop => '아이템 드롭 확정';
 
   @override
-  String get dngStrikesFirst => 'Strikes first — high gold';
+  String get dngStrikesFirst => '선제공격 — 높은 골드';
 
   @override
-  String get dngDoorBlessing => 'A blessing...';
+  String get dngDoorBlessing => '축복...';
 
   @override
-  String get dngDoorCurse => 'or a curse?';
+  String get dngDoorCurse => '아니면 저주?';
 
   @override
-  String get dngMakeCamp => 'Make camp';
+  String get dngMakeCamp => '야영하기';
 
   @override
-  String get dngRecoverHp => 'Recover HP';
+  String get dngRecoverHp => 'HP 회복';
 
   @override
-  String get dngRareInside => 'Rare item inside';
+  String get dngRareInside => '희귀 아이템이 들어 있음';
 
   @override
   String dngShardsToOpen(Object n) {
-    return '$n shards to open';
+    return '열려면 파편 $n개';
   }
 
   @override
   String dngPlusGold(Object g) {
-    return '+$g gold';
+    return '+$g 골드';
   }
 
   @override
   String dngPlusShards(Object s) {
-    return '+$s shards';
+    return '+$s 파편';
   }
 
   @override
@@ -1755,117 +1754,113 @@ class AppLocalizationsKo extends AppLocalizations {
 
   @override
   String dngEnemyStats(Object hp, Object atk) {
-    return '$hp HP  •  $atk ATK';
+    return '$hp HP  •  $atk 공격력';
   }
 
   @override
-  String get dngEnemy => 'Enemy';
+  String get dngEnemy => '적';
 
   @override
-  String get dngSpeedNeeds =>
-      'Higher speed needs the Speed Boost / Premium Pass.';
+  String get dngSpeedNeeds => '더 높은 속도는 속도 부스트 / 프리미엄 패스가 필요합니다.';
 
   @override
-  String get dngTreasureFound => 'Treasure Found!';
+  String get dngTreasureFound => '보물 발견!';
 
   @override
-  String get dngCursed => '✸ CURSED!';
+  String get dngCursed => '✸ 저주받음!';
 
   @override
-  String get dngBlessed => '✧ BLESSED!';
+  String get dngBlessed => '✧ 축복받음!';
 
   @override
-  String get dngDarkToll => 'The darkness takes its toll...';
+  String get dngDarkToll => '어둠이 대가를 치르게 합니다...';
 
   @override
-  String get dngAncientPower => 'Ancient power flows through you.';
+  String get dngAncientPower => '고대의 힘이 당신을 통해 흐릅니다.';
 
   @override
-  String get dngLightShadow => 'Light and shadow bind themselves to your fate.';
+  String get dngLightShadow => '빛과 그림자가 당신의 운명에 얽매입니다.';
 
   @override
-  String get dngShrineCorrupted => 'Corrupted Shrine';
+  String get dngShrineCorrupted => '타락한 제단';
 
   @override
-  String get dngShrineBlessed => 'Blessed Shrine';
+  String get dngShrineBlessed => '축복받은 제단';
 
   @override
-  String get dngShrineAncient => 'Ancient Shrine';
+  String get dngShrineAncient => '고대의 제단';
 
   @override
   String get dngShrineCorruptedFlavor =>
-      'Dark energies pulse and writhe. A curse is certain — but power awaits.';
+      '어두운 기운이 고동치며 꿈틀거립니다. 저주는 확실하지만 — 힘이 기다립니다.';
 
   @override
-  String get dngShrineBlessedFlavor =>
-      'Warm divine light emanates from this place. A blessing is guaranteed.';
+  String get dngShrineBlessedFlavor => '이곳에서 따뜻한 신성한 빛이 뿜어져 나옵니다. 축복이 보장됩니다.';
 
   @override
-  String get dngShrineTwinFlavor =>
-      'Two forces stir within — you will receive both a blessing and a curse.';
+  String get dngShrineTwinFlavor => '두 힘이 안에서 꿈틀거립니다 — 축복과 저주를 모두 받게 됩니다.';
 
   @override
   String get dngShrineNormalFlavor =>
-      'A mysterious shrine pulses with unknown energy.\nEnter to receive a blessing... or a curse.\nYou won\'t know which until it\'s too late.';
+      '신비로운 제단이 알 수 없는 힘으로 고동칩니다.\n들어가 축복을... 아니면 저주를 받으세요.\n너무 늦기 전까지는 어느 쪽인지 알 수 없습니다.';
 
   @override
-  String get dngAcceptCurse => 'ACCEPT THE CURSE';
+  String get dngAcceptCurse => '저주를 받아들이기';
 
   @override
-  String get dngReceiveBlessing => 'RECEIVE BLESSING';
+  String get dngReceiveBlessing => '축복 받기';
 
   @override
-  String get dngEnterTwin => 'ENTER  (2 EFFECTS)';
+  String get dngEnterTwin => '입장  (효과 2개)';
 
   @override
-  String get dngEnterShrine => 'ENTER SHRINE';
+  String get dngEnterShrine => '제단 입장';
 
   @override
   String dngActiveEffects(int n) {
-    return 'Active effects: $n';
+    return '활성 효과: $n';
   }
 
   @override
-  String get dngSkip => 'SKIP';
+  String get dngSkip => '건너뛰기';
 
   @override
   String dngGuaranteeBless(int c) {
-    return '✧  GUARANTEE BLESSING  ($c ◆)';
+    return '✧  축복 보장  ($c ◆)';
   }
 
   @override
   String dngTrapDamage(int dmg, int pct) {
-    return 'You will take $dmg damage ($pct% of max HP).';
+    return '$dmg 데미지를 받습니다 (최대 HP의 $pct%).';
   }
 
   @override
-  String get dngLockedChest => 'Locked Chest';
+  String get dngLockedChest => '잠긴 상자';
 
   @override
-  String get dngChestContains => 'Contains a rare or epic item.';
+  String get dngChestContains => '희귀 또는 영웅 아이템이 들어 있습니다.';
 
   @override
   String dngCostShards(Object cost) {
-    return '$cost shards';
+    return '$cost 파편';
   }
 
   @override
   String dngHave(int n) {
-    return '(have $n)';
+    return '(보유 $n)';
   }
 
   @override
   String dngCostZcoins(int cost) {
-    return '$cost ZCoins';
+    return '$cost Z코인';
   }
 
   @override
-  String get dngMerchantQuote =>
-      '\"Bones for trinkets, traveller. More bones, finer wares.\"';
+  String get dngMerchantQuote => '\"장신구는 뼈로, 여행자여. 뼈가 많을수록 더 좋은 물건이지.\"';
 
   @override
   String dngBones(int n) {
-    return '🦴  $n Bones';
+    return '🦴  뼈 $n개';
   }
 
   @override
@@ -1874,179 +1869,178 @@ class AppLocalizationsKo extends AppLocalizations {
   }
 
   @override
-  String get dngClaimRelic => '☠ BOSS SLAIN — CLAIM A RELIC';
+  String get dngClaimRelic => '☠ 보스 처치 — 유물 획득';
 
   @override
-  String get dngSkipDescend => 'SKIP — DESCEND';
+  String get dngSkipDescend => '건너뛰기 — 하강';
 
   @override
-  String get dngReturn => 'RETURN';
+  String get dngReturn => '돌아가기';
 
   @override
   String dngDescendTo(int n) {
-    return 'DESCEND TO FLOOR $n';
+    return '$n층으로 하강';
   }
 
   @override
-  String get dngFallen => '☠ Fallen';
+  String get dngFallen => '☠ 쓰러짐';
 
   @override
-  String get dngGotAway => '💰 It got away!';
+  String get dngGotAway => '💰 놓쳤습니다!';
 
   @override
-  String get dngVictory => '✓ Victory';
+  String get dngVictory => '✓ 승리';
 
   @override
   String dngAmbushHit(int n) {
-    return 'Ambush hit dealt $n before the fight.';
+    return '매복 공격이 전투 전에 $n의 데미지를 입혔습니다.';
   }
 
   @override
   String dngItemToBag(String name, String label) {
-    return '✦ $name ($label) → Bag';
+    return '✦ $name ($label) → 가방';
   }
 
   @override
-  String get dngRested => '⊕ Rested';
+  String get dngRested => '⊕ 휴식함';
 
   @override
-  String get dngTreasureCollected => '✦ Treasure collected';
+  String get dngTreasureCollected => '✦ 보물 획득';
 
   @override
-  String get dngBlessingReceived => '✧ Blessing received';
+  String get dngBlessingReceived => '✧ 축복 받음';
 
   @override
-  String get dngSlainTrap => '☠ Slain by the trap';
+  String get dngSlainTrap => '☠ 함정에 의해 사망';
 
   @override
-  String get dngTrapSurvived => '✸ Trap survived';
+  String get dngTrapSurvived => '✸ 함정 생존';
 
   @override
-  String get dngChestOpened => '◆ Chest opened';
+  String get dngChestOpened => '◆ 상자 열림';
 
   @override
-  String get dngLootAdded =>
-      'Your loot has already been added to your account.';
+  String get dngLootAdded => '전리품이 이미 계정에 추가되었습니다.';
 
   @override
   String dngLordFallen(int z, int g) {
-    return 'The Dungeon Lord has fallen!\n+5 mythril  •  +$z Z-Coins  •  +$g gold  •  bonus item';
+    return '던전 군주가 쓰러졌습니다!\n+5 미스릴  •  +$z Z코인  •  +$g 골드  •  보너스 아이템';
   }
 
   @override
   String dngTierN(int t) {
-    return 'TIER $t';
+    return '티어 $t';
   }
 
   @override
-  String get dngFloor => 'FLOOR';
+  String get dngFloor => '층';
 
   @override
-  String get dngRooms => 'ROOMS';
+  String get dngRooms => '방';
 
   @override
-  String get dngBosses => 'BOSSES';
+  String get dngBosses => '보스';
 
   @override
-  String get dngGold => 'GOLD';
+  String get dngGold => '골드';
 
   @override
-  String get dngShards => 'SHARDS';
+  String get dngShards => '파편';
 
   @override
   String dngTierCleared(int t) {
-    return '✓ Tier $t cleared — AUTO unlocked!';
+    return '✓ 티어 $t 클리어 — 자동 해금!';
   }
 
   @override
-  String get dngNewRecord => '★ New record!';
+  String get dngNewRecord => '★ 신기록!';
 
   @override
-  String get dngAllLootAdded => 'All loot has been added to your account.';
+  String get dngAllLootAdded => '모든 전리품이 계정에 추가되었습니다.';
 
   @override
-  String get dngYouFallen => 'YOU HAVE FALLEN';
+  String get dngYouFallen => '당신은 쓰러졌습니다';
 
   @override
-  String get dngCleared => 'DUNGEON CLEARED!';
+  String get dngCleared => '던전 클리어!';
 
   @override
-  String get dngRunEnded => 'RUN ENDED';
+  String get dngRunEnded => '런 종료';
 
   @override
-  String get dngAutoLocked => '🔒 AUTO';
+  String get dngAutoLocked => '🔒 자동';
 
   @override
-  String get dngStop => '◉ STOP';
+  String get dngStop => '◉ 정지';
 
   @override
-  String get dngAuto => '✦ AUTO';
+  String get dngAuto => '✦ 자동';
 
   @override
-  String get dngRunAgain => 'RUN AGAIN';
+  String get dngRunAgain => '다시 도전';
 
   @override
-  String get dngReturnHall => 'RETURN TO HALL';
+  String get dngReturnHall => '홀로 돌아가기';
 
   @override
-  String get auraEquipped => 'EQUIPPED';
+  String get auraEquipped => '장착됨';
 
   @override
-  String get auraOn => 'ON';
+  String get auraOn => '켜짐';
 
   @override
   String auraCost(int n) {
-    return 'Cost: $n zcoins';
+    return '비용: $n Z코인';
   }
 
   @override
   String auraUnlockTitle(String name) {
-    return 'Unlock $name?';
+    return '$name을(를) 해금할까요?';
   }
 
   @override
-  String get auraAllAuras => 'ALL AURAS';
+  String get auraAllAuras => '모든 오라';
 
   @override
-  String get auraAllSkins => 'ALL SKINS';
+  String get auraAllSkins => '모든 스킨';
 
   @override
-  String get auraAllPets => 'ALL PETS';
+  String get auraAllPets => '모든 펫';
 
   @override
-  String get auraRemoveAura => 'Remove aura';
+  String get auraRemoveAura => '오라 제거';
 
   @override
-  String get auraRemoveSkin => 'Remove skin';
+  String get auraRemoveSkin => '스킨 제거';
 
   @override
-  String get auraDismissPet => 'Dismiss pet';
+  String get auraDismissPet => '펫 해제';
 
   @override
-  String get auraBattleCompanion => 'BATTLE COMPANION';
+  String get auraBattleCompanion => '전투 동료';
 
   @override
-  String get auraWaystones => 'WAYSTONES';
+  String get auraWaystones => '길잡이돌';
 
   @override
-  String get auraAttackEffects => 'ATTACK EFFECTS';
+  String get auraAttackEffects => '공격 효과';
 
   @override
-  String get auraCharSlots => 'CHARACTER SLOTS';
+  String get auraCharSlots => '캐릭터 슬롯';
 
   @override
   String get auraCompanionNote =>
-      'One companion can be active at a time. Each grants a small passive bonus.';
+      '한 번에 하나의 동료만 활성화할 수 있습니다. 각각 작은 패시브 보너스를 줍니다.';
 
   @override
-  String get auraBeforeAfter => 'Before / After';
+  String get auraBeforeAfter => '전 / 후';
 
   @override
-  String get auraAllSlots => 'All 12 slots unlocked.';
+  String get auraAllSlots => '12개 슬롯 모두 해금됨.';
 
   @override
   String auraAdoptTitle(String name) {
-    return 'Adopt $name?';
+    return '$name을(를) 입양할까요?';
   }
 
   @override
@@ -2055,151 +2049,149 @@ class AppLocalizationsKo extends AppLocalizations {
   }
 
   @override
-  String get auraMaxEvolution => '★★ MAX EVOLUTION';
+  String get auraMaxEvolution => '★★ 최대 진화';
 
   @override
   String auraOwned(Object count) {
-    return 'Owned: $count';
+    return '보유: $count';
   }
 
   @override
   String auraWaystoneDesc(Object h, String m) {
-    return '${h}h  ·  $m× idle income';
+    return '$h시간  ·  $m× 방치 수입';
   }
 
   @override
   String auraHitEvery(String text) {
-    return '\"$text\" on every hit';
+    return '모든 공격 시 \"$text\"';
   }
 
   @override
   String auraSlotN(Object n) {
-    return 'Slot $n';
+    return '슬롯 $n';
   }
 
   @override
-  String get auraAddSlot => 'Add one more character save slot.';
+  String get auraAddSlot => '캐릭터 저장 슬롯을 하나 더 추가합니다.';
 
   @override
-  String get auraUnlock => 'UNLOCK';
+  String get auraUnlock => '해금';
 
   @override
-  String get auraAdopt => 'ADOPT';
+  String get auraAdopt => '입양';
 
   @override
-  String get auraBuy => 'BUY';
+  String get auraBuy => '구매';
 
   @override
-  String get auraEvolve => 'EVOLVE';
+  String get auraEvolve => '진화';
 
   @override
-  String get auraEquip => 'EQUIP';
+  String get auraEquip => '장착';
 
   @override
-  String get auraActive => 'ACTIVE';
+  String get auraActive => '활성';
 
   @override
-  String get auraSendOut => 'SEND OUT';
+  String get auraSendOut => '내보내기';
 
   @override
   String get auraStackAuras =>
-      'Bonuses from every aura you OWN stack automatically — you keep them all. Equip one just to choose which glow you show.';
+      '보유한 모든 오라의 보너스는 자동으로 중첩됩니다 — 모두 유지됩니다. 하나를 장착하는 것은 어떤 빛을 보여줄지 고르는 것뿐입니다.';
 
   @override
   String get auraStackSkins =>
-      'Bonuses from every skin you OWN stack automatically — you keep them all. Equip one just to choose which look you wear.';
+      '보유한 모든 스킨의 보너스는 자동으로 중첩됩니다 — 모두 유지됩니다. 하나를 장착하는 것은 어떤 모습을 입을지 고르는 것뿐입니다.';
 
   @override
-  String get armTabUniques => 'UNIQUES';
+  String get armTabUniques => '고유';
 
   @override
-  String get armTabMythic => 'MYTHIC';
+  String get armTabMythic => '신화';
 
   @override
-  String get armTabSets => 'SET ITEMS';
+  String get armTabSets => '세트 아이템';
 
   @override
-  String get armTabArtifacts => 'ARTIFACTS';
+  String get armTabArtifacts => '유물';
 
   @override
-  String get armNoLegendaries => 'No legendaries for this class.';
+  String get armNoLegendaries => '이 직업의 전설 아이템이 없습니다.';
 
   @override
   String armClassUniques(int count) {
-    return '$count Class Uniques';
+    return '직업 고유 $count개';
   }
 
   @override
-  String get armOwned => 'OWNED';
+  String get armOwned => '보유함';
 
   @override
   String armSlotReqLevel(String slot, int lvl) {
-    return '$slot  •  Req. Level $lvl';
+    return '$slot  •  요구 레벨 $lvl';
   }
 
   @override
-  String get armStats => 'STATS';
+  String get armStats => '능력치';
 
   @override
-  String get armAbilityEnh => 'ABILITY ENHANCEMENT';
+  String get armAbilityEnh => '스킬 강화';
 
   @override
   String armAbilityDamage(String x) {
-    return '• Ability damage ×$x';
+    return '• 스킬 데미지 ×$x';
   }
 
   @override
   String armAbilityDuration(Object n) {
-    return '• +$n rounds duration';
+    return '• +$n 라운드 지속';
   }
 
   @override
   String armAbilityCooldown(String v) {
-    return '• $v rounds cooldown';
+    return '• $v 라운드 재사용 대기';
   }
 
   @override
   String armOnCast(String desc) {
-    return '• On cast: $desc';
+    return '• 시전 시: $desc';
   }
 
   @override
-  String get armHowToFind => 'HOW TO FIND';
+  String get armHowToFind => '획득 방법';
 
   @override
-  String get armDropCampaign => 'Campaign bosses';
+  String get armDropCampaign => '캠페인 보스';
 
   @override
-  String get armDropTower => 'Tower Ascension bosses';
+  String get armDropTower => '탑 등반 보스';
 
   @override
-  String get armDropBossRush => 'Boss Rush runs';
+  String get armDropBossRush => '보스 러시 런';
 
   @override
-  String get armDropGauntlet => 'Gauntlet clear';
+  String get armDropGauntlet => '시련 클리어';
 
   @override
-  String get armRate2 => '2% per boss kill';
+  String get armRate2 => '보스 처치당 2%';
 
   @override
-  String get armRate03 => '0.3% per boss kill';
+  String get armRate03 => '보스 처치당 0.3%';
 
   @override
-  String get armRateRare => 'Rare bonus drop';
+  String get armRateRare => '희귀 보너스 드롭';
 
   @override
-  String get armDropsClassSpecific =>
-      'Drops are class-specific — only items for your class can drop.';
+  String get armDropsClassSpecific => '드롭은 직업 전용입니다 — 당신의 직업용 아이템만 드롭됩니다.';
 
   @override
-  String get armNoMythic => 'No Mythic items yet';
+  String get armNoMythic => '아직 신화 아이템 없음';
 
   @override
-  String get armMythicHint =>
-      'Defeat campaign bosses for a 0.5% chance per kill.';
+  String get armMythicHint => '캠페인 보스를 처치하면 처치당 0.5% 확률.';
 
   @override
-  String get armMythicItems => 'Mythic Items';
+  String get armMythicItems => '신화 아이템';
 
   @override
   String armSlotLv(String slot, int lvl) {
@@ -2208,11 +2200,11 @@ class AppLocalizationsKo extends AppLocalizations {
 
   @override
   String armKeyword(String name) {
-    return '$name keyword';
+    return '$name 키워드';
   }
 
   @override
-  String get armSetItemsTitle => 'Set Items';
+  String get armSetItemsTitle => '세트 아이템';
 
   @override
   String armFraction(int a, int b) {
@@ -2220,132 +2212,129 @@ class AppLocalizationsKo extends AppLocalizations {
   }
 
   @override
-  String get armEquippedLower => 'equipped';
+  String get armEquippedLower => '장착됨';
 
   @override
-  String get armSetBonuses => 'SET BONUSES';
+  String get armSetBonuses => '세트 보너스';
 
   @override
   String armPc(Object n) {
-    return '${n}pc';
+    return '$n개';
   }
 
   @override
   String get armUniqueBlurb =>
-      'Unique items are class-bound and dramatically enhance your abilities. Each amplifies a specific class ability. Drop rate: 2% per boss kill.';
+      '고유 아이템은 직업 전용이며 스킬을 크게 강화합니다. 각각 특정 직업 스킬을 증폭시킵니다. 드롭 확률: 보스 처치당 2%.';
 
   @override
   String get armMythicBlurb =>
-      'The rarest procedurally-generated tier. Mythic items have 3 stats with the highest possible values and a powerful keyword effect. Drop rate: 0.5% per boss kill.';
+      '가장 희귀한 절차적 생성 등급입니다. 신화 아이템은 가능한 최고 수치의 능력치 3개와 강력한 키워드 효과를 가집니다. 드롭 확률: 보스 처치당 0.5%.';
 
   @override
   String get armSetBlurb =>
-      'Collect multiple pieces of the same set to unlock powerful bonuses. Sets now require 6 pieces for the full bonus. Drop rate: 0.3% per boss kill.';
+      '같은 세트의 여러 부위를 모아 강력한 보너스를 해금하세요. 이제 세트는 전체 보너스에 6부위가 필요합니다. 드롭 확률: 보스 처치당 0.3%.';
 
   @override
   String armArtifactBlurb(int count) {
-    return '$count three-piece artifact sets. Equip 2 matching green pieces on the artifact grid for a partial bonus, all 3 for the full bonus. Set pieces drop from Dungeons, Boss Rush, and Campaign bosses.';
+    return '3부위 유물 세트 $count개. 유물 격자에 녹색 부위 2개를 맞춰 장착하면 부분 보너스를, 3개 모두면 전체 보너스를 얻습니다. 세트 부위는 던전, 보스 러시, 캠페인 보스에서 드롭됩니다.';
   }
 
   @override
-  String get armSetPieces => 'SET PIECES';
+  String get armSetPieces => '세트 부위';
 
   @override
-  String get armArtifactSets => 'Artifact Sets';
+  String get armArtifactSets => '유물 세트';
 
   @override
   String armCollected(int a, int b) {
-    return 'COLLECTED  $a / $b distinct pieces owned';
+    return '수집함  서로 다른 부위 $a / $b개 보유';
   }
 
   @override
   String endlessStage(int n) {
-    return 'Stage $n';
+    return '스테이지 $n';
   }
 
   @override
   String endlessNextReward(int n) {
-    return 'Next reward: Floor $n';
+    return '다음 보상: $n층';
   }
 
   @override
-  String get endlessChallengeBoss => 'CHALLENGE A BOSS';
+  String get endlessChallengeBoss => '보스 도전';
 
   @override
-  String get endlessPremiumAutoClear =>
-      '🔒  Reach campaign Stage 5 to auto-clear bosses';
+  String get endlessPremiumAutoClear => '🔒  캠페인 스테이지 5에 도달해 보스를 자동 클리어';
 
   @override
-  String get endlessRewards => 'REWARDS: ';
+  String get endlessRewards => '보상: ';
 
   @override
-  String get endlessDrop => 'DROP: ';
+  String get endlessDrop => '드롭: ';
 
   @override
-  String get endlessGold => 'GOLD';
+  String get endlessGold => '골드';
 
   @override
-  String get endlessXp => 'XP';
+  String get endlessXp => '경험치';
 
   @override
-  String get endlessRespawns => 'RESPAWNS';
+  String get endlessRespawns => '리스폰';
 
   @override
   String endlessTowerShards(String n) {
-    return '+$n TOWER SHARDS';
+    return '+$n 타워 파편';
   }
 
   @override
   String endlessMilestone(Object n) {
-    return '★ MILESTONE: $n KILLS ★';
+    return '★ 마일스톤: $n 처치 ★';
   }
 
   @override
   String endlessMilestoneReward(String gold, Object s) {
-    return '+$gold GOLD  +$s ◆';
+    return '+$gold 골드  +$s ◆';
   }
 
   @override
-  String get endlessEnemyStirs => 'The enemy stirs again...';
+  String get endlessEnemyStirs => '적이 다시 꿈틀거립니다...';
 
   @override
-  String get endlessDefeatBody =>
-      'Your hero was overwhelmed.\nUpgrade your stats and try again.';
+  String get endlessDefeatBody => '영웅이 압도당했습니다.\n능력치를 강화하고 다시 도전하세요.';
 
   @override
-  String get pvpNoStamina => 'No stamina! Recharges 1 every 45 minutes.';
+  String get pvpNoStamina => '스태미나 없음! 45분마다 1씩 충전됩니다.';
 
   @override
-  String get pvpTitle => 'PVP ARENA';
+  String get pvpTitle => 'PVP 아레나';
 
   @override
-  String get pvpSimLab => 'Sim Lab';
+  String get pvpSimLab => '시뮬 랩';
 
   @override
-  String get pvpRefresh => 'Refresh leaderboard';
+  String get pvpRefresh => '리더보드 새로고침';
 
   @override
-  String get pvpLeaderboard => 'LEADERBOARD';
+  String get pvpLeaderboard => '리더보드';
 
   @override
   String pvpToday(String label) {
-    return 'TODAY: $label';
+    return '오늘: $label';
   }
 
   @override
   String pvpWinsToday(Object wins, Object dmg) {
-    return '$wins wins today  •  $dmg total dmg';
+    return '오늘 $wins승  •  총 $dmg 데미지';
   }
 
   @override
-  String get pvpClaimed => '✓ CLAIMED';
+  String get pvpClaimed => '✓ 받음';
 
   @override
-  String get pvpNoChallengers => 'NO CHALLENGERS YET';
+  String get pvpNoChallengers => '아직 도전자가 없습니다';
 
   @override
-  String get pvpNoChallengersSub =>
-      'Fight a match to join the leaderboard\nand see how you stack up.';
+  String get pvpNoChallengersSub => '경기를 치러 리더보드에 참여하고\n당신의 순위를 확인하세요.';
 
   @override
   String pvpHpAc(Object hp, Object ac) {
@@ -2353,33 +2342,33 @@ class AppLocalizationsKo extends AppLocalizations {
   }
 
   @override
-  String get pvpStamina => 'STAMINA  ';
+  String get pvpStamina => '스태미나  ';
 
   @override
-  String get pvpStaminaTip => 'Stamina recovers 1 heart every 45 minutes.';
+  String get pvpStaminaTip => '스태미나는 45분마다 하트 1개씩 회복됩니다.';
 
   @override
-  String get pvpRating => 'RATING';
+  String get pvpRating => '레이팅';
 
   @override
-  String get pvpWins => 'WINS';
+  String get pvpWins => '승';
 
   @override
-  String get pvpLosses => 'LOSSES';
+  String get pvpLosses => '패';
 
   @override
-  String get pvpWL => 'W/L';
+  String get pvpWL => '승/패';
 
   @override
   String pvpLeague(String name) {
-    return '$name LEAGUE';
+    return '$name 리그';
   }
 
   @override
-  String get pvpNearRank => 'NEAR YOUR RANK';
+  String get pvpNearRank => '내 순위 근처';
 
   @override
-  String get pvpPlayersAbove => '— players just above you';
+  String get pvpPlayersAbove => '— 바로 위의 플레이어';
 
   @override
   String pvpClassLv(String cls, Object lvl) {
@@ -2387,19 +2376,19 @@ class AppLocalizationsKo extends AppLocalizations {
   }
 
   @override
-  String get pvpChallenge => 'CHALLENGE';
+  String get pvpChallenge => '도전';
 
   @override
-  String get pvpBattleLog => 'BATTLE LOG';
+  String get pvpBattleLog => '전투 기록';
 
   @override
-  String get pvpBattleLogTip => 'Battle log';
+  String get pvpBattleLogTip => '전투 기록';
 
   @override
-  String get pvpNoCombat => 'No combat yet.';
+  String get pvpNoCombat => '아직 전투 없음.';
 
   @override
-  String get pvpClose => 'CLOSE';
+  String get pvpClose => '닫기';
 
   @override
   String pvpVs(String hero, String opp) {
@@ -2407,10 +2396,10 @@ class AppLocalizationsKo extends AppLocalizations {
   }
 
   @override
-  String get pvpReturnArena => 'RETURN TO ARENA';
+  String get pvpReturnArena => '아레나로 돌아가기';
 
   @override
-  String get pvpFighting => 'Fighting...';
+  String get pvpFighting => '전투 중...';
 
   @override
   String invBagCount(Object n, Object cap) {
@@ -2419,164 +2408,164 @@ class AppLocalizationsKo extends AppLocalizations {
 
   @override
   String invBuyTab(Object cost) {
-    return '+ TAB  $cost';
+    return '+ 탭  $cost';
   }
 
   @override
-  String get invAutoEquip => 'AUTO EQUIP';
+  String get invAutoEquip => '자동 장착';
 
   @override
   String invTabN(Object n, Object count) {
-    return 'TAB $n  ($count)';
+    return '탭 $n  ($count)';
   }
 
   @override
-  String get invEquipment => 'EQUIPMENT';
+  String get invEquipment => '장비';
 
   @override
   String invBag(Object n, Object cap) {
-    return 'BAG  ($n/$cap)';
+    return '가방  ($n/$cap)';
   }
 
   @override
-  String get invUnequip => 'Unequip';
+  String get invUnequip => '장착 해제';
 
   @override
-  String get invNoItems => 'No items in this tab.';
+  String get invNoItems => '이 탭에 아이템이 없습니다.';
 
   @override
   String invReqClass(String cls) {
-    return 'Requires $cls';
+    return '$cls 필요';
   }
 
   @override
   String invReqLevel(Object lvl) {
-    return 'Requires Level $lvl';
+    return '레벨 $lvl 필요';
   }
 
   @override
   String invReqTier(Object t) {
-    return 'Requires Tier $t';
+    return '티어 $t 필요';
   }
 
   @override
-  String get invCannotEquip => 'Cannot Equip';
+  String get invCannotEquip => '장착 불가';
 
   @override
-  String get invEquip => 'Equip';
+  String get invEquip => '장착';
 
   @override
-  String get invUnlock => 'Unlock 🔓';
+  String get invUnlock => '잠금 해제 🔓';
 
   @override
-  String get invLock => 'Lock 🔒';
+  String get invLock => '잠금 🔒';
 
   @override
-  String get invDiscard => 'Discard';
+  String get invDiscard => '버리기';
 
   @override
-  String get invAny => 'Any';
+  String get invAny => '모두';
 
   @override
   String invUniqueOnly(String cls) {
-    return '★ Unique — $cls only';
+    return '★ 고유 — $cls 전용';
   }
 
   @override
-  String get invWrongClass => '(wrong class)';
+  String get invWrongClass => '(잘못된 직업)';
 
   @override
-  String get invColStat => 'STAT';
+  String get invColStat => '능력치';
 
   @override
-  String get invColThis => 'THIS';
+  String get invColThis => '이것';
 
   @override
-  String get invColEqpd => 'EQPD';
+  String get invColEqpd => '장착';
 
   @override
-  String get invColDiff => 'DIFF';
+  String get invColDiff => '차이';
 
   @override
-  String get invEmptySocket => 'Empty Socket';
+  String get invEmptySocket => '빈 소켓';
 
   @override
-  String get invCraftGems => 'Craft gems in Forge → Gems tab';
+  String get invCraftGems => '제작소 → 젬 탭에서 젬을 제작하세요';
 
   @override
-  String get invRemove => 'REMOVE';
+  String get invRemove => '제거';
 
   @override
-  String get invSocket => 'SOCKET';
+  String get invSocket => '장착';
 
   @override
   String invChooseGem(String name) {
-    return 'Choose a gem to socket into $name';
+    return '$name에 장착할 젬을 선택하세요';
   }
 
   @override
   String invOnThis(String slot, String bonus) {
-    return 'On this $slot: $bonus';
+    return '이 $slot에: $bonus';
   }
 
   @override
-  String get invRemoveGem => 'Remove Gem?';
+  String get invRemoveGem => '젬을 제거할까요?';
 
   @override
-  String get invDestroy => 'DESTROY';
+  String get invDestroy => '파괴';
 
   @override
-  String get invSort => 'Sort:';
+  String get invSort => '정렬:';
 
   @override
-  String get invFilter => 'Filter:';
+  String get invFilter => '필터:';
 
   @override
   String invGemsAvailable(Object count) {
-    return '$count gem(s) available to socket';
+    return '장착 가능한 젬 $count개';
   }
 
   @override
   String invRemoveBody(String name) {
-    return '$name will be destroyed. Gems cannot be recovered once removed.';
+    return '$name이(가) 파괴됩니다. 제거한 젬은 복구할 수 없습니다.';
   }
 
   @override
   String invReplaceBody(String old, String gnew) {
-    return '$old will be destroyed and replaced with $gnew.';
+    return '$old이(가) 파괴되고 $gnew(으)로 교체됩니다.';
   }
 
   @override
-  String get npcRoster => 'ROSTER';
+  String get npcRoster => '명단';
 
   @override
-  String get npcSynergies => 'SYNERGIES';
+  String get npcSynergies => '시너지';
 
   @override
-  String get npcTitle => 'MERCENARIES';
+  String get npcTitle => '용병';
 
   @override
-  String get npcTotalBonuses => 'TOTAL ACTIVE BONUSES';
+  String get npcTotalBonuses => '총 활성 보너스';
 
   @override
-  String get npcBattleParty => 'BATTLE PARTY';
+  String get npcBattleParty => '전투 파티';
 
   @override
   String npcFielded(Object count, Object max) {
-    return '$count / $max fielded';
+    return '$count / $max 출전';
   }
 
   @override
-  String get npcUnknown => 'Unknown Mercenary';
+  String get npcUnknown => '알 수 없는 용병';
 
   @override
   String npcBattleAbility(String name) {
-    return 'BATTLE ABILITY: $name';
+    return '전투 스킬: $name';
   }
 
   @override
   String npcUnlock(String label) {
-    return 'Unlock: $label';
+    return '해금: $label';
   }
 
   @override
@@ -2586,22 +2575,22 @@ class AppLocalizationsKo extends AppLocalizations {
 
   @override
   String npcLvTalent(Object n) {
-    return 'LV $n TALENT';
+    return 'LV $n 특성';
   }
 
   @override
   String npcChosen(String name) {
-    return 'CHOSEN: $name';
+    return '선택됨: $name';
   }
 
   @override
-  String get npcMilestoneComplete => 'MILESTONE COMPLETE — RECRUITING...';
+  String get npcMilestoneComplete => '마일스톤 완료 — 영입 중...';
 
   @override
-  String get npcMax => '★ MAX';
+  String get npcMax => '★ 최대';
 
   @override
-  String get npcStarRank => 'STAR RANK';
+  String get npcStarRank => '스타 랭크';
 
   @override
   String npcStars(Object a, Object b) {
@@ -2609,47 +2598,44 @@ class AppLocalizationsKo extends AppLocalizations {
   }
 
   @override
-  String get npcFullyAscended =>
-      '★ FULLY ASCENDED — each star adds +1 effective level.';
+  String get npcFullyAscended => '★ 완전히 초월함 — 각 별이 유효 레벨 +1을 더합니다.';
 
   @override
   String npcAscendStar(Object n) {
-    return 'ASCEND ★$n';
+    return '초월 ★$n';
   }
 
   @override
   String npcYouHave(Object n) {
-    return 'You have: $n Mythril';
+    return '보유: 미스릴 $n개';
   }
 
   @override
-  String get npcStarInfo =>
-      'Each star = +1 effective level of this merc\'s bonus.';
+  String get npcStarInfo => '각 별 = 이 용병 보너스의 유효 레벨 +1.';
 
   @override
-  String get npcPassiveOnly => 'Passive bonuses only — always active.';
+  String get npcPassiveOnly => '패시브 보너스만 — 항상 활성.';
 
   @override
   String npcCostShards(Object n) {
-    return 'Cost: ◆ $n Shards';
+    return '비용: ◆ 파편 $n개';
   }
 
   @override
   String get npcTutorial =>
-      'Mercenaries are companions who join permanently when you hit certain milestones. 🤝 Each one provides passive combat bonuses in every battle and can synergise with others for extra power.';
+      '용병은 특정 마일스톤을 달성하면 영구히 합류하는 동료입니다. 🤝 각각 모든 전투에서 패시브 전투 보너스를 제공하며, 다른 용병과 시너지를 내 추가 위력을 얻을 수 있습니다.';
 
   @override
   String npcRecruited(Object a, Object b) {
-    return '$a / $b  recruited';
+    return '$a / $b  영입함';
   }
 
   @override
-  String get npcNoMercs =>
-      'No mercenaries recruited yet. Fulfill milestones to unlock them.';
+  String get npcNoMercs => '아직 영입한 용병이 없습니다. 마일스톤을 달성해 해금하세요.';
 
   @override
   String npcChipDamage(Object n) {
-    return '+$n% Damage';
+    return '+$n% 데미지';
   }
 
   @override
@@ -2659,7 +2645,7 @@ class AppLocalizationsKo extends AppLocalizations {
 
   @override
   String npcChipShards(Object n) {
-    return '+$n% Shards';
+    return '+$n% 파편';
   }
 
   @override
@@ -2668,108 +2654,107 @@ class AppLocalizationsKo extends AppLocalizations {
   }
 
   @override
-  String get shopTabBundles => 'BUNDLES';
+  String get shopTabBundles => '번들';
 
   @override
   String get shopTabVip => 'VIP';
 
   @override
-  String get shopTabStarter => 'STARTER';
+  String get shopTabStarter => '스타터';
 
   @override
-  String get shopTabResources => 'RESOURCES';
+  String get shopTabResources => '자원';
 
   @override
-  String get shopTabCosmetics => 'COSMETICS';
+  String get shopTabCosmetics => '코스메틱';
 
   @override
-  String get shopSecBundles => 'ZCOIN BUNDLES';
+  String get shopSecBundles => 'Z코인 번들';
 
   @override
-  String get shopSecBundlesSub => 'Premium currency for the Shop';
+  String get shopSecBundlesSub => '상점용 프리미엄 재화';
 
   @override
-  String get shopSecVip => 'VIP SUBSCRIPTIONS';
+  String get shopSecVip => 'VIP 구독';
 
   @override
-  String get shopSecVipSub => 'Recurring perks and benefits';
+  String get shopSecVipSub => '반복 혜택 및 특전';
 
   @override
-  String get shopSecStarter => 'STARTER PACKS';
+  String get shopSecStarter => '스타터 팩';
 
   @override
-  String get shopSecStarterSub => 'One-time purchase bundles';
+  String get shopSecStarterSub => '일회성 구매 번들';
 
   @override
-  String get shopSecResources => 'RESOURCES';
+  String get shopSecResources => '자원';
 
   @override
-  String get shopSecResourcesSub => 'Spend ZCoins on gold & materials';
+  String get shopSecResourcesSub => 'Z코인을 골드 & 재료에 사용';
 
   @override
-  String get shopSecAuras => 'AURAS';
+  String get shopSecAuras => '오라';
 
   @override
-  String get shopSecAurasSub =>
-      'Equip a glow — owned aura bonuses always stack';
+  String get shopSecAurasSub => '빛을 장착 — 보유한 오라 보너스는 항상 중첩됩니다';
 
   @override
-  String get shopSecBoosts => 'BOOSTS';
+  String get shopSecBoosts => '부스트';
 
   @override
-  String get shopSecBoostsSub => 'Permanent stat boosts';
+  String get shopSecBoostsSub => '영구 능력치 부스트';
 
   @override
-  String get shopSecTitles => 'TITLES';
+  String get shopSecTitles => '칭호';
 
   @override
-  String get shopSecTitlesSub => 'A rank displayed beneath your name';
+  String get shopSecTitlesSub => '이름 아래 표시되는 랭크';
 
   @override
-  String get shopSecColours => 'NAME COLOURS';
+  String get shopSecColours => '이름 색상';
 
   @override
-  String get shopSecColoursSub => 'Colour + glow for your hero name';
+  String get shopSecColoursSub => '영웅 이름의 색상 + 광채';
 
   @override
-  String get shopSecFrames => 'FRAMES';
+  String get shopSecFrames => '프레임';
 
   @override
-  String get shopSecFramesSub => 'A frame around your hero portrait';
+  String get shopSecFramesSub => '영웅 초상화 주위의 프레임';
 
   @override
-  String get shopSecSlots => 'CHARACTER SLOTS';
+  String get shopSecSlots => '캐릭터 슬롯';
 
   @override
-  String get shopSecSlotsSub => 'Extra character save slots';
+  String get shopSecSlotsSub => '추가 캐릭터 저장 슬롯';
 
   @override
-  String get shopPremiumArmor => 'PREMIUM CLASS ARMOR';
+  String get shopPremiumArmor => '프리미엄 직업 방어구';
 
   @override
   String shopEndgameSkin(String cls) {
-    return '$cls · Endgame skin';
+    return '$cls · 엔드게임 스킨';
   }
 
   @override
-  String get shopIncludedBonuses => 'INCLUDED BONUSES';
+  String get shopIncludedBonuses => '포함된 보너스';
 
   @override
-  String get shopEverySkin => 'every shop skin bonus, combined';
+  String get shopEverySkin => '모든 상점 스킨 보너스 통합';
 
   @override
-  String get shopEquippedCheck => '✓ EQUIPPED';
+  String get shopEquippedCheck => '✓ 장착됨';
 
   @override
-  String get shopUnequip => 'UNEQUIP';
+  String get shopUnequip => '장착 해제';
 
   @override
   String shopUnlockPrice(String price) {
-    return 'UNLOCK  ·  $price';
+    return '해금  ·  $price';
   }
 
   @override
-  String get shopStoreUnavailable => 'Store unavailable — try again later.';
+  String get shopStoreUnavailable => '상점을 이용할 수 없습니다 — 나중에 다시 시도하세요.';
 
   @override
   String get shopVipSub => 'VIP SUBSCRIPTION';
