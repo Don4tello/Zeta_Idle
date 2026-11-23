@@ -1286,5 +1286,22 @@
   "ratingTitle": "Curtindo Zeta Idle?",
   "ratingBody": "Você já está nessa aventura há um tempo! Se estiver se divertindo, uma avaliação rápida ajuda muito o jogo a crescer. 🙏",
   "ratingLove": "Amando!",
-  "ratingMeh": "Nem tanto"
+  "ratingMeh": "Nem tanto",
+  "saveHeroTitle": "Salve seu herói",
+  "saveHeroBody": "Entre com o Google para fazer backup do seu progresso na nuvem. Mantenha seu herói seguro e leve-o entre dispositivos — grátis, em um segundo.",
+  "saveHeroLater": "Mais tarde",
+  "saveHeroConfirm": "Salvar meu herói",
+  "saveHeroSynced": "Progresso salvo na nuvem.",
+  "saveHeroFailed": "O login não foi concluído.",
+  "firstStepsTitle": "PRIMEIROS PASSOS",
+  "firstStepsSubtitle": "Conclua-os para aprender o básico e garantir um Baú Raro.",
+  "firstStepsWinBattle": "Vença sua primeira batalha",
+  "firstStepsReachStage3": "Alcance a Fase 3",
+  "firstStepsFirstBoss": "Derrote seu primeiro chefe",
+  "firstStepsReachStage10": "Alcance a Fase 10",
+  "firstStepsCapstone": "Resgate seu Baú Raro",
+  "firstStepsClaim": "RESGATAR",
+  "firstStepsClaimed": "Resgatado",
+  "firstStepsInProgress": "Em andamento",
+  "firstStepsLocked": "Bloqueado"
 }

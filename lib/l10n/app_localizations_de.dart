@@ -4462,4 +4462,57 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get ratingMeh => 'Nicht wirklich';
+
+  @override
+  String get saveHeroTitle => 'Helden sichern';
+
+  @override
+  String get saveHeroBody =>
+      'Melde dich mit Google an, um deinen Fortschritt in der Cloud zu sichern. Halte deinen Helden sicher und nimm ihn auf alle Geräte mit – kostenlos, in Sekunden.';
+
+  @override
+  String get saveHeroLater => 'Später';
+
+  @override
+  String get saveHeroConfirm => 'Helden sichern';
+
+  @override
+  String get saveHeroSynced => 'Fortschritt in der Cloud gesichert.';
+
+  @override
+  String get saveHeroFailed => 'Anmeldung nicht abgeschlossen.';
+
+  @override
+  String get firstStepsTitle => 'ERSTE SCHRITTE';
+
+  @override
+  String get firstStepsSubtitle =>
+      'Schließe diese ab, um die Grundlagen zu lernen und eine Seltene Truhe zu erhalten.';
+
+  @override
+  String get firstStepsWinBattle => 'Gewinne deinen ersten Kampf';
+
+  @override
+  String get firstStepsReachStage3 => 'Erreiche Stufe 3';
+
+  @override
+  String get firstStepsFirstBoss => 'Besiege deinen ersten Boss';
+
+  @override
+  String get firstStepsReachStage10 => 'Erreiche Stufe 10';
+
+  @override
+  String get firstStepsCapstone => 'Seltene Truhe abholen';
+
+  @override
+  String get firstStepsClaim => 'ABHOLEN';
+
+  @override
+  String get firstStepsClaimed => 'Abgeholt';
+
+  @override
+  String get firstStepsInProgress => 'Läuft';
+
+  @override
+  String get firstStepsLocked => 'Gesperrt';
 }

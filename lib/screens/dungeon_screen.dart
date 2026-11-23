@@ -18,6 +18,7 @@ import '../widgets/battle_split_panel.dart';
 import '../widgets/tier_selector.dart';
 import '../widgets/pet_battle_sprite.dart';
 import '../widgets/zcoin_icon.dart';
+import '../widgets/currency_icon.dart';
 import '../l10n/app_localizations.dart';
 import '../l10n/content_l10n.dart';
 
@@ -675,11 +676,13 @@ class _HeroBar extends StatelessWidget {
                 // -- Run summary: earnings + next boss countdown ------------
                 const SizedBox(height: 6),
                 Row(children: [
-                  Text('💰 ${run.goldEarned}',
-                      style: const TextStyle(fontSize: 11, color: Color(0xFFffcc44), fontWeight: FontWeight.bold)),
+                  CurrencyAmount('gold', run.goldEarned, size: 13,
+                      color: const Color(0xFFffcc44),
+                      textStyle: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
                   const SizedBox(width: 12),
-                  Text('◆ ${run.shardsEarned}',
-                      style: const TextStyle(fontSize: 11, color: Color(0xFF88aaff), fontWeight: FontWeight.bold)),
+                  CurrencyAmount('shards', run.shardsEarned, size: 13,
+                      color: const Color(0xFF88aaff),
+                      textStyle: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
                   const SizedBox(width: 12),
                   Text('🦴 ${run.bones}',
                       style: const TextStyle(fontSize: 11, color: Color(0xFFe8dcc0), fontWeight: FontWeight.bold)),
@@ -1989,9 +1992,9 @@ class _TreasureDetail extends StatelessWidget {
                   style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: AppTheme.textLight)),
               const SizedBox(height: 16),
               Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                _LootChip('💰 +${room.treasureGold ?? 0}', AppTheme.accentGold),
+                _LootChip('+${room.treasureGold ?? 0}', AppTheme.accentGold, iconId: 'gold'),
                 const SizedBox(width: 12),
-                _LootChip('◆ +${room.treasureShards ?? 0}', const Color(0xFF88aaff)),
+                _LootChip('+${room.treasureShards ?? 0}', const Color(0xFF88aaff), iconId: 'shards'),
               ]),
             ],
           ),
@@ -2002,12 +2005,15 @@ class _TreasureDetail extends StatelessWidget {
 }
 
 class _LootChip extends StatelessWidget {
-  const _LootChip(this.label, this.color);
+  const _LootChip(this.label, this.color, {this.iconId});
   final String label;
   final Color color;
+  // When set, the pixel-art currency sprite is shown instead of a leading glyph.
+  final String? iconId;
 
   @override
   Widget build(BuildContext context) {
+    final text = Text(label, style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: color));
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
@@ -2015,7 +2021,13 @@ class _LootChip extends StatelessWidget {
         border: Border.all(color: color.withValues(alpha: 0.5)),
         borderRadius: BorderRadius.circular(8),
       ),
-      child: Text(label, style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: color)),
+      child: iconId == null
+          ? text
+          : Row(mainAxisSize: MainAxisSize.min, children: [
+              CurrencyIcon(id: iconId!, size: 14),
+              const SizedBox(width: 4),
+              text,
+            ]),
     );
   }
 }
@@ -2718,7 +2730,7 @@ class _RestSiteDetailState extends State<_RestSiteDetail> {
             _LootChip('⊕ +$heal HP  (→ $newHp / ${run.heroMaxHp})', const Color(0xFF44cc88)),
             if (room.restBonusGold > 0) ...[
               const SizedBox(height: 6),
-              _LootChip('💰 +${room.restBonusGold} gold', AppTheme.accentGold),
+              _LootChip('+${room.restBonusGold} gold', AppTheme.accentGold, iconId: 'gold'),
             ],
           ]),
         ),
@@ -3023,7 +3035,7 @@ class _RoomResult extends StatelessWidget {
                         if (!isDead && !room.goblinEscaped) ...[
                           const SizedBox(height: 12),
                           Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                            _LootChip('💰 +${_calcCombatGold(run, room)}', AppTheme.accentGold),
+                            _LootChip('+${_calcCombatGold(run, room)}', AppTheme.accentGold, iconId: 'gold'),
                           ]),
                           if (room.hasItemDrop && game.dungeonLastDrop != null) ...[
                             const SizedBox(height: 8),
@@ -3050,9 +3062,9 @@ class _RoomResult extends StatelessWidget {
                             style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: Color(0xFF44cc88))),
                         const SizedBox(height: 8),
                         Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                          _LootChip('💰 +${room.treasureGold}', AppTheme.accentGold),
+                          _LootChip('+${room.treasureGold}', AppTheme.accentGold, iconId: 'gold'),
                           const SizedBox(width: 10),
-                          _LootChip('◆ +${room.treasureShards}', const Color(0xFF88aaff)),
+                          _LootChip('+${room.treasureShards}', const Color(0xFF88aaff), iconId: 'shards'),
                         ]),
                       ] else if (room.type == DungeonRoomType.shrine) ...[
                         Text(AppLocalizations.of(context).dngBlessingReceived,

@@ -17,8 +17,13 @@ class DailyScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final game = GameStateProvider.of(context);
+    // Bounties unlock at campaign stage 20 — but Challenges itself unlocks far
+    // earlier, so don't show the BOUNTIES sub-tab (or its claim dot) until it's
+    // actually playable. The board body already shows a LOCKED state, but a
+    // tab a player can't use yet just reads as a dead end / false badge.
+    final bountiesUnlocked = game.bossBountiesUnlocked;
     return DefaultTabController(
-      length: 3,
+      length: bountiesUnlocked ? 3 : 2,
       child: Scaffold(
         backgroundColor: const Color(0xFF1B1A17),
         appBar: AppBar(
@@ -33,15 +38,16 @@ class DailyScreen extends StatelessWidget {
             tabs: [
               _DotTab(label: AppLocalizations.of(context).modeDaily, showDot: game.hasClaimableDaily),
               _DotTab(label: AppLocalizations.of(context).dailyWeekly, showDot: game.hasClaimableWeekly),
-              _DotTab(label: AppLocalizations.of(context).modeBounties, showDot: game.bossHuntsClaimable > 0),
+              if (bountiesUnlocked)
+                _DotTab(label: AppLocalizations.of(context).modeBounties, showDot: game.bossHuntsClaimable > 0),
             ],
           ),
         ),
-        body: const TabBarView(
+        body: TabBarView(
           children: [
-            _DailyTab(),
-            _WeeklyTab(),
-            BountyBoardBody(),
+            const _DailyTab(),
+            const _WeeklyTab(),
+            if (bountiesUnlocked) const BountyBoardBody(),
           ],
         ),
       ),

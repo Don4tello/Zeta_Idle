@@ -1570,5 +1570,22 @@
   "ratingTitle": "Vous aimez Zeta Idle ?",
   "ratingBody": "Vous jouez depuis un moment ! Si vous vous amusez, une petite note aide énormément le jeu à grandir. 🙏",
   "ratingLove": "J'adore !",
-  "ratingMeh": "Pas vraiment"
+  "ratingMeh": "Pas vraiment",
+  "saveHeroTitle": "Sauvegardez votre héros",
+  "saveHeroBody": "Connectez-vous avec Google pour sauvegarder votre progression dans le cloud. Gardez votre héros en sécurité et retrouvez-le sur tous vos appareils — gratuit, en un instant.",
+  "saveHeroLater": "Plus tard",
+  "saveHeroConfirm": "Sauvegarder mon héros",
+  "saveHeroSynced": "Progression sauvegardée dans le cloud.",
+  "saveHeroFailed": "Connexion non aboutie.",
+  "firstStepsTitle": "PREMIERS PAS",
+  "firstStepsSubtitle": "Terminez-les pour apprendre les bases et décrocher un Coffre Rare.",
+  "firstStepsWinBattle": "Gagnez votre premier combat",
+  "firstStepsReachStage3": "Atteignez le Niveau 3",
+  "firstStepsFirstBoss": "Battez votre premier boss",
+  "firstStepsReachStage10": "Atteignez le Niveau 10",
+  "firstStepsCapstone": "Récupérez votre Coffre Rare",
+  "firstStepsClaim": "RÉCUPÉRER",
+  "firstStepsClaimed": "Récupéré",
+  "firstStepsInProgress": "En cours",
+  "firstStepsLocked": "Verrouillé"
 }

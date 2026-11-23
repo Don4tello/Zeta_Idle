@@ -7395,6 +7395,108 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Not really'**
   String get ratingMeh;
+
+  /// No description provided for @saveHeroTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Save your hero'**
+  String get saveHeroTitle;
+
+  /// No description provided for @saveHeroBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign in with Google to back up your progress to the cloud. Keep your hero safe and carry it across devices — free, takes a second.'**
+  String get saveHeroBody;
+
+  /// No description provided for @saveHeroLater.
+  ///
+  /// In en, this message translates to:
+  /// **'Later'**
+  String get saveHeroLater;
+
+  /// No description provided for @saveHeroConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Save my hero'**
+  String get saveHeroConfirm;
+
+  /// No description provided for @saveHeroSynced.
+  ///
+  /// In en, this message translates to:
+  /// **'Progress saved to the cloud.'**
+  String get saveHeroSynced;
+
+  /// No description provided for @saveHeroFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign-in didn\'t complete.'**
+  String get saveHeroFailed;
+
+  /// No description provided for @firstStepsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'FIRST STEPS'**
+  String get firstStepsTitle;
+
+  /// No description provided for @firstStepsSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Finish these to learn the ropes and bag a Rare Chest.'**
+  String get firstStepsSubtitle;
+
+  /// No description provided for @firstStepsWinBattle.
+  ///
+  /// In en, this message translates to:
+  /// **'Win your first battle'**
+  String get firstStepsWinBattle;
+
+  /// No description provided for @firstStepsReachStage3.
+  ///
+  /// In en, this message translates to:
+  /// **'Reach Stage 3'**
+  String get firstStepsReachStage3;
+
+  /// No description provided for @firstStepsFirstBoss.
+  ///
+  /// In en, this message translates to:
+  /// **'Defeat your first boss'**
+  String get firstStepsFirstBoss;
+
+  /// No description provided for @firstStepsReachStage10.
+  ///
+  /// In en, this message translates to:
+  /// **'Reach Stage 10'**
+  String get firstStepsReachStage10;
+
+  /// No description provided for @firstStepsCapstone.
+  ///
+  /// In en, this message translates to:
+  /// **'Claim your Rare Chest'**
+  String get firstStepsCapstone;
+
+  /// No description provided for @firstStepsClaim.
+  ///
+  /// In en, this message translates to:
+  /// **'CLAIM'**
+  String get firstStepsClaim;
+
+  /// No description provided for @firstStepsClaimed.
+  ///
+  /// In en, this message translates to:
+  /// **'Claimed'**
+  String get firstStepsClaimed;
+
+  /// No description provided for @firstStepsInProgress.
+  ///
+  /// In en, this message translates to:
+  /// **'In progress'**
+  String get firstStepsInProgress;
+
+  /// No description provided for @firstStepsLocked.
+  ///
+  /// In en, this message translates to:
+  /// **'Locked'**
+  String get firstStepsLocked;
 }
 
 class _AppLocalizationsDelegate

@@ -1308,5 +1308,22 @@
   "ratingTitle": "Gefällt dir Zeta Idle?",
   "ratingBody": "Du bist schon eine Weile unterwegs! Wenn du Spaß hast, hilft eine kurze Bewertung dem Spiel enorm. 🙏",
   "ratingLove": "Ich liebe es!",
-  "ratingMeh": "Nicht wirklich"
+  "ratingMeh": "Nicht wirklich",
+  "saveHeroTitle": "Helden sichern",
+  "saveHeroBody": "Melde dich mit Google an, um deinen Fortschritt in der Cloud zu sichern. Halte deinen Helden sicher und nimm ihn auf alle Geräte mit – kostenlos, in Sekunden.",
+  "saveHeroLater": "Später",
+  "saveHeroConfirm": "Helden sichern",
+  "saveHeroSynced": "Fortschritt in der Cloud gesichert.",
+  "saveHeroFailed": "Anmeldung nicht abgeschlossen.",
+  "firstStepsTitle": "ERSTE SCHRITTE",
+  "firstStepsSubtitle": "Schließe diese ab, um die Grundlagen zu lernen und eine Seltene Truhe zu erhalten.",
+  "firstStepsWinBattle": "Gewinne deinen ersten Kampf",
+  "firstStepsReachStage3": "Erreiche Stufe 3",
+  "firstStepsFirstBoss": "Besiege deinen ersten Boss",
+  "firstStepsReachStage10": "Erreiche Stufe 10",
+  "firstStepsCapstone": "Seltene Truhe abholen",
+  "firstStepsClaim": "ABHOLEN",
+  "firstStepsClaimed": "Abgeholt",
+  "firstStepsInProgress": "Läuft",
+  "firstStepsLocked": "Gesperrt"
 }

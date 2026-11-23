@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../models/achievement.dart';
 import '../services/game_state.dart';
 import '../theme/app_theme.dart';
+import '../widgets/currency_icon.dart';
 import 'main_shell.dart' show TutorialTip;
 import '../l10n/app_localizations.dart';
 import '../l10n/content_l10n.dart';
@@ -53,9 +54,9 @@ class _AchievementScreenState extends State<AchievementScreen> {
       BuildContext context, ({int count, int shards, int essence, int zcoins}) s) {
     if (s.count == 0) return;
     final rewards = <(String, String, int, Color)>[
-      ('◆', 'Shards',  s.shards,  const Color(0xFF6699ff)),
-      ('✦', 'Essence', s.essence, const Color(0xFFE07A6E)),
-      ('🪙', 'ZCoins',  s.zcoins,  AppTheme.accentGold),
+      ('shards',  'Shards',  s.shards,  const Color(0xFF6699ff)),
+      ('essence', 'Essence', s.essence, const Color(0xFFE07A6E)),
+      ('zcoins',  'ZCoins',  s.zcoins,  AppTheme.accentGold),
     ].where((r) => r.$3 > 0).toList();
 
     showDialog<void>(
@@ -78,7 +79,7 @@ class _AchievementScreenState extends State<AchievementScreen> {
             ...rewards.map((r) => Padding(
               padding: const EdgeInsets.only(bottom: 8),
               child: Row(children: [
-                Text(r.$1, style: TextStyle(fontSize: 18, color: r.$4)),
+                CurrencyIcon(id: r.$1, size: 20),
                 const SizedBox(width: 10),
                 Text('+${r.$3}',
                     style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: r.$4)),

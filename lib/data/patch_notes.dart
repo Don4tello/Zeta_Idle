@@ -19,6 +19,22 @@ int get kLatestPatchBuild => kPatchNotes.first.build;
 
 const kPatchNotes = <PatchNote>[
   PatchNote(
+    build: 408,
+    title: 'First Steps & Cleaner Rewards',
+    date: '2026-11-23',
+    changes: [
+      'New "First Steps" starter checklist — new heroes get quick goals with '
+          'instant rewards, capped by a Rare Chest.',
+      'Save your hero: a one-tap prompt to back your progress up to the cloud '
+          'so it is safe and syncs across devices.',
+      'Resource rewards and costs across the game now show crisp pixel-art '
+          'icons instead of plain symbols.',
+      'Passive costs now match the Shards icon and colour.',
+      'Bounties no longer show a stray notification dot before they unlock.',
+      'Friendlier first-day reminders that tell you what reward is waiting.',
+    ],
+  ),
+  PatchNote(
     build: 407,
     title: 'Smoother Difficulty',
     date: '2026-11-23',

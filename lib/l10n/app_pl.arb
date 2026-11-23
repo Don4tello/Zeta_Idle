@@ -1286,5 +1286,22 @@
   "ratingTitle": "Podoba Ci się Zeta Idle?",
   "ratingBody": "Grasz już od jakiegoś czasu! Jeśli dobrze się bawisz, szybka ocena bardzo pomaga grze się rozwijać. 🙏",
   "ratingLove": "Uwielbiam!",
-  "ratingMeh": "Niezbyt"
+  "ratingMeh": "Niezbyt",
+  "saveHeroTitle": "Zapisz bohatera",
+  "saveHeroBody": "Zaloguj się przez Google, aby zapisać postępy w chmurze. Zabezpiecz swojego bohatera i przenoś go między urządzeniami — za darmo, w sekundę.",
+  "saveHeroLater": "Później",
+  "saveHeroConfirm": "Zapisz bohatera",
+  "saveHeroSynced": "Postęp zapisany w chmurze.",
+  "saveHeroFailed": "Logowanie nie zostało ukończone.",
+  "firstStepsTitle": "PIERWSZE KROKI",
+  "firstStepsSubtitle": "Ukończ je, aby poznać podstawy i zgarnąć Rzadką Skrzynię.",
+  "firstStepsWinBattle": "Wygraj pierwszą walkę",
+  "firstStepsReachStage3": "Osiągnij etap 3",
+  "firstStepsFirstBoss": "Pokonaj pierwszego bossa",
+  "firstStepsReachStage10": "Osiągnij etap 10",
+  "firstStepsCapstone": "Odbierz Rzadką Skrzynię",
+  "firstStepsClaim": "ODBIERZ",
+  "firstStepsClaimed": "Odebrano",
+  "firstStepsInProgress": "W toku",
+  "firstStepsLocked": "Zablokowane"
 }

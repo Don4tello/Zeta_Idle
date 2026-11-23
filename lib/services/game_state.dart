@@ -1076,6 +1076,12 @@ class GameState extends ChangeNotifier {
   // kept for churn reasons — it now gates alt modes only, never campaign.)
   bool get canAutoCampaign => campaignStageIndex >= 5;
 
+  /// A brand-new player still in the opening stretch of their first campaign
+  /// (tier 0, first quarter of the stage list). Targets first-session retention
+  /// nudges — the early "come back" ping and the save-your-hero sign-in prompt —
+  /// at the players who need them, without pestering established accounts.
+  bool get isNewPlayer => prestigeLevel == 0 && campaignStageIndex < 25;
+
   bool toggleAutoCampaign() {
     if (!autoCampaign && !canAutoCampaign) return false; // gated to subscribers
     autoCampaign = !autoCampaign;
@@ -2456,6 +2462,86 @@ class GameState extends ChangeNotifier {
   void markReviewPrompted() {
     _reviewPrompted = true;
     reviewPromptPending = false;
+    saveToLocal();
+  }
+
+  // One-time "save your hero" sign-in prompt. An anonymous first-session player
+  // who uninstalls is gone for good — no cloud save to win them back — so once a
+  // NEW player has made a real investment (cleared their first boss, stage 5) we
+  // nudge them to create a recoverable Google account. [signInPromptPending] is
+  // the transient flag the shell watches; [_signInPrompted] latches (persisted)
+  // so we ask at most once, and we never ask a player who's already signed in.
+  bool signInPromptPending = false;
+  bool _signInPrompted = false;
+
+  /// Called by the shell after the save-your-hero prompt has been shown (latches
+  /// regardless of whether they actually signed in, so we never nag again).
+  void markSignInPrompted() {
+    _signInPrompted = true;
+    signInPromptPending = false;
+    saveToLocal();
+  }
+
+  // ── First Steps: guided first-session checklist ────────────────────────────
+  // Four quick goals that teach the core loop, each paying a small instant
+  // reward, capped by a "Rare Chest" bundle. Targets the funnel's worst leak
+  // (session→first-fight) by giving a new player visible momentum. Progress
+  // reads EXISTING persistent state (_totalKills, campaignStageIndex), so
+  // there's nothing extra to track; claims latch in a bitmask (bits 0–3 = the
+  // steps, bit 4 = the capstone chest).
+  static const List<String> kFirstStepLabels = [
+    'Win your first battle',
+    'Reach Stage 3',
+    'Defeat your first boss',
+    'Reach Stage 10',
+  ];
+  int _firstStepsMask = 0;
+
+  bool firstStepDone(int i) => switch (i) {
+        0 => _totalKills >= 1,
+        1 => campaignStageIndex >= 3,
+        2 => campaignStageIndex >= 5,
+        3 => campaignStageIndex >= 10,
+        _ => false,
+      };
+  bool firstStepClaimed(int i) => (_firstStepsMask >> i) & 1 == 1;
+  bool get _allFirstStepsClaimed =>
+      firstStepClaimed(0) && firstStepClaimed(1) && firstStepClaimed(2) && firstStepClaimed(3);
+  bool firstStepClaimable(int i) => i < 4
+      ? (firstStepDone(i) && !firstStepClaimed(i))
+      : (_allFirstStepsClaimed && !firstStepClaimed(4));
+  /// True once the capstone chest (bit 4) is claimed — the card hides.
+  bool get firstStepsComplete => firstStepClaimed(4);
+  /// Show the card to brand-new players, and keep showing it (even past the
+  /// new-player window) once they've claimed at least one step, until the
+  /// capstone is taken. Established players who never started it never see it.
+  bool get showFirstSteps =>
+      !firstStepsComplete && (isNewPlayer || _firstStepsMask > 0);
+  bool get hasClaimableFirstStep =>
+      firstStepClaimable(0) || firstStepClaimable(1) || firstStepClaimable(2) ||
+      firstStepClaimable(3) || firstStepClaimable(4);
+
+  /// Reward each step/capstone pays (index 4 = the capstone Rare Chest).
+  Map<String, int> firstStepReward(int i) => switch (i) {
+        0 => const {'gold': 500},
+        1 => const {'gold': 1500},
+        2 => const {'zcoins': 20},
+        3 => const {'shards': 100},
+        _ => const {'gold': 5000, 'zcoins': 50, 'shards': 200},
+      };
+
+  void claimFirstStep(int i) {
+    if (!firstStepClaimable(i)) return;
+    firstStepReward(i).forEach((k, v) {
+      switch (k) {
+        case 'gold':   gold += v;
+        case 'zcoins': zcoins += v;
+        case 'shards': shards += v;
+      }
+    });
+    _firstStepsMask |= (1 << i);
+    HapticFeedback.mediumImpact();
+    notifyListeners();
     saveToLocal();
   }
 
@@ -3975,6 +4061,14 @@ class GameState extends ChangeNotifier {
   /// preview showed Day 2 while claiming granted Day 1).
   int get loginRewardDay =>
       loginStreak <= 0 ? 1 : ((loginStreak - 1) % LoginReward.cycle.length) + 1;
+
+  /// Label of the login reward waiting on the player's NEXT distinct day — used
+  /// to pre-announce it in the come-back notification (P4). If today's reward is
+  /// still unclaimed that's what's waiting; otherwise it's the following day's.
+  String get nextLoginRewardLabel {
+    final nextDay = loginTodayClaimed ? loginRewardDay + 1 : loginRewardDay;
+    return LoginReward.forDay(nextDay).label;
+  }
 
   void checkLoginStreak() {
     final today = _dateKey(DateTime.now());
@@ -6634,8 +6728,11 @@ class GameState extends ChangeNotifier {
       (h.tier == activeTier && campaignStageIndex >= h.stage + 1);
   int  bossHuntProgress(BossHunt h) => isBossHuntMet(h) ? 1 : 0;
   bool isBossHuntClaimed(BossHunt h) => questsClaimed[h.id] == true;
+  // Gated on the stage-20 unlock: bosses you passed on the way to stage 20 are
+  // "met" but must NOT count as claimable yet, or they'd light the Challenges
+  // claim dot (and the parent tab badges) before Bounties is even playable.
   bool isBossHuntClaimable(BossHunt h) =>
-      isBossHuntMet(h) && questsClaimed[h.id] != true;
+      bossBountiesUnlocked && isBossHuntMet(h) && questsClaimed[h.id] != true;
 
   /// The guaranteed loot rarity for a boss bounty. Ramps with the boss ordinal
   /// (early bosses → uncommon/rare, later → epic/legendary, final → mythic) and
@@ -11037,6 +11134,8 @@ class GameState extends ChangeNotifier {
       'pvpDailyRewardClaimed': pvpDailyRewardClaimed,
       'totalPlaytimeSeconds': totalPlaytimeSeconds,
       'reviewPrompted': _reviewPrompted,
+      'signInPrompted': _signInPrompted,
+      'firstStepsMask': _firstStepsMask,
       'claimedMilestones': claimedMilestones.toList(),
       'abilityUseCounts': abilityUseCounts,
       'abilityAutoTriggers': abilityAutoTriggers,
@@ -11693,6 +11792,8 @@ class GameState extends ChangeNotifier {
     if (savedAvgHit > 0 && _recentHeroHits.isEmpty) _recentHeroHits.add(savedAvgHit);
     totalPlaytimeSeconds = (json['totalPlaytimeSeconds'] as int?) ?? 0;
     _reviewPrompted = (json['reviewPrompted'] as bool?) ?? false;
+    _signInPrompted = (json['signInPrompted'] as bool?) ?? false;
+    _firstStepsMask = (json['firstStepsMask'] as int?) ?? 0;
     claimedMilestones = (json['claimedMilestones'] as List<dynamic>?)
         ?.cast<String>().toSet() ?? {};
     abilityUseCounts = (json['abilityUseCounts'] as Map<String, dynamic>?)
@@ -11859,6 +11960,15 @@ class GameState extends ChangeNotifier {
     // Queue the rating soft-ask once the player has put in 30 min of play.
     if (!_reviewPrompted && totalPlaytimeSeconds >= _reviewAfterSeconds) {
       reviewPromptPending = true;
+    }
+    // Queue the save-your-hero sign-in prompt once a new player has cleared
+    // their first boss (stage 5) — enough investment to care about keeping it —
+    // and isn't already signed in.
+    if (!_signInPrompted &&
+        !authService.isGoogleSignedIn &&
+        isNewPlayer &&
+        campaignStageIndex >= 5) {
+      signInPromptPending = true;
     }
     checkMilestones();
     final data = toJson();

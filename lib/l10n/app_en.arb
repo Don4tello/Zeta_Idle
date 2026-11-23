@@ -1578,5 +1578,22 @@
   "ratingTitle": "Enjoying Zeta Idle?",
   "ratingBody": "You've been adventuring for a while! If you're having fun, a quick rating really helps the game grow. 🙏",
   "ratingLove": "Loving it!",
-  "ratingMeh": "Not really"
+  "ratingMeh": "Not really",
+  "saveHeroTitle": "Save your hero",
+  "saveHeroBody": "Sign in with Google to back up your progress to the cloud. Keep your hero safe and carry it across devices — free, takes a second.",
+  "saveHeroLater": "Later",
+  "saveHeroConfirm": "Save my hero",
+  "saveHeroSynced": "Progress saved to the cloud.",
+  "saveHeroFailed": "Sign-in didn't complete.",
+  "firstStepsTitle": "FIRST STEPS",
+  "firstStepsSubtitle": "Finish these to learn the ropes and bag a Rare Chest.",
+  "firstStepsWinBattle": "Win your first battle",
+  "firstStepsReachStage3": "Reach Stage 3",
+  "firstStepsFirstBoss": "Defeat your first boss",
+  "firstStepsReachStage10": "Reach Stage 10",
+  "firstStepsCapstone": "Claim your Rare Chest",
+  "firstStepsClaim": "CLAIM",
+  "firstStepsClaimed": "Claimed",
+  "firstStepsInProgress": "In progress",
+  "firstStepsLocked": "Locked"
 }

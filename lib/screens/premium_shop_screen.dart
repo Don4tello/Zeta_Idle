@@ -564,8 +564,9 @@ class _PackCard extends StatelessWidget {
                       runSpacing: 4,
                       children: pack.contents.entries
                           .where((e) => !_isGearKey(e.key))
-                          .map((e) => Text('${_icon(e.key)} ${AppTheme.fmtNumber(e.value)}',
-                              style: TextStyle(
+                          .map((e) => CurrencyAmount(e.key, AppTheme.fmtNumber(e.value),
+                              size: 13,
+                              textStyle: TextStyle(
                                   fontSize: 11, color: pack.color, fontWeight: FontWeight.w600)))
                           .toList(),
                     ),
@@ -656,16 +657,6 @@ class _PackCard extends StatelessWidget {
     );
   }
 
-  String _icon(String key) => switch (key) {
-    'zcoins'  => '🪙',
-    'gold'      => '💰',
-    'shards'    => '◆',
-    'essence'   => '✦',
-    'mythril'   => '⬡',
-    'echoes'    => '🔊',
-    'gemShards' => '💠',
-    _           => '•',
-  };
 }
 
 class _CrystalCard extends StatelessWidget {

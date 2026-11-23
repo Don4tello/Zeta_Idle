@@ -3,6 +3,7 @@ import '../data/class_quest_data.dart';
 import '../models/class_quest.dart';
 import '../services/game_state.dart';
 import '../theme/app_theme.dart';
+import '../widgets/currency_icon.dart';
 import '../l10n/app_localizations.dart';
 import '../l10n/content_l10n.dart';
 
@@ -484,8 +485,8 @@ class _RewardRow extends StatelessWidget {
       Text(AppLocalizations.of(context).questRewardLabel,
           style: TextStyle(fontSize: 11, color: Colors.white38)),
       Expanded(child: Wrap(spacing: 8, runSpacing: 4, children: [
-        if (reward.gold > 0) _Chip('💰 ${reward.gold}g', const Color(0xFFFFD700)),
-        if (reward.shards > 0) _Chip('◆ ${reward.shards}', const Color(0xFF66aaff)),
+        if (reward.gold > 0) _Chip('${reward.gold}g', const Color(0xFFFFD700), iconId: 'gold'),
+        if (reward.shards > 0) _Chip('${reward.shards}', const Color(0xFF66aaff), iconId: 'shards'),
         if (reward.permanentAttackBonus > 0)
           _Chip('+${reward.permanentAttackBonus} ATK', const Color(0xFFff6633)),
         if (reward.permanentDamageBonus > 0)
@@ -613,12 +614,16 @@ class _UltimateNode extends StatelessWidget {
 }
 
 class _Chip extends StatelessWidget {
-  const _Chip(this.label, this.color);
+  const _Chip(this.label, this.color, {this.iconId});
   final String label;
   final Color color;
+  final String? iconId;
 
   @override
   Widget build(BuildContext context) {
+    final text = Text(label,
+        style: TextStyle(
+            fontSize: 10, color: color, fontWeight: FontWeight.bold));
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
       decoration: BoxDecoration(
@@ -626,9 +631,13 @@ class _Chip extends StatelessWidget {
         border: Border.all(color: color.withValues(alpha: 0.5)),
         borderRadius: BorderRadius.circular(8),
       ),
-      child: Text(label,
-          style: TextStyle(
-              fontSize: 10, color: color, fontWeight: FontWeight.bold)),
+      child: iconId == null
+          ? text
+          : Row(mainAxisSize: MainAxisSize.min, children: [
+              CurrencyIcon(id: iconId!, size: 11),
+              const SizedBox(width: 3),
+              text,
+            ]),
     );
   }
 }

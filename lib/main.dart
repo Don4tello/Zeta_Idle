@@ -328,7 +328,12 @@ class _ZetaIdleAppState extends State<ZetaIdleApp> with WidgetsBindingObserver {
       if (_gameState.notificationsEnabled) {
         // Retention clears first; then add the game-timer reminders (expeditions
         // finishing, PvP stamina maxing) so they aren't wiped by the cancel-all.
-        NotificationService.instance.scheduleRetentionReminders().then((_) {
+        NotificationService.instance
+            .scheduleRetentionReminders(
+              earlyReturnPing: _gameState.isNewPlayer,
+              nextRewardLabel: _gameState.nextLoginRewardLabel,
+            )
+            .then((_) {
           NotificationService.instance.scheduleGameReminders(
             expeditions: _gameState.pendingExpeditionReminders,
             pvpStaminaFull: _gameState.pvpStaminaFullIn,

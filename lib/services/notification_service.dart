@@ -81,14 +81,30 @@ class NotificationService {
 
   /// Cancel any pending reminders, then schedule a fresh retention ladder.
   /// Call when the app is backgrounded.
-  Future<void> scheduleRetentionReminders() async {
+  ///
+  /// [earlyReturnPing] adds a ~2.5 h first rung aimed at BRAND-NEW players,
+  /// whose make-or-break window is the first few hours (the 12 h rung is far
+  /// too late to decide whether they ever come back). Gated to new players by
+  /// the caller so established players aren't pinged this soon (id 0, below the
+  /// 1–3 retention range).
+  Future<void> scheduleRetentionReminders(
+      {bool earlyReturnPing = false, String? nextRewardLabel}) async {
     if (!_ready) return;
     await _plugin.cancelAll();
+    if (earlyReturnPing) {
+      await _scheduleIn(0, 'Your spoils are piling up',
+          'Your hero kept fighting while you were away — collect your idle gold and loot.',
+          const Duration(hours: 2, minutes: 30));
+    }
     await _scheduleIn(1, 'Your realm awaits',
         'Idle gold and loot are piling up in Zeta Idle.',
         const Duration(hours: 12));
-    await _scheduleIn(2, 'Daily challenges reset',
-        'Fresh daily challenges and rewards are ready to claim.',
+    // Day-2 pre-announce (P4): name tomorrow's login reward so there's a concrete
+    // reason to come back, reinforced by the login streak and daily reset.
+    final rewardLine = (nextRewardLabel != null && nextRewardLabel.isNotEmpty)
+        ? 'Come back for your daily reward: $nextRewardLabel — plus fresh challenges.'
+        : 'Your daily reward and fresh challenges are ready to claim.';
+    await _scheduleIn(2, 'Come back for your reward', rewardLine,
         const Duration(hours: 24));
     await _scheduleIn(3, 'The Warden grows restless',
         'Return to continue your campaign and grow stronger.',

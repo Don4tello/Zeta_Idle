@@ -44,6 +44,41 @@ class CurrencyIcon extends StatelessWidget {
   }
 }
 
+/// Inline "[sprite] amount" for reward/cost rows — the pixel-art replacement for
+/// the old glyph+number text (e.g. `Text('◆ 15')`). Pass the already-formatted
+/// [amount] (int or string); the number inherits [textStyle] (and [color] if
+/// given). Use inside Rows/Wraps.
+class CurrencyAmount extends StatelessWidget {
+  const CurrencyAmount(
+    this.id,
+    this.amount, {
+    super.key,
+    this.size = 14,
+    this.color,
+    this.textStyle,
+    this.gap = 3,
+    this.prefix = '',
+  });
+  final String id;
+  final Object amount;
+  final double size;
+  final Color? color;
+  final TextStyle? textStyle;
+  final double gap;
+  final String prefix;
+
+  @override
+  Widget build(BuildContext context) {
+    final style = (textStyle ?? const TextStyle(fontWeight: FontWeight.bold))
+        .copyWith(color: color ?? textStyle?.color);
+    return Row(mainAxisSize: MainAxisSize.min, children: [
+      CurrencyIcon(id: id, size: size),
+      SizedBox(width: gap),
+      Text('$prefix$amount', style: style),
+    ]);
+  }
+}
+
 class _CurrencyIconPainter extends CustomPainter {
   const _CurrencyIconPainter(this.id);
   final String id;

@@ -4408,4 +4408,57 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get ratingMeh => 'Not really';
+
+  @override
+  String get saveHeroTitle => 'Save your hero';
+
+  @override
+  String get saveHeroBody =>
+      'Sign in with Google to back up your progress to the cloud. Keep your hero safe and carry it across devices — free, takes a second.';
+
+  @override
+  String get saveHeroLater => 'Later';
+
+  @override
+  String get saveHeroConfirm => 'Save my hero';
+
+  @override
+  String get saveHeroSynced => 'Progress saved to the cloud.';
+
+  @override
+  String get saveHeroFailed => 'Sign-in didn\'t complete.';
+
+  @override
+  String get firstStepsTitle => 'FIRST STEPS';
+
+  @override
+  String get firstStepsSubtitle =>
+      'Finish these to learn the ropes and bag a Rare Chest.';
+
+  @override
+  String get firstStepsWinBattle => 'Win your first battle';
+
+  @override
+  String get firstStepsReachStage3 => 'Reach Stage 3';
+
+  @override
+  String get firstStepsFirstBoss => 'Defeat your first boss';
+
+  @override
+  String get firstStepsReachStage10 => 'Reach Stage 10';
+
+  @override
+  String get firstStepsCapstone => 'Claim your Rare Chest';
+
+  @override
+  String get firstStepsClaim => 'CLAIM';
+
+  @override
+  String get firstStepsClaimed => 'Claimed';
+
+  @override
+  String get firstStepsInProgress => 'In progress';
+
+  @override
+  String get firstStepsLocked => 'Locked';
 }

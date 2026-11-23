@@ -772,12 +772,18 @@ class _EndlessScreenState extends State<EndlessScreen> {
                         Row(children: [
                           Text(AppLocalizations.of(context).endlessRewards, style: AppTheme.pixelHeading(
                               fontSize: 9, letterSpacing: 1, color: AppTheme.textMuted)),
-                          Text('🔮 $towerShardReward   ',
-                              style: const TextStyle(fontSize: 11, color: Color(0xFFcc88ff), fontWeight: FontWeight.bold)),
-                          Text('~💰 $bossGold   ',
-                              style: const TextStyle(fontSize: 11, color: Color(0xFFdaa520), fontWeight: FontWeight.bold)),
-                          Text('~⚡ $bossXp',
-                              style: const TextStyle(fontSize: 11, color: Color(0xFF88ccff), fontWeight: FontWeight.bold)),
+                          const SizedBox(width: 6),
+                          CurrencyAmount('towerShards', towerShardReward, size: 13,
+                              color: const Color(0xFFcc88ff),
+                              textStyle: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                          const SizedBox(width: 10),
+                          CurrencyAmount('gold', bossGold, prefix: '~', size: 13,
+                              color: const Color(0xFFdaa520),
+                              textStyle: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                          const SizedBox(width: 10),
+                          CurrencyAmount('xp', bossXp, prefix: '~', size: 13,
+                              color: const Color(0xFF88ccff),
+                              textStyle: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
                         ]),
                         const SizedBox(height: 4),
                         Row(children: [
@@ -864,10 +870,10 @@ class _EndlessScreenState extends State<EndlessScreen> {
                   Row(
                     children: [
                       _rewardChip('💰', '~${fmtNum(stage.goldReward)}', AppLocalizations.of(context).endlessGold,
-                          const Color(0xFFffd700)),
+                          const Color(0xFFffd700), iconId: 'gold'),
                       const SizedBox(width: 8),
                       _rewardChip('⭐', '~${fmtNum(stage.experienceReward)}', AppLocalizations.of(context).endlessXp,
-                          const Color(0xFF4ad46a)),
+                          const Color(0xFF4ad46a), iconId: 'xp'),
                       const SizedBox(width: 8),
                       _rewardChip('♾️', '∞', AppLocalizations.of(context).endlessRespawns, AppTheme.textMuted),
                     ],
@@ -936,7 +942,7 @@ class _EndlessScreenState extends State<EndlessScreen> {
     );
   }
 
-  Widget _rewardChip(String emoji, String amount, String label, Color color) {
+  Widget _rewardChip(String emoji, String amount, String label, Color color, {String? iconId}) {
     return Expanded(
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 6),
@@ -946,7 +952,9 @@ class _EndlessScreenState extends State<EndlessScreen> {
         ),
         child: Column(
           children: [
-            Text(emoji, style: const TextStyle(fontSize: 16)),
+            iconId != null
+                ? CurrencyIcon(id: iconId, size: 18)
+                : Text(emoji, style: const TextStyle(fontSize: 16)),
             const SizedBox(height: 3),
             Text(amount,
                 style: TextStyle(

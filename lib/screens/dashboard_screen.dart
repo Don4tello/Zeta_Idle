@@ -9,6 +9,7 @@ import '../theme/app_theme.dart';
 import '../widgets/currency_icon.dart';
 import '../widgets/currency_info.dart';
 import '../widgets/dashboard_header.dart';
+import '../widgets/first_steps_card.dart';
 import '../widgets/hero_tab_controller.dart';
 import '../widgets/stats_grid_panel.dart';
 import '../models/login_streak.dart';
@@ -76,6 +77,7 @@ class _SheetLayout extends StatelessWidget {
         children: [
           ...?topBanners,
           const _LoginRewardBanner(),
+          const FirstStepsCard(),
           Builder(builder: (ctx) {
             final game = GameStateProvider.of(ctx);
             if (game.tutorialFirstKillSeen || game.campaignStageIndex == 0) {

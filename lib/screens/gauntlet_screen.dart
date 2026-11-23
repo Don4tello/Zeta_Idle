@@ -26,6 +26,7 @@ import '../widgets/tier_selector.dart';
 import '../widgets/battle_split_panel.dart';
 import '../widgets/pet_battle_sprite.dart';
 import '../widgets/zcoin_icon.dart';
+import '../widgets/currency_icon.dart';
 import '../l10n/app_localizations.dart';
 
 const _kGauntletEnemies = 10;
@@ -742,7 +743,7 @@ class _GauntletScreenState extends State<GauntletScreen> {
                   fontSize: 10, letterSpacing: 1, color: AppTheme.textMuted)),
           const SizedBox(height: 10),
           Row(children: [
-            _RewardChip('✦ $essence essence', const Color(0xFF44dd88)),
+            _RewardChip('$essence essence', const Color(0xFF44dd88), prefix: const CurrencyIcon(id: 'essence', size: 11)),
             const SizedBox(width: 8),
             _RewardChip('$zcoins ZCoins', const Color(0xFF44ccaa), prefix: const ZCoinIcon(size: 11, animate: false)),
             const SizedBox(width: 8),

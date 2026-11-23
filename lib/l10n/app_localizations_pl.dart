@@ -4466,4 +4466,57 @@ class AppLocalizationsPl extends AppLocalizations {
 
   @override
   String get ratingMeh => 'Niezbyt';
+
+  @override
+  String get saveHeroTitle => 'Zapisz bohatera';
+
+  @override
+  String get saveHeroBody =>
+      'Zaloguj się przez Google, aby zapisać postępy w chmurze. Zabezpiecz swojego bohatera i przenoś go między urządzeniami — za darmo, w sekundę.';
+
+  @override
+  String get saveHeroLater => 'Później';
+
+  @override
+  String get saveHeroConfirm => 'Zapisz bohatera';
+
+  @override
+  String get saveHeroSynced => 'Postęp zapisany w chmurze.';
+
+  @override
+  String get saveHeroFailed => 'Logowanie nie zostało ukończone.';
+
+  @override
+  String get firstStepsTitle => 'PIERWSZE KROKI';
+
+  @override
+  String get firstStepsSubtitle =>
+      'Ukończ je, aby poznać podstawy i zgarnąć Rzadką Skrzynię.';
+
+  @override
+  String get firstStepsWinBattle => 'Wygraj pierwszą walkę';
+
+  @override
+  String get firstStepsReachStage3 => 'Osiągnij etap 3';
+
+  @override
+  String get firstStepsFirstBoss => 'Pokonaj pierwszego bossa';
+
+  @override
+  String get firstStepsReachStage10 => 'Osiągnij etap 10';
+
+  @override
+  String get firstStepsCapstone => 'Odbierz Rzadką Skrzynię';
+
+  @override
+  String get firstStepsClaim => 'ODBIERZ';
+
+  @override
+  String get firstStepsClaimed => 'Odebrano';
+
+  @override
+  String get firstStepsInProgress => 'W toku';
+
+  @override
+  String get firstStepsLocked => 'Zablokowane';
 }

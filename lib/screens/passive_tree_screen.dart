@@ -299,8 +299,13 @@ class PassiveTreeScreen extends StatelessWidget {
                         border: Border.all(color: can && affordable ? const Color(0xFFccaa44) : Colors.white12),
                         borderRadius: BorderRadius.circular(8),
                       ),
-                      child: Text('$cost ✦', style: TextStyle(fontSize: 10,
-                          color: can && affordable ? const Color(0xFFccaa44) : Colors.white24)),
+                      child: Row(mainAxisSize: MainAxisSize.min, children: [
+                        Text('$cost ', style: TextStyle(fontSize: 10,
+                            color: can && affordable ? const Color(0xFF6699ff) : Colors.white24)),
+                        Opacity(
+                            opacity: can && affordable ? 1.0 : 0.4,
+                            child: const CurrencyIcon(id: 'shards', size: 11)),
+                      ]),
                     ),
                   ),
               ]),
@@ -729,18 +734,22 @@ class _NodeCard extends StatelessWidget {
             else if (!locked)
               FittedBox(
                 fit: BoxFit.scaleDown,
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(Icons.auto_awesome, size: 8,
-                      color: canAfford ? const Color(0xFFaaff88) : Colors.white24),
-                    const SizedBox(width: 2),
-                    Text(canUpgrade ? '✦ $cost' : '—',
-                      style: TextStyle(
-                        color: canAfford ? const Color(0xFFaaff88) : Colors.white24,
-                        fontSize: 8, fontWeight: FontWeight.bold)),
-                  ],
-                ),
+                child: canUpgrade
+                  ? Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Opacity(
+                          opacity: canAfford ? 1.0 : 0.4,
+                          child: const CurrencyIcon(id: 'shards', size: 10)),
+                        const SizedBox(width: 2),
+                        Text('$cost',
+                          style: TextStyle(
+                            color: canAfford ? const Color(0xFF6699ff) : Colors.white24,
+                            fontSize: 8, fontWeight: FontWeight.bold)),
+                      ],
+                    )
+                  : const Text('—',
+                      style: TextStyle(color: Colors.white24, fontSize: 8, fontWeight: FontWeight.bold)),
               ),
           ],
         ),

@@ -371,6 +371,54 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
   /// 👍 → the native in-app review dialog; 👎 → community feedback (keeps
   /// 1-stars off the store). NO reward is tied to rating — store policy forbids
   /// incentivised ratings, and the native API hides the outcome by design.
+  // One-time "save your hero" sign-in nudge for new players. Keeps anonymous
+  // first-sessioners recoverable (cloud save) before they can bounce for good.
+  Future<void> _showSaveHeroPrompt(GameState game) async {
+    final l = AppLocalizations.of(context);
+    final accept = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF1a1a2e),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+          side: const BorderSide(color: AppTheme.accentGold, width: 2),
+        ),
+        title: Text(l.saveHeroTitle,
+            textAlign: TextAlign.center,
+            style: AppTheme.pixelHeading(
+                fontSize: 16, color: AppTheme.accentGold, letterSpacing: 2)),
+        content: Text(
+          l.saveHeroBody,
+          textAlign: TextAlign.center,
+          style: const TextStyle(color: AppTheme.textLight, height: 1.4),
+        ),
+        actionsAlignment: MainAxisAlignment.spaceBetween,
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text(l.saveHeroLater, style: const TextStyle(color: AppTheme.textMuted)),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: ElevatedButton.styleFrom(
+                backgroundColor: AppTheme.accentGold, foregroundColor: Colors.black),
+            child: Text(l.saveHeroConfirm,
+                style: const TextStyle(fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+    // We asked — latch so we never nag again, regardless of their choice.
+    game.markSignInPrompted();
+    if (!mounted || accept != true) return;
+    final ok = await game.googleSignIn();
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Text(ok ? l.saveHeroSynced : l.saveHeroFailed),
+      behavior: SnackBarBehavior.floating,
+    ));
+  }
+
   Future<void> _showRatingSoftAsk(GameState game) async {
     final l = AppLocalizations.of(context);
     final liked = await showDialog<bool>(
@@ -443,7 +491,18 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
     // Rating soft-ask after 30 min of play — only when the shell is the topmost
     // route (not mid-battle/dialog) and no coach is showing. Retries on a later
     // shell build if the player is busy now.
-    if (game.reviewPromptPending &&
+    // Save-your-hero sign-in prompt (new player, first boss cleared). Takes
+    // priority over the rating ask and uses the same "topmost route, no coach"
+    // gating so it never stacks on a tutorial/milestone/battle.
+    if (game.signInPromptPending &&
+        game.pendingTutorial == null &&
+        game.pendingMilestone == null &&
+        (ModalRoute.of(context)?.isCurrent ?? true)) {
+      game.signInPromptPending = false;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _showSaveHeroPrompt(game);
+      });
+    } else if (game.reviewPromptPending &&
         game.pendingTutorial == null &&
         game.pendingMilestone == null &&
         (ModalRoute.of(context)?.isCurrent ?? true)) {

@@ -4463,4 +4463,57 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get ratingMeh => 'Pas vraiment';
+
+  @override
+  String get saveHeroTitle => 'Sauvegardez votre héros';
+
+  @override
+  String get saveHeroBody =>
+      'Connectez-vous avec Google pour sauvegarder votre progression dans le cloud. Gardez votre héros en sécurité et retrouvez-le sur tous vos appareils — gratuit, en un instant.';
+
+  @override
+  String get saveHeroLater => 'Plus tard';
+
+  @override
+  String get saveHeroConfirm => 'Sauvegarder mon héros';
+
+  @override
+  String get saveHeroSynced => 'Progression sauvegardée dans le cloud.';
+
+  @override
+  String get saveHeroFailed => 'Connexion non aboutie.';
+
+  @override
+  String get firstStepsTitle => 'PREMIERS PAS';
+
+  @override
+  String get firstStepsSubtitle =>
+      'Terminez-les pour apprendre les bases et décrocher un Coffre Rare.';
+
+  @override
+  String get firstStepsWinBattle => 'Gagnez votre premier combat';
+
+  @override
+  String get firstStepsReachStage3 => 'Atteignez le Niveau 3';
+
+  @override
+  String get firstStepsFirstBoss => 'Battez votre premier boss';
+
+  @override
+  String get firstStepsReachStage10 => 'Atteignez le Niveau 10';
+
+  @override
+  String get firstStepsCapstone => 'Récupérez votre Coffre Rare';
+
+  @override
+  String get firstStepsClaim => 'RÉCUPÉRER';
+
+  @override
+  String get firstStepsClaimed => 'Récupéré';
+
+  @override
+  String get firstStepsInProgress => 'En cours';
+
+  @override
+  String get firstStepsLocked => 'Verrouillé';
 }

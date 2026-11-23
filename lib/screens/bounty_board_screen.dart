@@ -6,6 +6,7 @@ import '../services/game_state.dart';
 import '../theme/app_theme.dart';
 import '../widgets/battle_sprites.dart';
 import '../widgets/zcoin_icon.dart';
+import '../widgets/currency_icon.dart';
 import '../l10n/app_localizations.dart';
 
 class BountyBoardScreen extends StatelessWidget {
@@ -205,11 +206,11 @@ class _BossBountyCard extends StatelessWidget {
         color: _rarityColor(lootRarity),
       ),
     ];
-    if (r.gold > 0)    chips.add(_RewardChip(label: '${r.gold} Gold', color: const Color(0xFFffcc44)));
-    if (r.shards > 0)  chips.add(_RewardChip(label: '${r.shards} ◆', color: const Color(0xFF88cc44)));
-    if (r.essence > 0) chips.add(_RewardChip(label: '${r.essence} ✦', color: const Color(0xFF66cc88)));
+    if (r.gold > 0)    chips.add(_RewardChip(label: '${r.gold}', color: const Color(0xFFffcc44), prefix: const CurrencyIcon(id: 'gold', size: 11)));
+    if (r.shards > 0)  chips.add(_RewardChip(label: '${r.shards}', color: const Color(0xFF88cc44), prefix: const CurrencyIcon(id: 'shards', size: 11)));
+    if (r.essence > 0) chips.add(_RewardChip(label: '${r.essence}', color: const Color(0xFF66cc88), prefix: const CurrencyIcon(id: 'essence', size: 11)));
     if (r.zcoins > 0)  chips.add(_RewardChip(label: '${r.zcoins}', color: const Color(0xFF66aaff), prefix: const ZCoinIcon(size: 10, animate: false)));
-    if (r.mythril > 0) chips.add(_RewardChip(label: '${r.mythril} ⬡', color: const Color(0xFF8888ff)));
+    if (r.mythril > 0) chips.add(_RewardChip(label: '${r.mythril}', color: const Color(0xFF8888ff), prefix: const CurrencyIcon(id: 'mythril', size: 11)));
     return chips;
   }
 

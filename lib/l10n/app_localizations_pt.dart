@@ -4449,4 +4449,57 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get ratingMeh => 'Nem tanto';
+
+  @override
+  String get saveHeroTitle => 'Salve seu herói';
+
+  @override
+  String get saveHeroBody =>
+      'Entre com o Google para fazer backup do seu progresso na nuvem. Mantenha seu herói seguro e leve-o entre dispositivos — grátis, em um segundo.';
+
+  @override
+  String get saveHeroLater => 'Mais tarde';
+
+  @override
+  String get saveHeroConfirm => 'Salvar meu herói';
+
+  @override
+  String get saveHeroSynced => 'Progresso salvo na nuvem.';
+
+  @override
+  String get saveHeroFailed => 'O login não foi concluído.';
+
+  @override
+  String get firstStepsTitle => 'PRIMEIROS PASSOS';
+
+  @override
+  String get firstStepsSubtitle =>
+      'Conclua-os para aprender o básico e garantir um Baú Raro.';
+
+  @override
+  String get firstStepsWinBattle => 'Vença sua primeira batalha';
+
+  @override
+  String get firstStepsReachStage3 => 'Alcance a Fase 3';
+
+  @override
+  String get firstStepsFirstBoss => 'Derrote seu primeiro chefe';
+
+  @override
+  String get firstStepsReachStage10 => 'Alcance a Fase 10';
+
+  @override
+  String get firstStepsCapstone => 'Resgate seu Baú Raro';
+
+  @override
+  String get firstStepsClaim => 'RESGATAR';
+
+  @override
+  String get firstStepsClaimed => 'Resgatado';
+
+  @override
+  String get firstStepsInProgress => 'Em andamento';
+
+  @override
+  String get firstStepsLocked => 'Bloqueado';
 }
