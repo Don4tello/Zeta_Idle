@@ -42,3 +42,6 @@ win_*.png
 zeta_*.png
 telemetry_check.json
 /_artifact_backup/
+
+# Local debug screenshots
+dev_shot.png
