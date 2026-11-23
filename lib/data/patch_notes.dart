@@ -19,6 +19,17 @@ int get kLatestPatchBuild => kPatchNotes.first.build;
 
 const kPatchNotes = <PatchNote>[
   PatchNote(
+    build: 409,
+    title: '한국어 · Korean Support',
+    date: '2026-11-23',
+    changes: [
+      'Korean language support — the full interface is now available in '
+          '한국어. Switch anytime in Settings → Language.',
+      'Game flavor text (campaign, quests, enemies) stays in English for now '
+          'and will be localized to Korean in a later update.',
+    ],
+  ),
+  PatchNote(
     build: 408,
     title: 'First Steps & Cleaner Rewards',
     date: '2026-11-23',
