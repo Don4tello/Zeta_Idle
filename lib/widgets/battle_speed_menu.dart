@@ -75,6 +75,7 @@ Widget _speedRow(
     onTap = () {
       Navigator.pop(sheetCtx);
       AdService.instance.showRewardedAd(
+        placement: 'speed_boost_2x',
         onRewarded: () { game.grantAdSpeedBoost(); game.setSpeedTier(3); },
         onFailed: () {
           ScaffoldMessenger.of(context).showSnackBar(const SnackBar(

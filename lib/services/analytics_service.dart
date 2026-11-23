@@ -146,6 +146,16 @@ class AnalyticsService {
   void cosmeticUnlocked(String type, String id) =>
       _log('cosmetic_unlocked', {'type': type, 'id': id});
 
+  // Rewarded-ad funnel, logged per placement so we can see which reward drives
+  // ad engagement and the show/fill success rate. All routed through
+  // AdService.showRewardedAd (one call site per outcome) so coverage can't drift.
+  //   ad_requested → a rewarded ad was asked for (user tapped the reward)
+  //   ad_watched   → the ad played and the reward was granted
+  //   ad_failed    → no fill / show error (reason param distinguishes them)
+  void adRequested(String placement) =>
+      _log('ad_requested', {'placement': placement});
   void adWatched(String placement) =>
       _log('ad_watched', {'placement': placement});
+  void adFailed(String placement, String reason) =>
+      _log('ad_failed', {'placement': placement, 'reason': reason});
 }

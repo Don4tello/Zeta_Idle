@@ -19,6 +19,19 @@ int get kLatestPatchBuild => kPatchNotes.first.build;
 
 const kPatchNotes = <PatchNote>[
   PatchNote(
+    build: 407,
+    title: 'Smoother Difficulty',
+    date: '2026-11-23',
+    changes: [
+      'Early-campaign bosses (around stages 15, 25 and 35) no longer wall new '
+          'heroes — shorter, fairer fights that threaten without wiping you.',
+      'The mid-game frontier (Tiers 4–7) bosses are less of a grind, while the '
+          'deepest endgame fights are unchanged.',
+      'When you out-level the content, enemies keep a little more bite so '
+          'fights stay meaningful instead of one-tap facerolls.',
+    ],
+  ),
+  PatchNote(
     build: 406,
     title: 'Daily Chest & Speed Fixes',
     date: '2026-11-21',

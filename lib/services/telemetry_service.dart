@@ -52,4 +52,37 @@ class TelemetryService {
           .then((_) {}, onError: (_) {});
     } catch (_) {/* telemetry must never affect gameplay */}
   }
+
+  /// Record one rewarded-ad funnel event, mirrored into the SAME `telemetry`
+  /// collection as fights (tagged `kind: 'ad'`) so `pull_telemetry.ps1` picks
+  /// ad usage up alongside combat with no extra tooling. Gated by the same
+  /// flags as [recordFight] — OFF in production, so this is a test-build
+  /// convenience; the always-on source for prod ad stats is Firebase Analytics
+  /// (ad_requested / ad_watched / ad_failed) and the AdMob console.
+  ///
+  /// [result] is 'requested' | 'watched' | 'failed'; [reason] annotates failures
+  /// ('no_fill' | 'show_error'). Not sampled — ad events are low-volume and we
+  /// want every one.
+  static void recordAd({
+    required String placement,
+    required String result,
+    String? reason,
+  }) {
+    final on = _forceOn || RemoteConfigService.instance.telemetryEnabled;
+    if (!on) return;
+    try {
+      final data = <String, dynamic>{
+        'kind': 'ad',
+        'placement': placement,
+        'result': result,
+        if (reason != null) 'reason': reason,
+        'ts': FieldValue.serverTimestamp(),
+        if (sessionId != null) 'session': sessionId,
+      };
+      FirebaseFirestore.instance
+          .collection('telemetry')
+          .add(data)
+          .then((_) {}, onError: (_) {});
+    } catch (_) {/* telemetry must never affect gameplay */}
+  }
 }

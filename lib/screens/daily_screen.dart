@@ -695,6 +695,7 @@ class _DailyChestCard extends StatelessWidget {
             GestureDetector(
               onTap: () {
                 AdService.instance.showRewardedAd(
+                  placement: 'daily_chest_2x',
                   onRewarded: () {
                     game.claimDailyChestDoubled();
                     game.audioService.playClaim();

@@ -6,7 +6,6 @@ import '../models/shop_catalog.dart';
 import '../models/palette_skin.dart';
 import '../demo_config.dart';
 import '../services/ad_service.dart';
-import '../services/analytics_service.dart';
 import '../services/game_state.dart';
 import '../services/iap_service.dart';
 import '../theme/app_theme.dart';
@@ -1350,6 +1349,7 @@ class _WatchAdCardState extends State<_WatchAdCard> {
     setState(() => _watching = true);
 
     await AdService.instance.showRewardedAd(
+      placement: 'shop_rewarded',
       onRewarded: () async {
         // Grant + durably persist the reward FIRST — independent of this
         // widget's lifecycle (the GameState outlives the screen). Only after
@@ -1358,7 +1358,7 @@ class _WatchAdCardState extends State<_WatchAdCard> {
         // keeps the reward but the ad isn't counted (favours the player) —
         // never the reverse (counted but unrewarded).
         widget.game.grantCrystals(_rewardPerAd);
-        AnalyticsService.instance.adWatched('shop_rewarded');
+        // (ad_watched is now logged centrally by AdService.showRewardedAd)
         await widget.game.saveToLocal();
         _adsToday++;
         await _persistAdsToday();

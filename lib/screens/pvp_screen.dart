@@ -377,6 +377,7 @@ class _PvpScreenState extends State<PvpScreen> {
                   child: OutlinedButton.icon(
                     onPressed: () {
                       AdService.instance.showRewardedAd(
+                        placement: 'pvp_stamina',
                         onRewarded: () { game.grantAdPvpStamina(); setState(() {}); },
                         onFailed: () {
                           ScaffoldMessenger.of(context).showSnackBar(const SnackBar(

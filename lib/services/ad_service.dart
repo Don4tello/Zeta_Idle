@@ -3,6 +3,9 @@ import 'dart:io' show Platform;
 import 'package:flutter/foundation.dart' show kIsWeb, kDebugMode;
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 
+import 'analytics_service.dart';
+import 'telemetry_service.dart';
+
 class AdService {
   AdService._();
   static final AdService instance = AdService._();
@@ -88,18 +91,39 @@ class AdService {
     );
   }
 
+  /// Fan ad-funnel events out to Firebase Analytics (prod source of truth) and
+  /// the Firestore telemetry mirror (test-build pull convenience) in one place.
+  void _trackAd(String placement, String result, [String? reason]) {
+    switch (result) {
+      case 'requested':
+        AnalyticsService.instance.adRequested(placement);
+      case 'watched':
+        AnalyticsService.instance.adWatched(placement);
+      case 'failed':
+        AnalyticsService.instance.adFailed(placement, reason ?? 'unknown');
+    }
+    TelemetryService.recordAd(placement: placement, result: result, reason: reason);
+  }
+
+  /// [placement] is a stable id for WHERE the ad was offered (e.g.
+  /// 'daily_chest_2x', 'speed_boost_2x') — it keys all the ad-funnel analytics.
   Future<void> showRewardedAd({
+    required String placement,
     required void Function() onRewarded,
     required void Function() onFailed,
   }) async {
     if (!isSupported) {
-      // Windows/desktop: simulate a 3-second ad for testing
+      // Windows/desktop: simulate a 3-second ad for testing. Not tracked — these
+      // aren't real impressions and would skew the funnel.
       await Future.delayed(const Duration(seconds: 3));
       onRewarded();
       return;
     }
 
+    _trackAd(placement, 'requested');
+
     if (_rewardedAd == null) {
+      _trackAd(placement, 'failed', 'no_fill');
       onFailed();
       loadRewardedAd(); // try to load for next time
       return;
@@ -114,12 +138,16 @@ class AdService {
         loadRewardedAd();
         // Check reward only after the ad closes — onUserEarnedReward fires
         // just before dismiss, so rewarded is already true by this point.
-        if (rewarded) onRewarded();
+        if (rewarded) {
+          _trackAd(placement, 'watched');
+          onRewarded();
+        }
       },
       onAdFailedToShowFullScreenContent: (ad, error) {
         ad.dispose();
         _rewardedAd = null;
         _isLoaded = false;
+        _trackAd(placement, 'failed', 'show_error');
         onFailed();
         loadRewardedAd();
       },

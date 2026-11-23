@@ -87,7 +87,15 @@ class EnemyData {
     // fights ran 50-96 rounds (DPS≈enemy recovery stalemate, read as a slog not
     // a challenge). Easing the slope shortens the mid-frontier HP wall while the
     // deepest tiers (T9/T10, over≥6) still saturate at ×13 — unchanged.
-    return (1.0 + 2.0 * over).clamp(1.0, 13.0); // T4 ×3 · T5 ×5 · T7 ×9 · T10 ×13
+    //
+    // Linear 2.0 → gentle convex (build 407): Nov-23 telemetry still showed the
+    // MID-frontier as the sharpest wall — T5 bosses (st5/20/35/55/65) ran 25-31
+    // rounds at 39-49% end-HP and a 50-60% win rate (the game's biggest loss
+    // cluster), while the deep tiers were fine. A convex curve (1.3·over +
+    // 0.08·over²) pulls the low end down (T4 ×2.4, T5 ×3.9, T7 ×7.5) yet still
+    // reaches the ×13 cap by T10 (over 7), so only the mid-frontier eases.
+    return (1.0 + 1.3 * over + 0.08 * over * over)
+        .clamp(1.0, 13.0); // T4 ×2.4 · T5 ×3.9 · T6 ×5.6 · T7 ×7.5 · T10 ×13
   }
 
   // ATK 1.09 → 1.20 (T10 ≈ ×2.37 → ×6.2). Telemetry (build 230): with healing +
@@ -173,7 +181,13 @@ class EnemyData {
   // is unaffected — this only bites when you're ahead of the curve. Capped so it
   // can't run away. Tunable.
   static const double kOverLevelStep = 0.03; // +3% enemy HP per level over
-  static const int    kOverLevelCap  = 50;   // …counted up to a 50-level gap
+  // Cap 50 → 75 (build 407): Nov-23 telemetry showed over-geared heroes 1-round
+  // facerolling once ahead of the curve (late-T5 st66+ at 100% end-HP, 1 round).
+  // Extending the gap counted (not the per-level %) lets the catch-up keep
+  // tracking a very over-levelled hero to ~+225% HP, turning facerolls back into
+  // 2-3 round fights. HP-only and gap≥0-only, so on-level/under-level play and
+  // one-shot risk are untouched.
+  static const int    kOverLevelCap  = 75;   // …counted up to a 75-level gap
   // Under-level relief (build 349): the mirror of the above. Unlocking a new
   // tier vaults enemy LEVEL well ahead of the hero (kTierLevelStep), and
   // telemetry showed heroes 38-103 levels UNDER the enemy getting wall-slammed
@@ -1261,16 +1275,23 @@ class EnemyData {
       // one-round the finale. Bosses only — trash stays fast. See
       // frontierBossHpMult. (Non-frontier tiers → ×1, so this is a no-op there.)
       final frontierBoss = isBoss ? frontierBossHpMult(prestigeLevel) : 1.0;
-      final bossHpMult  = isBoss ? (1.4 + 1.1 * bossPhase) * frontierBoss : 1.0; // 1.4 → 2.5, ×frontier
-      // T0 onboarding bosses (st15/25/35 — Pharaoh/Lich Emperor/Shadow King)
-      // over-spiked brand-new players: build 349 telemetry showed on-/over-level
-      // heroes (L8-L24) dying at 0% HP purely to the 2.5-3.5× ATK premium, not
-      // HP (fights were only 10-18 rounds). Soften the ATK phase-in for TIER 0
-      // ONLY so the onboarding bosses threaten without wiping a learning hero.
+      // T0 onboarding bosses (st15/25/35 — Pharaoh/Lich Emperor/Shadow King) get
+      // a softer HP wall (build 407). Nov-23 telemetry showed they STILL walled
+      // learners even after the build-349 ATK easing: st25 ran 18-21 rounds and
+      // killed on-level L13-L24 heroes (0% end-HP), because chip damage over a
+      // long slog finishes a thin learner no matter how gentle each hit is. A
+      // shorter fight (less boss HP) both quickens the clear AND cuts total
+      // damage taken, landing them ~11-13 rounds / ~40% end-HP. T1+ unchanged.
+      final bossHpMult  = isBoss
+          ? (prestigeLevel == 0 ? 1.3 + 0.7 * bossPhase                   // T0: 1.3 → 2.0 (was 1.4 → 2.5)
+                                : (1.4 + 1.1 * bossPhase) * frontierBoss) // T1+: 1.4 → 2.5, ×frontier
+          : 1.0;
+      // ATK phase-in. TIER 0 softened again (build 407): the 1.4 → 2.6 premium
+      // still contributed to onboarding deaths, so ease it alongside the HP cut.
       // bossPhase is stage-based (shared across tiers), so gate on prestigeLevel
       // to leave every T1+ boss exactly as-is.
       final bossAtkMult = isBoss
-          ? (prestigeLevel == 0 ? 1.4 + 1.2 * bossPhase   // T0: 1.4 → 2.6
+          ? (prestigeLevel == 0 ? 1.3 + 0.8 * bossPhase   // T0: 1.3 → 2.1 (was 1.4 → 2.6)
                                 : 1.6 + 1.9 * bossPhase)   // T1+: 1.6 → 3.5
           : 1.0;
       final enemyLevel = base.level + prestigeLevel * kTierLevelStep;

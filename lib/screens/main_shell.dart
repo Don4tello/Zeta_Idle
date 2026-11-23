@@ -289,6 +289,7 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
                 child: OutlinedButton.icon(
                   onPressed: () {
                     AdService.instance.showRewardedAd(
+                      placement: 'idle_reward_2x',
                       onRewarded: () {
                         game.grantDoubledOfflineReport();
                         game.audioService.playClaim();
