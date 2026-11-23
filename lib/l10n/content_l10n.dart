@@ -5,6 +5,7 @@ import 'content_es.dart';
 import 'content_fr.dart';
 import 'content_pl.dart';
 import 'content_pt.dart';
+import 'content_ko.dart';
 
 /// Localization layer for **bulk game CONTENT** (campaign stages, class quests,
 /// system tutorials, daily-challenge templates, patch notes …).
@@ -36,6 +37,7 @@ class ContentL10n {
         'fr' => kContentFr,
         'pl' => kContentPl,
         'pt' => kContentPt,
+        'ko' => kContentKo,
         _ => null, // English is the inline fallback — no map needed.
       };
 

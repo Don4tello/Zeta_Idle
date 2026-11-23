@@ -22,6 +22,7 @@ class LocaleController extends ValueNotifier<Locale?> {
     Locale('fr'),
     Locale('pl'),
     Locale('pt'),
+    Locale('ko'),
   ];
 
   Future<void> load() async {

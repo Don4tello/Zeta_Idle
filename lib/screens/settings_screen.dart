@@ -161,6 +161,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       case 'fr': return 'Français';
       case 'pt': return 'Português';
       case 'pl': return 'Polski';
+      case 'ko': return '한국어';
       case 'en': return 'English';
       default:   return code.toUpperCase();
     }
